@@ -16,22 +16,8 @@ import type {
 } from '@/lib/dataApi'
 import { invoke } from '@tauri-apps/api/core'
 
-// 获取所有符文
-export function useAllRunesQuery() {
-  return useQuery({
-    queryKey: ['all-runes'],
-    queryFn: () => invoke<DataDragonRune[]>('get_all_runes')
-  })
-}
-
-// 获取推荐出装和符文
-export function useBuildsByAliasQuery(source: string, champion: string) {
-  return useQuery({
-    queryKey: ['builds-by-alias', source, champion],
-    queryFn: () => invoke<BuildSection>('get_builds_by_alias', { source, champion }),
-    enabled: false
-  })
-}
+// 注：旧的 ddragon 相关查询函数已删除（useAllRunesQuery, useBuildsByAliasQuery）
+// 现已改用新的 OPGG API 和直接调用 DDragon CDN
 
 export function usePlayerListQuery(enabled: MaybeRefOrGetter<boolean>) {
   return useQuery({

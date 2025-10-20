@@ -1,5 +1,5 @@
 use crate::shared::utils::lcu_get;
-use crate::lcu::types::RankedStats;
+use crate::shared::types::RankedStats;
 use reqwest::Client;
 
 /// 获取当前召唤师的段位统计

@@ -1,4 +1,4 @@
-use crate::lcu::types::TeamAnalysisData;
+use crate::shared::types::TeamAnalysisData;
 
 #[tauri::command]
 pub async fn get_cached_analysis_data() -> Result<Option<TeamAnalysisData>, String> {

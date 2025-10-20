@@ -1,5 +1,6 @@
 use crate::infrastructure::game_session::auth::service::ensure_valid_auth_info;
 use crate::infrastructure::real_time::websocket::event_handler::WsEventHandler;
+use crate::shared::{NidaleeError, Result};
 use base64::{engine::general_purpose, Engine};
 use futures_util::{SinkExt, StreamExt};
 use once_cell::sync::OnceCell;
@@ -68,7 +69,7 @@ async fn fallback_fetch_and_emit(app: &tauri::AppHandle, phase_hint: Option<&str
 
     // First, try to get the latest phase. Only send positive data to avoid clearing frontend state on a temporary failure.
     let mut latest_phase: Option<String> = None;
-    if let Ok(phase) = crate::lcu::gameflow::service::get_gameflow_phase(&client).await {
+    if let Ok(phase) = crate::infrastructure::game_session::gameflow::service::get_gameflow_phase(&client).await {
         let _ = app.emit("gameflow-phase-change", &Some(phase.clone()));
         latest_phase = Some(phase);
     }
@@ -77,15 +78,15 @@ async fn fallback_fetch_and_emit(app: &tauri::AppHandle, phase_hint: Option<&str
     let effective_phase = latest_phase.as_deref().or(phase_hint);
     match effective_phase {
         Some("Lobby") | Some("Matchmaking") | Some("None") => {
-            if let Ok(lobby) = crate::lcu::lobby::service::get_lobby_info(&client).await {
+            if let Ok(lobby) = crate::infrastructure::game_session::lobby::service::get_lobby_info(&client).await {
                 let _ = app.emit("lobby-change", &Some(lobby));
             }
-            if let Ok(state) = crate::lcu::matchmaking::service::get_matchmaking_state(&client).await {
+            if let Ok(state) = crate::infrastructure::match_management::matchmaking::service::get_matchmaking_state(&client).await {
                 let _ = app.emit("matchmaking-state-changed", state);
             }
         }
         Some("ChampSelect") => {
-            if let Ok(session) = crate::lcu::champ_select::service::get_champ_select_session(&client).await {
+            if let Ok(session) = crate::infrastructure::champion_selection::champ_select::service::get_champ_select_session(&client).await {
                 let _ = app.emit("champ-select-session-changed", &session);
             }
         }
@@ -137,7 +138,7 @@ pub async fn start_ws(app: tauri::AppHandle) {
     let _ = WS_TASK.set(handle);
 }
 
-async fn connect_and_run_ws(app: &tauri::AppHandle, auth: &crate::lcu::types::LcuAuthInfo) -> Result<(), String> {
+async fn connect_and_run_ws(app: &tauri::AppHandle, auth: &crate::shared::types::LcuAuthInfo) -> Result<()> {
     let url = format!("wss://127.0.0.1:{}/", auth.app_port);
     let auth_string = format!("riot:{}", auth.remoting_auth_token);
     let auth_b64 = general_purpose::STANDARD.encode(auth_string.as_bytes());
@@ -157,7 +158,7 @@ async fn connect_and_run_ws(app: &tauri::AppHandle, auth: &crate::lcu::types::Lc
     let connect_res = connect_async_tls_with_config(req, None, false, Some(connector)).await;
     let (mut ws_stream, _) = match connect_res {
         Ok(res) => res,
-        Err(e) => return Err(format!("LCU WebSocket connection failed: {}", e)),
+        Err(e) => return Err(format!("LCU WebSocket connection failed: {}", e).into()),
     };
 
     log::info!("[lcu-ws] WebSocket connection successful.");
@@ -241,7 +242,7 @@ async fn connect_and_run_ws(app: &tauri::AppHandle, auth: &crate::lcu::types::Lc
                     Ok(_) => { /* Ignore non-text messages */ }
                     Err(e) => {
                         log::error!("[lcu-ws] WebSocket read error: {}", e);
-                        return Err(format!("WebSocket read error: {}", e));
+                        return Err(format!("WebSocket read error: {}", e).into());
                     }
                 }
             }

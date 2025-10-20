@@ -7,5 +7,3 @@
 pub mod opgg;
 
 // Re-export services
-pub use opgg::service as opgg_service;
-pub use opgg::commands as opgg_commands;

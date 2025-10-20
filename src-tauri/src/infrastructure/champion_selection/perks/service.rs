@@ -1,7 +1,7 @@
 //! LCU 符文相关 API
 use crate::shared::utils::lcu_request_raw;
 use crate::shared::utils::{lcu_delete, lcu_get, lcu_post, lcu_put};
-use crate::lcu::types::{CreateRunePageRequest, ItemBlock, ItemSet, Perk, RecommendedItem, RunePage, RuneStyle};
+use crate::shared::types::{CreateRunePageRequest, ItemBlock, ItemSet, Perk, RecommendedItem, RunePage, RuneStyle};
 use reqwest::Client;
 use serde_json::json;
 

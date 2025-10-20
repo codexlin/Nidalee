@@ -28,7 +28,7 @@ pub mod analyzers;
 pub mod thresholds;
 
 // 重新导出核心API（保持向后兼容）
-pub use analyzers::core::parser::{identify_main_role, parse_games, ParsedGame, ParsedPlayerData, ParsedTeamData, TimelineData};
+pub use analyzers::core::parser::{identify_main_role, parse_games, ParsedGame};
 pub use analyzers::core::stats::{analyze_player_stats, AnalysisContext};
 pub use analyzers::core::strategy::AnalysisStrategy;
 

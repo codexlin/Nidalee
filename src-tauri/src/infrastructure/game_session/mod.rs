@@ -12,7 +12,3 @@ pub mod gameflow;
 pub mod lobby;
 
 // Re-export services
-pub use auth::service as auth_service;
-pub use connection::service as connection_service;
-pub use gameflow::service as gameflow_service;
-pub use lobby::service as lobby_service;

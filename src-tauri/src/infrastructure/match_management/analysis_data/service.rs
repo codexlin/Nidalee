@@ -1,7 +1,7 @@
-use crate::lcu::matches::service::{get_recent_matches_by_puuid, get_recent_matches_by_puuid_with_perspective};
+use crate::infrastructure::match_management::matches::service::{get_recent_matches_by_puuid, get_recent_matches_by_puuid_with_perspective};
 use crate::infrastructure::data_services::summoner::service::get_summoner_by_id;
 use crate::infrastructure::data_services::summoner::service::get_summoners_by_names;
-use crate::lcu::types::{PlayerAnalysisData, PlayerMatchStats, TeamAnalysisData, AdvicePerspective};
+use crate::shared::types::{PlayerAnalysisData, PlayerMatchStats, TeamAnalysisData, AdvicePerspective};
 
 /// 从 ChampSelect 会话构建完整的分析数据
 ///
@@ -153,7 +153,7 @@ pub async fn build_team_analysis_from_session(
     }
 
     // ⭐ 分别为我方和敌方获取战绩，使用不同的建议视角
-    
+
     // 1. 获取我方队友战绩（使用 Collaboration 视角）
     let my_team_real_players: Vec<_> = my_team_players
         .iter_mut()
@@ -378,7 +378,7 @@ async fn enrich_player_data(
 /// - perspective: 建议视角（Collaboration for队友，Targeting for敌人）
 /// - local_cell_id: 本地玩家cellId，用于判断是否是自己
 async fn fetch_players_match_stats_with_perspective(
-    mut players: Vec<&mut PlayerAnalysisData>,
+    players: Vec<&mut PlayerAnalysisData>,
     http_client: &reqwest::Client,
     queue_id: i64,
     match_stats_cache: &mut std::collections::HashMap<String, PlayerMatchStats>,
@@ -386,7 +386,7 @@ async fn fetch_players_match_stats_with_perspective(
     local_cell_id: i32,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
     println!("🎯 批量获取玩家战绩（视角：{:?}）", perspective);
-    
+
     fetch_all_players_match_stats_internal(
         players,
         http_client,
@@ -400,7 +400,7 @@ async fn fetch_players_match_stats_with_perspective(
 
 /// 批量获取所有真实玩家的战绩数据（内部函数）
 async fn fetch_all_players_match_stats(
-    mut players: Vec<&mut PlayerAnalysisData>,
+    players: Vec<&mut PlayerAnalysisData>,
     http_client: &reqwest::Client,
     queue_id: i64,
     match_stats_cache: &mut std::collections::HashMap<String, PlayerMatchStats>,
@@ -535,7 +535,7 @@ async fn fetch_all_players_match_stats_internal(
                     } else {
                         persp  // 队友或敌人使用传入的视角
                     };
-                    
+
                     get_recent_matches_by_puuid_with_perspective(
                         http_client,
                         &summoner_info.puuid,

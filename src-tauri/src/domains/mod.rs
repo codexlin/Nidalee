@@ -9,6 +9,4 @@ pub mod analysis;          // 对局分析领域
 pub mod tactical_advice;   // 战术建议领域
 
 // 重新导出常用类型（保持向后兼容）
-pub use analysis::*;
-pub use tactical_advice::{generate_advice, GameAdvice, AdvicePerspective};
 

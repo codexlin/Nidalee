@@ -47,7 +47,7 @@
           :key="index"
           class="flex items-start gap-2 text-sm text-foreground bg-muted/30 rounded-md px-3 py-2 hover:bg-muted/50 transition-colors"
         >
-          <CheckCircle2 class="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+          <CheckCircle2 class="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
           <span class="flex-1">{{ suggestion }}</span>
         </li>
       </ul>
@@ -113,12 +113,12 @@ const priorityLabel = computed(() => {
 
 const priorityBorderClass = computed(() => {
   if (props.advice.priority >= 4) {
-    return 'border-l-4 border-l-red-500'
+    return 'border-l-4 border-l-red-500 dark:border-l-red-400'
   }
   if (props.advice.priority >= 2) {
-    return 'border-l-4 border-l-blue-500'
+    return 'border-l-4 border-l-blue-500 dark:border-l-blue-400'
   }
-  return 'border-l-4 border-l-gray-300'
+  return 'border-l-4 border-l-gray-400 dark:border-l-gray-600'
 })
 
 // 分类图标和样式

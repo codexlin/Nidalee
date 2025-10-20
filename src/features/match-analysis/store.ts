@@ -1,8 +1,5 @@
 import type { GamePhase, TeamData, EnrichedPlayerMatchStats } from '@/types/match-analysis'
 
-// 类型别名，保持向后兼容
-type EnrichedMatchStatistics = EnrichedPlayerMatchStats
-
 /**
  * 对局分析 Store
  * 职责：管理对局分析相关的核心状态和数据
@@ -17,9 +14,9 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
 
   // === 数据状态 ===
   const myTeamData = ref<TeamData | null>(null)
-  const myTeamStats = ref<(EnrichedMatchStatistics | null)[]>([])
+  const myTeamStats = ref<(EnrichedPlayerMatchStats | null)[]>([])
   const enemyTeamData = ref<TeamData | null>(null)
-  const enemyTeamStats = ref<(EnrichedMatchStatistics | null)[]>([])
+  const enemyTeamStats = ref<(EnrichedPlayerMatchStats | null)[]>([])
   const enemyChampionPicks = ref<
     Array<{ cellId: number; championId: number | null; championPickIntent?: number | null }>
   >([])
@@ -164,7 +161,7 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
     myTeamData.value = data
   }
 
-  const setMyTeamStats = (stats: (EnrichedMatchStatistics | null)[]) => {
+  const setMyTeamStats = (stats: (EnrichedPlayerMatchStats | null)[]) => {
     console.log('[MatchAnalysisStore] setMyTeamStats:', stats?.length)
     myTeamStats.value = stats
   }
@@ -174,7 +171,7 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
     enemyTeamData.value = data
   }
 
-  const setEnemyTeamStats = (stats: (EnrichedMatchStatistics | null)[]) => {
+  const setEnemyTeamStats = (stats: (EnrichedPlayerMatchStats | null)[]) => {
     console.log('[MatchAnalysisStore] setEnemyTeamStats:', stats?.length)
     enemyTeamStats.value = stats
   }

@@ -1,6 +1,6 @@
-use crate::lcu::connection::service::ConnectionInfo;
-use crate::lcu::connection::service::ConnectionManager;
-use crate::lcu::types::ConnectionState;
+use crate::infrastructure::game_session::connection::service::ConnectionInfo;
+use crate::infrastructure::game_session::connection::service::ConnectionManager;
+use crate::shared::types::ConnectionState;
 use std::sync::Arc;
 use tauri;
 use tokio::sync::RwLock;

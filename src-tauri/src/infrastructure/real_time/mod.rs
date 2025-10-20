@@ -9,6 +9,3 @@ pub mod websocket;
 pub mod liveclient;
 
 // Re-export services
-pub use websocket::service as websocket_service;
-pub use websocket::event_handler as websocket_event_handler;
-pub use liveclient::service as liveclient_service;

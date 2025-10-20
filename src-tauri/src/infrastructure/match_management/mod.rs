@@ -12,8 +12,3 @@ pub mod ranked;
 pub mod matchmaking;
 
 // Re-export services
-pub use matches::service as matches_service;
-pub use matches::commands as matches_commands;
-pub use analysis_data::service as analysis_data_service;
-pub use ranked::service as ranked_service;
-pub use matchmaking::service as matchmaking_service;

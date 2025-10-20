@@ -1,5 +1,5 @@
 use crate::shared::utils::{lcu_get, lcu_post, lcu_put};
-use crate::lcu::types::{RankInfo, SummonerInfo};
+use crate::shared::types::{RankInfo, SummonerInfo};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{to_value, Value};

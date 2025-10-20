@@ -1,6 +1,6 @@
 /// 建议系统核心数据类型
 ///
-/// 重新导出 lcu::types 中的类型，避免重复定义
+/// 重新导出 shared::types 中的类型，避免重复定义
 
 pub use crate::shared::types::{GameAdvice, AdviceCategory, AdvicePerspective};
 

@@ -1,9 +1,10 @@
 // Handles converting raw WebSocket messages into application-specific events.
-use crate::lcu::analysis_data;
+use crate::infrastructure::match_management::analysis_data;
 use crate::infrastructure::data_services::champion_data;
 use crate::infrastructure::data_services::summoner::service::get_summoner_by_id;
 use crate::infrastructure::champion_selection::summoner_spells;
-use crate::lcu::types::{ChampSelectSession, LobbyInfo, MatchmakingState, SummonerInfo};
+use crate::shared::{NidaleeError, Result};
+use crate::shared::types::{ChampSelectSession, LobbyInfo, MatchmakingState, SummonerInfo};
 use reqwest::Client;
 use serde_json::Value;
 use std::sync::Arc;
@@ -19,9 +20,9 @@ struct EventCache {
     matchmaking_state: Option<MatchmakingState>,
     lobby_info: Option<LobbyInfo>,
     // Cache for match statistics, keyed by summoner display name.
-    match_stats_cache: std::collections::HashMap<String, crate::lcu::types::PlayerMatchStats>,
+    match_stats_cache: std::collections::HashMap<String, crate::shared::types::PlayerMatchStats>,
     // Cache for team analysis data.
-    team_analysis_data: Option<crate::lcu::types::TeamAnalysisData>,
+    team_analysis_data: Option<crate::shared::types::TeamAnalysisData>,
 }
 
 pub struct WsEventHandler {
@@ -46,15 +47,15 @@ impl WsEventHandler {
     }
 
     /// Gets the cached team analysis data.
-    pub async fn get_cached_team_analysis_data(&self) -> Option<crate::lcu::types::TeamAnalysisData> {
+    pub async fn get_cached_team_analysis_data(&self) -> Option<crate::shared::types::TeamAnalysisData> {
         let cache = self.cache.read().await;
         cache.team_analysis_data.clone()
     }
 
     /// Handles a raw WebSocket event message.
-    pub async fn handle_event(&self, event_data: &str) -> Result<(), String> {
+    pub async fn handle_event(&self, event_data: &str) -> Result<()> {
         if event_data.trim().is_empty() {
-            return Err("Received empty event data".to_string());
+            return Err("Received empty event data".into());
         }
 
         let data: Value = serde_json::from_str(event_data).map_err(|e| {
@@ -100,7 +101,7 @@ impl WsEventHandler {
         )
     }
 
-    async fn handle_json_api_event(&self, payload: &Value) -> Result<(), String> {
+    async fn handle_json_api_event(&self, payload: &Value) -> Result<()> {
         let uri = payload["uri"].as_str().unwrap_or("");
         let event_type = payload["eventType"].as_str().unwrap_or("");
         let data = &payload["data"];
@@ -133,7 +134,7 @@ impl WsEventHandler {
         Ok(())
     }
 
-    async fn handle_gameflow_phase_change(&self, data: &Value, event_type: &str) -> Result<(), String> {
+    async fn handle_gameflow_phase_change(&self, data: &Value, event_type: &str) -> Result<()> {
         log::info!("[ws-event] Gameflow phase change ({}) received: {}", event_type, data);
         if event_type == "Create" || event_type == "Update" {
             if let Some(phase) = data.as_str() {
@@ -218,7 +219,7 @@ impl WsEventHandler {
     }
 
     /// Backfills detailed match history for the enemy team during the 'InProgress' phase.
-    async fn backfill_enemy_team_data(&self) -> Result<(), String> {
+    async fn backfill_enemy_team_data(&self) -> Result<()> {
         log::info!("[ws-event-backfill] Starting backfill task...");
 
         // 1. Fetch the full player list from the LiveClient API.
@@ -228,7 +229,7 @@ impl WsEventHandler {
             let max_attempts = 30; // Increased to 30 attempts, total wait time ~1 minute.
             loop {
                 attempts += 1;
-                match crate::lcu::liveclient::service::get_live_player_list().await {
+                match crate::infrastructure::real_time::liveclient::service::get_live_player_list().await {
                     Ok(players) if !players.is_empty() => {
                         log::info!("[ws-event-backfill] Successfully fetched player list from LiveClient.");
                         break players;
@@ -236,7 +237,7 @@ impl WsEventHandler {
                     Ok(_) => {
                         if attempts >= max_attempts {
                             return Err(
-                                "Failed to get player list from LiveClient after multiple attempts: returned an empty list (game loading?).".to_string(),
+                                "Failed to get player list from LiveClient after multiple attempts: returned an empty list (game loading?)".into(),
                             );
                         }
                         log::warn!(
@@ -251,7 +252,7 @@ impl WsEventHandler {
                             return Err(format!(
                                 "Failed to get player list from LiveClient after {} attempts: {}",
                                 max_attempts, e
-                            ));
+                            ).into());
                         }
                         log::warn!(
                             "[ws-event-backfill] Failed to fetch LiveClient player list (attempt {}/{}), retrying in 2s: {}",
@@ -411,7 +412,7 @@ impl WsEventHandler {
 
                 // 5.6 Fetch recent matches.
                 let queue_id = Some(team_analysis.queue_id);
-                match crate::lcu::matches::service::get_recent_matches_by_puuid(&self.client, &info.puuid, 20, queue_id.map(|v| v as i32)).await {
+                match crate::infrastructure::match_management::matches::service::get_recent_matches_by_puuid(&self.client, &info.puuid, 20, queue_id.map(|v| v as i32)).await {
                     Ok(player_stats) => {
                         // 注意：get_recent_matches_by_puuid 已经返回完整的 PlayerMatchStats
                         // 包含所有增强字段（traits, today_games, dpm, cspm, vspm 等）
@@ -467,7 +468,7 @@ impl WsEventHandler {
 
     /// 从头构建队伍分析数据（应用重启后没有缓存时使用）
     /// 同时处理我方和敌方队伍的数据
-    async fn build_team_data_from_scratch(&self) -> Result<(), String> {
+    async fn build_team_data_from_scratch(&self) -> Result<()> {
         log::info!(
             target: "ws::event_handler",
             "Building team data from LiveClient (app restart recovery)"
@@ -479,7 +480,7 @@ impl WsEventHandler {
             let max_attempts = 30;
             loop {
                 attempts += 1;
-                match crate::lcu::liveclient::service::get_live_player_list().await {
+                match crate::infrastructure::real_time::liveclient::service::get_live_player_list().await {
                     Ok(players) if !players.is_empty() => {
                         log::debug!(
                             target: "ws::event_handler",
@@ -491,7 +492,7 @@ impl WsEventHandler {
                     Ok(_) => {
                         if attempts >= max_attempts {
                             return Err(
-                                "LiveClient returned empty list after max retries (game still loading?)".to_string()
+                                "LiveClient returned empty list after max retries (game still loading?)".into()
                             );
                         }
                         log::debug!(
@@ -507,7 +508,7 @@ impl WsEventHandler {
                             return Err(format!(
                                 "Failed to get LiveClient data after {} attempts: {}",
                                 max_attempts, e
-                            ));
+                            ).into());
                         }
                         log::warn!(
                             target: "ws::event_handler",
@@ -569,12 +570,12 @@ impl WsEventHandler {
                         "Batch fetch for summoner info failed: {}",
                         e
                     );
-                    return Err(format!("Failed to fetch summoner info: {}", e));
+                    return Err(format!("Failed to fetch summoner info: {}", e).into());
                 }
             };
 
         // 4. 先获取游戏信息（需要用于战绩过滤）
-        let (queue_id, is_custom_game) = match crate::lcu::gameflow::service::get_gameflow_session(&self.client).await {
+        let (queue_id, is_custom_game) = match crate::infrastructure::game_session::gameflow::service::get_gameflow_session(&self.client).await {
             Ok(session) => {
                 let queue_id = session["gameData"]["queue"]["id"].as_i64().unwrap_or(420);
                 let is_custom = session["gameData"]["isCustomGame"].as_bool().unwrap_or(false);
@@ -687,7 +688,7 @@ impl WsEventHandler {
         };
 
         // 8. 创建 TeamAnalysisData
-        let team_analysis_data = crate::lcu::types::TeamAnalysisData {
+        let team_analysis_data = crate::shared::types::TeamAnalysisData {
             my_team: my_team_data,
             enemy_team: enemy_team_data,
             local_player_cell_id,
@@ -731,12 +732,12 @@ impl WsEventHandler {
     /// 辅助方法：从 LiveClient 玩家数据构建 PlayerAnalysisData
     async fn build_player_data(
         &self,
-        live_player: &crate::lcu::types::LiveClientPlayer,
+        live_player: &crate::shared::types::LiveClientPlayer,
         cell_id: i32,
-        summoners_info: &[crate::lcu::types::SummonerInfo],
-        stats_to_cache: &mut Vec<(String, crate::lcu::types::PlayerMatchStats)>,
+        summoners_info: &[crate::shared::types::SummonerInfo],
+        stats_to_cache: &mut Vec<(String, crate::shared::types::PlayerMatchStats)>,
         queue_id: i64,
-    ) -> Result<crate::lcu::types::PlayerAnalysisData, String> {
+    ) -> Result<crate::shared::types::PlayerAnalysisData> {
         // 获取英雄 ID
         let champion_id = champion_data::get_champion_id_by_name(&live_player.champion_name)
             .ok_or_else(|| format!("Could not find champion ID for '{}'", live_player.champion_name))?;
@@ -751,7 +752,7 @@ impl WsEventHandler {
             full_name.to_lowercase() == live_player.summoner_name.to_lowercase()
         });
 
-        let mut player_data = crate::lcu::types::PlayerAnalysisData {
+        let mut player_data = crate::shared::types::PlayerAnalysisData {
             cell_id,
             display_name: live_player.summoner_name.clone(),
             summoner_id: None,
@@ -797,7 +798,7 @@ impl WsEventHandler {
             player_data.tag_line = info.tag_line.clone();
 
             // 获取战绩数据
-            match crate::lcu::matches::service::get_recent_matches_by_puuid(&self.client, &info.puuid, 20, Some(queue_id as i32)).await {
+            match crate::infrastructure::match_management::matches::service::get_recent_matches_by_puuid(&self.client, &info.puuid, 20, Some(queue_id as i32)).await {
                 Ok(player_stats) => {
                     // 注意：get_recent_matches_by_puuid 已经返回完整的 PlayerMatchStats
                     // 在排位模式下会自动过滤只显示排位战绩
@@ -831,7 +832,7 @@ impl WsEventHandler {
         Ok(player_data)
     }
 
-    async fn handle_gameflow_session_change(&self, data: &Value, event_type: &str) -> Result<(), String> {
+    async fn handle_gameflow_session_change(&self, data: &Value, event_type: &str) -> Result<()> {
         // Create and Update events both contain data.
         if event_type == "Create" || event_type == "Update" {
             // Serialize session data to a string for comparison.
@@ -878,7 +879,7 @@ impl WsEventHandler {
         Ok(())
     }
 
-    async fn handle_champ_select_change(&self, data: &Value, event_type: &str) -> Result<(), String> {
+    async fn handle_champ_select_change(&self, data: &Value, event_type: &str) -> Result<()> {
         log::info!("[ws-event] Champ select event received, type: {}", event_type);
 
         if event_type == "Create" || event_type == "Update" {
@@ -948,7 +949,7 @@ impl WsEventHandler {
         Ok(())
     }
 
-    async fn handle_lobby_change(&self, data: &Value, event_type: &str) -> Result<(), String> {
+    async fn handle_lobby_change(&self, data: &Value, event_type: &str) -> Result<()> {
         log::info!("[ws-event] Lobby info event received, data: {}", data);
         if event_type == "Create" || event_type == "Update" {
             if let Ok(lobby) = serde_json::from_value::<LobbyInfo>(data.clone()) {
@@ -974,7 +975,7 @@ impl WsEventHandler {
         Ok(())
     }
 
-    async fn handle_current_summoner_change(&self, data: &Value, event_type: &str) -> Result<(), String> {
+    async fn handle_current_summoner_change(&self, data: &Value, event_type: &str) -> Result<()> {
         log::info!(
             target: "ws::event_handler",
             "🧪 [EXPERIMENTAL] Received current-summoner event, type: {}, testing if LCU supports this subscription",
@@ -1010,7 +1011,7 @@ impl WsEventHandler {
         Ok(())
     }
 
-    async fn handle_matchmaking_change(&self, data: &Value, event_type: &str) -> Result<(), String> {
+    async fn handle_matchmaking_change(&self, data: &Value, event_type: &str) -> Result<()> {
         if event_type == "Create" || event_type == "Update" {
             if let Ok(matchmaking_state) = serde_json::from_value::<MatchmakingState>(data.clone()) {
                 let mut cache = self.cache.write().await;
@@ -1080,7 +1081,7 @@ impl WsEventHandler {
 
     /// Enriches a single player's information using the fetched data.
     fn enrich_player(
-        player: &mut crate::lcu::types::ChampSelectPlayer,
+        player: &mut crate::shared::types::ChampSelectPlayer,
         info_map: &std::collections::HashMap<String, SummonerInfo>,
     ) {
         if let Some(sid) = &player.summoner_id {

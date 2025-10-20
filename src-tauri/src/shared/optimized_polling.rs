@@ -1,9 +1,7 @@
 // 优化的轮询管理器 - 与 WebSocket 配合使用
-use crate::lcu::{
-    auth::service::ensure_valid_auth_info,
-    summoner::service::get_current_summoner,
-    types::{LcuAuthInfo, SummonerInfo},
-};
+use crate::infrastructure::game_session::auth::service::ensure_valid_auth_info;
+use crate::infrastructure::data_services::summoner::service::get_current_summoner;
+use crate::shared::types::{LcuAuthInfo, SummonerInfo};
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};

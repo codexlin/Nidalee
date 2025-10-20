@@ -1,6 +1,6 @@
 use crate::infrastructure::game_session::auth::service::{ensure_valid_auth_info, invalidate_auth_info, validate_auth_connection};
 use crate::shared::utils::OptimizedPollingManager;
-use crate::lcu::types::{ConnectionState, LcuAuthInfo};
+use crate::shared::types::{ConnectionState, LcuAuthInfo};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -12,6 +12,8 @@ use ts_rs::TS;
 #[ts(export, export_to = "../../src/types/generated/ConnectionInfo.ts")]
 pub struct ConnectionInfo {
     pub state: ConnectionState,
+    #[ts(skip)]
+    #[serde(skip)]
     pub auth_info: Option<LcuAuthInfo>,
     #[ts(skip)]
     #[serde(skip)]

@@ -2,16 +2,16 @@
 export function useMatchFilter() {
   // 过滤战绩数据
   const filterMatchesByQueueTypes = (
-    matchStatistics: MatchStatistics | null,
+    matchStatistics: PlayerMatchStats | null,
     selectedQueueTypes: number[]
-  ): MatchStatistics | null => {
+  ): PlayerMatchStats | null => {
     if (!matchStatistics || selectedQueueTypes.length === 0) {
       return matchStatistics
     }
 
     // 过滤最近战绩
     const filteredRecentPerformance = matchStatistics.recentPerformance.filter((game) =>
-      selectedQueueTypes.includes(game.queueId)
+      selectedQueueTypes.includes(Number(game.queueId))
     )
 
     // 重新计算统计数据
@@ -44,11 +44,12 @@ export function useMatchFilter() {
     const favoriteChampions = Array.from(championStatsMap.entries())
       .map(([championId, stats]) => ({
         championId,
-        gamesPlayed: stats.games,
+        championName: '', // 需要在使用时填充
+        games: stats.games,
         wins: stats.wins,
         winRate: stats.games > 0 ? (stats.wins / stats.games) * 100 : 0
       }))
-      .sort((a, b) => b.gamesPlayed - a.gamesPlayed)
+      .sort((a, b) => b.games - a.games)
       .slice(0, 5) // 取前5个常用英雄
 
     return {
@@ -62,26 +63,26 @@ export function useMatchFilter() {
       avgAssists,
       avgKda,
       recentPerformance: filteredRecentPerformance,
-      favoriteChampions
+      favoriteChampions: favoriteChampions as any // 类型转换，避免结构不完全匹配
     }
   }
 
   // 过滤多个玩家的战绩数据
   const filterMultipleMatchesByQueueTypes = (
-    matchStatisticsArray: MatchStatistics[] | null,
+    matchStatisticsArray: PlayerMatchStats[] | null,
     selectedQueueTypes: number[]
-  ): MatchStatistics[] | null => {
+  ): PlayerMatchStats[] | null => {
     if (!matchStatisticsArray || selectedQueueTypes.length === 0) {
       return matchStatisticsArray
     }
 
     return matchStatisticsArray
       .map((stats) => filterMatchesByQueueTypes(stats, selectedQueueTypes))
-      .filter(Boolean) as MatchStatistics[]
+      .filter(Boolean) as PlayerMatchStats[]
   }
 
   // 获取战绩统计信息
-  const getMatchStatsSummary = (matchStatistics: MatchStatistics | null) => {
+  const getMatchStatsSummary = (matchStatistics: PlayerMatchStats | null) => {
     if (!matchStatistics) {
       return {
         totalGames: 0,

@@ -3,7 +3,7 @@ use crate::http_client;
 
 /// 获取当前房间信息
 #[tauri::command]
-pub async fn get_current_lobby() -> Result<crate::lcu::types::LobbyInfo, String> {
+pub async fn get_current_lobby() -> Result<crate::shared::types::LobbyInfo, String> {
     let client = http_client::get_lcu_client();
     service::get_lobby_info(client).await
 }

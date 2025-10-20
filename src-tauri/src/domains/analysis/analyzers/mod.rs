@@ -8,6 +8,4 @@ pub mod core;
 pub mod traits;
 
 // 重新导出核心API
-pub use core::{parser, stats, strategy};
-pub use traits::{advanced, basic, distribution, merger, role, timeline};
 

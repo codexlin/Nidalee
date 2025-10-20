@@ -14,7 +14,6 @@ pub mod teamfight;
 pub mod vision;
 pub mod champion;
 
-pub use base::AdviceAnalyzer;
 pub use laning::LaningAdviceAnalyzer;
 pub use farming::FarmingAdviceAnalyzer;
 pub use teamfight::TeamfightAdviceAnalyzer;

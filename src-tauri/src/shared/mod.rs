@@ -1,17 +1,18 @@
 //! 共享层
-//! 
+//!
 //! 包含跨领域共享的代码：
 //! - 类型定义
-//! - 工具函数
 //! - 错误处理
+//! - 工具函数
+//! - 请求封装
+//! - 性能优化
 
 pub mod types;
-pub mod utils;
 pub mod errors;
-
-// 包含工具模块
+pub mod utils;
 pub mod request;
 pub mod optimized_polling;
 
 // Re-export commonly used items
 pub use types::*;
+pub use errors::{NidaleeError, Result};

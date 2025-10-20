@@ -128,6 +128,9 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
         }
 
         // 最近战绩
+        // ⭐ v3.1: 添加位置信息
+        let position = role_to_position(&player.role, &player.lane);
+
         recent_performance.push(MatchPerformance {
             game_id: Some(game.game_id),
             win,
@@ -141,6 +144,9 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
             game_creation: Some(game.game_creation),
             queue_id: Some(game.queue_id),
             game_mode: None, // ParsedGame 没有 game_mode，可以后续添加
+            role: player.role.clone(),
+            lane: player.lane.clone(),
+            position,
         });
     }
 
@@ -219,4 +225,35 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
         recent_performance,
         advice: Vec::new(), // ⭐ v3.0: 由 advice 模块填充
     }
+}
+
+/// ⭐ v3.1: 将 role/lane 转换为中文位置名称
+fn role_to_position(role: &str, lane: &str) -> String {
+    let position = match (role, lane) {
+        // 标准位置匹配
+        ("DUO_CARRY", _) => "ADC",
+        ("DUO_SUPPORT", _) => "辅助",
+        ("SOLO", "TOP") => "上单",
+        ("SOLO", "MIDDLE") | ("SOLO", "MID") => "中单",
+        ("NONE", "JUNGLE") | ("JUNGLE", _) => "打野",
+
+        // 仅根据 lane 判断（当 role 是 NONE 但 lane 有值时）
+        ("NONE", "TOP") => "上单",
+        ("NONE", "MIDDLE") | ("NONE", "MID") => "中单",
+        ("NONE", "BOTTOM") => "下路", // 无法区分 ADC/辅助
+
+        // 没有 timeline 数据（大乱斗、自定义等）
+        ("NONE", "NONE") => {
+            // 这种情况通常出现在：大乱斗、自定义游戏、或旧对局数据
+            "灵活"
+        }
+
+        // 其他未知情况，记录日志以便调试
+        _ => {
+            println!("⚠️ 未识别的位置组合: role={}, lane={}", role, lane);
+            "未知"
+        }
+    };
+
+    position.to_string()
 }

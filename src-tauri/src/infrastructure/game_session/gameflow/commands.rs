@@ -1,5 +1,5 @@
 use crate::http_client;
-use crate::lcu::liveclient;
+use crate::infrastructure::real_time::liveclient;
 
 #[tauri::command]
 pub async fn get_live_player_list() -> Result<String, String> {

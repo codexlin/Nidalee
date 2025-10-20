@@ -25,8 +25,8 @@ pub async fn launch_game(custom_path: Option<String>) -> Result<bool, String> {
 
 #[tauri::command]
 pub async fn detect_game_path() -> Result<String, String> {
-    use std::fs;
-    use std::path::{Path, PathBuf};
+    
+    use std::path::Path;
     let wegame_paths = vec![
         "C:\\WeGameApps\\英雄联盟\\Launcher\\client.exe",
         "D:\\WeGameApps\\英雄联盟\\Launcher\\client.exe",

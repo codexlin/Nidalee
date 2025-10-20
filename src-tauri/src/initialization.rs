@@ -1,6 +1,6 @@
 /// 应用初始化模块
 /// 负责应用启动时的各种数据初始化任务
-use crate::lcu;
+use crate::infrastructure;
 
 /// 初始化所有游戏相关数据
 ///
@@ -17,14 +17,14 @@ pub async fn init_game_data() {
         Result<(), Box<dyn std::error::Error + Send + Sync>>,
         Result<(), Box<dyn std::error::Error + Send + Sync>>,
     ) = tokio::join!(
-        lcu::champion_data::load_champion_data(),
-        lcu::summoner_spells::load_summoner_spell_data()
+        infrastructure::data_services::champion_data::load_champion_data(),
+        infrastructure::champion_selection::summoner_spells::load_summoner_spell_data()
     );
 
     // 处理加载结果
     match champion_result {
         Ok(_) => {
-            let count = lcu::champion_data::get_champion_count();
+            let count = infrastructure::data_services::champion_data::get_champion_count();
             log::info!("[初始化] ✅ 英雄数据加载成功，共 {} 个英雄", count);
         }
         Err(e) => {
@@ -34,7 +34,7 @@ pub async fn init_game_data() {
 
     match spell_result {
         Ok(_) => {
-            let count = lcu::summoner_spells::get_spell_count();
+            let count = infrastructure::champion_selection::summoner_spells::get_spell_count();
             log::info!("[初始化] ✅ 召唤师技能数据加载成功，共 {} 个技能", count);
         }
         Err(e) => {

@@ -4,7 +4,8 @@ use std::sync::{Mutex, RwLock};
 use std::time::{Duration, Instant};
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
 
-use crate::lcu::types::LcuAuthInfo;
+use crate::shared::{NidaleeError, Result};
+use crate::shared::types::LcuAuthInfo;
 
 pub static AUTH_INFO: Lazy<RwLock<Option<LcuAuthInfo>>> = Lazy::new(|| RwLock::new(None));
 static SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new()));
@@ -55,14 +56,14 @@ pub fn ensure_valid_auth_info() -> Option<LcuAuthInfo> {
 }
 
 /// 手动强制刷新 AuthInfo（一般不直接用，内部自动调用）
-pub fn refresh_auth_info() -> Result<LcuAuthInfo, String> {
+pub fn refresh_auth_info() -> Result<LcuAuthInfo> {
     log::info!("[LCU] 开始强制刷新 AuthInfo");
     let cmdline = match get_lcu_cmdline() {
         Some(cmd) => cmd,
         None => {
             log::error!("[LCU] LeagueClientUx.exe 进程未找到，无法刷新 AuthInfo");
             invalidate_auth_info();
-            return Err("LeagueClientUx.exe not found".into());
+            return Err(NidaleeError::LcuNotFound);
         }
     };
     let riotclient_token_re = Regex::new(r"--riotclient-auth-token=([^\s]+)").unwrap();
@@ -115,7 +116,7 @@ pub fn refresh_auth_info() -> Result<LcuAuthInfo, String> {
     } else {
         log::error!("[LCU] 解析 LeagueClientUx.exe 启动参数失败，清空缓存");
         invalidate_auth_info();
-        Err("Failed to parse LeagueClientUx command line".into())
+        Err(NidaleeError::LcuAuth("解析 LeagueClientUx 启动参数失败".to_string()))
     }
 }
 

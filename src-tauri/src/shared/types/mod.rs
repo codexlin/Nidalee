@@ -11,4 +11,3 @@ pub mod types_api;
 
 // Re-export commonly used types
 pub use types::*;
-pub use types_api::*;

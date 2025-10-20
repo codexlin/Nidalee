@@ -1,19 +1,21 @@
-use crate::{http_client, lcu};
+use crate::http_client;
+use crate::shared::types::{RuneStyle, Perk};
+use super::service;
 
 #[tauri::command]
-pub async fn get_lcu_rune_styles() -> Result<Vec<lcu::types::RuneStyle>, String> {
+pub async fn get_lcu_rune_styles() -> Result<Vec<RuneStyle>, String> {
     let client = http_client::get_lcu_client();
-    lcu::perks::service::list_all_styles(&client).await
+    service::list_all_styles(&client).await
 }
 
 #[tauri::command]
-pub async fn get_lcu_perks() -> Result<Vec<lcu::types::Perk>, String> {
+pub async fn get_lcu_perks() -> Result<Vec<Perk>, String> {
     let client = http_client::get_lcu_client();
-    lcu::perks::service::list_all_perks(&client).await
+    service::list_all_perks(&client).await
 }
 
 #[tauri::command]
 pub async fn get_lcu_perk_icon(icon_path: String) -> Result<Vec<u8>, String> {
     let client = http_client::get_lcu_client();
-    lcu::perks::service::get_perk_icon(&client, &icon_path).await
+    service::get_perk_icon(&client, &icon_path).await
 }

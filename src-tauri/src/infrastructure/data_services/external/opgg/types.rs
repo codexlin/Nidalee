@@ -147,12 +147,7 @@ pub struct OpggPerk {
 }
 
 /// OP.GG API 响应
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(
-    export,
-    export_to = "../../src/types/generated/OpggApiResponse.ts",
-    rename_all = "camelCase"
-)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpggApiResponse<T> {
     pub success: bool,

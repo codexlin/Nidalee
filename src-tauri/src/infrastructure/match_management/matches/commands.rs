@@ -1,11 +1,12 @@
-use crate::{http_client, lcu};
-use lcu::types::{AdvicePerspective, GameAdvice};
+use crate::http_client;
+use crate::shared::types::{AdvicePerspective, GameAdvice, PlayerMatchStats, GameDetail};
+use super::service;
 
 #[tauri::command]
 pub async fn get_match_history(
     count: Option<u32>,
     queue_id: Option<i32>,
-) -> Result<lcu::types::PlayerMatchStats, String> {
+) -> Result<PlayerMatchStats, String> {
     println!("🔢 ===== get_match_history 命令被调用 =====");
     println!("📥 接收到的参数:");
     println!("   - count: {:?}", count);
@@ -20,7 +21,7 @@ pub async fn get_match_history(
         println!("✅ queue_id 有值: {}", queue_id.unwrap());
     }
 
-    lcu::matches::service::get_match_history(client, end_count, queue_id).await
+    service::get_match_history(client, end_count, queue_id).await
 }
 
 /// 获取指定玩家的战术建议（用于针对敌人或协作队友）
@@ -41,7 +42,7 @@ pub async fn get_player_tactical_advice(
     println!("📥 位置: {:?}", target_role);
 
     let client = http_client::get_lcu_client();
-    
+
     // 解析视角
     let advice_perspective = match perspective.as_str() {
         "Targeting" => AdvicePerspective::Targeting,
@@ -49,7 +50,7 @@ pub async fn get_player_tactical_advice(
         _ => return Err("无效的建议视角，只支持 Targeting 或 Collaboration".to_string()),
     };
 
-    lcu::matches::service::get_player_tactical_advice(
+    service::get_player_tactical_advice(
         &client,
         summoner_name,
         advice_perspective,
@@ -59,9 +60,9 @@ pub async fn get_player_tactical_advice(
 }
 
 #[tauri::command]
-pub async fn get_game_detail(game_id: u64) -> Result<lcu::types::GameDetail, String> {
+pub async fn get_game_detail(game_id: u64) -> Result<GameDetail, String> {
     log::info!("🔍 ===== 获取游戏详细信息 =====");
     log::info!("🎮 游戏ID: {}", game_id);
     let client = http_client::get_lcu_client();
-    lcu::matches::service::get_game_detail_logic(&client, game_id).await
+    service::get_game_detail_logic(&client, game_id).await
 }

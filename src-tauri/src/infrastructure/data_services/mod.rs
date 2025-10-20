@@ -10,7 +10,3 @@ pub mod champion_data;
 pub mod external;
 
 // Re-export services
-pub use summoner::service as summoner_service;
-pub use summoner::commands as summoner_commands;
-pub use champion_data::service as champion_data_service;
-pub use external::opgg::service as opgg_service;

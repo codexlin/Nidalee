@@ -9,7 +9,7 @@ use crate::domains::tactical_advice::context::AdviceContext;
 use crate::domains::tactical_advice::types::GameAdvice;
 use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
 use crate::domains::tactical_advice::factory::AdviceStrategyFactory;
-use crate::domains::analysis::{AnalysisStrategy, thresholds};
+use crate::domains::analysis::thresholds;
 
 pub struct TeamfightAdviceAnalyzer;
 

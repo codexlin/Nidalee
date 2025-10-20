@@ -10,17 +10,17 @@ export function useSearchMatches() {
   const error = ref('')
   const result = ref<SummonerWithMatches[] | null>(null)
   const currentRestult = ref<SummonerWithMatches | null>(null)
-  const summonerStats = ref<MatchStatistics[] | null>(null)
+  const summonerStats = ref<PlayerMatchStats[] | null>(null)
   const searchText = ref('')
   const cunrrentIndex = ref(-1)
   const names = ref<string[]>([])
 
   // 类型过滤相关状态
   const selectedQueueTypes = ref<number[]>([])
-  const originalMatchData = ref<MatchStatistics[] | null>(null) // 保存原始数据
+  const originalMatchData = ref<PlayerMatchStats[] | null>(null) // 保存原始数据
   // 基于当前结果的过滤后统计（适配直接使用 currentRestult.matches 的页面）
-  const filteredCurrentMatches = computed<MatchStatistics | null>(() => {
-    const base = currentRestult.value?.matches as unknown as MatchStatistics | undefined
+  const filteredCurrentMatches = computed<PlayerMatchStats | null>(() => {
+    const base = currentRestult.value?.matches as unknown as PlayerMatchStats | undefined
     if (!base) return null
     if (!selectedQueueTypes.value.length) return base
     return filterMatchesByQueueTypes(base, selectedQueueTypes.value)
@@ -80,10 +80,10 @@ export function useSearchMatches() {
   const getRencentMatchesByPuuid = async (puuid: string[], count: number = 20) => {
     try {
       const settled = await Promise.allSettled(
-        puuid.map((id) => invoke<MatchStatistics>('get_recent_matches_by_puuid', { puuid: id, count }))
+        puuid.map((id) => invoke<PlayerMatchStats>('get_recent_matches_by_puuid', { puuid: id, count }))
       )
       const successes = settled
-        .filter((r): r is PromiseFulfilledResult<MatchStatistics> => r.status === 'fulfilled')
+        .filter((r): r is PromiseFulfilledResult<PlayerMatchStats> => r.status === 'fulfilled')
         .map((r) => r.value)
       const failures = settled.filter((r) => r.status === 'rejected')
 

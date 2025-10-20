@@ -1,13 +1,4 @@
-/// 建议策略接口（Strategy 模式）
-///
-/// 职责：
-/// - 定义建议生成策略的统一接口
-/// - 根据不同视角生成不同措辞的建议
-/// - 同一问题，不同视角，不同建议
-
-use crate::shared::types::SummonerTrait;
-use super::super::types::{GameAdvice, AdviceCategory, AdvicePerspective};
-use super::super::builder::AdviceBuilder;
+use super::super::types::{GameAdvice, AdvicePerspective};
 
 /// 问题数据（传递给策略）
 #[derive(Debug, Clone)]

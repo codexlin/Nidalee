@@ -23,12 +23,10 @@ pub mod factory;
 pub mod strategies;
 pub mod analyzers;
 
-pub use types::{GameAdvice, AdviceCategory, AdvicePerspective};
+pub use types::{GameAdvice, AdvicePerspective};
 pub use context::AdviceContext;
-pub use builder::AdviceBuilder;
 pub use chain::AdviceChain;
-pub use analyzers::base::AdviceAnalyzer;  // 从 analyzers::base 导出
-pub use factory::AdviceStrategyFactory;
+  // 从 analyzers::base 导出
 
 use crate::shared::types::PlayerMatchStats;
 use crate::domains::analysis::{ParsedGame, AnalysisStrategy};

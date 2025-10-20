@@ -13,4 +13,3 @@ pub mod real_time;
 pub mod data_services;
 
 // Re-export commonly used services for backward compatibility
-pub use game_session::connection::service::ConnectionManager;

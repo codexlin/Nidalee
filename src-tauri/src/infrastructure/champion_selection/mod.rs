@@ -10,8 +10,3 @@ pub mod summoner_spells;
 pub mod perks;
 
 // Re-export services
-pub use champ_select::service as champ_select_service;
-pub use champ_select::commands as champ_select_commands;
-pub use summoner_spells::service as summoner_spells_service;
-pub use summoner_spells::commands as summoner_spells_commands;
-pub use perks::service as perks_service;

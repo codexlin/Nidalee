@@ -1,26 +1,26 @@
 <template>
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
-    <DialogContent class="max-w-2xl max-h-[80vh] overflow-y-auto">
+    <DialogContent class="max-w-4xl max-h-[85vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle class="flex items-center gap-2">
-          <Target class="h-5 w-5" v-if="perspective === 'Targeting'" />
-          <Users class="h-5 w-5" v-else />
+        <DialogTitle class="flex items-center gap-2 text-foreground">
+          <Target class="h-5 w-5 text-destructive" v-if="perspective === 'Targeting'" />
+          <Users class="h-5 w-5 text-primary" v-else />
           {{ dialogTitle }}
         </DialogTitle>
-        <DialogDescription>
+        <DialogDescription class="text-muted-foreground">
           {{ dialogDescription }}
         </DialogDescription>
       </DialogHeader>
 
       <!-- 建议列表 -->
-      <div v-if="advice && advice.length > 0" class="space-y-3">
+      <div v-if="advice && advice.length > 0" class="space-y-3 mt-4">
         <AdviceCard v-for="(item, index) in advice" :key="index" :advice="item" :perspective="adviceCardPerspective" />
       </div>
 
       <!-- 无建议 -->
       <div v-else class="flex flex-col items-center justify-center py-12">
-        <Sparkles class="h-12 w-12 text-green-500 mb-4" />
-        <p class="text-lg font-medium">该玩家表现优秀</p>
+        <Sparkles class="h-12 w-12 text-green-500 dark:text-green-400 mb-4" />
+        <p class="text-lg font-medium text-foreground">该玩家表现优秀</p>
         <p class="text-sm text-muted-foreground mt-2">暂无明显弱点可针对</p>
       </div>
     </DialogContent>

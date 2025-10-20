@@ -37,7 +37,7 @@
       <!-- 无建议状态 -->
       <div v-if="!advice || advice.length === 0" class="flex items-center justify-center py-12">
         <div class="text-center">
-          <Sparkles class="h-12 w-12 text-green-500 mx-auto mb-4" />
+          <Sparkles class="h-12 w-12 text-green-600 dark:text-green-400 mx-auto mb-4" />
           <p class="text-lg font-medium text-foreground">
             {{ emptyMessage }}
           </p>

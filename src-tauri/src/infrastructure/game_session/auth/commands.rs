@@ -1,5 +1,5 @@
 use crate::infrastructure::game_session::auth::service::AUTH_INFO;
-use crate::lcu::types::LcuAuthInfo;
+use crate::shared::types::LcuAuthInfo;
 
 #[tauri::command]
 pub fn get_auth_info() -> Option<LcuAuthInfo> {

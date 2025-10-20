@@ -6,7 +6,7 @@ use crate::domains::analysis::{
 };
 use crate::domains::tactical_advice::generate_advice;
 use crate::shared::utils::{lcu_get, lcu_request_json};
-use crate::lcu::types::{
+use crate::shared::types::{
     AdvicePerspective, GameAdvice, GameDetail, ParticipantInfo, ParticipantStats, PlayerMatchStats, TeamInfo, TeamStats,
 };
 use reqwest::{Client, Method};
@@ -442,7 +442,7 @@ fn analyze_match_list_data_with_perspective(
             target_player_name,  // 使用传入的目标名称 ⭐
             &strategy,
         );
-        println!("💡 建议生成：共 {} 条建议（视角：{:?}）", 
+        println!("💡 建议生成：共 {} 条建议（视角：{:?}）",
             player_stats.advice.len(), advice_perspective);
     }
 
@@ -474,16 +474,16 @@ pub async fn get_player_tactical_advice(
         "/lol-summoner/v1/summoners?name={}",
         utf8_percent_encode(&summoner_name, NON_ALPHANUMERIC)
     );
-    
+
     let summoner_response: Value = lcu_request_json(&client, Method::GET, &summoner_url, None)
         .await
         .map_err(|e| format!("获取召唤师信息失败: {}", e))?;
-    
+
     let puuid = summoner_response["puuid"]
         .as_str()
         .ok_or("无法获取玩家PUUID")?
         .to_string();
-    
+
     println!("✅ 获取到PUUID: {}", puuid);
 
     // 2. 获取玩家战绩（最近20场排位）
@@ -491,15 +491,15 @@ pub async fn get_player_tactical_advice(
         "/lol-match-history/v1/products/lol/{}/matches?begIndex=0&endIndex=20",
         puuid
     );
-    
+
     let match_list_response: Value = lcu_request_json(&client, Method::GET, &match_history_url, None)
         .await
         .map_err(|e| format!("获取战绩失败: {}", e))?;
-    
+
     let match_list_data = match_list_response["games"]["games"]
         .as_array()
         .ok_or("无法解析战绩数据")?;
-    
+
     println!("✅ 获取到{}场对局", match_list_data.len());
 
     if match_list_data.is_empty() {
@@ -516,7 +516,7 @@ pub async fn get_player_tactical_advice(
     // 5. 分析玩家数据
     let context = AnalysisContext::new().with_queue_id(420); // 排位模式
     let player_stats = analyze_player_stats(&parsed_games, &puuid, context);
-    
+
     // 6. 识别主要位置
     let main_role = target_role.unwrap_or_else(|| identify_main_role(&parsed_games));
     println!("✅ 主要位置: {}", main_role);

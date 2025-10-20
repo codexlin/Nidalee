@@ -1,5 +1,5 @@
 //! LCU HTTP 通用请求工具，支持全局认证、自动重试、统一错误处理、泛型反序列化
-use crate::lcu::auth::service::{ensure_valid_auth_info, refresh_auth_info};
+use crate::infrastructure::game_session::auth::service::{ensure_valid_auth_info, refresh_auth_info};
 use base64::{engine::general_purpose, Engine as _};
 use reqwest::{Client, Method, Response};
 use serde::de::DeserializeOwned;

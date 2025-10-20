@@ -1,5 +1,5 @@
 use crate::infrastructure::game_session::auth::service::ensure_valid_auth_info;
-use crate::lcu::types::{PlayerAnalysisData, TeamAnalysisData};
+use crate::shared::types::{PlayerAnalysisData, TeamAnalysisData};
 use serde_json::Value;
 
 /// 复用缓存，仅更新敌方队伍
@@ -52,7 +52,7 @@ async fn test_liveclient_port(port: u16) -> bool {
 }
 
 /// 获取游戏内玩家列表
-pub async fn get_live_player_list() -> Result<Vec<crate::lcu::types::LiveClientPlayer>, String> {
+pub async fn get_live_player_list() -> Result<Vec<crate::shared::types::LiveClientPlayer>, String> {
     // 确保 LCU 认证信息可用（虽然 LiveClient 不需要认证，但确保游戏正在运行）
     let _auth = ensure_valid_auth_info().ok_or("无法获取 LCU 认证信息，请确保游戏正在运行")?;
     // LiveClient 通常使用固定端口 2999，但我们可以尝试动态检测
@@ -91,7 +91,7 @@ pub async fn get_live_player_list() -> Result<Vec<crate::lcu::types::LiveClientP
     );
 
     // 尝试解析为我们的结构
-    let players: Vec<crate::lcu::types::LiveClientPlayer> =
+    let players: Vec<crate::shared::types::LiveClientPlayer> =
         serde_json::from_str(&text).map_err(|e| format!("解析为 LiveClientPlayer 失败: {}", e))?;
 
     Ok(players)
