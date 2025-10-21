@@ -6,11 +6,71 @@
         用于收集原始LCU数据和分析数据文件，帮助优化算法。支持时间线分析和队列差异化分析。
       </p>
 
-      <!-- 数据收集配置 -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div>
-          <label class="block text-sm font-medium mb-2">游戏场次</label>
-          <Input v-model="gameCount" type="number" placeholder="20" min="1" max="100" />
+      <!-- 原始数据收集 -->
+      <div class="mb-6">
+        <h3 class="text-lg font-semibold mb-3">📊 原始LCU数据收集</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">游戏场次</label>
+            <Input
+              v-model="rawGameCount"
+              type="number"
+              placeholder="50"
+              min="1"
+              max="100"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">队列ID</label>
+            <Select v-model="rawSelectedQueue">
+              <SelectTrigger>
+                <SelectValue placeholder="选择队列" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">所有队列</SelectItem>
+                <SelectItem value="420">单双排 (420)</SelectItem>
+                <SelectItem value="440">灵活组排 (440)</SelectItem>
+                <SelectItem value="450">大乱斗 (450)</SelectItem>
+                <SelectItem value="700">排位 (700)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="flex items-end">
+            <Button @click="collectRawData" :disabled="isCollectingRaw" class="w-full">
+              <Loader2 v-if="isCollectingRaw" class="w-4 h-4 mr-2 animate-spin" />
+              {{ isCollectingRaw ? '收集中...' : '收集原始数据' }}
+            </Button>
+          </div>
+          <div class="flex items-end">
+            <Button @click="analyzeRawData" :disabled="isAnalyzingRaw" class="w-full" variant="outline">
+              <Loader2 v-if="isAnalyzingRaw" class="w-4 h-4 mr-2 animate-spin" />
+              {{ isAnalyzingRaw ? '分析中...' : '分析时间线' }}
+            </Button>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">原始数据文件名</label>
+          <Input
+            v-model="rawDataFilePath"
+            placeholder="raw_match_data_20251021_135716.json"
+          />
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">对局索引 (查看JSON结构)</label>
+            <Input
+              v-model="jsonStructureIndex"
+              type="number"
+              placeholder="0"
+              min="0"
+            />
+          </div>
+          <div class="flex items-end">
+            <Button @click="showJsonStructure" :disabled="isShowingJson" class="w-full" variant="secondary">
+              <Loader2 v-if="isShowingJson" class="w-4 h-4 mr-2 animate-spin" />
+              {{ isShowingJson ? '加载中...' : '查看JSON结构' }}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -86,6 +146,28 @@
           <AlertTitle>原始数据分析失败</AlertTitle>
           <AlertDescription>
             {{ rawAnalysisError }}
+          </AlertDescription>
+        </Alert>
+      </div>
+
+      <!-- JSON结构查看结果 -->
+      <div v-if="jsonStructureResult" class="mb-6">
+        <Alert>
+          <BarChart3 class="h-4 w-4" />
+          <AlertTitle>JSON结构分析结果</AlertTitle>
+          <AlertDescription>
+            <pre class="mt-2 text-sm whitespace-pre-wrap">{{ jsonStructureResult }}</pre>
+          </AlertDescription>
+        </Alert>
+      </div>
+
+      <!-- JSON结构查看错误 -->
+      <div v-if="jsonStructureError" class="mb-6">
+        <Alert variant="destructive">
+          <AlertCircle class="h-4 w-4" />
+          <AlertTitle>JSON结构查看失败</AlertTitle>
+          <AlertDescription>
+            {{ jsonStructureError }}
           </AlertDescription>
         </Alert>
       </div>
@@ -216,6 +298,12 @@ const rawAnalysisResult = ref('')
 const rawCollectionError = ref('')
 const rawAnalysisError = ref('')
 
+// JSON结构查看相关
+const jsonStructureIndex = ref(0)
+const isShowingJson = ref(false)
+const jsonStructureResult = ref('')
+const jsonStructureError = ref('')
+
 // 生成数据文件
 const generateData = async () => {
   isGenerating.value = true
@@ -315,6 +403,33 @@ const analyzeRawData = async () => {
     console.error('原始数据分析失败:', error)
   } finally {
     isAnalyzingRaw.value = false
+  }
+}
+
+// 查看JSON结构
+const showJsonStructure = async () => {
+  if (!rawDataFilePath.value.trim()) {
+    jsonStructureError.value = '请输入原始数据文件路径'
+    return
+  }
+
+  isShowingJson.value = true
+  jsonStructureResult.value = ''
+  jsonStructureError.value = ''
+
+  try {
+    const result = await invoke<string>('show_raw_json_structure', {
+      filePath: rawDataFilePath.value.trim(),
+      matchIndex: jsonStructureIndex.value
+    })
+
+    jsonStructureResult.value = result
+    console.log('JSON结构查看成功:', result)
+  } catch (error: any) {
+    jsonStructureError.value = error.message || '查看JSON结构失败'
+    console.error('JSON结构查看失败:', error)
+  } finally {
+    isShowingJson.value = false
   }
 }
 </script>

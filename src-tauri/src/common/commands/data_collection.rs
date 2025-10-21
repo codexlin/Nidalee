@@ -117,28 +117,12 @@ pub struct QueueStats {
 /// 原始LCU对局数据
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawMatchData {
-    /// 游戏ID
+    /// 完整的原始JSON数据
+    pub raw_json: Value,
+    /// 游戏ID（用于快速访问）
     pub game_id: u64,
-    /// 游戏时长（秒）
-    pub game_duration: i32,
-    /// 游戏创建时间
-    pub game_creation: i64,
-    /// 游戏模式
-    pub game_mode: String,
-    /// 游戏类型
-    pub game_type: String,
-    /// 游戏版本
-    pub game_version: String,
-    /// 地图ID
-    pub map_id: i32,
-    /// 队列ID
+    /// 队列ID（用于快速过滤）
     pub queue_id: i32,
-    /// 队伍信息
-    pub teams: Vec<Value>,
-    /// 参与者信息
-    pub participants: Vec<Value>,
-    /// 参与者身份信息
-    pub participant_identities: Vec<Value>,
 }
 
 /// 原始数据收集结果
@@ -486,17 +470,9 @@ pub async fn collect_raw_match_data(
         println!("📋 处理第 {} 场对局...", index + 1);
 
         let raw_match = RawMatchData {
+            raw_json: game.clone(), // 保存完整的原始JSON
             game_id: game.get("gameId").and_then(|g| g.as_u64()).unwrap_or(0),
-            game_duration: game.get("gameDuration").and_then(|g| g.as_i64()).unwrap_or(0) as i32,
-            game_creation: game.get("gameCreation").and_then(|g| g.as_i64()).unwrap_or(0),
-            game_mode: game.get("gameMode").and_then(|g| g.as_str()).unwrap_or("").to_string(),
-            game_type: game.get("gameType").and_then(|g| g.as_str()).unwrap_or("").to_string(),
-            game_version: game.get("gameVersion").and_then(|g| g.as_str()).unwrap_or("").to_string(),
-            map_id: game.get("mapId").and_then(|g| g.as_i64()).unwrap_or(0) as i32,
             queue_id: game.get("queueId").and_then(|g| g.as_i64()).unwrap_or(0) as i32,
-            teams: game.get("teams").and_then(|t| t.as_array()).map(|a| a.clone()).unwrap_or_default(),
-            participants: game.get("participants").and_then(|p| p.as_array()).map(|a| a.clone()).unwrap_or_default(),
-            participant_identities: game.get("participantIdentities").and_then(|p| p.as_array()).map(|a| a.clone()).unwrap_or_default(),
         };
 
         // 更新队列分布
@@ -510,9 +486,11 @@ pub async fn collect_raw_match_data(
         *queue_distribution.entry(queue_name.to_string()).or_insert(0) += 1;
 
         // 更新时间范围
-        if raw_match.game_creation > 0 {
-            earliest_match = earliest_match.min(raw_match.game_creation);
-            latest_match = latest_match.max(raw_match.game_creation);
+        if let Some(game_creation) = raw_match.raw_json.get("gameCreation").and_then(|c| c.as_i64()) {
+            if game_creation > 0 {
+                earliest_match = earliest_match.min(game_creation);
+                latest_match = latest_match.max(game_creation);
+            }
         }
 
         raw_matches.push(raw_match);
@@ -588,7 +566,9 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
     }
 
     // 游戏时长分析
-    let mut durations: Vec<i32> = result.raw_matches.iter().map(|m| m.game_duration).collect();
+    let mut durations: Vec<i32> = result.raw_matches.iter()
+        .filter_map(|m| m.raw_json.get("gameDuration").and_then(|d| d.as_i64()).map(|d| d as i32))
+        .collect();
     durations.sort();
 
     if !durations.is_empty() {
@@ -613,8 +593,17 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
     let mut game_types: HashMap<String, usize> = HashMap::new();
 
     for match_data in &result.raw_matches {
-        *game_modes.entry(match_data.game_mode.clone()).or_insert(0) += 1;
-        *game_types.entry(match_data.game_type.clone()).or_insert(0) += 1;
+        let game_mode = match_data.raw_json.get("gameMode")
+            .and_then(|m| m.as_str())
+            .unwrap_or("未知")
+            .to_string();
+        let game_type = match_data.raw_json.get("gameType")
+            .and_then(|t| t.as_str())
+            .unwrap_or("未知")
+            .to_string();
+
+        *game_modes.entry(game_mode).or_insert(0) += 1;
+        *game_types.entry(game_type).or_insert(0) += 1;
     }
 
     report.push_str("\n🎯 游戏模式分析:\n");
@@ -632,10 +621,12 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
     // 时间分布分析
     let mut hourly_distribution: HashMap<i32, usize> = HashMap::new();
     for match_data in &result.raw_matches {
-        if match_data.game_creation > 0 {
-            let timestamp = match_data.game_creation / 1000; // 转换为秒
-            let hour = (timestamp / 3600) % 24; // 获取小时
-            *hourly_distribution.entry(hour as i32).or_insert(0) += 1;
+        if let Some(game_creation) = match_data.raw_json.get("gameCreation").and_then(|c| c.as_i64()) {
+            if game_creation > 0 {
+                let timestamp = game_creation / 1000; // 转换为秒
+                let hour = (timestamp / 3600) % 24; // 获取小时
+                *hourly_distribution.entry(hour as i32).or_insert(0) += 1;
+            }
         }
     }
 
@@ -647,6 +638,105 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
         report.push_str(&format!("  {:02}:00 - {:02}:59: {} ({:.1}%) {}\n",
             hour, hour, count, percentage, bar));
     }
+
+    println!("{}", report);
+    Ok(report)
+}
+
+/// 展示原始JSON数据结构
+#[tauri::command]
+pub async fn show_raw_json_structure(file_path: String, match_index: Option<usize>) -> Result<String, String> {
+    println!("📊 展示原始JSON数据结构: {}", file_path);
+
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("读取文件失败: {}", e))?;
+
+    let result: RawDataCollectionResult = serde_json::from_str(&content)
+        .map_err(|e| format!("JSON解析失败: {}", e))?;
+
+    if result.raw_matches.is_empty() {
+        return Err("没有找到任何对局数据".to_string());
+    }
+
+    let index = match_index.unwrap_or(0).min(result.raw_matches.len() - 1);
+    let match_data = &result.raw_matches[index];
+
+    let mut report = String::new();
+    report.push_str("📊 原始LCU JSON数据结构分析\n");
+    report.push_str(&format!("文件: {}\n", file_path));
+    report.push_str(&format!("对局索引: {} / {}\n", index + 1, result.raw_matches.len()));
+    report.push_str(&format!("游戏ID: {}\n", match_data.game_id));
+    report.push_str(&format!("队列ID: {}\n\n", match_data.queue_id));
+
+    // 展示原始JSON的顶级字段
+    report.push_str("🔍 原始JSON顶级字段:\n");
+    if let Some(obj) = match_data.raw_json.as_object() {
+        for (key, value) in obj {
+            let value_type = match value {
+                Value::Null => "null",
+                Value::Bool(_) => "boolean",
+                Value::Number(_) => "number",
+                Value::String(_) => "string",
+                Value::Array(arr) => &format!("array[{}]", arr.len()),
+                Value::Object(obj) => &format!("object[{}]", obj.len()),
+            };
+            report.push_str(&format!("  {}: {} ({})\n", key, value_type,
+                if value.is_string() {
+                    value.as_str().unwrap_or("").chars().take(50).collect::<String>() + "..."
+                } else {
+                    value.to_string().chars().take(50).collect::<String>() + "..."
+                }
+            ));
+        }
+    }
+
+    // 展示participants数组的详细结构
+    if let Some(participants) = match_data.raw_json.get("participants").and_then(|p| p.as_array()) {
+        report.push_str(&format!("\n👥 参与者数据 ({} 个):\n", participants.len()));
+        if let Some(first_participant) = participants.first() {
+            if let Some(participant_obj) = first_participant.as_object() {
+                report.push_str("  第一个参与者的字段:\n");
+                for (key, value) in participant_obj {
+                    let value_type = match value {
+                        Value::Null => "null",
+                        Value::Bool(_) => "boolean",
+                        Value::Number(_) => "number",
+                        Value::String(_) => "string",
+                        Value::Array(arr) => &format!("array[{}]", arr.len()),
+                        Value::Object(obj) => &format!("object[{}]", obj.len()),
+                    };
+                    report.push_str(&format!("    {}: {}\n", key, value_type));
+                }
+            }
+        }
+    }
+
+    // 展示teams数组的详细结构
+    if let Some(teams) = match_data.raw_json.get("teams").and_then(|t| t.as_array()) {
+        report.push_str(&format!("\n🏆 队伍数据 ({} 个):\n", teams.len()));
+        if let Some(first_team) = teams.first() {
+            if let Some(team_obj) = first_team.as_object() {
+                report.push_str("  第一个队伍的字段:\n");
+                for (key, value) in team_obj {
+                    let value_type = match value {
+                        Value::Null => "null",
+                        Value::Bool(_) => "boolean",
+                        Value::Number(_) => "number",
+                        Value::String(_) => "string",
+                        Value::Array(arr) => &format!("array[{}]", arr.len()),
+                        Value::Object(obj) => &format!("object[{}]", obj.len()),
+                    };
+                    report.push_str(&format!("    {}: {}\n", key, value_type));
+                }
+            }
+        }
+    }
+
+    // 展示完整的原始JSON（格式化）
+    report.push_str("\n📄 完整原始JSON (格式化):\n");
+    let pretty_json = serde_json::to_string_pretty(&match_data.raw_json)
+        .map_err(|e| format!("JSON格式化失败: {}", e))?;
+    report.push_str(&pretty_json);
 
     println!("{}", report);
     Ok(report)
