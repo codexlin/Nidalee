@@ -4,6 +4,7 @@
 use crate::shared::utils::lcu_get;
 use crate::infrastructure::match_management::matches::service;
 use crate::http_client;
+use reqwest::Client;
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -117,8 +118,10 @@ pub struct QueueStats {
 /// 原始LCU对局数据
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawMatchData {
-    /// 完整的原始JSON数据
-    pub raw_json: Value,
+    /// 对局列表的原始JSON数据
+    pub match_list_json: Value,
+    /// 对局详情的原始JSON数据（包含时间线）
+    pub match_detail_json: Option<Value>,
     /// 游戏ID（用于快速访问）
     pub game_id: u64,
     /// 队列ID（用于快速过滤）
@@ -469,10 +472,31 @@ pub async fn collect_raw_match_data(
 
         println!("📋 处理第 {} 场对局...", index + 1);
 
+        let game_id = game.get("gameId").and_then(|g| g.as_u64()).unwrap_or(0);
+        let queue_id = game.get("queueId").and_then(|g| g.as_i64()).unwrap_or(0) as i32;
+
+        // 获取对局详情数据（包含时间线）
+        let match_detail = if game_id > 0 {
+            println!("🔍 获取对局详情: gameId={}", game_id);
+            match get_match_detail(client, game_id).await {
+                Ok(detail) => {
+                    println!("✅ 对局详情获取成功: gameId={}", game_id);
+                    Some(detail)
+                }
+                Err(e) => {
+                    println!("⚠️ 对局详情获取失败: gameId={}, error={}", game_id, e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         let raw_match = RawMatchData {
-            raw_json: game.clone(), // 保存完整的原始JSON
-            game_id: game.get("gameId").and_then(|g| g.as_u64()).unwrap_or(0),
-            queue_id: game.get("queueId").and_then(|g| g.as_i64()).unwrap_or(0) as i32,
+            match_list_json: game.clone(), // 保存对局列表的原始JSON
+            match_detail_json: match_detail, // 保存对局详情的原始JSON
+            game_id,
+            queue_id,
         };
 
         // 更新队列分布
@@ -486,7 +510,7 @@ pub async fn collect_raw_match_data(
         *queue_distribution.entry(queue_name.to_string()).or_insert(0) += 1;
 
         // 更新时间范围
-        if let Some(game_creation) = raw_match.raw_json.get("gameCreation").and_then(|c| c.as_i64()) {
+        if let Some(game_creation) = raw_match.match_list_json.get("gameCreation").and_then(|c| c.as_i64()) {
             if game_creation > 0 {
                 earliest_match = earliest_match.min(game_creation);
                 latest_match = latest_match.max(game_creation);
@@ -539,6 +563,15 @@ pub async fn collect_raw_match_data(
     Ok(format!("原始数据文件已生成: {} ({} 场对局)", filename, result.total_matches))
 }
 
+/// 获取单场对局的详细数据
+async fn get_match_detail(client: &Client, game_id: u64) -> Result<Value, String> {
+    let detail_url = format!("/lol-match-history/v1/games/{}", game_id);
+    println!("🌐 请求对局详情URL: {}", detail_url);
+
+    lcu_get(client, &detail_url).await
+        .map_err(|e| format!("获取对局详情失败: {}", e))
+}
+
 /// 分析原始对局数据的时间线特征
 #[tauri::command]
 pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, String> {
@@ -567,7 +600,7 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
 
     // 游戏时长分析
     let mut durations: Vec<i32> = result.raw_matches.iter()
-        .filter_map(|m| m.raw_json.get("gameDuration").and_then(|d| d.as_i64()).map(|d| d as i32))
+        .filter_map(|m| m.match_list_json.get("gameDuration").and_then(|d| d.as_i64()).map(|d| d as i32))
         .collect();
     durations.sort();
 
@@ -593,11 +626,11 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
     let mut game_types: HashMap<String, usize> = HashMap::new();
 
     for match_data in &result.raw_matches {
-        let game_mode = match_data.raw_json.get("gameMode")
+        let game_mode = match_data.match_list_json.get("gameMode")
             .and_then(|m| m.as_str())
             .unwrap_or("未知")
             .to_string();
-        let game_type = match_data.raw_json.get("gameType")
+        let game_type = match_data.match_list_json.get("gameType")
             .and_then(|t| t.as_str())
             .unwrap_or("未知")
             .to_string();
@@ -621,7 +654,7 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
     // 时间分布分析
     let mut hourly_distribution: HashMap<i32, usize> = HashMap::new();
     for match_data in &result.raw_matches {
-        if let Some(game_creation) = match_data.raw_json.get("gameCreation").and_then(|c| c.as_i64()) {
+        if let Some(game_creation) = match_data.match_list_json.get("gameCreation").and_then(|c| c.as_i64()) {
             if game_creation > 0 {
                 let timestamp = game_creation / 1000; // 转换为秒
                 let hour = (timestamp / 3600) % 24; // 获取小时
@@ -639,8 +672,108 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
             hour, hour, count, percentage, bar));
     }
 
+    // 时间线数据分析
+    analyze_timeline_data(&result.raw_matches, &mut report);
+
     println!("{}", report);
     Ok(report)
+}
+
+/// 分析时间线数据
+fn analyze_timeline_data(raw_matches: &[RawMatchData], report: &mut String) {
+    let mut timeline_available_count = 0;
+    let mut total_creeps_per_min: Vec<f64> = Vec::new();
+    let mut total_gold_per_min: Vec<f64> = Vec::new();
+    let mut total_xp_per_min: Vec<f64> = Vec::new();
+    let mut lane_distribution: HashMap<String, usize> = HashMap::new();
+    let mut role_distribution: HashMap<String, usize> = HashMap::new();
+
+    for match_data in raw_matches {
+        if let Some(detail_json) = &match_data.match_detail_json {
+            if let Some(participants) = detail_json.get("participants").and_then(|p| p.as_array()) {
+                for participant in participants {
+                    if let Some(timeline) = participant.get("timeline") {
+                        timeline_available_count += 1;
+
+                        // 分析位置信息
+                        if let Some(lane) = timeline.get("lane").and_then(|l| l.as_str()) {
+                            *lane_distribution.entry(lane.to_string()).or_insert(0) += 1;
+                        }
+                        if let Some(role) = timeline.get("role").and_then(|r| r.as_str()) {
+                            *role_distribution.entry(role.to_string()).or_insert(0) += 1;
+                        }
+
+                        // 分析时间线数据
+                        if let Some(creeps_per_min) = timeline.get("creepsPerMinDeltas").and_then(|c| c.as_object()) {
+                            for (_, value) in creeps_per_min {
+                                if let Some(creeps) = value.as_f64() {
+                                    total_creeps_per_min.push(creeps);
+                                }
+                            }
+                        }
+
+                        if let Some(gold_per_min) = timeline.get("goldPerMinDeltas").and_then(|g| g.as_object()) {
+                            for (_, value) in gold_per_min {
+                                if let Some(gold) = value.as_f64() {
+                                    total_gold_per_min.push(gold);
+                                }
+                            }
+                        }
+
+                        if let Some(xp_per_min) = timeline.get("xpPerMinDeltas").and_then(|x| x.as_object()) {
+                            for (_, value) in xp_per_min {
+                                if let Some(xp) = value.as_f64() {
+                                    total_xp_per_min.push(xp);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    report.push_str(&format!("\n⏰ 时间线数据分析:\n"));
+    report.push_str(&format!("  有详情数据的参与者: {} 个\n", timeline_available_count));
+
+    if timeline_available_count > 0 {
+        // 位置分布分析
+        report.push_str("\n📍 位置分布:\n");
+        for (lane, count) in &lane_distribution {
+            let percentage = (*count as f64 / timeline_available_count as f64) * 100.0;
+            report.push_str(&format!("  {}: {} 次 ({:.1}%)\n", lane, count, percentage));
+        }
+
+        report.push_str("\n🎭 角色分布:\n");
+        for (role, count) in &role_distribution {
+            let percentage = (*count as f64 / timeline_available_count as f64) * 100.0;
+            report.push_str(&format!("  {}: {} 次 ({:.1}%)\n", role, count, percentage));
+        }
+
+        // 时间线统计
+        if !total_creeps_per_min.is_empty() {
+            let avg_creeps = total_creeps_per_min.iter().sum::<f64>() / total_creeps_per_min.len() as f64;
+            report.push_str(&format!("\n📊 补刀数据:\n"));
+            report.push_str(&format!("  平均每分钟补刀: {:.2}\n", avg_creeps));
+            report.push_str(&format!("  数据点数量: {}\n", total_creeps_per_min.len()));
+        }
+
+        if !total_gold_per_min.is_empty() {
+            let avg_gold = total_gold_per_min.iter().sum::<f64>() / total_gold_per_min.len() as f64;
+            report.push_str(&format!("\n💰 金币数据:\n"));
+            report.push_str(&format!("  平均每分钟金币: {:.2}\n", avg_gold));
+            report.push_str(&format!("  数据点数量: {}\n", total_gold_per_min.len()));
+        }
+
+        if !total_xp_per_min.is_empty() {
+            let avg_xp = total_xp_per_min.iter().sum::<f64>() / total_xp_per_min.len() as f64;
+            report.push_str(&format!("\n⭐ 经验数据:\n"));
+            report.push_str(&format!("  平均每分钟经验: {:.2}\n", avg_xp));
+            report.push_str(&format!("  数据点数量: {}\n", total_xp_per_min.len()));
+        }
+    } else {
+        report.push_str("  ⚠️ 没有找到时间线数据，可能需要调用对局详情接口\n");
+    }
 }
 
 /// 展示原始JSON数据结构
@@ -668,9 +801,9 @@ pub async fn show_raw_json_structure(file_path: String, match_index: Option<usiz
     report.push_str(&format!("游戏ID: {}\n", match_data.game_id));
     report.push_str(&format!("队列ID: {}\n\n", match_data.queue_id));
 
-    // 展示原始JSON的顶级字段
-    report.push_str("🔍 原始JSON顶级字段:\n");
-    if let Some(obj) = match_data.raw_json.as_object() {
+    // 展示对局列表JSON的顶级字段
+    report.push_str("🔍 对局列表JSON顶级字段:\n");
+    if let Some(obj) = match_data.match_list_json.as_object() {
         for (key, value) in obj {
             let value_type = match value {
                 Value::Null => "null",
@@ -690,8 +823,49 @@ pub async fn show_raw_json_structure(file_path: String, match_index: Option<usiz
         }
     }
 
-    // 展示participants数组的详细结构
-    if let Some(participants) = match_data.raw_json.get("participants").and_then(|p| p.as_array()) {
+    // 展示对局详情数据（如果有）
+    if let Some(detail_json) = &match_data.match_detail_json {
+        report.push_str("\n🎯 对局详情数据:\n");
+        if let Some(obj) = detail_json.as_object() {
+            for (key, value) in obj {
+                let value_type = match value {
+                    Value::Null => "null",
+                    Value::Bool(_) => "boolean",
+                    Value::Number(_) => "number",
+                    Value::String(_) => "string",
+                    Value::Array(arr) => &format!("array[{}]", arr.len()),
+                    Value::Object(obj) => &format!("object[{}]", obj.len()),
+                };
+                report.push_str(&format!("  {}: {}\n", key, value_type));
+            }
+        }
+
+        // 展示详情中的participants数组
+        if let Some(participants) = detail_json.get("participants").and_then(|p| p.as_array()) {
+            report.push_str(&format!("\n👥 详情参与者数据 ({} 个):\n", participants.len()));
+            if let Some(first_participant) = participants.first() {
+                if let Some(participant_obj) = first_participant.as_object() {
+                    report.push_str("  第一个参与者的字段:\n");
+                    for (key, value) in participant_obj {
+                        let value_type = match value {
+                            Value::Null => "null",
+                            Value::Bool(_) => "boolean",
+                            Value::Number(_) => "number",
+                            Value::String(_) => "string",
+                            Value::Array(arr) => &format!("array[{}]", arr.len()),
+                            Value::Object(obj) => &format!("object[{}]", obj.len()),
+                        };
+                        report.push_str(&format!("    {}: {}\n", key, value_type));
+                    }
+                }
+            }
+        }
+    } else {
+        report.push_str("\n⚠️ 没有对局详情数据\n");
+    }
+
+    // 展示对局列表中的participants数组
+    if let Some(participants) = match_data.match_list_json.get("participants").and_then(|p| p.as_array()) {
         report.push_str(&format!("\n👥 参与者数据 ({} 个):\n", participants.len()));
         if let Some(first_participant) = participants.first() {
             if let Some(participant_obj) = first_participant.as_object() {
@@ -712,7 +886,7 @@ pub async fn show_raw_json_structure(file_path: String, match_index: Option<usiz
     }
 
     // 展示teams数组的详细结构
-    if let Some(teams) = match_data.raw_json.get("teams").and_then(|t| t.as_array()) {
+    if let Some(teams) = match_data.match_list_json.get("teams").and_then(|t| t.as_array()) {
         report.push_str(&format!("\n🏆 队伍数据 ({} 个):\n", teams.len()));
         if let Some(first_team) = teams.first() {
             if let Some(team_obj) = first_team.as_object() {
@@ -733,10 +907,18 @@ pub async fn show_raw_json_structure(file_path: String, match_index: Option<usiz
     }
 
     // 展示完整的原始JSON（格式化）
-    report.push_str("\n📄 完整原始JSON (格式化):\n");
-    let pretty_json = serde_json::to_string_pretty(&match_data.raw_json)
+    report.push_str("\n📄 完整对局列表JSON (格式化):\n");
+    let pretty_json = serde_json::to_string_pretty(&match_data.match_list_json)
         .map_err(|e| format!("JSON格式化失败: {}", e))?;
     report.push_str(&pretty_json);
+
+    // 如果有对局详情数据，也展示
+    if let Some(detail_json) = &match_data.match_detail_json {
+        report.push_str("\n📄 完整对局详情JSON (格式化):\n");
+        let detail_pretty_json = serde_json::to_string_pretty(detail_json)
+            .map_err(|e| format!("详情JSON格式化失败: {}", e))?;
+        report.push_str(&detail_pretty_json);
+    }
 
     println!("{}", report);
     Ok(report)
