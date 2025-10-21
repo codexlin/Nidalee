@@ -1,6 +1,6 @@
-use crate::http_client;
-use crate::shared::types::{RuneStyle, Perk, RunePage};
 use super::service;
+use crate::http_client;
+use crate::shared::types::{Perk, RunePage, RuneStyle};
 
 #[tauri::command]
 pub async fn get_lcu_rune_styles() -> Result<Vec<RuneStyle>, String> {
@@ -48,10 +48,7 @@ pub async fn apply_custom_runes(
 
     // 验证符文数量
     if selected_perk_ids.len() != 9 {
-        return Err(format!(
-            "符文数量错误：期望 9 个，实际 {} 个",
-            selected_perk_ids.len()
-        ));
+        return Err(format!("符文数量错误：期望 9 个，实际 {} 个", selected_perk_ids.len()));
     }
 
     let client = http_client::get_lcu_client();

@@ -4,8 +4,8 @@ use std::sync::{Mutex, RwLock};
 use std::time::{Duration, Instant};
 use sysinfo::{ProcessRefreshKind, RefreshKind, System};
 
-use crate::shared::{NidaleeError, Result};
 use crate::shared::types::LcuAuthInfo;
+use crate::shared::{NidaleeError, Result};
 
 pub static AUTH_INFO: Lazy<RwLock<Option<LcuAuthInfo>>> = Lazy::new(|| RwLock::new(None));
 static SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new()));

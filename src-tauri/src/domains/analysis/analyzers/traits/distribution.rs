@@ -1,5 +1,5 @@
-use crate::shared::types::{MatchPerformance, SummonerTrait};
 use crate::domains::analysis::thresholds;
+use crate::shared::types::{MatchPerformance, SummonerTrait};
 
 /// 表现分布特征分析
 pub fn analyze_distribution_traits(games: &[MatchPerformance]) -> Vec<SummonerTrait> {
@@ -33,7 +33,12 @@ pub fn analyze_distribution_traits(games: &[MatchPerformance]) -> Vec<SummonerTr
     if s_count >= 3 {
         traits.push(SummonerTrait {
             name: "高光时刻".to_string(),
-            description: format!("{}场中有{}场超神表现（KDA>{:.1}）", total, s_count, thresholds::kda::S_GRADE),
+            description: format!(
+                "{}场中有{}场超神表现（KDA>{:.1}）",
+                total,
+                s_count,
+                thresholds::kda::S_GRADE
+            ),
             score: s_count,
             trait_type: "good".to_string(),
         });
@@ -55,7 +60,12 @@ pub fn analyze_distribution_traits(games: &[MatchPerformance]) -> Vec<SummonerTr
     if d_count >= 3 && poor_rate >= 0.15 {
         traits.push(SummonerTrait {
             name: "偶尔崩盘".to_string(),
-            description: format!("{}场中有{}场崩盘表现（KDA<{:.1}）", total, d_count, thresholds::kda::D_GRADE),
+            description: format!(
+                "{}场中有{}场崩盘表现（KDA<{:.1}）",
+                total,
+                d_count,
+                thresholds::kda::D_GRADE
+            ),
             score: d_count,
             trait_type: "bad".to_string(),
         });
@@ -64,10 +74,7 @@ pub fn analyze_distribution_traits(games: &[MatchPerformance]) -> Vec<SummonerTr
     if s_count >= 3 && d_count >= 3 {
         traits.push(SummonerTrait {
             name: "两极分化".to_string(),
-            description: format!(
-                "既有{}场超神，也有{}场崩盘，表现不稳定",
-                s_count, d_count
-            ),
+            description: format!("既有{}场超神，也有{}场崩盘，表现不稳定", s_count, d_count),
             score: s_count + d_count,
             trait_type: "bad".to_string(),
         });
@@ -126,4 +133,3 @@ pub fn analyze_win_loss_pattern(games: &[MatchPerformance]) -> Vec<SummonerTrait
 
     traits
 }
-

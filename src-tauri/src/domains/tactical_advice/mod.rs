@@ -1,3 +1,9 @@
+pub mod analyzers;
+pub mod builder;
+pub mod chain;
+pub mod context;
+pub mod factory;
+pub mod strategies;
 /// 智能建议系统（v3.0）
 ///
 /// 架构：
@@ -14,22 +20,15 @@
 /// 2. 创建责任链（Chain）
 /// 3. 添加分析器（Analyzers）
 /// 4. 执行分析，生成建议
-
 pub mod types;
-pub mod context;
-pub mod builder;
-pub mod chain;
-pub mod factory;
-pub mod strategies;
-pub mod analyzers;
 
-pub use types::{GameAdvice, AdvicePerspective};
-pub use context::AdviceContext;
 pub use chain::AdviceChain;
-  // 从 analyzers::base 导出
+pub use context::AdviceContext;
+pub use types::{AdvicePerspective, GameAdvice};
+// 从 analyzers::base 导出
 
+use crate::domains::analysis::{AnalysisStrategy, ParsedGame};
 use crate::shared::types::PlayerMatchStats;
-use crate::domains::analysis::{ParsedGame, AnalysisStrategy};
 
 /// 主入口：生成智能建议
 ///
@@ -85,4 +84,3 @@ pub fn generate_advice(
 
     advice
 }
-

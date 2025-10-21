@@ -6,54 +6,11 @@
         用于收集原始LCU数据和分析数据文件，帮助优化算法。支持时间线分析和队列差异化分析。
       </p>
 
-      <!-- 原始数据收集 -->
-      <div class="mb-6">
-        <h3 class="text-lg font-semibold mb-3">📊 原始LCU数据收集</h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          <div>
-            <label class="block text-sm font-medium mb-2">游戏场次</label>
-            <Input
-              v-model="rawGameCount"
-              type="number"
-              placeholder="50"
-              min="1"
-              max="100"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-2">队列ID</label>
-            <Select v-model="rawSelectedQueue">
-              <SelectTrigger>
-                <SelectValue placeholder="选择队列" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">所有队列</SelectItem>
-                <SelectItem value="420">单双排 (420)</SelectItem>
-                <SelectItem value="440">灵活组排 (440)</SelectItem>
-                <SelectItem value="450">大乱斗 (450)</SelectItem>
-                <SelectItem value="700">排位 (700)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div class="flex items-end">
-            <Button @click="collectRawData" :disabled="isCollectingRaw" class="w-full">
-              <Loader2 v-if="isCollectingRaw" class="w-4 h-4 mr-2 animate-spin" />
-              {{ isCollectingRaw ? '收集中...' : '收集原始数据' }}
-            </Button>
-          </div>
-          <div class="flex items-end">
-            <Button @click="analyzeRawData" :disabled="isAnalyzingRaw" class="w-full" variant="outline">
-              <Loader2 v-if="isAnalyzingRaw" class="w-4 h-4 mr-2 animate-spin" />
-              {{ isAnalyzingRaw ? '分析中...' : '分析时间线' }}
-            </Button>
-          </div>
-        </div>
-        <div class="mb-4">
-          <label class="block text-sm font-medium mb-2">原始数据文件名</label>
-          <Input
-            v-model="rawDataFilePath"
-            placeholder="raw_match_data_20251021_135716.json"
-          />
+      <!-- 数据收集配置 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium mb-2">游戏场次</label>
+          <Input v-model="gameCount" type="number" placeholder="20" min="1" max="100" />
         </div>
       </div>
 
@@ -63,13 +20,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium mb-2">游戏场次</label>
-            <Input
-              v-model="gameCount"
-              type="number"
-              placeholder="20"
-              min="1"
-              max="100"
-            />
+            <Input v-model="gameCount" type="number" placeholder="20" min="1" max="100" />
           </div>
           <div>
             <label class="block text-sm font-medium mb-2">队列ID</label>
@@ -169,10 +120,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label class="block text-sm font-medium mb-2">数据文件路径</label>
-          <Input
-            v-model="dataFilePath"
-            placeholder="analysis_data_20241201_120000.json"
-          />
+          <Input v-model="dataFilePath" placeholder="analysis_data_20241201_120000.json" />
         </div>
         <div class="flex items-end">
           <Button @click="analyzeData" :disabled="isAnalyzing" class="w-full">
@@ -216,22 +164,16 @@
           </p>
         </div>
         <div>
-          <h4 class="font-semibold text-primary">2. 分析时间线特征</h4>
-          <p class="text-muted-foreground">
-            分析原始数据的时间线特征，包括游戏时长、时间分布、队列模式等，帮助理解游戏模式。
-          </p>
+          <h4 class="font-semibold text-primary">2. 分析数据</h4>
+          <p class="text-muted-foreground">输入生成的数据文件名，点击"分析数据"按钮查看统计摘要。</p>
         </div>
         <div>
-          <h4 class="font-semibold text-primary">3. 生成分析数据</h4>
-          <p class="text-muted-foreground">
-            基于原始数据生成经过算法处理的分析数据，包含统计摘要和分布分析。
-          </p>
+          <h4 class="font-semibold text-primary">3. 分享数据</h4>
+          <p class="text-muted-foreground">将生成的数据文件分享给开发者，用于优化算法和调整阈值。</p>
         </div>
         <div>
           <h4 class="font-semibold text-primary">4. 分享数据</h4>
-          <p class="text-muted-foreground">
-            将生成的原始数据文件分享给开发者，用于优化算法、调整阈值和改进位置识别。
-          </p>
+          <p class="text-muted-foreground">将生成的原始数据文件分享给开发者，用于优化算法、调整阈值和改进位置识别。</p>
         </div>
         <div>
           <h4 class="font-semibold text-primary">5. 队列说明</h4>
@@ -250,10 +192,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { Button } from '@/shared/components/ui/button'
-import { Input } from '@/shared/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
-import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert'
 import { CheckCircle, AlertCircle, Loader2, BarChart3 } from 'lucide-vue-next'
 
 // 响应式数据

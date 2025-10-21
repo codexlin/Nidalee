@@ -1,5 +1,5 @@
 // 应用配置模块 - 负责应用的初始化和配置
-use crate::{initialization, infrastructure, tray};
+use crate::{infrastructure, initialization, tray};
 use std::sync::Arc;
 use tauri::{App, Manager};
 use tokio::sync::RwLock;
@@ -21,7 +21,9 @@ pub fn setup_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     tray::setup_system_tray(app).map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
     // 初始化连接管理器
-    let connection_manager = Arc::new(RwLock::new(infrastructure::game_session::connection::service::ConnectionManager::new(app.handle().clone())));
+    let connection_manager = Arc::new(RwLock::new(
+        infrastructure::game_session::connection::service::ConnectionManager::new(app.handle().clone()),
+    ));
     app.handle().manage(connection_manager.clone());
 
     // 启动连接监控和轮询服务
@@ -45,7 +47,10 @@ fn start_websocket(app: &mut App) {
 }
 
 /// 启动各种后台服务
-fn start_services(_app: &mut App, connection_manager: Arc<RwLock<infrastructure::game_session::connection::service::ConnectionManager>>) {
+fn start_services(
+    _app: &mut App,
+    connection_manager: Arc<RwLock<infrastructure::game_session::connection::service::ConnectionManager>>,
+) {
     // 启动优化后的连接管理器（包含统一轮询）
     let connection_manager_clone = connection_manager.clone();
     tokio::spawn(async move {

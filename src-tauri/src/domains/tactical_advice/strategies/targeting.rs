@@ -1,13 +1,12 @@
+use super::super::builder::AdviceBuilder;
+use super::super::types::{AdviceCategory, AdvicePerspective, GameAdvice};
 /// 针对建议策略（对敌人）
 ///
 /// 职责：
 /// - 生成针对对手弱点的战术建议
 /// - 措辞：第三人称（"对手"/"该玩家"）
 /// - 目标：赢得比赛
-
 use super::base::{AdviceStrategy, ProblemData, ProblemType};
-use super::super::types::{GameAdvice, AdviceCategory, AdvicePerspective};
-use super::super::builder::AdviceBuilder;
 
 pub struct TargetingStrategy;
 
@@ -44,10 +43,7 @@ impl TargetingStrategy {
 
         AdviceBuilder::new()
             .title(format!("可针对的弱点：{}对线补刀能力弱", data.role))
-            .problem(format!(
-                "{}对线期平均落后{:.1}刀，容易被压制",
-                target, -data.value
-            ))
+            .problem(format!("{}对线期平均落后{:.1}刀，容易被压制", target, -data.value))
             .evidence("对手对线期补刀效率低，容易被打出经济差".to_string())
             .suggestion("🎯 选择压制型英雄：对线强势的英雄（刀妹、剑姬、杰斯等）")
             .suggestion("📊 对线打法：频繁消耗，打出血量和补刀优势")
@@ -68,10 +64,7 @@ impl TargetingStrategy {
 
         AdviceBuilder::new()
             .title(format!("可针对：{}前期容易被击杀", data.role))
-            .problem(format!(
-                "{}抗压能力弱，前期容易死亡",
-                target
-            ))
+            .problem(format!("{}抗压能力弱，前期容易死亡", target))
             .evidence("对手对线期经常被击杀或大幅落后".to_string())
             .suggestion(format!("🎯 打野优先级：前期重点照顾{}路，优先gank", data.role))
             .suggestion("📊 英雄选择：选择前期强势的压制型英雄")
@@ -92,10 +85,7 @@ impl TargetingStrategy {
 
         AdviceBuilder::new()
             .title("可利用：对手中期发育效率低")
-            .problem(format!(
-                "{}中期经济效率下降，容易被拉开差距",
-                target
-            ))
+            .problem(format!("{}中期经济效率下降，容易被拉开差距", target))
             .evidence("对手中期发育节奏差，容易落后".to_string())
             .suggestion("⏰ 中期发力：10-20分钟主动找团战机会")
             .suggestion("🎯 资源控制：占据野区和龙坑资源")
@@ -110,7 +100,7 @@ impl TargetingStrategy {
 
     /// 其他针对建议（简化实现）
     fn create_poor_farming_advice(&self, _data: &ProblemData) -> Option<GameAdvice> {
-        None  // 暂不实现
+        None // 暂不实现
     }
 
     fn create_low_kp_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
@@ -132,7 +122,7 @@ impl TargetingStrategy {
 
     fn create_low_teamfight_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
         let target = data.target_name.as_deref().unwrap_or("对手");
-        
+
         let tactic = match data.role.as_str() {
             "打野" => "对方打野参团少，可以大胆入侵野区反野，控龙时他很难及时赶到",
             "中单" => "对方中单游走不积极，可以主动推线后游走支援，打人数差",
@@ -148,7 +138,11 @@ impl TargetingStrategy {
                 "{}的助攻仅{:.1}次/场，团战中经常缺席或姗姗来迟",
                 target, data.value
             ))
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "历史数据显示该玩家参团率极低".to_string()))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "历史数据显示该玩家参团率极低".to_string()),
+            )
             .suggestion(format!("💡 核心战术：{}", tactic))
             .suggestion("⚡ 速战速决：发现对手不在时立即开团，打快攻")
             .suggestion("🐉 资源控制：小龙、先锋刷新时主动集合，逼对手选择")
@@ -164,7 +158,7 @@ impl TargetingStrategy {
 
     fn create_high_death_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
         let target = data.target_name.as_deref().unwrap_or("对手");
-        
+
         let target_strategy = match data.role.as_str() {
             "ADC" => vec![
                 "🎯 首要目标：团战开始立即找到该ADC位置，所有人集火秒杀",
@@ -195,16 +189,17 @@ impl TargetingStrategy {
                 "🎯 优先目标：团战锁定该玩家，优先集火",
                 "👀 寻找破绽：观察他的走位习惯，抓失误击杀",
                 "📍 埋伏蹲点：在他常走的路线埋伏",
-            ]
+            ],
         };
 
         let mut builder = AdviceBuilder::new()
             .title(format!("软柿子：{}生存能力极差", data.role))
-            .problem(format!(
-                "{}场均死亡{:.1}次，是团队最大弱点",
-                target, data.value
-            ))
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "该玩家频繁暴毙，是最容易击杀的目标".to_string()));
+            .problem(format!("{}场均死亡{:.1}次，是团队最大弱点", target, data.value))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "该玩家频繁暴毙，是最容易击杀的目标".to_string()),
+            );
 
         for suggestion in target_strategy {
             builder = builder.suggestion(suggestion);
@@ -221,7 +216,7 @@ impl TargetingStrategy {
     }
 
     fn create_positioning_advice(&self, _data: &ProblemData) -> Option<GameAdvice> {
-        None  // 暂不实现
+        None // 暂不实现
     }
 
     fn create_vision_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
@@ -243,7 +238,7 @@ impl TargetingStrategy {
     }
 
     fn create_champion_pool_advice(&self, _data: &ProblemData) -> Option<GameAdvice> {
-        None  // 英雄池窄不是针对点
+        None // 英雄池窄不是针对点
     }
 
     fn create_dependency_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
@@ -263,4 +258,3 @@ impl TargetingStrategy {
             .build()
     }
 }
-

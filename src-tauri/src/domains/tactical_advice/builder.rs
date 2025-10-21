@@ -4,8 +4,7 @@
 /// - 提供优雅的链式调用API
 /// - 构建 GameAdvice 对象
 /// - 确保必填字段完整
-
-use super::types::{GameAdvice, AdviceCategory, AdvicePerspective};
+use super::types::{AdviceCategory, AdvicePerspective, GameAdvice};
 
 /// 建议建造者
 #[derive(Debug)]
@@ -69,7 +68,7 @@ impl AdviceBuilder {
 
     /// 设置优先级（1-5）
     pub fn priority(mut self, priority: u8) -> Self {
-        self.priority = priority.clamp(1, 5);  // 限制在1-5范围
+        self.priority = priority.clamp(1, 5); // 限制在1-5范围
         self
     }
 
@@ -161,7 +160,7 @@ mod tests {
             .suggestion("建议")
             .build();
 
-        assert!(advice.is_none());  // 应该失败
+        assert!(advice.is_none()); // 应该失败
     }
 
     #[test]
@@ -173,7 +172,6 @@ mod tests {
             // 没有 suggestions
             .build();
 
-        assert!(advice.is_none());  // 应该失败
+        assert!(advice.is_none()); // 应该失败
     }
 }
-

@@ -1,3 +1,5 @@
+use super::super::builder::AdviceBuilder;
+use super::super::types::{AdviceCategory, AdvicePerspective, GameAdvice};
 /// 协作建议策略（对队友）⭐ 用户创新
 ///
 /// 职责：
@@ -5,10 +7,7 @@
 /// - 识别队友的强弱，提供协作方案
 /// - 措辞：第三人称（"该队友"/"他"）
 /// - 目标：团队协作，提高胜率
-
 use super::base::{AdviceStrategy, ProblemData, ProblemType};
-use super::super::types::{GameAdvice, AdviceCategory, AdvicePerspective};
-use super::super::builder::AdviceBuilder;
 
 pub struct CollaborationStrategy;
 
@@ -24,7 +23,7 @@ impl AdviceStrategy for CollaborationStrategy {
             ProblemType::HighDeathRate => self.create_high_death_advice(data),
             ProblemType::PoorPositioning => self.create_positioning_advice(data),
             ProblemType::LowVisionScore => self.create_vision_advice(data),
-            ProblemType::ChampionPoolNarrow => None,  // 英雄池不影响协作
+            ProblemType::ChampionPoolNarrow => None, // 英雄池不影响协作
             ProblemType::ChampionDependency => None,
         }
     }
@@ -68,10 +67,7 @@ impl CollaborationStrategy {
 
         AdviceBuilder::new()
             .title(format!("队友{}前期需要重点保护", data.role))
-            .problem(format!(
-                "{}前期容易被击杀，抗压能力弱",
-                teammate
-            ))
+            .problem(format!("{}前期容易被击杀，抗压能力弱", teammate))
             .evidence("该队友对线期经常死亡，需要团队支援".to_string())
             .suggestion(format!("🛡️ 打野：前期常驻{}半区，多反蹲保护", data.role))
             .suggestion(format!("👁️ 全队：帮{}路做视野，减少被gank机会", data.role))
@@ -94,7 +90,8 @@ impl CollaborationStrategy {
             .title(format!("队友{}中期发育效率低", data.role))
             .problem(format!(
                 "{}中期经济效率下降{:.0}%，发育节奏有问题",
-                teammate, data.severity * 100.0
+                teammate,
+                data.severity * 100.0
             ))
             .evidence("该队友中期容易落后，需要团队弥补".to_string())
             .suggestion("💰 让资源：适当让野怪和兵线给该队友")
@@ -114,10 +111,7 @@ impl CollaborationStrategy {
 
         AdviceBuilder::new()
             .title("队友发育能力较弱")
-            .problem(format!(
-                "{}补刀效率偏低（{:.1}/分钟）",
-                teammate, data.value
-            ))
+            .problem(format!("{}补刀效率偏低（{:.1}/分钟）", teammate, data.value))
             .evidence("该队友发育较慢，后期可能装备落后".to_string())
             .suggestion("💰 其他路多发育：该路可能无法carry，其他路要挑大梁")
             .suggestion("⏰ 加快节奏：前中期尽量结束游戏，不要拖后期")
@@ -132,7 +126,7 @@ impl CollaborationStrategy {
     /// 队友团战参与度低 → 调整策略
     fn create_low_teamfight_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
         let teammate = data.target_name.as_deref().unwrap_or("该队友");
-        
+
         let adaptation = match data.role.as_str() {
             "打野" => "打野参团少可能在反野发育，其他人可以主动控龙，用信号提前通知",
             "中单" => "中单不游走说明想发育，可以让他守中推线，其他人主动找机会",
@@ -144,11 +138,12 @@ impl CollaborationStrategy {
 
         AdviceBuilder::new()
             .title(format!("团队适应：{}参团较少", data.role))
-            .problem(format!(
-                "{}的助攻仅{:.1}次/场，团战中经常缺席",
-                teammate, data.value
-            ))
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "该队友偏向发育/分带，不喜欢抱团".to_string()))
+            .problem(format!("{}的助攻仅{:.1}次/场，团战中经常缺席", teammate, data.value))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "该队友偏向发育/分带，不喜欢抱团".to_string()),
+            )
             .suggestion(format!("💡 理解打法：{}", adaptation))
             .suggestion("⏰ 提前60秒信号：打龙/团战至少提前1分钟标记，给队友充足准备时间")
             .suggestion("📍 战场选择：尽量在该队友附近的区域开团，减少他的赶路时间")
@@ -166,7 +161,7 @@ impl CollaborationStrategy {
     /// 队友死亡过多 → 保护策略
     fn create_high_death_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
         let teammate = data.target_name.as_deref().unwrap_or("该队友");
-        
+
         let protection = match data.role.as_str() {
             "ADC" => vec![
                 "🛡️ 全力保护：辅助和坦克要贴身保护，别让刺客切到他",
@@ -203,16 +198,17 @@ impl CollaborationStrategy {
                 "👁️ 视野支持：在他活动区域多做视野",
                 "⚡ 及时救援：看到他被抓立即支援",
                 "💬 友善沟通：提醒但不要责怪",
-            ]
+            ],
         };
 
         let mut builder = AdviceBuilder::new()
             .title(format!("保护队友：{}生存能力弱", data.role))
-            .problem(format!(
-                "{}场均死亡{:.1}次，是团队的薄弱环节",
-                teammate, data.value
-            ))
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "该队友频繁阵亡，需要团队保护".to_string()));
+            .problem(format!("{}场均死亡{:.1}次，是团队的薄弱环节", teammate, data.value))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "该队友频繁阵亡，需要团队保护".to_string()),
+            );
 
         for suggestion in protection {
             builder = builder.suggestion(suggestion);
@@ -234,10 +230,7 @@ impl CollaborationStrategy {
 
         AdviceBuilder::new()
             .title("队友参团意识较弱")
-            .problem(format!(
-                "{}参团率仅{:.0}%，经常缺席团战",
-                teammate, data.value * 100.0
-            ))
+            .problem(format!("{}参团率仅{:.0}%，经常缺席团战", teammate, data.value * 100.0))
             .evidence("该队友可能更倾向于单带或刷野".to_string())
             .suggestion("⚠️ 调整战术：不要期待该队友每次都参团")
             .suggestion("🔔 多发信号：提前标记团战位置，给该队友足够时间赶来")
@@ -290,4 +283,3 @@ impl CollaborationStrategy {
             .build()
     }
 }
-

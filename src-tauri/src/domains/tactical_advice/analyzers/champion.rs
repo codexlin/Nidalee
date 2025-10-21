@@ -3,12 +3,11 @@
 /// 职责：
 /// - 分析英雄池情况
 /// - 识别英雄池问题（过窄、过度依赖）
-
 use super::base::AdviceAnalyzer;
 use crate::domains::tactical_advice::context::AdviceContext;
-use crate::domains::tactical_advice::types::GameAdvice;
-use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
 use crate::domains::tactical_advice::factory::AdviceStrategyFactory;
+use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
+use crate::domains::tactical_advice::types::GameAdvice;
 
 pub struct ChampionAdviceAnalyzer;
 
@@ -36,11 +35,7 @@ impl AdviceAnalyzer for ChampionAdviceAnalyzer {
 }
 
 impl ChampionAdviceAnalyzer {
-    fn analyze_champion_pool(
-        &self,
-        context: &AdviceContext,
-        strategy: &dyn AdviceStrategy,
-    ) -> Option<GameAdvice> {
+    fn analyze_champion_pool(&self, context: &AdviceContext, strategy: &dyn AdviceStrategy) -> Option<GameAdvice> {
         let champions = &context.stats.favorite_champions;
 
         if champions.is_empty() {
@@ -89,4 +84,3 @@ impl ChampionAdviceAnalyzer {
         None
     }
 }
-

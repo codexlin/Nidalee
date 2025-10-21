@@ -1,10 +1,10 @@
 // Handles converting raw WebSocket messages into application-specific events.
-use crate::infrastructure::match_management::analysis_data;
+use crate::infrastructure::champion_selection::summoner_spells;
 use crate::infrastructure::data_services::champion_data;
 use crate::infrastructure::data_services::summoner::service::get_summoner_by_id;
-use crate::infrastructure::champion_selection::summoner_spells;
-use crate::shared::{NidaleeError, Result};
+use crate::infrastructure::match_management::analysis_data;
 use crate::shared::types::{ChampSelectSession, LobbyInfo, MatchmakingState, SummonerInfo};
+use crate::shared::{NidaleeError, Result};
 use reqwest::Client;
 use serde_json::Value;
 use std::sync::Arc;
@@ -252,7 +252,8 @@ impl WsEventHandler {
                             return Err(format!(
                                 "Failed to get player list from LiveClient after {} attempts: {}",
                                 max_attempts, e
-                            ).into());
+                            )
+                            .into());
                         }
                         log::warn!(
                             "[ws-event-backfill] Failed to fetch LiveClient player list (attempt {}/{}), retrying in 2s: {}",
@@ -300,23 +301,27 @@ impl WsEventHandler {
         // 4. Batch fetch summoner info.
         let player_names: Vec<String> = enemy_live_players.iter().map(|p| p.summoner_name.clone()).collect();
 
-        let summoners_info =
-            match crate::infrastructure::data_services::summoner::service::get_summoners_by_names(&self.client, player_names.clone()).await {
-                Ok(info) => {
-                    log::info!(
-                        "[ws-event-backfill] Successfully fetched details for {} enemy summoners.",
-                        info.len()
-                    );
-                    info
-                }
-                Err(e) => {
-                    log::error!(
+        let summoners_info = match crate::infrastructure::data_services::summoner::service::get_summoners_by_names(
+            &self.client,
+            player_names.clone(),
+        )
+        .await
+        {
+            Ok(info) => {
+                log::info!(
+                    "[ws-event-backfill] Successfully fetched details for {} enemy summoners.",
+                    info.len()
+                );
+                info
+            }
+            Err(e) => {
+                log::error!(
                     "[ws-event-backfill] Batch fetch for enemy summoner info failed: {}. Proceeding without this data.",
                     e
                 );
-                    return Ok(()); // Do not interrupt the flow, just log the error.
-                }
-            };
+                return Ok(()); // Do not interrupt the flow, just log the error.
+            }
+        };
 
         // 5. Iterate through LiveClient enemy players to update team_analysis.enemy_team.
         // We collect stats to be cached separately to avoid mutable borrow conflicts.
@@ -412,7 +417,14 @@ impl WsEventHandler {
 
                 // 5.6 Fetch recent matches.
                 let queue_id = Some(team_analysis.queue_id);
-                match crate::infrastructure::match_management::matches::service::get_recent_matches_by_puuid(&self.client, &info.puuid, 20, queue_id.map(|v| v as i32)).await {
+                match crate::infrastructure::match_management::matches::service::get_recent_matches_by_puuid(
+                    &self.client,
+                    &info.puuid,
+                    20,
+                    queue_id.map(|v| v as i32),
+                )
+                .await
+                {
                     Ok(player_stats) => {
                         // 注意：get_recent_matches_by_puuid 已经返回完整的 PlayerMatchStats
                         // 包含所有增强字段（traits, today_games, dpm, cspm, vspm 等）
@@ -491,9 +503,7 @@ impl WsEventHandler {
                     }
                     Ok(_) => {
                         if attempts >= max_attempts {
-                            return Err(
-                                "LiveClient returned empty list after max retries (game still loading?)".into()
-                            );
+                            return Err("LiveClient returned empty list after max retries (game still loading?)".into());
                         }
                         log::debug!(
                             target: "ws::event_handler",
@@ -508,7 +518,8 @@ impl WsEventHandler {
                             return Err(format!(
                                 "Failed to get LiveClient data after {} attempts: {}",
                                 max_attempts, e
-                            ).into());
+                            )
+                            .into());
                         }
                         log::warn!(
                             target: "ws::event_handler",
@@ -554,48 +565,53 @@ impl WsEventHandler {
             .map(|p| p.summoner_name.clone())
             .collect();
 
-        let summoners_info =
-            match crate::infrastructure::data_services::summoner::service::get_summoners_by_names(&self.client, all_player_names.clone()).await {
-                Ok(info) => {
-                    log::debug!(
-                        target: "ws::event_handler",
-                        "Fetched {} summoner details",
-                        info.len()
-                    );
-                    info
-                }
-                Err(e) => {
-                    log::error!(
-                        target: "ws::event_handler",
-                        "Batch fetch for summoner info failed: {}",
-                        e
-                    );
-                    return Err(format!("Failed to fetch summoner info: {}", e).into());
-                }
-            };
-
-        // 4. 先获取游戏信息（需要用于战绩过滤）
-        let (queue_id, is_custom_game) = match crate::infrastructure::game_session::gameflow::service::get_gameflow_session(&self.client).await {
-            Ok(session) => {
-                let queue_id = session["gameData"]["queue"]["id"].as_i64().unwrap_or(420);
-                let is_custom = session["gameData"]["isCustomGame"].as_bool().unwrap_or(false);
+        let summoners_info = match crate::infrastructure::data_services::summoner::service::get_summoners_by_names(
+            &self.client,
+            all_player_names.clone(),
+        )
+        .await
+        {
+            Ok(info) => {
                 log::debug!(
                     target: "ws::event_handler",
-                    "Got game info from API: queue_id={}, is_custom={}",
-                    queue_id,
-                    is_custom
+                    "Fetched {} summoner details",
+                    info.len()
                 );
-                (queue_id, is_custom)
+                info
             }
             Err(e) => {
-                log::warn!(
+                log::error!(
                     target: "ws::event_handler",
-                    "Failed to get gameflow session: {}, using defaults",
+                    "Batch fetch for summoner info failed: {}",
                     e
                 );
-                (420, false)
+                return Err(format!("Failed to fetch summoner info: {}", e).into());
             }
         };
+
+        // 4. 先获取游戏信息（需要用于战绩过滤）
+        let (queue_id, is_custom_game) =
+            match crate::infrastructure::game_session::gameflow::service::get_gameflow_session(&self.client).await {
+                Ok(session) => {
+                    let queue_id = session["gameData"]["queue"]["id"].as_i64().unwrap_or(420);
+                    let is_custom = session["gameData"]["isCustomGame"].as_bool().unwrap_or(false);
+                    log::debug!(
+                        target: "ws::event_handler",
+                        "Got game info from API: queue_id={}, is_custom={}",
+                        queue_id,
+                        is_custom
+                    );
+                    (queue_id, is_custom)
+                }
+                Err(e) => {
+                    log::warn!(
+                        target: "ws::event_handler",
+                        "Failed to get gameflow session: {}, using defaults",
+                        e
+                    );
+                    (420, false)
+                }
+            };
 
         // 5. 构建我方队伍数据
         let mut my_team_data = Vec::new();
@@ -645,47 +661,49 @@ impl WsEventHandler {
         }
 
         // 7. 识别本地玩家并设置 is_local 标志
-        let local_player_cell_id = match crate::infrastructure::data_services::summoner::service::get_current_summoner(&self.client).await {
-            Ok(summoner) => {
-                // 构建完整召唤师名称（GameName#TagLine 或 DisplayName）
-                let local_name = if let (Some(game_name), Some(tag_line)) = (&summoner.game_name, &summoner.tag_line) {
-                    format!("{}#{}", game_name, tag_line)
-                } else {
-                    summoner.display_name.clone()
-                };
+        let local_player_cell_id =
+            match crate::infrastructure::data_services::summoner::service::get_current_summoner(&self.client).await {
+                Ok(summoner) => {
+                    // 构建完整召唤师名称（GameName#TagLine 或 DisplayName）
+                    let local_name =
+                        if let (Some(game_name), Some(tag_line)) = (&summoner.game_name, &summoner.tag_line) {
+                            format!("{}#{}", game_name, tag_line)
+                        } else {
+                            summoner.display_name.clone()
+                        };
 
-                // 在我方队伍中查找本地玩家并设置 is_local = true
-                my_team_data
-                    .iter_mut()
-                    .find(|p| p.display_name.to_lowercase() == local_name.to_lowercase())
-                    .map(|p| {
-                        p.is_local = true;
-                        log::debug!(
-                            target: "ws::event_handler",
-                            "Found local player '{}' at cell_id={}",
-                            p.display_name,
+                    // 在我方队伍中查找本地玩家并设置 is_local = true
+                    my_team_data
+                        .iter_mut()
+                        .find(|p| p.display_name.to_lowercase() == local_name.to_lowercase())
+                        .map(|p| {
+                            p.is_local = true;
+                            log::debug!(
+                                target: "ws::event_handler",
+                                "Found local player '{}' at cell_id={}",
+                                p.display_name,
+                                p.cell_id
+                            );
                             p.cell_id
-                        );
-                        p.cell_id
-                    })
-                    .unwrap_or_else(|| {
-                        log::warn!(
-                            target: "ws::event_handler",
-                            "Could not find local player '{}', using default cell_id=0",
-                            local_name
-                        );
-                        0
-                    })
-            }
-            Err(e) => {
-                log::warn!(
-                    target: "ws::event_handler",
-                    "Failed to get current summoner: {}, using default cell_id=0",
-                    e
-                );
-                0
-            }
-        };
+                        })
+                        .unwrap_or_else(|| {
+                            log::warn!(
+                                target: "ws::event_handler",
+                                "Could not find local player '{}', using default cell_id=0",
+                                local_name
+                            );
+                            0
+                        })
+                }
+                Err(e) => {
+                    log::warn!(
+                        target: "ws::event_handler",
+                        "Failed to get current summoner: {}, using default cell_id=0",
+                        e
+                    );
+                    0
+                }
+            };
 
         // 8. 创建 TeamAnalysisData
         let team_analysis_data = crate::shared::types::TeamAnalysisData {
@@ -798,7 +816,14 @@ impl WsEventHandler {
             player_data.tag_line = info.tag_line.clone();
 
             // 获取战绩数据
-            match crate::infrastructure::match_management::matches::service::get_recent_matches_by_puuid(&self.client, &info.puuid, 20, Some(queue_id as i32)).await {
+            match crate::infrastructure::match_management::matches::service::get_recent_matches_by_puuid(
+                &self.client,
+                &info.puuid,
+                20,
+                Some(queue_id as i32),
+            )
+            .await
+            {
                 Ok(player_stats) => {
                     // 注意：get_recent_matches_by_puuid 已经返回完整的 PlayerMatchStats
                     // 在排位模式下会自动过滤只显示排位战绩

@@ -1,15 +1,11 @@
-use crate::shared::types::{MatchPerformance, PlayerMatchStats, SummonerTrait};
 use crate::domains::analysis::thresholds;
+use crate::shared::types::{MatchPerformance, PlayerMatchStats, SummonerTrait};
 use serde_json::Value;
 
 /// 深度特征分析（基于相对数据和趋势）
 ///
 /// 这些分析需要聚合队伍数据，能提供更深入的洞察
-pub fn analyze_advanced_traits(
-    stats: &PlayerMatchStats,
-    games: &[Value],
-    puuid: &str,
-) -> Vec<SummonerTrait> {
+pub fn analyze_advanced_traits(stats: &PlayerMatchStats, games: &[Value], puuid: &str) -> Vec<SummonerTrait> {
     let mut traits = Vec::new();
 
     // 1. 参团率分析
@@ -74,7 +70,8 @@ fn analyze_kill_participation(games: &[Value], puuid: &str) -> Option<SummonerTr
             score: (avg_kp * 100.0) as i32,
             trait_type: "good".to_string(),
         })
-    } else if avg_kp >= 0.60 {  // 中等参团率阈值
+    } else if avg_kp >= 0.60 {
+        // 中等参团率阈值
         Some(SummonerTrait {
             name: "积极参团".to_string(),
             description: format!("参团率{:.0}%，团战意识不错", avg_kp * 100.0),
@@ -97,8 +94,7 @@ fn calculate_kp_for_game(game: &Value, puuid: &str) -> Option<f64> {
     let participant_id = game["participantIdentities"]
         .as_array()?
         .iter()
-        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?
-        ["participantId"]
+        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?["participantId"]
         .as_i64()?;
 
     let participant = game["participants"]
@@ -174,8 +170,7 @@ fn calculate_damage_share_for_game(game: &Value, puuid: &str) -> Option<f64> {
     let participant_id = game["participantIdentities"]
         .as_array()?
         .iter()
-        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?
-        ["participantId"]
+        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?["participantId"]
         .as_i64()?;
 
     let participant = game["participants"]
@@ -243,8 +238,7 @@ fn calculate_tank_share_for_game(game: &Value, puuid: &str) -> Option<f64> {
     let participant_id = game["participantIdentities"]
         .as_array()?
         .iter()
-        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?
-        ["participantId"]
+        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?["participantId"]
         .as_i64()?;
 
     let participant = game["participants"]
@@ -253,9 +247,7 @@ fn calculate_tank_share_for_game(game: &Value, puuid: &str) -> Option<f64> {
         .find(|p| p["participantId"].as_i64() == Some(participant_id))?;
 
     let team_id = participant["teamId"].as_i64()?;
-    let player_tank = participant["stats"]["totalDamageTaken"]
-        .as_i64()
-        .unwrap_or(0);
+    let player_tank = participant["stats"]["totalDamageTaken"].as_i64().unwrap_or(0);
 
     let team_total_tank: i64 = game["participants"]
         .as_array()?
@@ -284,11 +276,7 @@ fn analyze_stability(recent_games: &[MatchPerformance]) -> Option<SummonerTrait>
         return None;
     }
 
-    let variance = kdas
-        .iter()
-        .map(|kda| (kda - mean_kda).powi(2))
-        .sum::<f64>()
-        / kdas.len() as f64;
+    let variance = kdas.iter().map(|kda| (kda - mean_kda).powi(2)).sum::<f64>() / kdas.len() as f64;
     let std_dev = variance.sqrt();
     let cv = std_dev / mean_kda;
 
@@ -324,8 +312,7 @@ fn analyze_performance_trend(recent_games: &[MatchPerformance]) -> Option<Summon
     let recent_kda: f64 = recent_half.iter().map(|g| g.kda).sum::<f64>() / recent_half.len() as f64;
     let older_kda: f64 = older_half.iter().map(|g| g.kda).sum::<f64>() / older_half.len() as f64;
 
-    let recent_wr =
-        recent_half.iter().filter(|g| g.win).count() as f64 / recent_half.len() as f64;
+    let recent_wr = recent_half.iter().filter(|g| g.win).count() as f64 / recent_half.len() as f64;
     let older_wr = older_half.iter().filter(|g| g.win).count() as f64 / older_half.len() as f64;
 
     let kda_change_rate = if older_kda > 0.0 {
@@ -363,11 +350,7 @@ fn analyze_performance_trend(recent_games: &[MatchPerformance]) -> Option<Summon
 }
 
 /// 6. 视野控制分析
-fn analyze_vision_control(
-    stats: &PlayerMatchStats,
-    games: &[Value],
-    puuid: &str,
-) -> Vec<SummonerTrait> {
+fn analyze_vision_control(stats: &PlayerMatchStats, games: &[Value], puuid: &str) -> Vec<SummonerTrait> {
     let mut traits = Vec::new();
 
     if stats.vspm >= 2.0 {
@@ -422,12 +405,8 @@ fn analyze_objective_control(games: &[Value], puuid: &str) -> Vec<SummonerTrait>
 
     for game in games {
         if let Some(participant) = find_participant(game, puuid) {
-            total_obj_damage += participant["stats"]["damageDealtToObjectives"]
-                .as_i64()
-                .unwrap_or(0) as f64;
-            total_turret_damage += participant["stats"]["damageDealtToTurrets"]
-                .as_i64()
-                .unwrap_or(0) as f64;
+            total_obj_damage += participant["stats"]["damageDealtToObjectives"].as_i64().unwrap_or(0) as f64;
+            total_turret_damage += participant["stats"]["damageDealtToTurrets"].as_i64().unwrap_or(0) as f64;
             valid_games += 1;
         }
     }
@@ -486,10 +465,7 @@ fn analyze_champion_mastery(stats: &PlayerMatchStats) -> Vec<SummonerTrait> {
     } else if specialization >= 0.7 && top_champion.win_rate < 50.0 {
         traits.push(SummonerTrait {
             name: "单一依赖".to_string(),
-            description: format!(
-                "英雄池窄（{:.0}%打同一英雄）且胜率不高",
-                specialization * 100.0
-            ),
+            description: format!("英雄池窄（{:.0}%打同一英雄）且胜率不高", specialization * 100.0),
             score: (specialization * 100.0) as i32,
             trait_type: "bad".to_string(),
         });
@@ -519,8 +495,7 @@ fn find_participant<'a>(game: &'a Value, puuid: &str) -> Option<&'a Value> {
     let participant_id = game["participantIdentities"]
         .as_array()?
         .iter()
-        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?
-        ["participantId"]
+        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?["participantId"]
         .as_i64()?;
 
     game["participants"]
@@ -528,4 +503,3 @@ fn find_participant<'a>(game: &'a Value, puuid: &str) -> Option<&'a Value> {
         .iter()
         .find(|p| p["participantId"].as_i64() == Some(participant_id))
 }
-

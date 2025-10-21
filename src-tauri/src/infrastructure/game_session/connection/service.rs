@@ -1,6 +1,8 @@
-use crate::infrastructure::game_session::auth::service::{ensure_valid_auth_info, invalidate_auth_info, validate_auth_connection};
-use crate::shared::utils::OptimizedPollingManager;
+use crate::infrastructure::game_session::auth::service::{
+    ensure_valid_auth_info, invalidate_auth_info, validate_auth_connection,
+};
 use crate::shared::types::{ConnectionState, LcuAuthInfo};
+use crate::shared::utils::OptimizedPollingManager;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::{Duration, Instant};

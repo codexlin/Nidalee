@@ -1,8 +1,7 @@
 /// 建议系统核心数据类型
 ///
 /// 重新导出 shared::types 中的类型，避免重复定义
-
-pub use crate::shared::types::{GameAdvice, AdviceCategory, AdvicePerspective};
+pub use crate::shared::types::{AdviceCategory, AdvicePerspective, GameAdvice};
 
 impl AdviceCategory {
     /// 获取分类图标
@@ -42,4 +41,3 @@ impl AdvicePerspective {
         }
     }
 }
-

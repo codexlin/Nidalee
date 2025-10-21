@@ -6,17 +6,15 @@
 /// 3. TeamfightAdviceAnalyzer - 团战建议
 /// 4. VisionAdviceAnalyzer - 视野建议
 /// 5. ChampionAdviceAnalyzer - 英雄池建议
-
 pub mod base;
-pub mod laning;
+pub mod champion;
 pub mod farming;
+pub mod laning;
 pub mod teamfight;
 pub mod vision;
-pub mod champion;
 
-pub use laning::LaningAdviceAnalyzer;
+pub use champion::ChampionAdviceAnalyzer;
 pub use farming::FarmingAdviceAnalyzer;
+pub use laning::LaningAdviceAnalyzer;
 pub use teamfight::TeamfightAdviceAnalyzer;
 pub use vision::VisionAdviceAnalyzer;
-pub use champion::ChampionAdviceAnalyzer;
-

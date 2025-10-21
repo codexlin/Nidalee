@@ -1,5 +1,5 @@
-use crate::http_client;
 use super::service;
+use crate::http_client;
 
 #[tauri::command]
 pub async fn start_matchmaking() -> Result<(), String> {

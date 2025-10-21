@@ -4,7 +4,6 @@
 /// - 将 LCU API 的原始 JSON 数据解析为统一的内部数据结构
 /// - 隔离 LCU 数据结构变化的影响
 /// - 如果 LCU API 变更，只需要修改这个文件
-
 use serde_json::Value;
 
 /// 统一的对局数据结构（内部使用）
@@ -25,8 +24,8 @@ pub struct TimelineData {
     pub cs_per_min_0_10: Option<f64>,
     pub gold_per_min_0_10: Option<f64>,
     pub xp_per_min_0_10: Option<f64>,
-    pub cs_diff_0_10: Option<f64>,        // ⭐ 关键：补刀差
-    pub xp_diff_0_10: Option<f64>,        // ⭐ 关键：经验差
+    pub cs_diff_0_10: Option<f64>, // ⭐ 关键：补刀差
+    pub xp_diff_0_10: Option<f64>, // ⭐ 关键：经验差
     pub damage_taken_per_min_0_10: Option<f64>,
 
     // 发育期 (10-20分钟)
@@ -64,7 +63,7 @@ pub struct ParsedPlayerData {
     pub champion_id: i32,
     pub role: String,
     pub lane: String,
-    pub timeline_data: Option<TimelineData>,  // ⭐ 新增：时间线数据
+    pub timeline_data: Option<TimelineData>, // ⭐ 新增：时间线数据
 }
 
 /// 队伍数据（单场）
@@ -84,8 +83,7 @@ pub fn parse_game(game: &Value, puuid: &str) -> Option<ParsedGame> {
     let participant_id = game["participantIdentities"]
         .as_array()?
         .iter()
-        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?
-        ["participantId"]
+        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?["participantId"]
         .as_i64()?;
 
     // 2. 查找玩家的 participant 数据
@@ -130,7 +128,7 @@ fn parse_player_data(participant: &Value) -> Option<ParsedPlayerData> {
     let (role, lane, timeline_data) = if let Some(timeline) = timeline {
         let role = timeline["role"].as_str().unwrap_or("NONE").to_string();
         let lane = timeline["lane"].as_str().unwrap_or("NONE").to_string();
-        let timeline_data = parse_timeline_data(timeline);  // ⭐ 解析时间线数据
+        let timeline_data = parse_timeline_data(timeline); // ⭐ 解析时间线数据
         (role, lane, timeline_data)
     } else {
         ("NONE".to_string(), "NONE".to_string(), None)
@@ -148,15 +146,15 @@ fn parse_player_data(participant: &Value) -> Option<ParsedPlayerData> {
         vision_score: stats["visionScore"].as_i64().unwrap_or(0) as i32,
         wards_placed: stats["wardsPlaced"].as_i64().unwrap_or(0) as i32,
         wards_killed: stats["wardsKilled"].as_i64().unwrap_or(0) as i32,
-        cs: (stats["totalMinionsKilled"].as_i64().unwrap_or(0)
-            + stats["neutralMinionsKilled"].as_i64().unwrap_or(0)) as i32,
+        cs: (stats["totalMinionsKilled"].as_i64().unwrap_or(0) + stats["neutralMinionsKilled"].as_i64().unwrap_or(0))
+            as i32,
         damage_to_objectives: stats["damageDealtToObjectives"].as_i64().unwrap_or(0),
         damage_to_turrets: stats["damageDealtToTurrets"].as_i64().unwrap_or(0),
         time_cc_others: stats["timeCCingOthers"].as_i64().unwrap_or(0) as i32,
         champion_id: participant["championId"].as_i64().unwrap_or(0) as i32,
         role,
         lane,
-        timeline_data,  // ⭐ 新增：时间线数据
+        timeline_data, // ⭐ 新增：时间线数据
     })
 }
 
@@ -195,16 +193,16 @@ fn parse_timeline_data(timeline: &Value) -> Option<TimelineData> {
     if let Some(cs_deltas) = timeline.get("creepsPerMinDeltas") {
         data.cs_per_min_0_10 = parse_delta_value(cs_deltas, "0-10");
         data.cs_per_min_10_20 = parse_delta_value(cs_deltas, "10-20");
-        data.cs_per_min_20_end = parse_delta_value(cs_deltas, "20-30")
-            .or_else(|| parse_delta_value(cs_deltas, "20-end"));
+        data.cs_per_min_20_end =
+            parse_delta_value(cs_deltas, "20-30").or_else(|| parse_delta_value(cs_deltas, "20-end"));
     }
 
     // 解析 goldPerMinDeltas（每分钟金币）
     if let Some(gold_deltas) = timeline.get("goldPerMinDeltas") {
         data.gold_per_min_0_10 = parse_delta_value(gold_deltas, "0-10");
         data.gold_per_min_10_20 = parse_delta_value(gold_deltas, "10-20");
-        data.gold_per_min_20_end = parse_delta_value(gold_deltas, "20-30")
-            .or_else(|| parse_delta_value(gold_deltas, "20-end"));
+        data.gold_per_min_20_end =
+            parse_delta_value(gold_deltas, "20-30").or_else(|| parse_delta_value(gold_deltas, "20-end"));
     }
 
     // 解析 xpPerMinDeltas（每分钟经验）
@@ -217,8 +215,7 @@ fn parse_timeline_data(timeline: &Value) -> Option<TimelineData> {
     if let Some(cs_diff) = timeline.get("csDiffPerMinDeltas") {
         data.cs_diff_0_10 = parse_delta_value(cs_diff, "0-10");
         data.cs_diff_10_20 = parse_delta_value(cs_diff, "10-20");
-        data.cs_diff_20_end = parse_delta_value(cs_diff, "20-30")
-            .or_else(|| parse_delta_value(cs_diff, "20-end"));
+        data.cs_diff_20_end = parse_delta_value(cs_diff, "20-30").or_else(|| parse_delta_value(cs_diff, "20-end"));
     }
 
     // ⭐ 关键：解析 xpDiffPerMinDeltas（经验差，相对对手）
@@ -243,10 +240,7 @@ fn parse_delta_value(deltas: &Value, key: &str) -> Option<f64> {
 
 /// 批量解析对局数据
 pub fn parse_games(games: &[Value], puuid: &str) -> Vec<ParsedGame> {
-    games
-        .iter()
-        .filter_map(|game| parse_game(game, puuid))
-        .collect()
+    games.iter().filter_map(|game| parse_game(game, puuid)).collect()
 }
 
 /// 识别玩家的主要位置
@@ -272,4 +266,3 @@ pub fn identify_main_role(parsed_games: &[ParsedGame]) -> String {
         .map(|(role, _)| role)
         .unwrap_or_else(|| "未知".to_string())
 }
-

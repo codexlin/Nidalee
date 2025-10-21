@@ -1,7 +1,7 @@
-use crate::http_client;
-use crate::shared::types::{PlayerMatchStats, ChampSelectSession};
-use std::collections::HashMap;
 use super::service;
+use crate::http_client;
+use crate::shared::types::{ChampSelectSession, PlayerMatchStats};
+use std::collections::HashMap;
 
 #[tauri::command]
 pub async fn get_champselect_team_players_info() -> Result<HashMap<String, PlayerMatchStats>, String> {

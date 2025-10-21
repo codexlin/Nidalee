@@ -1,19 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
 import { Heart, Home } from 'lucide-vue-next'
 
-// 假设你的二维码图片放在这个路径
-import wechatQr from '@/assets/wechat-qr.png' // 你已确认添加
-import alipayQr from '@/assets/alipay-qr.png' // 你已确认添加
+import wechatQr from '@/assets/wechat.jpg' // 你已确认添加
+import alipayQr from '@/assets/alipay.jpg' // 你已确认添加
 
 const GITHUB_SPONSOR_URL = 'https://github.com/sponsors/codexlin'
 const PERSONAL_WEBSITE_URL = 'https://codexlin.com'

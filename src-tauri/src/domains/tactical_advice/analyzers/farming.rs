@@ -3,13 +3,12 @@
 /// 职责：
 /// - 分析发育能力（CS效率、经济曲线）
 /// - 识别发育问题（中期乏力、补刀效率低）
-
 use super::base::AdviceAnalyzer;
-use crate::domains::tactical_advice::context::AdviceContext;
-use crate::domains::tactical_advice::types::GameAdvice;
-use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
-use crate::domains::tactical_advice::factory::AdviceStrategyFactory;
 use crate::domains::analysis::thresholds;
+use crate::domains::tactical_advice::context::AdviceContext;
+use crate::domains::tactical_advice::factory::AdviceStrategyFactory;
+use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
+use crate::domains::tactical_advice::types::GameAdvice;
 
 pub struct FarmingAdviceAnalyzer;
 
@@ -43,21 +42,14 @@ impl AdviceAnalyzer for FarmingAdviceAnalyzer {
 
 impl FarmingAdviceAnalyzer {
     /// 分析中期经济（发育曲线）
-    fn analyze_midgame_economy(
-        &self,
-        context: &AdviceContext,
-        strategy: &dyn AdviceStrategy,
-    ) -> Option<GameAdvice> {
+    fn analyze_midgame_economy(&self, context: &AdviceContext, strategy: &dyn AdviceStrategy) -> Option<GameAdvice> {
         let mut early_gold_sum = 0.0;
         let mut mid_gold_sum = 0.0;
         let mut valid_games = 0;
 
         for game in &context.games {
             if let Some(timeline) = &game.player_data.timeline_data {
-                if let (Some(early), Some(mid)) = (
-                    timeline.gold_per_min_0_10,
-                    timeline.gold_per_min_10_20,
-                ) {
+                if let (Some(early), Some(mid)) = (timeline.gold_per_min_0_10, timeline.gold_per_min_10_20) {
                     early_gold_sum += early;
                     mid_gold_sum += mid;
                     valid_games += 1;
@@ -74,7 +66,7 @@ impl FarmingAdviceAnalyzer {
 
         // 只在中期明显下降时生成建议
         if avg_mid_gold >= avg_early_gold * thresholds::growth::MID_GAME_DECLINE {
-            return None;  // 中期发育正常
+            return None; // 中期发育正常
         }
 
         let decline_rate = 1.0 - (avg_mid_gold / avg_early_gold);
@@ -86,7 +78,9 @@ impl FarmingAdviceAnalyzer {
             target_name: context.target_name.clone(),
             extra_info: Some(format!(
                 "对线期{:.0}金币/分 → 中期{:.0}金币/分，下降{:.0}%",
-                avg_early_gold, avg_mid_gold, decline_rate * 100.0
+                avg_early_gold,
+                avg_mid_gold,
+                decline_rate * 100.0
             )),
         };
 
@@ -94,16 +88,12 @@ impl FarmingAdviceAnalyzer {
     }
 
     /// 分析整体补刀效率
-    fn analyze_cs_efficiency(
-        &self,
-        context: &AdviceContext,
-        strategy: &dyn AdviceStrategy,
-    ) -> Option<GameAdvice> {
+    fn analyze_cs_efficiency(&self, context: &AdviceContext, strategy: &dyn AdviceStrategy) -> Option<GameAdvice> {
         let cspm = context.stats.cspm;
 
         // 只在CSPM明显偏低时生成建议
         if cspm >= thresholds::cs::GOOD {
-            return None;  // 补刀效率正常
+            return None; // 补刀效率正常
         }
 
         let problem_data = ProblemData {
@@ -111,13 +101,9 @@ impl FarmingAdviceAnalyzer {
             value: cspm,
             role: context.role.clone(),
             target_name: context.target_name.clone(),
-            extra_info: Some(format!(
-                "平均补刀{:.1}/分钟，低于标准{:.1}",
-                cspm, thresholds::cs::GOOD
-            )),
+            extra_info: Some(format!("平均补刀{:.1}/分钟，低于标准{:.1}", cspm, thresholds::cs::GOOD)),
         };
 
         strategy.generate_advice(ProblemType::PoorFarming, &problem_data)
     }
 }
-

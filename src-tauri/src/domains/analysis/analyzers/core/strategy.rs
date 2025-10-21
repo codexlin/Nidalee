@@ -10,7 +10,6 @@
 /// - 为其他模式节省计算资源
 ///
 /// 阈值配置独立维护在 thresholds.rs
-
 use super::parser::ParsedGame;
 
 /// 分析策略（决定分析深度）
@@ -47,8 +46,7 @@ impl AnalysisStrategy {
         }
 
         // 统计各队列的场次
-        let mut queue_counts: std::collections::HashMap<i64, u32> =
-            std::collections::HashMap::new();
+        let mut queue_counts: std::collections::HashMap<i64, u32> = std::collections::HashMap::new();
 
         for game in games {
             *queue_counts.entry(game.queue_id).or_insert(0) += 1;

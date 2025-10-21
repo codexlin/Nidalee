@@ -1,13 +1,10 @@
-use crate::http_client;
-use crate::shared::types::{PlayerMatchStats, SummonerInfo, SummonerWithMatches};
-use crate::infrastructure::match_management::matches::service as matches_service;
 use super::service;
+use crate::http_client;
+use crate::infrastructure::match_management::matches::service as matches_service;
+use crate::shared::types::{PlayerMatchStats, SummonerInfo, SummonerWithMatches};
 
 #[tauri::command]
-pub async fn get_recent_matches_by_puuid(
-    puuid: String,
-    count: Option<usize>,
-) -> Result<PlayerMatchStats, String> {
+pub async fn get_recent_matches_by_puuid(puuid: String, count: Option<usize>) -> Result<PlayerMatchStats, String> {
     let client = http_client::get_lcu_client();
     let count = count.unwrap_or(20);
     // 用户主动查询，不过滤队列类型

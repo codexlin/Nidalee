@@ -1,16 +1,10 @@
+use super::strategies::{AdviceStrategy, CollaborationStrategy, SelfImprovementStrategy, TargetingStrategy};
 /// 建议策略工厂（Factory 模式）
 ///
 /// 职责：
 /// - 根据视角创建对应的策略
 /// - 封装策略创建逻辑
-
 use super::types::AdvicePerspective;
-use super::strategies::{
-    AdviceStrategy,
-    SelfImprovementStrategy,
-    TargetingStrategy,
-    CollaborationStrategy,
-};
 
 /// 建议策略工厂
 pub struct AdviceStrategyFactory;
@@ -19,15 +13,9 @@ impl AdviceStrategyFactory {
     /// 根据视角创建策略
     pub fn create(perspective: AdvicePerspective) -> Box<dyn AdviceStrategy> {
         match perspective {
-            AdvicePerspective::SelfImprovement => {
-                Box::new(SelfImprovementStrategy)
-            },
-            AdvicePerspective::Targeting => {
-                Box::new(TargetingStrategy)
-            },
-            AdvicePerspective::Collaboration => {
-                Box::new(CollaborationStrategy)
-            },
+            AdvicePerspective::SelfImprovement => Box::new(SelfImprovementStrategy),
+            AdvicePerspective::Targeting => Box::new(TargetingStrategy),
+            AdvicePerspective::Collaboration => Box::new(CollaborationStrategy),
         }
     }
 }
@@ -51,4 +39,3 @@ mod tests {
         assert_eq!(strategy.perspective(), AdvicePerspective::Collaboration);
     }
 }
-

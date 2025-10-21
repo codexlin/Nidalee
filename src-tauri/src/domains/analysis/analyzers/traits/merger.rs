@@ -65,4 +65,3 @@ fn get_trait_group_key(name: &str) -> String {
         name.to_string()
     }
 }
-

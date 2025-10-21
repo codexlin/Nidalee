@@ -1,10 +1,9 @@
+use crate::domains::analysis::AnalysisStrategy;
 /// 建议分析器基础接口
 ///
 /// 定义所有分析器的统一接口
-
 use crate::domains::tactical_advice::context::AdviceContext;
 use crate::domains::tactical_advice::types::GameAdvice;
-use crate::domains::analysis::AnalysisStrategy;
 
 /// 建议分析器 trait（责任链节点）
 pub trait AdviceAnalyzer: Send + Sync {
@@ -20,4 +19,3 @@ pub trait AdviceAnalyzer: Send + Sync {
         matches!(strategy, AnalysisStrategy::Ranked)
     }
 }
-

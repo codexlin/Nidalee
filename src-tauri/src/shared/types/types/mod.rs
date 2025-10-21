@@ -97,7 +97,6 @@ where
     deserializer.deserialize_option(OptionStringOrNumberVisitor)
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(
     export,
@@ -1163,9 +1162,9 @@ pub struct PlayerMatchStats {
     pub today_wins: u32,
 
     // === 衍生量化指标 ===
-    pub dpm: f64,   // 每分钟伤害
-    pub cspm: f64,  // 每分钟补刀
-    pub vspm: f64,  // 每分钟视野得分
+    pub dpm: f64,  // 每分钟伤害
+    pub cspm: f64, // 每分钟补刀
+    pub vspm: f64, // 每分钟视野得分
 
     // === 定性特征标签 ===
     pub traits: Vec<SummonerTrait>,
@@ -1211,9 +1210,9 @@ pub struct MatchPerformance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub game_mode: Option<String>,
     // ⭐ v3.1: 位置信息（用于前端展示和分析）
-    pub role: String,  // 原始 role：DUO_CARRY, DUO_SUPPORT, SOLO, JUNGLE
-    pub lane: String,  // 原始 lane：TOP, MIDDLE, BOTTOM, JUNGLE
-    pub position: String,  // 中文位置：上单, 中单, 打野, ADC, 辅助
+    pub role: String,     // 原始 role：DUO_CARRY, DUO_SUPPORT, SOLO, JUNGLE
+    pub lane: String,     // 原始 lane：TOP, MIDDLE, BOTTOM, JUNGLE
+    pub position: String, // 中文位置：上单, 中单, 打野, ADC, 辅助
 }
 
 /// 队伍分析数据
@@ -1230,7 +1229,7 @@ pub struct TeamAnalysisData {
     pub local_player_cell_id: i32,
     pub game_phase: String,
     #[ts(type = "number")]
-    pub queue_id: i64,        // 队列类型ID：420=单排, 440=灵活排位, 450=大乱斗等
+    pub queue_id: i64, // 队列类型ID：420=单排, 440=灵活排位, 450=大乱斗等
     pub is_custom_game: bool, // 是否自定义游戏
 
     // 🔥 新增：选人流程相关字段

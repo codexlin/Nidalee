@@ -1,5 +1,5 @@
-use crate::shared::utils::{lcu_get, lcu_post_no_content};
 use crate::shared::types::LobbyInfo;
+use crate::shared::utils::{lcu_get, lcu_post_no_content};
 use reqwest::Client;
 use serde_json::json;
 

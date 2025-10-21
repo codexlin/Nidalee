@@ -1,6 +1,6 @@
+use super::parser::ParsedGame;
 use crate::shared::types::{AnalysisChampionStats, MatchPerformance, PlayerMatchStats};
 use crate::infrastructure::data_services::champion_data::service::get_champion_info;
-use super::parser::ParsedGame;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 

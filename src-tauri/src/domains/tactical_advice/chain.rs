@@ -1,3 +1,4 @@
+use super::analyzers::base::AdviceAnalyzer; // 使用 analyzers::base 的 trait
 /// 责任链模式（Chain of Responsibility）
 ///
 /// 职责：
@@ -5,10 +6,8 @@
 /// - 依次执行每个分析器
 /// - 收集所有生成的建议
 /// - 按优先级排序并限制数量
-
 use super::context::AdviceContext;
 use super::types::GameAdvice;
-use super::analyzers::base::AdviceAnalyzer;  // 使用 analyzers::base 的 trait
 use crate::domains::analysis::AnalysisStrategy;
 
 /// 建议生成责任链
@@ -19,9 +18,7 @@ pub struct AdviceChain {
 impl AdviceChain {
     /// 创建新的责任链
     pub fn new() -> Self {
-        Self {
-            analyzers: Vec::new(),
-        }
+        Self { analyzers: Vec::new() }
     }
 
     /// 添加分析器到责任链
@@ -37,11 +34,7 @@ impl AdviceChain {
     /// 2. 收集所有建议
     /// 3. 按优先级排序
     /// 4. 限制数量（前5条）
-    pub fn generate(
-        &self,
-        context: &AdviceContext,
-        strategy: &AnalysisStrategy,
-    ) -> Vec<GameAdvice> {
+    pub fn generate(&self, context: &AdviceContext, strategy: &AnalysisStrategy) -> Vec<GameAdvice> {
         let mut all_advice = Vec::new();
 
         println!("🔗 开始执行建议生成责任链...");
@@ -85,4 +78,3 @@ impl Default for AdviceChain {
         Self::new()
     }
 }
-

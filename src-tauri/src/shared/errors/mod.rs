@@ -32,10 +32,7 @@ pub enum NidaleeError {
 
     /// LCU API 调用失败
     #[error("LCU API call failed: {endpoint} - {message}")]
-    LcuApiCall {
-        endpoint: String,
-        message: String,
-    },
+    LcuApiCall { endpoint: String, message: String },
 
     // ============== 网络相关错误 ==============
     /// HTTP 请求错误（自动转换 reqwest::Error）
@@ -79,10 +76,7 @@ pub enum NidaleeError {
     // ============== 游戏状态相关错误 ==============
     /// 游戏状态不正确（如：需要在选人界面，但当前不在）
     #[error("Invalid game state: expected {expected}, got {actual}")]
-    InvalidGameState {
-        expected: String,
-        actual: String,
-    },
+    InvalidGameState { expected: String, actual: String },
 
     /// 玩家不在游戏中
     #[error("Player not in game")]
@@ -227,4 +221,3 @@ mod tests {
         assert!(err.to_string().contains("JSON error"));
     }
 }
-

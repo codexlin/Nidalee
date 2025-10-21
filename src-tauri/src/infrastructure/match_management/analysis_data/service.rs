@@ -1,7 +1,9 @@
-use crate::infrastructure::match_management::matches::service::{get_recent_matches_by_puuid, get_recent_matches_by_puuid_with_perspective};
 use crate::infrastructure::data_services::summoner::service::get_summoner_by_id;
 use crate::infrastructure::data_services::summoner::service::get_summoners_by_names;
-use crate::shared::types::{PlayerAnalysisData, PlayerMatchStats, TeamAnalysisData, AdvicePerspective};
+use crate::infrastructure::match_management::matches::service::{
+    get_recent_matches_by_puuid, get_recent_matches_by_puuid_with_perspective,
+};
+use crate::shared::types::{AdvicePerspective, PlayerAnalysisData, PlayerMatchStats, TeamAnalysisData};
 
 /// 从 ChampSelect 会话构建完整的分析数据
 ///
@@ -171,9 +173,11 @@ pub async fn build_team_analysis_from_session(
             http_client,
             queue_id,
             match_stats_cache,
-            AdvicePerspective::Collaboration,  // ⭐ 队友视角
+            AdvicePerspective::Collaboration, // ⭐ 队友视角
             local_player_cell_id,
-        ).await {
+        )
+        .await
+        {
             Ok(count) => log::info!("Ally team stats: {} fetched", count),
             Err(e) => log::warn!("Failed to fetch ally stats: {}", e),
         }
@@ -196,9 +200,11 @@ pub async fn build_team_analysis_from_session(
             http_client,
             queue_id,
             match_stats_cache,
-            AdvicePerspective::Targeting,  // ⭐ 针对敌人视角
+            AdvicePerspective::Targeting, // ⭐ 针对敌人视角
             local_player_cell_id,
-        ).await {
+        )
+        .await
+        {
             Ok(count) => log::info!("Enemy team stats: {} fetched", count),
             Err(e) => log::warn!("Failed to fetch enemy stats: {}", e),
         }
@@ -410,8 +416,8 @@ async fn fetch_all_players_match_stats(
         http_client,
         queue_id,
         match_stats_cache,
-        None,  // 默认SelfImprovement
-        -1,    // 不关心本地玩家
+        None, // 默认SelfImprovement
+        -1,   // 不关心本地玩家
     )
     .await
 }
@@ -531,9 +537,9 @@ async fn fetch_all_players_match_stats_internal(
                     // 确定是否是自己
                     let is_self = player.cell_id == local_cell_id;
                     let final_perspective = if is_self {
-                        AdvicePerspective::SelfImprovement  // 自己永远是自我提升
+                        AdvicePerspective::SelfImprovement // 自己永远是自我提升
                     } else {
-                        persp  // 队友或敌人使用传入的视角
+                        persp // 队友或敌人使用传入的视角
                     };
 
                     get_recent_matches_by_puuid_with_perspective(

@@ -3,13 +3,12 @@
 /// 职责：
 /// - 分析视野控制（视野得分）
 /// - 识别视野问题
-
 use super::base::AdviceAnalyzer;
-use crate::domains::tactical_advice::context::AdviceContext;
-use crate::domains::tactical_advice::types::GameAdvice;
-use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
-use crate::domains::tactical_advice::factory::AdviceStrategyFactory;
 use crate::domains::analysis::thresholds;
+use crate::domains::tactical_advice::context::AdviceContext;
+use crate::domains::tactical_advice::factory::AdviceStrategyFactory;
+use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
+use crate::domains::tactical_advice::types::GameAdvice;
 
 pub struct VisionAdviceAnalyzer;
 
@@ -37,11 +36,7 @@ impl AdviceAnalyzer for VisionAdviceAnalyzer {
 }
 
 impl VisionAdviceAnalyzer {
-    fn analyze_vision_score(
-        &self,
-        context: &AdviceContext,
-        strategy: &dyn AdviceStrategy,
-    ) -> Option<GameAdvice> {
+    fn analyze_vision_score(&self, context: &AdviceContext, strategy: &dyn AdviceStrategy) -> Option<GameAdvice> {
         let vspm = context.stats.vspm;
 
         // 获取位置特定的视野阈值
@@ -49,7 +44,7 @@ impl VisionAdviceAnalyzer {
 
         // 只在视野得分明显低于标准时生成建议
         if vspm >= low {
-            return None;  // 视野得分正常
+            return None; // 视野得分正常
         }
 
         let problem_data = ProblemData {
@@ -66,4 +61,3 @@ impl VisionAdviceAnalyzer {
         strategy.generate_advice(ProblemType::LowVisionScore, &problem_data)
     }
 }
-

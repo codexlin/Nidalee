@@ -1,3 +1,5 @@
+use crate::domains::analysis::analyzers::core::parser::{ParsedGame, TimelineData};
+use crate::domains::analysis::thresholds;
 /// 时间线特征分析器
 ///
 /// 职责：
@@ -10,19 +12,13 @@
 /// - 经验差：判断等级优势
 /// - 金币/分钟：判断发育效率
 /// - 发育曲线：判断打法风格（对线型/游走型）
-
 use crate::shared::types::SummonerTrait;
-use crate::domains::analysis::analyzers::core::parser::{ParsedGame, TimelineData};
-use crate::domains::analysis::thresholds;
 
 /// 时间线特征分析
 ///
 /// 输入：解析后的对局数据（含时间线）
 /// 输出：时间线相关的特征标签
-pub fn analyze_timeline_traits(
-    games: &[ParsedGame],
-    role: &str,
-) -> Vec<SummonerTrait> {
+pub fn analyze_timeline_traits(games: &[ParsedGame], role: &str) -> Vec<SummonerTrait> {
     let mut traits = Vec::new();
 
     // 数据量不足，不分析
@@ -76,10 +72,7 @@ fn analyze_laning_phase(games: &[ParsedGame], role: &str) -> Vec<SummonerTrait> 
         // 对线压制
         traits.push(SummonerTrait {
             name: "对线压制".to_string(),
-            description: format!(
-                "前10分钟平均领先{:.1}刀，对线压制力强",
-                avg_cs_diff
-            ),
+            description: format!("前10分钟平均领先{:.1}刀，对线压制力强", avg_cs_diff),
             score: avg_cs_diff as i32,
             trait_type: "good".to_string(),
         });
@@ -87,23 +80,18 @@ fn analyze_laning_phase(games: &[ParsedGame], role: &str) -> Vec<SummonerTrait> 
         // 对线优势
         traits.push(SummonerTrait {
             name: "对线优势".to_string(),
-            description: format!(
-                "前10分钟平均领先{:.1}刀，对线有优势",
-                avg_cs_diff
-            ),
+            description: format!("前10分钟平均领先{:.1}刀，对线有优势", avg_cs_diff),
             score: avg_cs_diff as i32,
             trait_type: "good".to_string(),
         });
     } else if avg_cs_diff >= thresholds::laning_phase::CS_DIFF_NEUTRAL_LOW
-           && avg_cs_diff <= thresholds::laning_phase::CS_DIFF_NEUTRAL_HIGH {
+        && avg_cs_diff <= thresholds::laning_phase::CS_DIFF_NEUTRAL_HIGH
+    {
         // 均势对线（一般不显示，除非特别稳定）
         if valid_games >= 10 {
             traits.push(SummonerTrait {
                 name: "稳健对线".to_string(),
-                description: format!(
-                    "前10分钟补刀均势（{:+.1}刀），对线稳健",
-                    avg_cs_diff
-                ),
+                description: format!("前10分钟补刀均势（{:+.1}刀），对线稳健", avg_cs_diff),
                 score: 50,
                 trait_type: "good".to_string(),
             });
@@ -112,10 +100,7 @@ fn analyze_laning_phase(games: &[ParsedGame], role: &str) -> Vec<SummonerTrait> 
         // 对线弱势
         traits.push(SummonerTrait {
             name: "对线弱势".to_string(),
-            description: format!(
-                "前10分钟平均落后{:.1}刀，对线承压",
-                -avg_cs_diff
-            ),
+            description: format!("前10分钟平均落后{:.1}刀，对线承压", -avg_cs_diff),
             score: (-avg_cs_diff) as i32,
             trait_type: "bad".to_string(),
         });
@@ -123,10 +108,7 @@ fn analyze_laning_phase(games: &[ParsedGame], role: &str) -> Vec<SummonerTrait> 
         // 对线劣势
         traits.push(SummonerTrait {
             name: "对线劣势".to_string(),
-            description: format!(
-                "前10分钟平均落后{:.1}刀，对线有压力",
-                -avg_cs_diff
-            ),
+            description: format!("前10分钟平均落后{:.1}刀，对线有压力", -avg_cs_diff),
             score: (-avg_cs_diff) as i32,
             trait_type: "bad".to_string(),
         });
@@ -152,10 +134,7 @@ fn analyze_growth_curve(games: &[ParsedGame]) -> Vec<SummonerTrait> {
     // 统计各阶段金币效率
     for game in games {
         if let Some(timeline) = &game.player_data.timeline_data {
-            if let (Some(early), Some(mid)) = (
-                timeline.gold_per_min_0_10,
-                timeline.gold_per_min_10_20,
-            ) {
+            if let (Some(early), Some(mid)) = (timeline.gold_per_min_0_10, timeline.gold_per_min_10_20) {
                 early_gold_sum += early;
                 mid_gold_sum += mid;
                 if let Some(late) = timeline.gold_per_min_20_end {
@@ -181,9 +160,7 @@ fn analyze_growth_curve(games: &[ParsedGame]) -> Vec<SummonerTrait> {
             name: "爆发成长".to_string(),
             description: format!(
                 "中期经济效率提升{:.0}%（{}→{}），游走支援能力强",
-                growth_rate,
-                avg_early_gold as i32,
-                avg_mid_gold as i32
+                growth_rate, avg_early_gold as i32, avg_mid_gold as i32
             ),
             score: 70,
             trait_type: "good".to_string(),
@@ -191,13 +168,13 @@ fn analyze_growth_curve(games: &[ParsedGame]) -> Vec<SummonerTrait> {
     }
     // 稳定发育（各阶段经济都不错）
     else if avg_early_gold >= thresholds::growth::STABLE_GOLD_EARLY
-         && avg_mid_gold >= thresholds::growth::STABLE_GOLD_MID {
+        && avg_mid_gold >= thresholds::growth::STABLE_GOLD_MID
+    {
         traits.push(SummonerTrait {
             name: "稳定发育".to_string(),
             description: format!(
                 "各阶段经济稳定（{:.0}/{:.0}），发育能力强",
-                avg_early_gold,
-                avg_mid_gold
+                avg_early_gold, avg_mid_gold
             ),
             score: 65,
             trait_type: "good".to_string(),
@@ -210,9 +187,7 @@ fn analyze_growth_curve(games: &[ParsedGame]) -> Vec<SummonerTrait> {
             name: "中期乏力".to_string(),
             description: format!(
                 "中期经济效率下降{:.0}%（{}→{}），发育节奏需优化",
-                decline_rate,
-                avg_early_gold as i32,
-                avg_mid_gold as i32
+                decline_rate, avg_early_gold as i32, avg_mid_gold as i32
             ),
             score: decline_rate as i32,
             trait_type: "bad".to_string(),
@@ -252,10 +227,7 @@ fn analyze_level_advantage(games: &[ParsedGame]) -> Vec<SummonerTrait> {
     if avg_xp_diff >= thresholds::laning_phase::XP_DIFF_ADVANTAGE {
         traits.push(SummonerTrait {
             name: "等级优势".to_string(),
-            description: format!(
-                "前10分钟平均经验领先{:.0}，抢等级能力强",
-                avg_xp_diff
-            ),
+            description: format!("前10分钟平均经验领先{:.0}，抢等级能力强", avg_xp_diff),
             score: 60,
             trait_type: "good".to_string(),
         });
@@ -264,10 +236,7 @@ fn analyze_level_advantage(games: &[ParsedGame]) -> Vec<SummonerTrait> {
     else if avg_xp_diff <= thresholds::laning_phase::XP_DIFF_DISADVANTAGE {
         traits.push(SummonerTrait {
             name: "等级劣势".to_string(),
-            description: format!(
-                "前10分钟平均经验落后{:.0}，对线期被压制",
-                -avg_xp_diff
-            ),
+            description: format!("前10分钟平均经验落后{:.0}，对线期被压制", -avg_xp_diff),
             score: 50,
             trait_type: "bad".to_string(),
         });
@@ -300,4 +269,3 @@ where
         Some(sum / count as f64)
     }
 }
-

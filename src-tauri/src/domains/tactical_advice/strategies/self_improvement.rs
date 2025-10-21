@@ -1,13 +1,12 @@
+use super::super::builder::AdviceBuilder;
+use super::super::types::{AdviceCategory, AdvicePerspective, GameAdvice};
 /// 改进建议策略（对自己）
 ///
 /// 职责：
 /// - 生成帮助玩家提升的建议
 /// - 措辞：第二人称（"你"）
 /// - 目标：长期提升
-
 use super::base::{AdviceStrategy, ProblemData, ProblemType};
-use super::super::types::{GameAdvice, AdviceCategory, AdvicePerspective};
-use super::super::builder::AdviceBuilder;
 
 pub struct SelfImprovementStrategy;
 
@@ -42,11 +41,12 @@ impl SelfImprovementStrategy {
     fn create_cs_deficit_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
         AdviceBuilder::new()
             .title("对线补刀能力待提升")
-            .problem(format!(
-                "你的对线期平均落后{:.1}刀，经常被压制",
-                -data.value
-            ))
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "对线期补刀效率偏低".to_string()))
+            .problem(format!("你的对线期平均落后{:.1}刀，经常被压制", -data.value))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "对线期补刀效率偏低".to_string()),
+            )
             .suggestion("🎯 练习补刀基本功：训练模式每天练习10分钟")
             .suggestion("📍 改善对线站位：避免被频繁消耗而漏刀")
             .suggestion("⚡ 优化技能释放：用技能补远程兵和炮车")
@@ -62,11 +62,12 @@ impl SelfImprovementStrategy {
     fn create_dominated_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
         AdviceBuilder::new()
             .title("对线期被压制严重")
-            .problem(format!(
-                "你在{}位置的对线期表现不佳，经常处于劣势",
-                data.role
-            ))
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "多次被击杀或大幅落后".to_string()))
+            .problem(format!("你在{}位置的对线期表现不佳，经常处于劣势", data.role))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "多次被击杀或大幅落后".to_string()),
+            )
             .suggestion("🛡️ 学习防守对线：优先保证存活，补刀为次")
             .suggestion("👁️ 加强视野控制：避免被gank")
             .suggestion("📚 研究对线知识：了解英雄克制关系")
@@ -87,7 +88,11 @@ impl SelfImprovementStrategy {
                 "你的中期经济效率下降{:.0}%，发育节奏有问题",
                 data.severity * 100.0
             ))
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "频繁游走但收益不高".to_string()))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "频繁游走但收益不高".to_string()),
+            )
             .suggestion("⏰ 优化游走时机：只在炮车线或兵线推进时游走")
             .suggestion("💰 提升参团收益：参团后优先吃野怪和兵线")
             .suggestion("🎯 平衡游走和发育：避免无意义的游走")
@@ -103,10 +108,7 @@ impl SelfImprovementStrategy {
     fn create_poor_farming_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
         AdviceBuilder::new()
             .title("补刀效率需要提升")
-            .problem(format!(
-                "你的平均补刀{:.1}/分钟，低于标准",
-                data.value
-            ))
+            .problem(format!("你的平均补刀{:.1}/分钟，低于标准", data.value))
             .evidence(data.extra_info.clone().unwrap_or_else(|| "发育效率偏低".to_string()))
             .suggestion("🎯 基础训练：训练模式练习补刀")
             .suggestion("⏰ 刷野时机：对线结束后及时清理野区")
@@ -122,10 +124,7 @@ impl SelfImprovementStrategy {
     fn create_low_kp_advice(&self, data: &ProblemData) -> Option<GameAdvice> {
         AdviceBuilder::new()
             .title("团战参与度需要提升")
-            .problem(format!(
-                "你的参团率仅{:.0}%，参与度偏低",
-                data.value * 100.0
-            ))
+            .problem(format!("你的参团率仅{:.0}%，参与度偏低", data.value * 100.0))
             .evidence("经常错过团战或游离在外".to_string())
             .suggestion("👁️ 提升地图意识：时刻观察队友位置")
             .suggestion("🔔 关注信号：队友发信号时立即支援")
@@ -149,11 +148,12 @@ impl SelfImprovementStrategy {
 
         AdviceBuilder::new()
             .title("团战参与度需要提升")
-            .problem(format!(
-                "你的平均助攻仅{:.1}次，在团战中的存在感较低",
-                data.value
-            ))
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "经常错过关键团战".to_string()))
+            .problem(format!("你的平均助攻仅{:.1}次，在团战中的存在感较低", data.value))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "经常错过关键团战".to_string()),
+            )
             .suggestion("👁️ 强化地图意识：每10秒看一次小地图，观察队友和敌人位置")
             .suggestion("⏰ 重要目标倒计时：龙/先锋刷新前60秒就要开始移动")
             .suggestion(format!("💡 位置意识：{}", role_specific))
@@ -198,16 +198,17 @@ impl SelfImprovementStrategy {
                 "🛡️ 保守原则：优先保证存活，KDA比人头数更重要",
                 "👀 地图意识：时刻观察敌人位置，避免被Gank",
                 "📍 站位调整：团战时选择安全位置，不要冲太前",
-            ]
+            ],
         };
 
         let mut builder = AdviceBuilder::new()
             .title(format!("生存问题：场均死亡{:.1}次", data.value))
-            .problem(format!(
-                "你的{}位置生存能力较弱，频繁阵亡影响团队节奏",
-                data.role
-            ))
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "死亡次数明显高于平均水平".to_string()));
+            .problem(format!("你的{}位置生存能力较弱，频繁阵亡影响团队节奏", data.role))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "死亡次数明显高于平均水平".to_string()),
+            );
 
         for suggestion in role_advice {
             builder = builder.suggestion(suggestion);
@@ -270,7 +271,11 @@ impl SelfImprovementStrategy {
         AdviceBuilder::new()
             .title("英雄池需要扩展")
             .problem("你的英雄池较窄，容易被针对".to_string())
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "主要使用1-2个英雄".to_string()))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "主要使用1-2个英雄".to_string()),
+            )
             .suggestion("🎮 学习新英雄：至少掌握3个不同类型的英雄")
             .suggestion("📚 理解英雄类型：坦克、刺客、法师等")
             .suggestion("🎯 根据阵容选择：学会根据团队需要选英雄")
@@ -286,7 +291,11 @@ impl SelfImprovementStrategy {
         AdviceBuilder::new()
             .title("降低对单一英雄的依赖")
             .problem("你过度依赖某个英雄，但该英雄胜率不高".to_string())
-            .evidence(data.extra_info.clone().unwrap_or_else(|| "单一英雄占比过高但效果不佳".to_string()))
+            .evidence(
+                data.extra_info
+                    .clone()
+                    .unwrap_or_else(|| "单一英雄占比过高但效果不佳".to_string()),
+            )
             .suggestion("🔄 尝试其他英雄：不要局限于单一英雄")
             .suggestion("📊 分析胜率数据：找到真正适合你的英雄")
             .suggestion("🎯 扩展英雄池：学习类似定位的其他英雄")
@@ -297,4 +306,3 @@ impl SelfImprovementStrategy {
             .build()
     }
 }
-

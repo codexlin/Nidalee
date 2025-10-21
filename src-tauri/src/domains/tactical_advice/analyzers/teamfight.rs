@@ -3,13 +3,12 @@
 /// 职责：
 /// - 分析团战表现（参团率、站位、存活）
 /// - 识别团战问题
-
 use super::base::AdviceAnalyzer;
-use crate::domains::tactical_advice::context::AdviceContext;
-use crate::domains::tactical_advice::types::GameAdvice;
-use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
-use crate::domains::tactical_advice::factory::AdviceStrategyFactory;
 use crate::domains::analysis::thresholds;
+use crate::domains::tactical_advice::context::AdviceContext;
+use crate::domains::tactical_advice::factory::AdviceStrategyFactory;
+use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
+use crate::domains::tactical_advice::types::GameAdvice;
 
 pub struct TeamfightAdviceAnalyzer;
 
@@ -49,7 +48,7 @@ impl TeamfightAdviceAnalyzer {
         strategy: &dyn AdviceStrategy,
     ) -> Option<GameAdvice> {
         let stats = &context.stats;
-        
+
         // 计算参团率（K+A）相对于队伍击杀的比例
         // 这里用一个简化版本：助攻数相对于击杀数的比例
         let participation_ratio = if stats.avg_kills > 0.0 {
@@ -80,11 +79,7 @@ impl TeamfightAdviceAnalyzer {
     }
 
     /// 分析存活能力（死亡次数）
-    fn analyze_survival(
-        &self,
-        context: &AdviceContext,
-        strategy: &dyn AdviceStrategy,
-    ) -> Option<GameAdvice> {
+    fn analyze_survival(&self, context: &AdviceContext, strategy: &dyn AdviceStrategy) -> Option<GameAdvice> {
         let stats = &context.stats;
 
         // 死亡过多问题
@@ -108,4 +103,3 @@ impl TeamfightAdviceAnalyzer {
         None
     }
 }
-

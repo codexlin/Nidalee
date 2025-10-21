@@ -1,5 +1,5 @@
-use crate::shared::utils::{lcu_delete, lcu_get, lcu_post};
 use crate::shared::types::{MatchInfo, MatchmakingState, PlayerInfo};
+use crate::shared::utils::{lcu_delete, lcu_get, lcu_post};
 use reqwest::Client;
 use serde_json::Value;
 

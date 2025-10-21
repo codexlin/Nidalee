@@ -4,13 +4,12 @@
 /// - 分析对线期表现（基于时间线数据）
 /// - 识别对线期问题（补刀落后、被压制等）
 /// - 根据视角生成对应建议
-
 use super::base::AdviceAnalyzer;
-use crate::domains::tactical_advice::context::AdviceContext;
-use crate::domains::tactical_advice::types::GameAdvice;
-use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
-use crate::domains::tactical_advice::factory::AdviceStrategyFactory;
 use crate::domains::analysis::thresholds;
+use crate::domains::tactical_advice::context::AdviceContext;
+use crate::domains::tactical_advice::factory::AdviceStrategyFactory;
+use crate::domains::tactical_advice::strategies::{AdviceStrategy, ProblemData, ProblemType};
+use crate::domains::tactical_advice::types::GameAdvice;
 
 pub struct LaningAdviceAnalyzer;
 
@@ -46,11 +45,7 @@ impl AdviceAnalyzer for LaningAdviceAnalyzer {
 
 impl LaningAdviceAnalyzer {
     /// 分析CS差（补刀差）
-    fn analyze_cs_difference(
-        &self,
-        context: &AdviceContext,
-        strategy: &dyn AdviceStrategy,
-    ) -> Option<GameAdvice> {
+    fn analyze_cs_difference(&self, context: &AdviceContext, strategy: &dyn AdviceStrategy) -> Option<GameAdvice> {
         let mut total_cs_diff = 0.0;
         let mut valid_games = 0;
 
@@ -72,19 +67,19 @@ impl LaningAdviceAnalyzer {
 
         // 判断是否有问题（只在落后时生成建议）
         if avg_cs_diff >= thresholds::laning_phase::CS_DIFF_DISADVANTAGE {
-            return None;  // CS差不大或领先，无需建议
+            return None; // CS差不大或领先，无需建议
         }
 
         // 识别问题类型
         let problem_type = if avg_cs_diff <= thresholds::laning_phase::CS_DIFF_SUPPRESSED {
-            ProblemType::LaningDominated  // 被严重压制
+            ProblemType::LaningDominated // 被严重压制
         } else {
-            ProblemType::LaningCsDeficit  // 一般落后
+            ProblemType::LaningCsDeficit // 一般落后
         };
 
         // 构建问题数据
         let problem_data = ProblemData {
-            severity: (-avg_cs_diff / 30.0).clamp(0.0, 1.0),  // 30刀=100%严重度
+            severity: (-avg_cs_diff / 30.0).clamp(0.0, 1.0), // 30刀=100%严重度
             value: avg_cs_diff,
             role: context.role.clone(),
             target_name: context.target_name.clone(),
@@ -99,11 +94,7 @@ impl LaningAdviceAnalyzer {
     }
 
     /// 分析经验差（等级优势/劣势）
-    fn analyze_xp_difference(
-        &self,
-        context: &AdviceContext,
-        strategy: &dyn AdviceStrategy,
-    ) -> Option<GameAdvice> {
+    fn analyze_xp_difference(&self, context: &AdviceContext, strategy: &dyn AdviceStrategy) -> Option<GameAdvice> {
         let mut total_xp_diff = 0.0;
         let mut valid_games = 0;
 
@@ -125,7 +116,7 @@ impl LaningAdviceAnalyzer {
 
         // 只在经验落后时生成建议
         if avg_xp_diff >= thresholds::laning_phase::XP_DIFF_DISADVANTAGE {
-            return None;  // 经验不落后或领先，无需建议
+            return None; // 经验不落后或领先，无需建议
         }
 
         // 经验严重落后 - 这是对线被压制的表现
@@ -134,14 +125,10 @@ impl LaningAdviceAnalyzer {
             value: avg_xp_diff,
             role: context.role.clone(),
             target_name: context.target_name.clone(),
-            extra_info: Some(format!(
-                "前10分钟平均经验差{:+.0}，经常被压等级",
-                avg_xp_diff
-            )),
+            extra_info: Some(format!("前10分钟平均经验差{:+.0}，经常被压等级", avg_xp_diff)),
         };
 
         // 使用"被压制"问题类型
         strategy.generate_advice(ProblemType::LaningDominated, &problem_data)
     }
 }
-

@@ -1,19 +1,18 @@
 use crate::domains::analysis::{
-    analyze_advanced_traits, analyze_distribution_traits, analyze_player_stats,
-    analyze_role_based_traits, analyze_timeline_traits, analyze_traits, analyze_win_loss_pattern,
-    identify_main_role, identify_player_roles, optimize_traits, parse_games,
-    AnalysisContext, AnalysisStrategy,
+    analyze_advanced_traits, analyze_distribution_traits, analyze_player_stats, analyze_role_based_traits,
+    analyze_timeline_traits, analyze_traits, analyze_win_loss_pattern, identify_main_role, identify_player_roles,
+    optimize_traits, parse_games, AnalysisContext, AnalysisStrategy,
 };
 use crate::domains::tactical_advice::generate_advice;
-use crate::shared::utils::{lcu_get, lcu_request_json};
 use crate::shared::types::{
     AdvicePerspective, GameAdvice, GameDetail, ParticipantInfo, ParticipantStats, PlayerMatchStats, TeamInfo, TeamStats,
 };
+use crate::shared::utils::{lcu_get, lcu_request_json};
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use reqwest::{Client, Method};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
 // 以下内容为原 match_history.rs 全部内容，粘贴至此
 // 其余内容保持不变，全部迁移
@@ -320,13 +319,8 @@ pub async fn get_recent_matches_by_puuid_with_perspective(
     );
     let match_list_data: Value = lcu_get(client, &url).await?;
     // 第3步：直接分析对局列表数据，传入视角参数
-    let statistics = analyze_match_list_data_with_perspective(
-        match_list_data,
-        puuid,
-        queue_id,
-        perspective,
-        target_name,
-    )?;
+    let statistics =
+        analyze_match_list_data_with_perspective(match_list_data, puuid, queue_id, perspective, target_name)?;
     Ok(statistics)
 }
 
@@ -438,17 +432,22 @@ fn analyze_match_list_data_with_perspective(
             &player_stats,
             &parsed_games,
             &main_role,
-            advice_perspective,  // 使用传入的视角 ⭐
-            target_player_name,  // 使用传入的目标名称 ⭐
+            advice_perspective, // 使用传入的视角 ⭐
+            target_player_name, // 使用传入的目标名称 ⭐
             &strategy,
         );
-        println!("💡 建议生成：共 {} 条建议（视角：{:?}）",
-            player_stats.advice.len(), advice_perspective);
+        println!(
+            "💡 建议生成：共 {} 条建议（视角：{:?}）",
+            player_stats.advice.len(),
+            advice_perspective
+        );
     }
 
     println!("✅ 分析完成 ({:?}):", strategy);
-    println!("   总对局={}, 胜场={}, 胜率={:.1}%",
-        player_stats.total_games, player_stats.wins, player_stats.win_rate);
+    println!(
+        "   总对局={}, 胜场={}, 胜率={:.1}%",
+        player_stats.total_games, player_stats.wins, player_stats.win_rate
+    );
     println!("   今日对局: {}/{}", player_stats.today_wins, player_stats.today_games);
     println!("   识别特征: {}个 (限制{}个)", player_stats.traits.len(), max_traits);
     println!("   智能建议: {}条", player_stats.advice.len());
@@ -527,7 +526,7 @@ pub async fn get_player_tactical_advice(
         &parsed_games,
         &main_role,
         perspective,
-        Some(summoner_name.clone()),  // 传递目标玩家名称
+        Some(summoner_name.clone()), // 传递目标玩家名称
         &strategy,
     );
 

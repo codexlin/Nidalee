@@ -81,12 +81,17 @@ async fn fallback_fetch_and_emit(app: &tauri::AppHandle, phase_hint: Option<&str
             if let Ok(lobby) = crate::infrastructure::game_session::lobby::service::get_lobby_info(&client).await {
                 let _ = app.emit("lobby-change", &Some(lobby));
             }
-            if let Ok(state) = crate::infrastructure::match_management::matchmaking::service::get_matchmaking_state(&client).await {
+            if let Ok(state) =
+                crate::infrastructure::match_management::matchmaking::service::get_matchmaking_state(&client).await
+            {
                 let _ = app.emit("matchmaking-state-changed", state);
             }
         }
         Some("ChampSelect") => {
-            if let Ok(session) = crate::infrastructure::champion_selection::champ_select::service::get_champ_select_session(&client).await {
+            if let Ok(session) =
+                crate::infrastructure::champion_selection::champ_select::service::get_champ_select_session(&client)
+                    .await
+            {
                 let _ = app.emit("champ-select-session-changed", &session);
             }
         }

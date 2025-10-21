@@ -1,5 +1,5 @@
-use crate::shared::types::{PlayerMatchStats, SummonerTrait};
 use crate::domains::analysis::thresholds;
+use crate::shared::types::{PlayerMatchStats, SummonerTrait};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -41,8 +41,7 @@ fn extract_role_info(game: &Value, puuid: &str) -> Option<(String, bool)> {
     let participant_id = game["participantIdentities"]
         .as_array()?
         .iter()
-        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?
-        ["participantId"]
+        .find(|id| id["player"]["puuid"].as_str() == Some(puuid))?["participantId"]
         .as_i64()?;
 
     let participant = game["participants"]
@@ -83,10 +82,7 @@ pub fn analyze_role_based_traits(
         if role_stats.win_rate >= thresholds::win_rate::EXCELLENT_OTHER {
             traits.push(SummonerTrait {
                 name: format!("{}专精", role),
-                description: format!(
-                    "打{}胜率{:.0}%，非常擅长该位置",
-                    role, role_stats.win_rate
-                ),
+                description: format!("打{}胜率{:.0}%，非常擅长该位置", role, role_stats.win_rate),
                 score: role_stats.win_rate as i32,
                 trait_type: "good".to_string(),
             });
@@ -105,4 +101,3 @@ pub fn analyze_role_based_traits(
 
     traits
 }
-

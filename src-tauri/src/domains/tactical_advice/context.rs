@@ -1,13 +1,12 @@
+use super::types::AdvicePerspective;
+use crate::domains::analysis::ParsedGame;
 /// 建议分析上下文
 ///
 /// 职责：
 /// - 封装所有建议分析所需的数据
 /// - 在责任链中传递
 /// - 提供便捷的数据访问方法
-
 use crate::shared::types::PlayerMatchStats;
-use crate::domains::analysis::ParsedGame;
-use super::types::AdvicePerspective;
 
 /// 建议分析上下文
 #[derive(Debug, Clone)]
@@ -78,4 +77,3 @@ impl AdviceContext {
         }
     }
 }
-

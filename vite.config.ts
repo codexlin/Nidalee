@@ -37,7 +37,7 @@ export default defineConfig({
       // 组件的有效文件扩展名。
       extensions: ['vue', 'tsx', 'jsx'],
       // 相对路径，用于搜索组件的目录。
-      dirs: ['src/components', 'src/features'],
+      dirs: ['src/components/**', 'src/features/**'],
       // 用于转换目标的过滤器。
       include: [/\.vue$/, /\.vue\?vue/, /\.tsx$/],
       dts: 'types/components.d.ts'

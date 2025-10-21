@@ -7,27 +7,27 @@
 
 /// 胜率阈值
 pub mod win_rate {
-    pub const EXCELLENT_RANKED: f64 = 65.0;  // 排位大神
-    pub const EXCELLENT_OTHER: f64 = 60.0;   // 其他模式大神
+    pub const EXCELLENT_RANKED: f64 = 65.0; // 排位大神
+    pub const EXCELLENT_OTHER: f64 = 60.0; // 其他模式大神
     pub const GOOD: f64 = 55.0;
     pub const POOR: f64 = 45.0;
 }
 
 /// KDA阈值
 pub mod kda {
-    pub const EXCELLENT_RANKED: f64 = 4.0;   // 排位优秀
-    pub const EXCELLENT_OTHER: f64 = 3.5;    // 其他模式优秀
+    pub const EXCELLENT_RANKED: f64 = 4.0; // 排位优秀
+    pub const EXCELLENT_OTHER: f64 = 3.5; // 其他模式优秀
     pub const GOOD: f64 = 2.5;
     pub const POOR: f64 = 1.5;
 
     // 单场表现等级
-    pub const S_GRADE: f64 = 6.0;   // S级：超神表现
-    pub const A_GRADE: f64 = 4.0;   // A级：优秀表现
-    pub const B_GRADE: f64 = 2.5;   // B级：良好表现
-    pub const D_GRADE: f64 = 1.5;   // D级：崩盘表现
+    pub const S_GRADE: f64 = 6.0; // S级：超神表现
+    pub const A_GRADE: f64 = 4.0; // A级：优秀表现
+    pub const B_GRADE: f64 = 2.5; // B级：良好表现
+    pub const D_GRADE: f64 = 1.5; // D级：崩盘表现
 
     // 死亡阈值
-    pub const DEATH_TOO_MANY: f64 = 6.0;  // 场均死亡超过6次
+    pub const DEATH_TOO_MANY: f64 = 6.0; // 场均死亡超过6次
     pub const DEATH_EXCELLENT: f64 = 3.0; // 场均死亡低于3次
 }
 
@@ -87,8 +87,8 @@ pub mod stability {
 
 /// 分布阈值
 pub mod distribution {
-    pub const S_GRADE_THRESHOLD: f64 = 0.30;  // 30%以上S级表现
-    pub const D_GRADE_THRESHOLD: f64 = 0.25;  // 25%以上D级表现
+    pub const S_GRADE_THRESHOLD: f64 = 0.30; // 30%以上S级表现
+    pub const D_GRADE_THRESHOLD: f64 = 0.25; // 25%以上D级表现
 }
 
 /// CS阈值（每分钟）
@@ -108,15 +108,15 @@ pub mod damage_per_minute {
 /// 时间线阈值（对线期）⭐ NEW
 pub mod laning_phase {
     // CS差阈值
-    pub const CS_DIFF_DOMINATE: f64 = 15.0;    // 压制级（领先15+刀）
-    pub const CS_DIFF_ADVANTAGE: f64 = 8.0;    // 优势级（领先8-15刀）
+    pub const CS_DIFF_DOMINATE: f64 = 15.0; // 压制级（领先15+刀）
+    pub const CS_DIFF_ADVANTAGE: f64 = 8.0; // 优势级（领先8-15刀）
     pub const CS_DIFF_NEUTRAL_HIGH: f64 = 5.0; // 均势上限
     pub const CS_DIFF_NEUTRAL_LOW: f64 = -5.0; // 均势下限
     pub const CS_DIFF_DISADVANTAGE: f64 = -8.0; // 劣势级（落后8-15刀）
-    pub const CS_DIFF_SUPPRESSED: f64 = -15.0;  // 被压制（落后15+刀）
+    pub const CS_DIFF_SUPPRESSED: f64 = -15.0; // 被压制（落后15+刀）
 
     // 经验差阈值
-    pub const XP_DIFF_ADVANTAGE: f64 = 300.0;   // 经验优势（领先300+）
+    pub const XP_DIFF_ADVANTAGE: f64 = 300.0; // 经验优势（领先300+）
     pub const XP_DIFF_DISADVANTAGE: f64 = -300.0; // 经验劣势（落后300+）
 
     // 金币效率阈值（每分钟）
@@ -128,14 +128,13 @@ pub mod laning_phase {
 /// 发育曲线阈值 ⭐ NEW
 pub mod growth {
     // 成长率阈值
-    pub const MID_GAME_BOOST: f64 = 1.15;  // 中期经济提升15%（游走型）
+    pub const MID_GAME_BOOST: f64 = 1.15; // 中期经济提升15%（游走型）
     pub const MID_GAME_DECLINE: f64 = 0.85; // 中期经济下降15%（节奏问题）
 
     // 后期成长
-    pub const LATE_GAME_BOOST: f64 = 1.10;  // 后期继续提升
+    pub const LATE_GAME_BOOST: f64 = 1.10; // 后期继续提升
 
     // 稳定发育标准
-    pub const STABLE_GOLD_EARLY: f64 = 400.0;  // 对线期金币标准
-    pub const STABLE_GOLD_MID: f64 = 380.0;    // 中期金币标准
+    pub const STABLE_GOLD_EARLY: f64 = 400.0; // 对线期金币标准
+    pub const STABLE_GOLD_MID: f64 = 380.0; // 中期金币标准
 }
-

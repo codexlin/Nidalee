@@ -7,12 +7,12 @@
 //! - 请求封装
 //! - 性能优化
 
-pub mod types;
 pub mod errors;
-pub mod utils;
-pub mod request;
 pub mod optimized_polling;
+pub mod request;
+pub mod types;
+pub mod utils;
 
 // Re-export commonly used items
-pub use types::*;
 pub use errors::{NidaleeError, Result};
+pub use types::*;

@@ -1,7 +1,7 @@
 use crate::http_client;
+use crate::infrastructure::champion_selection::perks::service as perks_service;
 use crate::infrastructure::data_services::external::opgg::service;
 use crate::infrastructure::data_services::external::opgg::types::*;
-use crate::infrastructure::champion_selection::perks::service as perks_service;
 use serde_json::Value;
 
 #[tauri::command]

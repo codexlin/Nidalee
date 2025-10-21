@@ -2,7 +2,7 @@
 import { Toaster } from 'vue-sonner'
 import 'vue-sonner/style.css'
 import { appContextKey } from './types'
-import ClientDisconnected from '@/shared/components/common/ClientDisconnected.vue'
+import ClientDisconnected from './components/common/ClientDisconnected.vue'
 const { isDark, checkConnection, isConnected, fetchMatchHistory } = useApp()
 const theme = computed(() => (isDark.value ? 'dark' : 'light'))
 // 提供方法给子组件使用

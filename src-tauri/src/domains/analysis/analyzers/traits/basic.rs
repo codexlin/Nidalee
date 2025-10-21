@@ -1,5 +1,5 @@
-use crate::shared::types::{MatchPerformance, PlayerMatchStats, SummonerTrait};
 use crate::domains::analysis::thresholds;
+use crate::shared::types::{MatchPerformance, PlayerMatchStats, SummonerTrait};
 
 /// 分析召唤师特征标签
 ///
@@ -179,4 +179,3 @@ fn calculate_overall_score(stats: &PlayerMatchStats) -> i32 {
 
     (win_rate_score + kda_score + games_score) as i32
 }
-

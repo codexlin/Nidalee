@@ -1,12 +1,9 @@
-use crate::http_client;
-use crate::shared::types::{AdvicePerspective, GameAdvice, PlayerMatchStats, GameDetail};
 use super::service;
+use crate::http_client;
+use crate::shared::types::{AdvicePerspective, GameAdvice, GameDetail, PlayerMatchStats};
 
 #[tauri::command]
-pub async fn get_match_history(
-    count: Option<u32>,
-    queue_id: Option<i32>,
-) -> Result<PlayerMatchStats, String> {
+pub async fn get_match_history(count: Option<u32>, queue_id: Option<i32>) -> Result<PlayerMatchStats, String> {
     println!("🔢 ===== get_match_history 命令被调用 =====");
     println!("📥 接收到的参数:");
     println!("   - count: {:?}", count);
@@ -50,13 +47,7 @@ pub async fn get_player_tactical_advice(
         _ => return Err("无效的建议视角，只支持 Targeting 或 Collaboration".to_string()),
     };
 
-    service::get_player_tactical_advice(
-        &client,
-        summoner_name,
-        advice_perspective,
-        target_role,
-    )
-    .await
+    service::get_player_tactical_advice(&client, summoner_name, advice_perspective, target_role).await
 }
 
 #[tauri::command]

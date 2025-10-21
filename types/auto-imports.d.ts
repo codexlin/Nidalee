@@ -77,12 +77,13 @@ declare global {
   const useAutoFunctionManager: typeof import('../src/shared/composables/game/useAutoFunctionManager')['useAutoFunctionManager']
   const useAutoFunctionStore: typeof import('../src/shared/stores/features/autoFunctionStore')['useAutoFunctionStore']
   const useAutoPerformanceMonitor: typeof import('../src/shared/composables/utils/usePerformanceMonitor')['useAutoPerformanceMonitor']
+  const useAutoRune: typeof import('../src/shared/composables/game/useAutoRune')['useAutoRune']
   const useBuildsByAliasQuery: typeof import('../src/shared/composables/useLolApiQuery')['useBuildsByAliasQuery']
   const useChampSelect: typeof import('../src/shared/composables/game/useChampSelect')['useChampSelect']
   const useChampSelectManager: typeof import('../src/shared/composables/game/useChampSelectManager')['useChampSelectManager']
   const useChampSelectSession: typeof import('../src/shared/composables/game/useChampSelectSession')['useChampSelectSession']
-  const useChampionDetailsQuery: typeof import('../src/shared/composables/useLolApiQuery')['useChampionDetailsQuery']
-  const useChampionSummaryQuery: typeof import('../src/shared/composables/useLolApiQuery')['useChampionSummaryQuery']
+  const useChampionDetailsQuery: typeof import('../src/shared/composables/game/useChampionQuery')['useChampionDetailsQuery']
+  const useChampionSummaryQuery: typeof import('../src/shared/composables/game/useChampionQuery')['useChampionSummaryQuery']
   const useChampionsQuery: typeof import('../src/shared/composables/useLolApiQuery')['useChampionsQuery']
   const useCommunityDragonPerksQuery: typeof import('../src/shared/composables/useLolApiQuery')['useCommunityDragonPerksQuery']
   const useConnection: typeof import('../src/shared/composables/connection/useConnection')['useConnection']
@@ -120,6 +121,7 @@ declare global {
   const useReactiveEvent: typeof import('../src/shared/composables/utils/useEventBus')['useReactiveEvent']
   const useRoute: typeof import('vue-router')['useRoute']
   const useRouter: typeof import('vue-router')['useRouter']
+  const useRuneData: typeof import('../src/shared/composables/game/useRuneData')['useRuneData']
   const useRunesQuery: typeof import('../src/shared/composables/useLolApiQuery')['useRunesQuery']
   const useSearchMatches: typeof import('../src/shared/composables/game/useSearchMatches')['useSearchMatches']
   const useSessionStore: typeof import('../src/shared/stores/features/sessionStore')['useSessionStore']
@@ -128,6 +130,7 @@ declare global {
   const useSlots: typeof import('vue')['useSlots']
   const useSummonerAndMatchUpdater: typeof import('../src/shared/composables/game/useSummonerAndMatchUpdater')['useSummonerAndMatchUpdater']
   const useTemplateRef: typeof import('vue')['useTemplateRef']
+  const useUserRuneStore: typeof import('../src/shared/stores/features/userRuneStore')['useUserRuneStore']
   const watch: typeof import('vue')['watch']
   const watchEffect: typeof import('vue')['watchEffect']
   const watchPostEffect: typeof import('vue')['watchPostEffect']
@@ -139,9 +142,15 @@ declare global {
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
+  export type { PerkStyle, PerkSlot, Perk } from '../src/shared/composables/game/useRuneData'
+  import('../src/shared/composables/game/useRuneData')
+  // @ts-ignore
   export type { ErrorInfo, RetryConfig } from '../src/shared/composables/utils/useErrorHandler'
   import('../src/shared/composables/utils/useErrorHandler')
   // @ts-ignore
   export type { AutoFunctions, AutoFunctionConfig, AutoSelectConfig, AutoBanConfig } from '../src/shared/stores/features/autoFunctionStore'
   import('../src/shared/stores/features/autoFunctionStore')
+  // @ts-ignore
+  export type { RuneConfig, AutoApplyConfig } from '../src/shared/stores/features/userRuneStore'
+  import('../src/shared/stores/features/userRuneStore')
 }
