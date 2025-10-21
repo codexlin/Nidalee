@@ -66,9 +66,15 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { useMatchAnalysisStore } from './store'
+import { useUserRuneStore } from '@/shared/stores/features/userRuneStore'
+import { useAutoRune } from '@/shared/composables/game/useAutoRune'
 
 // Use Pinia Store
 const matchAnalysisStore = useMatchAnalysisStore()
+const userRuneStore = useUserRuneStore()
+
+// 自动符文逻辑
+const autoRune = useAutoRune()
 const {
   currentPhase,
   isLoading,
@@ -106,6 +112,21 @@ watch(
 
 onMounted(async () => {
   console.log('[MatchAnalysis] Component mounted')
+
+  // 初始化用户符文配置
+  if (!userRuneStore.isLoaded) {
+    console.log('[MatchAnalysis] 加载用户符文配置...')
+    try {
+      await userRuneStore.loadFromStore()
+      console.log('[MatchAnalysis] 用户符文配置加载成功')
+    } catch (error) {
+      console.error('[MatchAnalysis] 加载用户符文配置失败:', error)
+    }
+  }
+
+  // 启动自动符文监听
+  autoRune.startAutoRuneWatch()
+  console.log('[MatchAnalysis] 自动符文监听已启动')
 
   // 如果 store 中没有数据，尝试从后端缓存恢复
   if (!matchAnalysisStore.hasMyTeamData && !matchAnalysisStore.hasEnemyTeamData) {

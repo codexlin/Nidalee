@@ -53,27 +53,6 @@
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroup>
-
-      <!-- 开发者工具分组 - 仅在开发环境显示 -->
-      <SidebarGroup v-if="isDev">
-        <SidebarGroupLabel>开发者工具</SidebarGroupLabel>
-        <SidebarMenu>
-          <SidebarMenuItem v-for="item in devItems" :key="item.title">
-            <SidebarMenuButton class="text-md" asChild :tooltip="item.title" :is-active="isActiveRoute(item.url)">
-              <router-link :to="item.url">
-                <component
-                  :is="item.icon"
-                  :size="18"
-                  :stroke-width="2"
-                  class="shrink-0"
-                  :class="{ 'text-primary': isActiveRoute(item.url) }"
-                />
-                <span>{{ item.title }}</span>
-              </router-link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarGroup>
     </SidebarContent>
 
     <SidebarFooter>
@@ -84,17 +63,6 @@
       <div class="px-2 text-xs text-muted-foreground select-none">软件版本 {{ `v${appVersion}` || '-' }}</div>
 
       <div class="px-2 text-xs text-muted-foreground select-none">游戏版本 {{ `v${lolGameVersion}` || '-' }}</div>
-
-      <!-- <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild :tooltip="'设置'" :is-active="isActiveRoute('/settings')">
-            <router-link to="/settings">
-              <Settings />
-              <span>设置</span>
-            </router-link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu> -->
     </SidebarFooter>
 
     <SidebarRail />
@@ -103,10 +71,8 @@
 
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { Radar, BarChart3, Settings, Sparkles, TestTube, Swords, Trophy } from 'lucide-vue-next'
+import { Radar, BarChart3, Settings, Sparkles, Swords, Trophy } from 'lucide-vue-next'
 const route = useRoute()
-
-const isDev = import.meta.env.DEV
 
 const appVersion = ref<string>('')
 onMounted(async () => {
@@ -151,20 +117,6 @@ const menuItems = [
     title: '客户端设置',
     url: '/settings',
     icon: Settings
-  }
-]
-
-const devItems = [
-  {
-    title: 'API测试',
-    url: '/test-api',
-    icon: TestTube
-  },
-
-  {
-    title: '选人测试',
-    url: '/champ-select-test',
-    icon: TestTube
   }
 ]
 

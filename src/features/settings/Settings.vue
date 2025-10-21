@@ -193,6 +193,11 @@
           </div>
         </TabsContent>
 
+        <!-- 符文配置 -->
+        <TabsContent value="runes" class="space-y-8">
+          <RuneSettingsTab />
+        </TabsContent>
+
         <!-- 快捷键设置 -->
         <TabsContent value="shortcuts" class="space-y-8">
           <Card
@@ -211,14 +216,19 @@
           </Card>
         </TabsContent>
       </Tabs>
+
+      <!-- 捐赠/支持我们 -->
+      <SupportUs />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import SupportUs from '@/components/common/SupportUs.vue'
 import FunctionCard from '@/features/auto-function/components/FunctionCard.vue'
 import ChampionFunctionCard from '@/features/auto-function/components/ChampionFunctionCard.vue'
-import { Palette, Gamepad2, Zap, Keyboard, X } from 'lucide-vue-next'
+import RuneSettingsTab from './components/rune/RuneSettingsTab.vue'
+import { Palette, Gamepad2, Zap, Keyboard, X, Sparkles } from 'lucide-vue-next'
 
 const settingsStore = useSettingsStore()
 const { defaultQueueTypes, applyDefaultFilterOnSearch, defaultMatchCount } = storeToRefs(settingsStore)
@@ -261,6 +271,11 @@ const tabs = [
     id: 'automation',
     label: '自动化功能',
     icon: Zap
+  },
+  {
+    id: 'runes',
+    label: '符文配置',
+    icon: Sparkles
   },
   {
     id: 'shortcuts',

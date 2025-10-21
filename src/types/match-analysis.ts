@@ -30,15 +30,6 @@ export interface EnrichedPlayerMatchStats extends PlayerMatchStats {
 }
 
 /**
- * 敌方英雄选择信息（用于 UI 显示）
- */
-export interface EnemyChampionPick {
-  cellId: number
-  championId: number | null
-  championPickIntent?: number | null
-}
-
-/**
  * UI 中的团队数据格式（简化版，用于 Store 和组件）
  */
 export interface TeamData {
@@ -60,5 +51,4 @@ export interface MatchAnalysisState {
   // UI 专用数据
   myTeamStats: EnrichedPlayerMatchStats[]
   enemyTeamStats: EnrichedPlayerMatchStats[]
-  enemyChampionPicks: EnemyChampionPick[]
 }

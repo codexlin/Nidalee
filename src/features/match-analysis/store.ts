@@ -17,9 +17,6 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
   const myTeamStats = ref<(EnrichedPlayerMatchStats | null)[]>([])
   const enemyTeamData = ref<TeamData | null>(null)
   const enemyTeamStats = ref<(EnrichedPlayerMatchStats | null)[]>([])
-  const enemyChampionPicks = ref<
-    Array<{ cellId: number; championId: number | null; championPickIntent?: number | null }>
-  >([])
 
   // === 对局信息 ===
   const queueId = ref<number>(0) // 队列类型ID：420=单排, 440=灵活排位, 450=大乱斗等
@@ -121,14 +118,7 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
         .map((p) => (p.matchStats ? { displayName: p.displayName, ...p.matchStats } : null))
         .filter(Boolean) as EnrichedPlayerMatchStats[]
 
-      // 2. 更新敌方英雄选择
-      enemyChampionPicks.value = data.enemyTeam.map((p) => ({
-        cellId: p.cellId,
-        championId: p.championId,
-        championPickIntent: p.championPickIntent
-      }))
-
-      // 3. 更新队列信息
+      // 2. 更新队列信息
       queueId.value = Number(data.queueId)
       isCustomGame.value = data.isCustomGame
 
@@ -176,13 +166,6 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
     enemyTeamStats.value = stats
   }
 
-  const setEnemyChampionPicks = (
-    picks: Array<{ cellId: number; championId: number | null; championPickIntent?: number | null }>
-  ) => {
-    console.log('[MatchAnalysisStore] setEnemyChampionPicks:', picks)
-    enemyChampionPicks.value = picks
-  }
-
   const setQueueInfo = (queue: number, isCustom: boolean) => {
     console.log('[MatchAnalysisStore] setQueueInfo:', queue, isCustom)
     queueId.value = queue
@@ -196,7 +179,6 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
     myTeamStats.value = []
     enemyTeamData.value = null
     enemyTeamStats.value = []
-    enemyChampionPicks.value = []
     queueId.value = 0
     isCustomGame.value = false
     phase.value = 'None'
@@ -224,7 +206,6 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
     myTeamStats,
     enemyTeamData,
     enemyTeamStats,
-    enemyChampionPicks,
 
     // 对局信息
     queueId,
@@ -244,7 +225,6 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
     setMyTeamStats,
     setEnemyTeamData,
     setEnemyTeamStats,
-    setEnemyChampionPicks,
     setQueueInfo,
     setPhase,
     setLoading,

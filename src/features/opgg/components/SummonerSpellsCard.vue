@@ -50,7 +50,7 @@ interface Props {
   spells: OpggSummonerSpell[]
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 
 // 格式化百分比
 const formatPercentage = (value: number): string => {

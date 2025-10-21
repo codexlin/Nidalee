@@ -13,6 +13,7 @@ mod shared;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .setup(app::setup_app)
         .invoke_handler(tauri::generate_handler![
             // 认证 / 连接
@@ -50,6 +51,8 @@ pub fn run() {
             infrastructure::champion_selection::perks::commands::get_lcu_rune_styles,
             infrastructure::champion_selection::perks::commands::get_lcu_perks,
             infrastructure::champion_selection::perks::commands::get_lcu_perk_icon,
+            infrastructure::champion_selection::perks::commands::get_current_rune_page,
+            infrastructure::champion_selection::perks::commands::apply_custom_runes,
             // OPGG 相关
             infrastructure::data_services::external::opgg::commands::get_opgg_champion_build,
             infrastructure::data_services::external::opgg::commands::get_opgg_champion_build_raw,

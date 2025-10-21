@@ -149,8 +149,10 @@ pub struct LcuAuthInfo {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct GameDetail {
+    #[ts(type = "number")]
     pub game_id: u64,
     pub game_duration: i32,
+    #[ts(type = "number")]
     pub game_creation: i64,
     pub game_mode: String,
     pub game_type: String,
@@ -737,12 +739,14 @@ pub struct RecommendedItem {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct SimpleMatchInfo {
+    #[ts(type = "number")]
     pub game_id: u64,
     pub champion_id: i32,
     pub win: bool,
     pub kills: i32,
     pub deaths: i32,
     pub assists: i32,
+    #[ts(type = "number")]
     pub game_creation: i64,
 }
 
@@ -781,7 +785,7 @@ pub struct AnalysisChampionStats {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct RecentGame {
-
+    #[ts(type = "number")]
     pub game_id: u64,
     pub champion_id: i32,
     pub game_mode: String,
@@ -790,9 +794,9 @@ pub struct RecentGame {
     pub deaths: i32,
     pub assists: i32,
     pub game_duration: i32,
-
+    #[ts(type = "number")]
     pub game_creation: i64,
-
+    #[ts(type = "number")]
     pub queue_id: i64,
     pub performance_rating: String,
 }
@@ -1187,6 +1191,7 @@ pub struct PlayerMatchStats {
 #[serde(rename_all = "camelCase")]
 pub struct MatchPerformance {
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(type = "number | undefined")]
     pub game_id: Option<u64>,
     pub win: bool,
     pub champion_id: i32,
@@ -1198,9 +1203,10 @@ pub struct MatchPerformance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub game_duration: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(type = "number")]
+    #[ts(type = "number | undefined")]
     pub game_creation: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(type = "number | undefined")]
     pub queue_id: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub game_mode: Option<String>,
@@ -1223,6 +1229,7 @@ pub struct TeamAnalysisData {
     pub enemy_team: Vec<PlayerAnalysisData>,
     pub local_player_cell_id: i32,
     pub game_phase: String,
+    #[ts(type = "number")]
     pub queue_id: i64,        // 队列类型ID：420=单排, 440=灵活排位, 450=大乱斗等
     pub is_custom_game: bool, // 是否自定义游戏
 

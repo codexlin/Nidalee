@@ -3,7 +3,6 @@ import { isEqual } from 'radash'
 export const useGameStore = defineStore(
   'game',
   () => {
-    const router = useRouter()
     // 游戏状态
     const currentPhase = shallowRef<string>('None')
     const isInGame = shallowRef(false)
