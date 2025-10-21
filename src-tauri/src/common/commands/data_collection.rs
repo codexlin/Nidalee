@@ -1,13 +1,13 @@
 /// 数据收集测试命令
 ///
 /// 用于生成分析数据文件，帮助优化算法
-use crate::shared::types::PlayerMatchStats;
+use crate::shared::utils::lcu_get;
 use crate::infrastructure::match_management::matches::service;
 use crate::http_client;
 use serde::{Serialize, Deserialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
 
 /// 分析数据点
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,6 +114,59 @@ pub struct QueueStats {
     pub avg_games: f64,
 }
 
+/// 原始LCU对局数据
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RawMatchData {
+    /// 游戏ID
+    pub game_id: u64,
+    /// 游戏时长（秒）
+    pub game_duration: i32,
+    /// 游戏创建时间
+    pub game_creation: i64,
+    /// 游戏模式
+    pub game_mode: String,
+    /// 游戏类型
+    pub game_type: String,
+    /// 游戏版本
+    pub game_version: String,
+    /// 地图ID
+    pub map_id: i32,
+    /// 队列ID
+    pub queue_id: i32,
+    /// 队伍信息
+    pub teams: Vec<Value>,
+    /// 参与者信息
+    pub participants: Vec<Value>,
+    /// 参与者身份信息
+    pub participant_identities: Vec<Value>,
+}
+
+/// 原始数据收集结果
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RawDataCollectionResult {
+    /// 原始对局数据
+    pub raw_matches: Vec<RawMatchData>,
+    /// 收集时间
+    pub collection_time: String,
+    /// 对局数量
+    pub total_matches: usize,
+    /// 队列分布
+    pub queue_distribution: HashMap<String, usize>,
+    /// 时间范围
+    pub time_range: TimeRange,
+}
+
+/// 时间范围
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TimeRange {
+    /// 最早对局时间
+    pub earliest_match: i64,
+    /// 最晚对局时间
+    pub latest_match: i64,
+    /// 时间跨度（天）
+    pub span_days: f64,
+}
+
 /// 生成测试数据文件
 #[tauri::command]
 pub async fn generate_test_data_file(
@@ -200,10 +253,11 @@ pub async fn generate_test_data_file(
     };
 
     // 创建结果
+    let total_points = data_points.len();
     let result = DataCollectionResult {
         data_points,
         collection_time: chrono::Utc::now().to_rfc3339(),
-        total_points: data_points.len(),
+        total_points,
         summary,
     };
 
@@ -361,6 +415,237 @@ pub async fn analyze_data_file(file_path: String) -> Result<String, String> {
         report.push_str(&format!("    平均胜率: {:.1}%\n", stats.avg_win_rate));
         report.push_str(&format!("    平均KDA: {:.2}\n", stats.avg_kda));
         report.push_str(&format!("    平均场次: {:.0}\n", stats.avg_games));
+    }
+
+    println!("{}", report);
+    Ok(report)
+}
+
+/// 收集原始LCU对局数据
+#[tauri::command]
+pub async fn collect_raw_match_data(
+    count: Option<u32>,
+    queue_id: Option<i32>,
+    _include_timeline: Option<bool>,
+) -> Result<String, String> {
+    println!("🔬 开始收集原始LCU对局数据...");
+
+    let client = http_client::get_lcu_client();
+    let game_count = count.unwrap_or(50);
+
+    // 第1步：获取当前召唤师信息
+    println!("📍 第1步：获取当前召唤师信息");
+    let summoner_data: Value = lcu_get(client, "/lol-summoner/v1/current-summoner").await
+        .map_err(|e| format!("获取召唤师信息失败: {}", e))?;
+
+    let puuid = summoner_data
+        .get("puuid")
+        .and_then(|p| p.as_str())
+        .ok_or_else(|| "未找到PUUID".to_string())?;
+
+    println!("🆔 提取到的PUUID: {}", puuid);
+
+    // 第2步：获取对局列表
+    println!("📍 第2步：获取对局列表");
+    let safe_end = game_count.min(100);
+    let actual_end_index = if safe_end > 0 { safe_end - 1 } else { 0 };
+
+    let match_list_url = format!(
+        "/lol-match-history/v1/products/lol/{}/matches?begIndex=0&endIndex={}",
+        puuid, actual_end_index
+    );
+
+    println!("🌐 请求URL: {}", match_list_url);
+    let match_list_data: Value = lcu_get(client, &match_list_url).await
+        .map_err(|e| format!("获取对局列表失败: {}", e))?;
+
+    // 第3步：解析对局列表
+    println!("📍 第3步：解析对局列表");
+    let games_array = match_list_data
+        .get("games")
+        .and_then(|g| g.get("games"))
+        .and_then(|g| g.as_array())
+        .ok_or_else(|| "无法解析对局列表".to_string())?;
+
+    println!("📊 找到 {} 场对局", games_array.len());
+
+    // 第4步：收集原始数据
+    let mut raw_matches = Vec::new();
+    let mut queue_distribution: HashMap<String, usize> = HashMap::new();
+    let mut earliest_match = i64::MAX;
+    let mut latest_match = 0i64;
+
+    for (index, game) in games_array.iter().enumerate() {
+        if let Some(qid) = queue_id {
+            let game_queue_id = game.get("queueId").and_then(|q| q.as_i64()).unwrap_or(0);
+            if game_queue_id != qid as i64 {
+                continue; // 跳过不符合队列过滤的对局
+            }
+        }
+
+        println!("📋 处理第 {} 场对局...", index + 1);
+
+        let raw_match = RawMatchData {
+            game_id: game.get("gameId").and_then(|g| g.as_u64()).unwrap_or(0),
+            game_duration: game.get("gameDuration").and_then(|g| g.as_i64()).unwrap_or(0) as i32,
+            game_creation: game.get("gameCreation").and_then(|g| g.as_i64()).unwrap_or(0),
+            game_mode: game.get("gameMode").and_then(|g| g.as_str()).unwrap_or("").to_string(),
+            game_type: game.get("gameType").and_then(|g| g.as_str()).unwrap_or("").to_string(),
+            game_version: game.get("gameVersion").and_then(|g| g.as_str()).unwrap_or("").to_string(),
+            map_id: game.get("mapId").and_then(|g| g.as_i64()).unwrap_or(0) as i32,
+            queue_id: game.get("queueId").and_then(|g| g.as_i64()).unwrap_or(0) as i32,
+            teams: game.get("teams").and_then(|t| t.as_array()).map(|a| a.clone()).unwrap_or_default(),
+            participants: game.get("participants").and_then(|p| p.as_array()).map(|a| a.clone()).unwrap_or_default(),
+            participant_identities: game.get("participantIdentities").and_then(|p| p.as_array()).map(|a| a.clone()).unwrap_or_default(),
+        };
+
+        // 更新队列分布
+        let queue_name = match raw_match.queue_id {
+            420 => "单双排",
+            440 => "灵活组排",
+            450 => "大乱斗",
+            700 => "排位",
+            _ => "其他",
+        };
+        *queue_distribution.entry(queue_name.to_string()).or_insert(0) += 1;
+
+        // 更新时间范围
+        if raw_match.game_creation > 0 {
+            earliest_match = earliest_match.min(raw_match.game_creation);
+            latest_match = latest_match.max(raw_match.game_creation);
+        }
+
+        raw_matches.push(raw_match);
+    }
+
+    if raw_matches.is_empty() {
+        return Err("没有收集到任何对局数据".to_string());
+    }
+
+    // 计算时间跨度
+    let span_days = if earliest_match != i64::MAX && latest_match > 0 {
+        (latest_match - earliest_match) as f64 / (24.0 * 60.0 * 60.0 * 1000.0)
+    } else {
+        0.0
+    };
+
+    // 创建结果
+    let total_matches = raw_matches.len();
+    let result = RawDataCollectionResult {
+        raw_matches,
+        collection_time: chrono::Utc::now().to_rfc3339(),
+        total_matches,
+        queue_distribution,
+        time_range: TimeRange {
+            earliest_match: if earliest_match == i64::MAX { 0 } else { earliest_match },
+            latest_match,
+            span_days,
+        },
+    };
+
+    // 保存到文件
+    let filename = format!("raw_match_data_{}.json", chrono::Utc::now().format("%Y%m%d_%H%M%S"));
+    let filepath = format!("./{}", filename);
+
+    let json_content = serde_json::to_string_pretty(&result)
+        .map_err(|e| format!("JSON序列化失败: {}", e))?;
+
+    fs::write(&filepath, json_content)
+        .map_err(|e| format!("文件写入失败: {}", e))?;
+
+    println!("📁 原始数据文件已保存: {}", filepath);
+    println!("📊 收集了 {} 场原始对局", result.total_matches);
+    println!("⏰ 时间跨度: {:.1} 天", result.time_range.span_days);
+    println!("🎮 队列分布: {:?}", result.queue_distribution);
+
+    Ok(format!("原始数据文件已生成: {} ({} 场对局)", filename, result.total_matches))
+}
+
+/// 分析原始对局数据的时间线特征
+#[tauri::command]
+pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, String> {
+    println!("📊 分析原始对局数据的时间线特征: {}", file_path);
+
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("读取文件失败: {}", e))?;
+
+    let result: RawDataCollectionResult = serde_json::from_str(&content)
+        .map_err(|e| format!("JSON解析失败: {}", e))?;
+
+    // 生成时间线分析报告
+    let mut report = String::new();
+    report.push_str("📊 原始对局数据时间线分析报告\n");
+    report.push_str(&format!("文件: {}\n", file_path));
+    report.push_str(&format!("收集时间: {}\n", result.collection_time));
+    report.push_str(&format!("对局数量: {}\n", result.total_matches));
+    report.push_str(&format!("时间跨度: {:.1} 天\n\n", result.time_range.span_days));
+
+    // 队列分布分析
+    report.push_str("🎮 队列分布:\n");
+    for (queue_name, count) in &result.queue_distribution {
+        let percentage = (*count as f64 / result.total_matches as f64) * 100.0;
+        report.push_str(&format!("  {}: {} 场 ({:.1}%)\n", queue_name, count, percentage));
+    }
+
+    // 游戏时长分析
+    let mut durations: Vec<i32> = result.raw_matches.iter().map(|m| m.game_duration).collect();
+    durations.sort();
+
+    if !durations.is_empty() {
+        let min_duration = durations[0];
+        let max_duration = durations[durations.len() - 1];
+        let avg_duration = durations.iter().sum::<i32>() as f64 / durations.len() as f64;
+        let median_duration = if durations.len() % 2 == 0 {
+            (durations[durations.len() / 2 - 1] + durations[durations.len() / 2]) as f64 / 2.0
+        } else {
+            durations[durations.len() / 2] as f64
+        };
+
+        report.push_str("\n⏱️ 游戏时长分析:\n");
+        report.push_str(&format!("  最短: {} 秒 ({:.1} 分钟)\n", min_duration, min_duration as f64 / 60.0));
+        report.push_str(&format!("  最长: {} 秒 ({:.1} 分钟)\n", max_duration, max_duration as f64 / 60.0));
+        report.push_str(&format!("  平均: {:.1} 秒 ({:.1} 分钟)\n", avg_duration, avg_duration / 60.0));
+        report.push_str(&format!("  中位数: {:.1} 秒 ({:.1} 分钟)\n", median_duration, median_duration / 60.0));
+    }
+
+    // 游戏模式分析
+    let mut game_modes: HashMap<String, usize> = HashMap::new();
+    let mut game_types: HashMap<String, usize> = HashMap::new();
+
+    for match_data in &result.raw_matches {
+        *game_modes.entry(match_data.game_mode.clone()).or_insert(0) += 1;
+        *game_types.entry(match_data.game_type.clone()).or_insert(0) += 1;
+    }
+
+    report.push_str("\n🎯 游戏模式分析:\n");
+    for (mode, count) in &game_modes {
+        let percentage = (*count as f64 / result.total_matches as f64) * 100.0;
+        report.push_str(&format!("  {}: {} 场 ({:.1}%)\n", mode, count, percentage));
+    }
+
+    report.push_str("\n🏷️ 游戏类型分析:\n");
+    for (game_type, count) in &game_types {
+        let percentage = (*count as f64 / result.total_matches as f64) * 100.0;
+        report.push_str(&format!("  {}: {} 场 ({:.1}%)\n", game_type, count, percentage));
+    }
+
+    // 时间分布分析
+    let mut hourly_distribution: HashMap<i32, usize> = HashMap::new();
+    for match_data in &result.raw_matches {
+        if match_data.game_creation > 0 {
+            let timestamp = match_data.game_creation / 1000; // 转换为秒
+            let hour = (timestamp / 3600) % 24; // 获取小时
+            *hourly_distribution.entry(hour as i32).or_insert(0) += 1;
+        }
+    }
+
+    report.push_str("\n🕐 游戏时间分布 (24小时):\n");
+    for hour in 0..24 {
+        let count = hourly_distribution.get(&hour).unwrap_or(&0);
+        let percentage = (*count as f64 / result.total_matches as f64) * 100.0;
+        let bar = "█".repeat((percentage / 2.0) as usize);
+        report.push_str(&format!("  {:02}:00 - {:02}:59: {} ({:.1}%) {}\n",
+            hour, hour, count, percentage, bar));
     }
 
     println!("{}", report);

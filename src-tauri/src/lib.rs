@@ -94,6 +94,8 @@ pub fn run() {
             // 数据收集测试命令
             common::commands::data_collection::generate_test_data_file,
             common::commands::data_collection::analyze_data_file,
+            common::commands::data_collection::collect_raw_match_data,
+            common::commands::data_collection::analyze_raw_match_timeline,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
