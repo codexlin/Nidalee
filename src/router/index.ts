@@ -37,6 +37,11 @@ const router = createRouter({
       path: '/opgg',
       name: 'opgg',
       component: () => import('../views/OpggView.vue')
+    },
+    {
+      path: '/data-collection-test',
+      name: 'data-collection-test',
+      component: () => import('../views/DataCollectionTestView.vue')
     }
   ]
 })

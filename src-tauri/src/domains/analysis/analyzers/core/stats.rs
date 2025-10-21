@@ -1,7 +1,14 @@
 use crate::shared::types::{AnalysisChampionStats, MatchPerformance, PlayerMatchStats};
+use crate::infrastructure::data_services::champion_data::service::get_champion_info;
 use super::parser::ParsedGame;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// 精度格式化函数
+fn format_precision(value: f64, decimals: usize) -> f64 {
+    let multiplier = 10_f64.powi(decimals as i32);
+    (value * multiplier).round() / multiplier
+}
 
 /// 分析上下文
 #[derive(Debug, Clone)]
@@ -131,11 +138,16 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
         // ⭐ v3.1: 添加位置信息
         let position = role_to_position(&player.role, &player.lane);
 
+        // 获取英雄名称
+        let champion_name = get_champion_info(player.champion_id)
+            .map(|info| info.name)
+            .unwrap_or_else(|| format!("未知英雄({})", player.champion_id));
+
         recent_performance.push(MatchPerformance {
             game_id: Some(game.game_id),
             win,
             champion_id: player.champion_id,
-            champion_name: String::new(), // 会在外部填充
+            champion_name,
             kills: kills as i32,
             deaths: deaths as i32,
             assists: assists as i32,
@@ -185,16 +197,23 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
     // 处理常用英雄
     let mut favorite_champions: Vec<AnalysisChampionStats> = favorite_champions_map
         .into_iter()
-        .map(|(champion_id, (games, wins))| AnalysisChampionStats {
-            champion_id,
-            champion_name: String::new(), // 会在外部填充
-            games,
-            wins,
-            win_rate: if games > 0 {
-                (wins as f64 / games as f64) * 100.0
-            } else {
-                0.0
-            },
+        .map(|(champion_id, (games, wins))| {
+            // 获取英雄名称
+            let champion_name = get_champion_info(champion_id)
+                .map(|info| info.name)
+                .unwrap_or_else(|| format!("未知英雄({})", champion_id));
+            
+            AnalysisChampionStats {
+                champion_id,
+                champion_name,
+                games,
+                wins,
+                win_rate: if games > 0 {
+                    format_precision((wins as f64 / games as f64) * 100.0, 1)
+                } else {
+                    0.0
+                },
+            }
         })
         .collect();
 
@@ -207,19 +226,19 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
         wins,
         losses: total_games - wins,
         win_rate: if total_games > 0 {
-            (wins as f64 / total_games as f64) * 100.0
+            format_precision((wins as f64 / total_games as f64) * 100.0, 1)
         } else {
             0.0
         },
-        avg_kills,
-        avg_deaths,
-        avg_assists,
-        avg_kda,
+        avg_kills: format_precision(avg_kills, 2),
+        avg_deaths: format_precision(avg_deaths, 2),
+        avg_assists: format_precision(avg_assists, 2),
+        avg_kda: format_precision(avg_kda, 2),
         today_games,
         today_wins,
-        dpm,
-        cspm,
-        vspm,
+        dpm: format_precision(dpm, 1),
+        cspm: format_precision(cspm, 2),
+        vspm: format_precision(vspm, 2),
         traits: Vec::new(), // 由 traits_analyzer 填充
         favorite_champions,
         recent_performance,

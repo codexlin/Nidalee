@@ -163,16 +163,6 @@
                 />
               </div>
 
-              <!-- 自动符文配置 -->
-              <div class="card-hover-effect rounded-xl bg-card">
-                <FunctionCard
-                  title="自动符文配置"
-                  description="根据选择的英雄自动配置最优符文页面"
-                  v-model:enabled="autoFunctions.runeConfig.enabled"
-                  v-model:delay="autoFunctions.runeConfig.delay"
-                />
-              </div>
-
               <!-- 自动禁用英雄 -->
               <div class="card-hover-effect rounded-xl bg-card">
                 <ChampionFunctionCard
@@ -188,6 +178,20 @@
                   @champion-reorder="autoFunctionStore.reorderChampionBan"
                   @champion-clear="autoFunctionStore.clearChampionBan"
                 />
+              </div>
+            </div>
+
+            <!-- 符文配置导航提示 -->
+            <div class="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <div class="flex items-start gap-3">
+                <Sparkles class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-primary">寻找符文自动配置？</div>
+                  <div class="text-xs text-muted-foreground mt-1">
+                    完整的符文自动应用和自定义配置功能已移至 <span class="font-semibold text-primary">"符文配置"</span> 标签页，
+                    支持智能匹配、OP.GG 推荐和自定义符文配置。
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -49,6 +49,7 @@ tauri-plugin-dialog = "2"
 rand = "0.8"
 thiserror = "2.0"
 tauri-plugin-store = "2.4.0"
+chrono = { version = "0.4", features = ["serde"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.51"

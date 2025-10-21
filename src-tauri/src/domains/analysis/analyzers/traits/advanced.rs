@@ -122,7 +122,8 @@ fn calculate_kp_for_game(game: &Value, puuid: &str) -> Option<f64> {
     }
 
     let kp = (player_kills + player_assists) as f64 / team_total_kills as f64;
-    Some(kp)
+    // 确保参团率不超过100%
+    Some(kp.min(1.0))
 }
 
 /// 2. 伤害占比分析
@@ -339,10 +340,10 @@ fn analyze_performance_trend(recent_games: &[MatchPerformance]) -> Option<Summon
             name: "状态上升".to_string(),
             description: format!(
                 "最近表现明显提升（KDA↑{:.0}%, 胜率↑{:.0}%）",
-                kda_change_rate * 100.0,
+                (kda_change_rate * 100.0).min(200.0), // 限制最大200%
                 wr_change * 100.0
             ),
-            score: (kda_change_rate * 100.0) as i32,
+            score: (kda_change_rate * 100.0).min(200.0) as i32,
             trait_type: "good".to_string(),
         })
     } else if kda_change_rate < -0.3 && wr_change < -0.15 {
@@ -350,10 +351,10 @@ fn analyze_performance_trend(recent_games: &[MatchPerformance]) -> Option<Summon
             name: "状态下滑".to_string(),
             description: format!(
                 "最近表现下降（KDA↓{:.0}%, 胜率↓{:.0}%）",
-                kda_change_rate.abs() * 100.0,
+                (kda_change_rate.abs() * 100.0).min(200.0), // 限制最大200%
                 wr_change.abs() * 100.0
             ),
-            score: (kda_change_rate.abs() * 100.0) as i32,
+            score: (kda_change_rate.abs() * 100.0).min(200.0) as i32,
             trait_type: "bad".to_string(),
         })
     } else {

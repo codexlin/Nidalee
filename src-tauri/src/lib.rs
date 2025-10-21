@@ -91,6 +91,9 @@ pub fn run() {
             common::commands::game::select_game_path,
             common::commands::game::save_game_path,
             common::commands::game::get_saved_game_path,
+            // 数据收集测试命令
+            common::commands::data_collection::generate_test_data_file,
+            common::commands::data_collection::analyze_data_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
