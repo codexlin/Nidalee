@@ -202,7 +202,7 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
             let champion_name = get_champion_info(champion_id)
                 .map(|info| info.name)
                 .unwrap_or_else(|| format!("未知英雄({})", champion_id));
-            
+
             AnalysisChampionStats {
                 champion_id,
                 champion_name,

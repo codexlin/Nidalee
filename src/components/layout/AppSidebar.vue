@@ -71,7 +71,7 @@
 
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { Radar, BarChart3, Settings, Sparkles, Swords, Trophy } from 'lucide-vue-next'
+import { Radar, BarChart3, Settings, Sparkles, Swords, Trophy, TestTube } from 'lucide-vue-next'
 const route = useRoute()
 
 const appVersion = ref<string>('')
@@ -117,6 +117,11 @@ const menuItems = [
     title: '客户端设置',
     url: '/settings',
     icon: Settings
+  },
+  {
+    title: '数据收集测试',
+    url: '/data-collection-test',
+    icon: TestTube
   }
 ]
 
