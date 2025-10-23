@@ -49,9 +49,7 @@
           <Label>发送消息</Label>
           <div class="flex gap-2">
             <Input v-model="messageInput" placeholder="输入消息内容..." @keyup.enter="handleSendMessage" />
-            <Button :disabled="!canSendMessage || !messageInput.trim()" @click="handleSendMessage">
-              发送
-            </Button>
+            <Button :disabled="!canSendMessage || !messageInput.trim()" @click="handleSendMessage"> 发送 </Button>
           </div>
         </div>
 
@@ -78,9 +76,7 @@
           <div class="flex gap-2">
             <Input v-model="championName" placeholder="英雄名称（如：亚索）" />
             <Input v-model="recommendReason" placeholder="推荐理由" />
-            <Button :disabled="!canSendMessage || !championName" @click="handleSendRecommendation">
-              发送推荐
-            </Button>
+            <Button :disabled="!canSendMessage || !championName" @click="handleSendRecommendation"> 发送推荐 </Button>
           </div>
         </div>
 
@@ -119,13 +115,7 @@ const championName = ref('')
 const recommendReason = ref('当前版本强势')
 
 // 快捷消息
-const quickMessages = [
-  '大家好！',
-  '我先拿打野',
-  '推荐ban亚索',
-  '准备开始吧',
-  '祝游戏愉快！'
-]
+const quickMessages = ['大家好！', '我先拿打野', '推荐ban亚索', '准备开始吧', '祝游戏愉快！']
 
 // 日志
 const logs = ref<string[]>([])
@@ -193,4 +183,3 @@ onMounted(() => {
   handleRefreshLobby()
 })
 </script>
-

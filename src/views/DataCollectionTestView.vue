@@ -12,13 +12,7 @@
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium mb-2">游戏场次</label>
-            <Input
-              v-model="rawGameCount"
-              type="number"
-              placeholder="50"
-              min="1"
-              max="100"
-            />
+            <Input v-model="rawGameCount" type="number" placeholder="50" min="1" max="100" />
           </div>
           <div>
             <label class="block text-sm font-medium mb-2">队列ID</label>
@@ -56,20 +50,12 @@
         </div>
         <div class="mb-4">
           <label class="block text-sm font-medium mb-2">原始数据文件名</label>
-          <Input
-            v-model="rawDataFilePath"
-            placeholder="raw_match_data_20251021_135716.json"
-          />
+          <Input v-model="rawDataFilePath" placeholder="raw_match_data_20251021_135716.json" />
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium mb-2">对局索引 (查看JSON结构)</label>
-            <Input
-              v-model="jsonStructureIndex"
-              type="number"
-              placeholder="0"
-              min="0"
-            />
+            <Input v-model="jsonStructureIndex" type="number" placeholder="0" min="0" />
           </div>
           <div class="flex items-end">
             <Button @click="showJsonStructure" :disabled="isShowingJson" class="w-full" variant="secondary">

@@ -44,12 +44,30 @@ pub fn analyze_with_position_grouping(
 
     // 2. 按 queue_id 过滤（如果指定了）
     let filtered_games: Vec<_> = if let Some(qid) = queue_id {
+        println!("🎯 正在过滤 queue_id={}", qid);
+
+        // 打印前几场对局的queue_id以便调试
+        for (idx, game) in parsed_games.iter().take(3).enumerate() {
+            println!("  对局 #{}: queue_id={}", idx + 1, game.queue_id);
+        }
+
         parsed_games
             .into_iter()
             .filter(|g| g.queue_id == qid as i64)
             .collect()
     } else {
+        // queue_id为None时，默认只包含排位模式（420单排、440灵活组排）
+        println!("🎯 默认过滤：仅包含排位模式 (420, 440)");
+
+        // 打印前几场对局的queue_id以便调试
+        for (idx, game) in parsed_games.iter().take(5).enumerate() {
+            println!("  对局 #{}: queue_id={}", idx + 1, game.queue_id);
+        }
+
         parsed_games
+            .into_iter()
+            .filter(|g| g.queue_id == 420 || g.queue_id == 440)
+            .collect()
     };
 
     println!("🔍 过滤后剩余 {} 场对局", filtered_games.len());

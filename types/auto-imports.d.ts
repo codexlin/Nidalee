@@ -117,6 +117,7 @@ declare global {
   const useModel: typeof import('vue')['useModel']
   const usePerformanceMonitor: typeof import('../src/shared/composables/utils/usePerformanceMonitor')['usePerformanceMonitor']
   const usePlayerListQuery: typeof import('../src/shared/composables/useLolApiQuery')['usePlayerListQuery']
+  const usePositionAnalysis: typeof import('../src/shared/composables/game/usePositionAnalysis')['usePositionAnalysis']
   const useQueuesQuery: typeof import('../src/shared/composables/useLolApiQuery')['useQueuesQuery']
   const useReactiveEvent: typeof import('../src/shared/composables/utils/useEventBus')['useReactiveEvent']
   const useRoute: typeof import('vue-router')['useRoute']

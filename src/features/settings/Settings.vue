@@ -182,7 +182,9 @@
             </div>
 
             <!-- 符文配置导航提示 -->
-            <div class="mt-6 p-5 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/30 shadow-sm">
+            <div
+              class="mt-6 p-5 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/30 shadow-sm"
+            >
               <div class="flex items-start gap-3">
                 <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
                   <Sparkles class="h-5 w-5 text-primary" />
@@ -245,8 +247,7 @@ const autoFunctionStore = useAutoFunctionStore()
 const activityLogger = useActivityLogger()
 
 // 使用 storeToRefs 确保响应式
-const { autoFunctions, enabledFunctionsCount, isAnyFunctionEnabled, enabledFunctions } =
-  storeToRefs(autoFunctionStore)
+const { autoFunctions, enabledFunctionsCount, isAnyFunctionEnabled, enabledFunctions } = storeToRefs(autoFunctionStore)
 
 // 禁用所有功能
 const handleDisableAll = async () => {

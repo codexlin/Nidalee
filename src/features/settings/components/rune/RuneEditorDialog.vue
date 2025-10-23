@@ -1,6 +1,8 @@
 <template>
   <Dialog :open="open" @update:open="handleClose">
-    <DialogContent class="max-w-6xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-background via-muted/30 to-background/80">
+    <DialogContent
+      class="max-w-6xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-background via-muted/30 to-background/80"
+    >
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2 text-foreground">
           <Sparkles class="h-5 w-5 text-primary" />
@@ -54,7 +56,10 @@
               @input="handleChampionSearch"
               class="bg-background/50"
             />
-            <div v-if="championSearchResults.length > 0" class="mt-2 max-h-48 overflow-y-auto border border-border rounded-lg bg-card shadow-sm">
+            <div
+              v-if="championSearchResults.length > 0"
+              class="mt-2 max-h-48 overflow-y-auto border border-border rounded-lg bg-card shadow-sm"
+            >
               <div
                 v-for="champ in championSearchResults"
                 :key="champ.id"
@@ -65,7 +70,10 @@
                 <span class="text-xs text-muted-foreground ml-2">({{ champ.alias }})</span>
               </div>
             </div>
-            <div v-if="formData.championId" class="flex items-center gap-2 p-2 rounded-md bg-primary/10 border border-primary/20">
+            <div
+              v-if="formData.championId"
+              class="flex items-center gap-2 p-2 rounded-md bg-primary/10 border border-primary/20"
+            >
               <CheckCircle2 class="h-4 w-4 text-primary" />
               <span class="text-sm font-medium text-primary">已选择: {{ formData.championName }}</span>
             </div>
@@ -103,11 +111,23 @@
               符文配置
             </h3>
             <div class="flex items-center gap-2">
-              <Button @click="handleImportFromOpgg" variant="outline" size="sm" :disabled="isImporting" class="hover:bg-primary/10 hover:text-primary hover:border-primary/50">
+              <Button
+                @click="handleImportFromOpgg"
+                variant="outline"
+                size="sm"
+                :disabled="isImporting"
+                class="hover:bg-primary/10 hover:text-primary hover:border-primary/50"
+              >
                 <Download class="h-3 w-3 mr-1" />
                 从 OP.GG 导入
               </Button>
-              <Button @click="handleLoadFromClient" variant="outline" size="sm" :disabled="isImporting" class="hover:bg-primary/10 hover:text-primary hover:border-primary/50">
+              <Button
+                @click="handleLoadFromClient"
+                variant="outline"
+                size="sm"
+                :disabled="isImporting"
+                class="hover:bg-primary/10 hover:text-primary hover:border-primary/50"
+              >
                 <FileInput class="h-3 w-3 mr-1" />
                 从客户端导入
               </Button>

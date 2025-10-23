@@ -34,7 +34,9 @@
             @click="selectPrimaryStyle(style.id)"
             class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:scale-105"
             :class="[
-              primaryStyleId === style.id ? 'border-primary bg-primary/10 shadow-md' : 'border-border hover:border-primary/50'
+              primaryStyleId === style.id
+                ? 'border-primary bg-primary/10 shadow-md'
+                : 'border-border hover:border-primary/50'
             ]"
           >
             <div class="flex flex-col items-center gap-2">
@@ -61,8 +63,10 @@
             <!-- 层级标题 -->
             <div class="flex items-center gap-2">
               <div class="h-px flex-1 bg-border"></div>
-              <div class="text-xs font-medium px-2"
-                   :class="slot.type === 'kKeyStone' ? 'text-primary' : 'text-muted-foreground'">
+              <div
+                class="text-xs font-medium px-2"
+                :class="slot.type === 'kKeyStone' ? 'text-primary' : 'text-muted-foreground'"
+              >
                 {{ slot.slotLabel || getSlotLabel(slot.type, slotIndex) }}
                 <span v-if="slot.type === 'kKeyStone'" class="ml-1 text-primary/70">(3选1)</span>
               </div>
@@ -93,8 +97,10 @@
                     class="rounded"
                     @error="handleImageError"
                   />
-                  <span class="text-xs text-center line-clamp-2 leading-tight"
-                        :class="slot.type === 'kKeyStone' ? 'font-semibold' : ''">
+                  <span
+                    class="text-xs text-center line-clamp-2 leading-tight"
+                    :class="slot.type === 'kKeyStone' ? 'font-semibold' : ''"
+                  >
                     {{ getPerkName(perkId) }}
                   </span>
                 </div>
@@ -133,7 +139,9 @@
             @click="selectSubStyle(style.id)"
             class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:scale-105"
             :class="[
-              subStyleId === style.id ? 'border-primary bg-primary/10 shadow-md' : 'border-border hover:border-primary/50'
+              subStyleId === style.id
+                ? 'border-primary bg-primary/10 shadow-md'
+                : 'border-border hover:border-primary/50'
             ]"
           >
             <div class="flex flex-col items-center gap-2">
@@ -158,9 +166,7 @@
         <div v-if="subStyle" class="space-y-4">
           <div class="flex items-center justify-between">
             <div class="text-xs font-medium text-muted-foreground">可选符文（从下面任选 2 个）</div>
-            <div class="text-xs text-primary font-medium">
-              已选: {{ selectedSubPerks.length }} / 2
-            </div>
+            <div class="text-xs text-primary font-medium">已选: {{ selectedSubPerks.length }} / 2</div>
           </div>
 
           <!-- 分层展示副系符文 -->
@@ -168,9 +174,7 @@
             <div v-for="(slot, slotIndex) in subStyleSlots" :key="slotIndex" class="space-y-2">
               <div class="flex items-center gap-2">
                 <div class="h-px flex-1 bg-border"></div>
-                <div class="text-xs font-medium text-muted-foreground px-2">
-                  第 {{ slotIndex + 2 }} 层
-                </div>
+                <div class="text-xs font-medium text-muted-foreground px-2">第 {{ slotIndex + 2 }} 层</div>
                 <div class="h-px flex-1 bg-border"></div>
               </div>
               <div class="grid grid-cols-3 gap-3">
@@ -323,9 +327,7 @@ const availableSubStyles = computed(() => {
 const primaryStyleSlots = computed(() => {
   if (!primaryStyle.value) return []
   // 只返回主系符文槽位（基石 + 普通符文），排除属性碎片
-  return primaryStyle.value.slots.filter((s: any) =>
-    s.type === 'kKeyStone' || s.type === 'kMixedRegularSplashable'
-  )
+  return primaryStyle.value.slots.filter((s: any) => s.type === 'kKeyStone' || s.type === 'kMixedRegularSplashable')
 })
 
 // 副系符文按层级分组
@@ -446,11 +448,7 @@ const getSlotLabel = (type: string, index: number) => {
 }
 
 const getStatModDescription = (slotIndex: number) => {
-  const descriptions = [
-    '攻击力/法强/攻速',
-    '自适应/攻速/CD',
-    '生命值/护甲/魔抗'
-  ]
+  const descriptions = ['攻击力/法强/攻速', '自适应/攻速/CD', '生命值/护甲/魔抗']
   return descriptions[slotIndex] || ''
 }
 

@@ -43,11 +43,7 @@ export async function sendLobbyChatMessage(chatId: string, message: string): Pro
  * sendFormattedMessage(chatId, "Nidalee", "推荐选择亚索")
  * // 发送: "[Nidalee] 推荐选择亚索"
  */
-export async function sendFormattedMessage(
-  chatId: string,
-  prefix: string,
-  content: string
-): Promise<boolean> {
+export async function sendFormattedMessage(chatId: string, prefix: string, content: string): Promise<boolean> {
   try {
     await invoke('send_lobby_formatted_message', { chatId, prefix, content })
     console.log(`[LobbyChat] 格式化消息已发送: [${prefix}] ${content}`)
@@ -125,4 +121,3 @@ export function useLobbyChat() {
     sendTacticTip
   }
 }
-

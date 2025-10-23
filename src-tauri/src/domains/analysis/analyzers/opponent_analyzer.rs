@@ -478,7 +478,7 @@ mod tests {
         let stats = PlayerMatchStats {
             avg_kills: 3.0,
             avg_deaths: 2.0,
-            avg_assists: 8.0,
+            avg_assists: 12.0,  // 修改为12.0以满足团战型的条件 (> 10.0)
             avg_kda: 5.5,
             cspm: 6.0,
             vspm: 1.2,

@@ -6,11 +6,20 @@
         <Plus class="h-4 w-4" />
         新增配置
       </Button>
-      <Button @click="handleImportFromOpgg" variant="outline" class="flex items-center gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/50">
+      <Button
+        @click="handleImportFromOpgg"
+        variant="outline"
+        class="flex items-center gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/50"
+      >
         <Download class="h-4 w-4" />
         从 OP.GG 导入
       </Button>
-      <Button v-if="configCount > 0" @click="handleExportConfigs" variant="outline" class="flex items-center gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/50">
+      <Button
+        v-if="configCount > 0"
+        @click="handleExportConfigs"
+        variant="outline"
+        class="flex items-center gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/50"
+      >
         <Upload class="h-4 w-4" />
         导出配置
       </Button>
@@ -87,7 +96,13 @@
             >
               <Star class="h-4 w-4" />
             </Button>
-            <Button @click="handleEditConfig(config)" variant="ghost" size="sm" class="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" title="编辑">
+            <Button
+              @click="handleEditConfig(config)"
+              variant="ghost"
+              size="sm"
+              class="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+              title="编辑"
+            >
               <Pencil class="h-4 w-4" />
             </Button>
             <Button

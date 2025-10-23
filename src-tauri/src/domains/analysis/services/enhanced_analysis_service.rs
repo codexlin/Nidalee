@@ -337,14 +337,12 @@ mod tests {
     fn test_analysis_config_default() {
         let config = AnalysisConfig::default();
         assert!(!config.enable_intelligent_analysis); // 默认不启用
-        assert!(config.use_frames_data); // 优先使用新数据源
     }
 
     #[test]
     fn test_analysis_config_conservative() {
         let config = AnalysisConfig::conservative();
         assert!(!config.enable_intelligent_analysis);
-        assert!(!config.use_frames_data); // 只使用旧数据源
     }
 
     #[test]
@@ -354,7 +352,6 @@ mod tests {
         assert!(config.enable_opponent_analysis);
         assert!(config.enable_teammate_analysis);
         assert!(config.enable_self_improvement);
-        assert!(config.use_frames_data);
     }
 
     #[test]
@@ -385,29 +382,42 @@ mod tests {
 
     #[test]
     fn test_deduplicate_advice() {
+        use crate::shared::types::AdviceCategory;
         let service = EnhancedAnalysisService::with_default_config();
 
         let advice = vec![
             GameAdvice {
                 title: "建议1".to_string(),
-                description: "描述1".to_string(),
+                problem: "问题1".to_string(),
+                evidence: "证据1".to_string(),
+                suggestions: vec!["建议A".to_string()],
                 priority: 5,
-                category: "对线期".to_string(),
+                category: AdviceCategory::Laning,
                 perspective: AdvicePerspective::SelfImprovement,
+                affected_role: None,
+                target_player: None,
             },
             GameAdvice {
                 title: "建议1".to_string(), // 重复
-                description: "描述1".to_string(),
+                problem: "问题1".to_string(),
+                evidence: "证据1".to_string(),
+                suggestions: vec!["建议A".to_string()],
                 priority: 4,
-                category: "对线期".to_string(),
+                category: AdviceCategory::Laning,
                 perspective: AdvicePerspective::SelfImprovement,
+                affected_role: None,
+                target_player: None,
             },
             GameAdvice {
                 title: "建议2".to_string(),
-                description: "描述2".to_string(),
+                problem: "问题2".to_string(),
+                evidence: "证据2".to_string(),
+                suggestions: vec!["建议B".to_string()],
                 priority: 3,
-                category: "团战期".to_string(),
+                category: AdviceCategory::Teamfight,
                 perspective: AdvicePerspective::SelfImprovement,
+                affected_role: None,
+                target_player: None,
             },
         ];
 

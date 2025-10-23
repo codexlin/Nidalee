@@ -21,6 +21,14 @@
         @queue-change="handleQueueChange"
       />
 
+      <!-- ⭐ v3.4: 位置分组统计 -->
+      <PositionStatsCard
+        v-if="positionAnalysis && !matchHistoryLoading"
+        :position-stats="positionAnalysis.positionStats"
+        :main-position="positionAnalysis.mainPosition"
+        @view-details="handlePositionDetails"
+      />
+
       <!-- ⭐ v3.0: 智能建议面板 -->
       <AdvicePanel
         v-if="matchStatistics && !matchHistoryLoading"
@@ -30,11 +38,22 @@
         :subtitle="advicePanelSubtitle"
         @perspective-change="handlePerspectiveChange"
       />
+
+      <!-- 位置详情对话框 -->
+      <PositionDetailsDialog
+        v-if="selectedPosition"
+        :open="showPositionDetails"
+        :position-data="selectedPosition"
+        @close="closePositionDetails"
+      />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import PositionStatsCard from '@/features/match-search/PositionStatsCard.vue'
+import PositionDetailsDialog from '@/features/match-search/PositionDetailsDialog.vue'
+
 const { loading, toggle } = useLoading()
 const { updateMatchHistory } = useSummonerAndMatchUpdater()
 
@@ -53,6 +72,12 @@ const selectedQueueId = ref<number | null>(null)
 // 当前选中的建议视角
 const selectedPerspective = ref<'self-improvement' | 'targeting' | 'collaboration'>('self-improvement')
 
+// ⭐ v3.4: 位置分析
+const { positionAnalysis, selectedPosition, fetchPositionAnalysis, selectPosition, clearSelectedPosition } =
+  usePositionAnalysis()
+
+const showPositionDetails = ref(false)
+
 // ✅ 直接从后端获取已计算好的数据
 const todayMatches = computed(() => ({
   total: matchStatistics.value?.todayGames || 0,
@@ -66,6 +91,8 @@ const handleFetchMatchHistory = async () => {
   toggle()
   activityLogger.log.info('手动刷新对局历史', 'data')
   await updateMatchHistory(selectedQueueId.value)
+  // 同时刷新位置分析
+  await fetchPositionAnalysis(30, selectedQueueId.value)
   toggle()
 }
 
@@ -74,7 +101,23 @@ const handleQueueChange = async (queueId: number | null) => {
   selectedQueueId.value = queueId
   activityLogger.log.info(`切换队列类型: ${queueId || '全部'}`, 'data')
   await updateMatchHistory(queueId)
+  // 同时刷新位置分析
+  await fetchPositionAnalysis(30, queueId)
   toggle()
+}
+
+// 查看位置详情
+const handlePositionDetails = (pos: PositionStats) => {
+  selectPosition(pos)
+  showPositionDetails.value = true
+}
+
+// 关闭位置详情
+const closePositionDetails = () => {
+  showPositionDetails.value = false
+  setTimeout(() => {
+    clearSelectedPosition()
+  }, 300)
 }
 
 const handlePerspectiveChange = (perspective: 'self-improvement' | 'targeting' | 'collaboration') => {
@@ -127,4 +170,15 @@ const advicePanelSubtitle = computed(() => {
       return '基于你的近期数据分析'
   }
 })
+
+// 初始加载位置分析
+watch(
+  () => isConnected.value,
+  async (connected) => {
+    if (connected && !positionAnalysis.value) {
+      await fetchPositionAnalysis(30, null)
+    }
+  },
+  { immediate: true }
+)
 </script>
