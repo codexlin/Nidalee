@@ -1222,6 +1222,65 @@ pub struct PositionStats {
 
     /// 该位置的统计数据
     pub stats: PlayerMatchStats,
+
+    /// 英雄池数据（Top 5）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub champion_pool: Option<Vec<ChampionStat>>,
+
+    /// 胜率趋势（最近的对局）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub win_rate_trend: Option<Vec<TrendPoint>>,
+}
+
+/// 英雄统计数据
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/ChampionStat.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ChampionStat {
+    /// 英雄ID
+    pub champion_id: i32,
+
+    /// 英雄名称（可选）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub champion_name: Option<String>,
+
+    /// 使用场次
+    pub games: u32,
+
+    /// 胜场
+    pub wins: u32,
+
+    /// 胜率
+    pub win_rate: f64,
+
+    /// 平均KDA
+    pub avg_kda: f64,
+}
+
+/// 趋势点数据
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/TrendPoint.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct TrendPoint {
+    /// 对局索引（第几场）
+    pub index: u32,
+
+    /// 是否胜利
+    pub win: bool,
+
+    /// 累计胜率（截止到这场）
+    pub cumulative_win_rate: f64,
+
+    /// 移动平均胜率（最近5场）
+    pub moving_avg_win_rate: f64,
 }
 
 /// 单场比赛表现
