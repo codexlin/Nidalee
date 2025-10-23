@@ -1,20 +1,23 @@
 <template>
   <Dialog :open="open" @update:open="handleClose">
-    <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <DialogContent class="max-w-6xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-background via-muted/30 to-background/80">
       <DialogHeader>
-        <DialogTitle class="flex items-center gap-2">
-          <Sparkles class="h-5 w-5" />
+        <DialogTitle class="flex items-center gap-2 text-foreground">
+          <Sparkles class="h-5 w-5 text-primary" />
           {{ isEditing ? '编辑符文配置' : '新增符文配置' }}
         </DialogTitle>
-        <DialogDescription>
+        <DialogDescription class="text-muted-foreground">
           {{ isEditing ? '修改现有的符文配置' : '创建一个新的符文配置' }}
         </DialogDescription>
       </DialogHeader>
 
       <div class="space-y-6 py-4">
         <!-- 基础信息 -->
-        <div class="space-y-4">
-          <h3 class="text-sm font-semibold text-foreground">基础信息</h3>
+        <div class="space-y-4 p-6 rounded-xl bg-card/50 backdrop-blur-sm border border-border/50">
+          <h3 class="text-sm font-semibold text-primary flex items-center gap-2">
+            <div class="h-1 w-1 rounded-full bg-primary"></div>
+            基础信息
+          </h3>
 
           <!-- 配置名称 -->
           <div class="space-y-2">
@@ -43,25 +46,28 @@
 
           <!-- 英雄选择 -->
           <div v-if="formData.scope !== 'position-all'" class="space-y-2">
-            <Label for="champion">英雄</Label>
+            <Label for="champion" class="text-foreground">英雄</Label>
             <Input
               id="champion"
               v-model="championSearch"
               placeholder="输入英雄名称搜索..."
               @input="handleChampionSearch"
+              class="bg-background/50"
             />
-            <div v-if="championSearchResults.length > 0" class="mt-2 max-h-48 overflow-y-auto border rounded-md">
+            <div v-if="championSearchResults.length > 0" class="mt-2 max-h-48 overflow-y-auto border border-border rounded-lg bg-card shadow-sm">
               <div
                 v-for="champ in championSearchResults"
                 :key="champ.id"
                 @click="selectChampion(champ)"
-                class="px-3 py-2 hover:bg-muted cursor-pointer"
+                class="px-3 py-2 hover:bg-primary/10 hover:text-primary cursor-pointer transition-colors border-b border-border/50 last:border-0"
               >
-                {{ champ.name }} ({{ champ.alias }})
+                <span class="font-medium">{{ champ.name }}</span>
+                <span class="text-xs text-muted-foreground ml-2">({{ champ.alias }})</span>
               </div>
             </div>
-            <div v-if="formData.championId" class="text-sm text-muted-foreground">
-              已选择: {{ formData.championName }}
+            <div v-if="formData.championId" class="flex items-center gap-2 p-2 rounded-md bg-primary/10 border border-primary/20">
+              <CheckCircle2 class="h-4 w-4 text-primary" />
+              <span class="text-sm font-medium text-primary">已选择: {{ formData.championName }}</span>
             </div>
           </div>
 
@@ -89,23 +95,26 @@
           </div>
         </div>
 
-        <Separator />
-
         <!-- 符文选择（可视化） -->
-        <div class="space-y-4">
+        <div class="space-y-4 p-6 rounded-xl bg-card/50 backdrop-blur-sm border border-border/50">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-foreground">符文配置</h3>
+            <h3 class="text-sm font-semibold text-primary flex items-center gap-2">
+              <div class="h-1 w-1 rounded-full bg-primary"></div>
+              符文配置
+            </h3>
             <div class="flex items-center gap-2">
-              <Button @click="handleImportFromOpgg" variant="outline" size="sm" :disabled="isImporting">
+              <Button @click="handleImportFromOpgg" variant="outline" size="sm" :disabled="isImporting" class="hover:bg-primary/10 hover:text-primary hover:border-primary/50">
                 <Download class="h-3 w-3 mr-1" />
                 从 OP.GG 导入
               </Button>
-              <Button @click="handleLoadFromClient" variant="outline" size="sm" :disabled="isImporting">
+              <Button @click="handleLoadFromClient" variant="outline" size="sm" :disabled="isImporting" class="hover:bg-primary/10 hover:text-primary hover:border-primary/50">
                 <FileInput class="h-3 w-3 mr-1" />
                 从客户端导入
               </Button>
             </div>
           </div>
+
+          <Separator class="bg-border/50" />
 
           <!-- 可视化符文选择器 -->
           <RunePerkPicker
@@ -119,10 +128,10 @@
         </div>
       </div>
 
-      <DialogFooter>
-        <Button variant="outline" @click="handleClose">取消</Button>
-        <Button @click="handleSave" :disabled="!isFormValid">
-          {{ isEditing ? '保存' : '创建' }}
+      <DialogFooter class="gap-2">
+        <Button variant="outline" @click="handleClose" class="hover:bg-muted">取消</Button>
+        <Button @click="handleSave" :disabled="!isFormValid" class="bg-primary hover:bg-primary/90">
+          {{ isEditing ? '保存修改' : '创建配置' }}
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -132,7 +141,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import type { RuneConfig } from '@/shared/stores/features/userRuneStore'
-import { Sparkles, Download, FileInput } from 'lucide-vue-next'
+import { Sparkles, Download, FileInput, CheckCircle2 } from 'lucide-vue-next'
 import RunePerkPicker from './RunePerkPicker.vue'
 
 interface Props {

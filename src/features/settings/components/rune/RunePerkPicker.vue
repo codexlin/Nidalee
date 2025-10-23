@@ -27,66 +27,80 @@
         </div>
 
         <!-- 主系选择 -->
-        <div class="grid grid-cols-5 gap-2">
+        <div class="grid grid-cols-5 gap-3">
           <div
             v-for="style in perkStyles"
             :key="style.id"
             @click="selectPrimaryStyle(style.id)"
-            class="relative cursor-pointer rounded-lg border-2 p-3 transition-all hover:scale-105"
+            class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:scale-105"
             :class="[
-              primaryStyleId === style.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+              primaryStyleId === style.id ? 'border-primary bg-primary/10 shadow-md' : 'border-border hover:border-primary/50'
             ]"
           >
             <div class="flex flex-col items-center gap-2">
               <img
                 :src="runeData.getStyleIconUrl(style.iconPath)"
                 :alt="style.name"
-                class="h-8 w-8"
+                class="h-10 w-10"
                 @error="handleImageError"
               />
               <span class="text-xs font-medium text-center">{{ style.name }}</span>
             </div>
             <div
               v-if="primaryStyleId === style.id"
-              class="absolute top-1 right-1 h-4 w-4 rounded-full bg-primary flex items-center justify-center"
+              class="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-sm"
             >
               <Check class="h-3 w-3 text-primary-foreground" />
             </div>
           </div>
         </div>
 
-        <!-- 主系符文槽位 -->
+        <!-- 主系符文槽位（树状图展示） -->
         <div v-if="primaryStyle" class="space-y-4">
           <div v-for="(slot, slotIndex) in primaryStyleSlots" :key="slotIndex" class="space-y-2">
-            <div class="text-xs font-medium text-muted-foreground">
-              {{ slot.slotLabel || getSlotLabel(slot.type, slotIndex) }}
+            <!-- 层级标题 -->
+            <div class="flex items-center gap-2">
+              <div class="h-px flex-1 bg-border"></div>
+              <div class="text-xs font-medium px-2"
+                   :class="slot.type === 'kKeyStone' ? 'text-primary' : 'text-muted-foreground'">
+                {{ slot.slotLabel || getSlotLabel(slot.type, slotIndex) }}
+                <span v-if="slot.type === 'kKeyStone'" class="ml-1 text-primary/70">(3选1)</span>
+              </div>
+              <div class="h-px flex-1 bg-border"></div>
             </div>
-            <div class="grid grid-cols-3 gap-2">
+
+            <!-- 符文选项 -->
+            <div class="grid grid-cols-3 gap-3">
               <div
                 v-for="perkId in slot.perks"
                 :key="perkId"
                 @click="selectPerk(slotIndex, perkId)"
-                class="relative cursor-pointer rounded-lg border-2 p-2 transition-all hover:scale-105"
+                class="relative cursor-pointer rounded-lg border-2 p-3 transition-all hover:scale-105"
                 :class="[
                   selectedPrimaryPerks[slotIndex] === perkId
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50'
+                    ? 'border-primary bg-primary/10 shadow-md'
+                    : 'border-border hover:border-primary/50',
+                  slot.type === 'kKeyStone' && selectedPrimaryPerks[slotIndex] === perkId
+                    ? 'ring-2 ring-primary/30'
+                    : ''
                 ]"
               >
-                <div class="flex flex-col items-center gap-1">
+                <div class="flex flex-col items-center gap-2">
                   <img
                     :src="getPerkIconUrl(perkId)"
                     :alt="getPerkName(perkId)"
-                    class="h-10 w-10 rounded"
+                    :class="slot.type === 'kKeyStone' ? 'h-16 w-16' : 'h-12 w-12'"
+                    class="rounded"
                     @error="handleImageError"
                   />
-                  <span class="text-xs text-center line-clamp-1">
+                  <span class="text-xs text-center line-clamp-2 leading-tight"
+                        :class="slot.type === 'kKeyStone' ? 'font-semibold' : ''">
                     {{ getPerkName(perkId) }}
                   </span>
                 </div>
                 <div
                   v-if="selectedPrimaryPerks[slotIndex] === perkId"
-                  class="absolute top-1 right-1 h-4 w-4 rounded-full bg-primary flex items-center justify-center"
+                  class="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-sm"
                 >
                   <Check class="h-3 w-3 text-primary-foreground" />
                 </div>
@@ -112,68 +126,86 @@
         </div>
 
         <!-- 副系选择 -->
-        <div class="grid grid-cols-4 gap-2">
+        <div class="grid grid-cols-4 gap-3">
           <div
             v-for="style in availableSubStyles"
             :key="style.id"
             @click="selectSubStyle(style.id)"
-            class="relative cursor-pointer rounded-lg border-2 p-3 transition-all hover:scale-105"
+            class="relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:scale-105"
             :class="[
-              subStyleId === style.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+              subStyleId === style.id ? 'border-primary bg-primary/10 shadow-md' : 'border-border hover:border-primary/50'
             ]"
           >
             <div class="flex flex-col items-center gap-2">
               <img
                 :src="runeData.getStyleIconUrl(style.iconPath)"
                 :alt="style.name"
-                class="h-8 w-8"
+                class="h-10 w-10"
                 @error="handleImageError"
               />
               <span class="text-xs font-medium text-center">{{ style.name }}</span>
             </div>
             <div
               v-if="subStyleId === style.id"
-              class="absolute top-1 right-1 h-4 w-4 rounded-full bg-primary flex items-center justify-center"
+              class="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-sm"
             >
               <Check class="h-3 w-3 text-primary-foreground" />
             </div>
           </div>
         </div>
 
-        <!-- 副系符文选择 -->
-        <div v-if="subStyle" class="space-y-2">
-          <div class="text-xs font-medium text-muted-foreground">可选符文（选择 2 个）</div>
-          <div class="grid grid-cols-3 gap-2">
-            <div
-              v-for="perkId in subStylePerks"
-              :key="perkId"
-              @click="toggleSubPerk(perkId)"
-              class="relative cursor-pointer rounded-lg border-2 p-2 transition-all hover:scale-105"
-              :class="[
-                selectedSubPerks.includes(perkId)
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border hover:border-primary/50',
-                selectedSubPerks.length >= 2 && !selectedSubPerks.includes(perkId)
-                  ? 'opacity-50 cursor-not-allowed'
-                  : ''
-              ]"
-            >
-              <div class="flex flex-col items-center gap-1">
-                <img
-                  :src="getPerkIconUrl(perkId)"
-                  :alt="getPerkName(perkId)"
-                  class="h-10 w-10 rounded"
-                  @error="handleImageError"
-                />
-                <span class="text-xs text-center line-clamp-1">
-                  {{ getPerkName(perkId) }}
-                </span>
+        <!-- 副系符文选择（分层展示） -->
+        <div v-if="subStyle" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="text-xs font-medium text-muted-foreground">可选符文（从下面任选 2 个）</div>
+            <div class="text-xs text-primary font-medium">
+              已选: {{ selectedSubPerks.length }} / 2
+            </div>
+          </div>
+
+          <!-- 分层展示副系符文 -->
+          <div class="space-y-3">
+            <div v-for="(slot, slotIndex) in subStyleSlots" :key="slotIndex" class="space-y-2">
+              <div class="flex items-center gap-2">
+                <div class="h-px flex-1 bg-border"></div>
+                <div class="text-xs font-medium text-muted-foreground px-2">
+                  第 {{ slotIndex + 2 }} 层
+                </div>
+                <div class="h-px flex-1 bg-border"></div>
               </div>
-              <div
-                v-if="selectedSubPerks.includes(perkId)"
-                class="absolute top-1 right-1 h-4 w-4 rounded-full bg-primary flex items-center justify-center"
-              >
-                <Check class="h-3 w-3 text-primary-foreground" />
+              <div class="grid grid-cols-3 gap-3">
+                <div
+                  v-for="perkId in slot.perks"
+                  :key="perkId"
+                  @click="toggleSubPerk(perkId)"
+                  class="relative cursor-pointer rounded-lg border-2 p-3 transition-all hover:scale-105"
+                  :class="[
+                    selectedSubPerks.includes(perkId)
+                      ? 'border-primary bg-primary/10 shadow-md'
+                      : 'border-border hover:border-primary/50',
+                    selectedSubPerks.length >= 2 && !selectedSubPerks.includes(perkId)
+                      ? 'opacity-50 cursor-not-allowed'
+                      : ''
+                  ]"
+                >
+                  <div class="flex flex-col items-center gap-2">
+                    <img
+                      :src="getPerkIconUrl(perkId)"
+                      :alt="getPerkName(perkId)"
+                      class="h-12 w-12 rounded"
+                      @error="handleImageError"
+                    />
+                    <span class="text-xs text-center line-clamp-2 leading-tight">
+                      {{ getPerkName(perkId) }}
+                    </span>
+                  </div>
+                  <div
+                    v-if="selectedSubPerks.includes(perkId)"
+                    class="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-sm"
+                  >
+                    <Check class="h-3 w-3 text-primary-foreground" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -185,43 +217,54 @@
       <!-- 属性碎片 -->
       <div class="space-y-4">
         <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Zap class="h-4 w-4" />
+          <Zap class="h-4 w-4 text-amber-500" />
           属性碎片
+          <span class="text-xs text-muted-foreground font-normal">(每行3选1)</span>
         </h3>
 
         <div v-if="statModSlots.length > 0" class="space-y-3">
           <div v-for="(slot, slotIndex) in statModSlots" :key="slotIndex" class="space-y-2">
-            <div class="text-xs font-medium text-muted-foreground">
-              {{ slot.slotLabel }}
+            <!-- 属性碎片分类标签 -->
+            <div class="flex items-center gap-2">
+              <div class="h-px flex-1 bg-border/50"></div>
+              <div class="text-xs font-medium text-muted-foreground px-2 flex items-center gap-1">
+                {{ slot.slotLabel }}
+                <span class="text-[10px] text-muted-foreground/70">
+                  {{ getStatModDescription(slotIndex) }}
+                </span>
+              </div>
+              <div class="h-px flex-1 bg-border/50"></div>
             </div>
-            <div class="grid grid-cols-3 gap-2">
+
+            <!-- 属性碎片选项 -->
+            <div class="grid grid-cols-3 gap-3">
               <div
                 v-for="perkId in slot.perks"
                 :key="perkId"
                 @click="selectStatMod(slotIndex, perkId)"
-                class="relative cursor-pointer rounded-lg border-2 p-2 transition-all hover:scale-105"
+                class="relative cursor-pointer rounded-lg border-2 p-3 transition-all hover:scale-105"
                 :class="[
                   selectedStatMods[slotIndex] === perkId
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50'
+                    ? 'border-amber-500 bg-amber-500/10 shadow-md'
+                    : 'border-border hover:border-amber-500/50'
                 ]"
               >
-                <div class="flex flex-col items-center gap-1">
+                <div class="flex flex-col items-center gap-2">
                   <img
                     :src="getPerkIconUrl(perkId)"
                     :alt="getPerkName(perkId)"
-                    class="h-8 w-8 rounded"
+                    class="h-10 w-10 rounded"
                     @error="handleImageError"
                   />
-                  <span class="text-xs text-center line-clamp-1">
+                  <span class="text-xs text-center line-clamp-2 leading-tight">
                     {{ getPerkName(perkId) }}
                   </span>
                 </div>
                 <div
                   v-if="selectedStatMods[slotIndex] === perkId"
-                  class="absolute top-1 right-1 h-4 w-4 rounded-full bg-primary flex items-center justify-center"
+                  class="absolute top-2 right-2 h-5 w-5 rounded-full bg-amber-500 flex items-center justify-center shadow-sm"
                 >
-                  <Check class="h-3 w-3 text-primary-foreground" />
+                  <Check class="h-3 w-3 text-white" />
                 </div>
               </div>
             </div>
@@ -279,24 +322,32 @@ const availableSubStyles = computed(() => {
 
 const primaryStyleSlots = computed(() => {
   if (!primaryStyle.value) return []
-  // 只返回非属性碎片的槽位（前4个槽位）
-  return primaryStyle.value.slots.filter((s: any) => s.type !== 'kStatMod')
+  // 只返回主系符文槽位（基石 + 普通符文），排除属性碎片
+  return primaryStyle.value.slots.filter((s: any) =>
+    s.type === 'kKeyStone' || s.type === 'kMixedRegularSplashable'
+  )
 })
 
-const subStylePerks = computed(() => {
+// 副系符文按层级分组
+const subStyleSlots = computed(() => {
   if (!subStyle.value) return []
-  // 获取副系的所有非基石符文
+  // 只返回普通符文槽位（排除基石和属性碎片）
+  return subStyle.value.slots.filter((s: any) => s.type === 'kMixedRegularSplashable')
+})
+
+// 保留旧的 subStylePerks 用于兼容性
+const subStylePerks = computed(() => {
   const allPerks: number[] = []
-  subStyle.value.slots.forEach((slot: any) => {
-    if (slot.type === 'kMixedRegularSplashable') {
-      allPerks.push(...slot.perks)
-    }
+  subStyleSlots.value.forEach((slot: any) => {
+    allPerks.push(...slot.perks)
   })
   return allPerks
 })
 
+// 属性碎片槽位 - 只从主系获取（所有符文系的属性碎片都相同）
 const statModSlots = computed(() => {
   if (!primaryStyle.value) return []
+  // 属性碎片在所有符文系中都是相同的，只需要从主系获取一次
   return primaryStyle.value.slots.filter((s: any) => s.type === 'kStatMod')
 })
 
@@ -391,7 +442,16 @@ const getSlotLabel = (type: string, index: number) => {
   if (type === 'kStatMod') {
     return ['进攻', '灵活', '防御'][index - 4] || '属性'
   }
-  return `第 ${index} 层`
+  return `第 ${index + 1} 层`
+}
+
+const getStatModDescription = (slotIndex: number) => {
+  const descriptions = [
+    '攻击力/法强/攻速',
+    '自适应/攻速/CD',
+    '生命值/护甲/魔抗'
+  ]
+  return descriptions[slotIndex] || ''
 }
 
 const handleImageError = (e: Event) => {

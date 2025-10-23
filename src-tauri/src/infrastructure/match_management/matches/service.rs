@@ -393,6 +393,12 @@ fn analyze_match_list_data_with_perspective(
     // 第1层：基础特征（所有模式都执行）
     traits.extend(analyze_traits(&player_stats));
 
+    // 第1.5层：队列感知特征（所有模式都执行，提供队列特定的评估）
+    traits.extend(crate::domains::analysis::analyzers::traits::queue_aware::analyze_queue_aware_traits(
+        &player_stats,
+        queue_id,
+    ));
+
     // 第2-5层：深度分析（仅排位模式）
     if strategy.enable_advanced_analysis() {
         // 第2层：深度特征（参团率、伤害占比、稳定性、趋势）

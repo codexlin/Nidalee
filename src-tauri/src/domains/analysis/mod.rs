@@ -23,8 +23,10 @@
 /// - analyzers/core: 核心分析（解析、统计、策略）
 /// - analyzers/traits: 特征分析（6个分析器）
 /// - thresholds: 阈值配置
+/// - queue_config: 队列特定配置
 pub mod analyzers;
 pub mod thresholds;
+pub mod queue_config;
 
 // 重新导出核心API（保持向后兼容）
 pub use analyzers::core::parser::{identify_main_role, parse_games, ParsedGame};

@@ -9,7 +9,7 @@
       <!-- 原始数据收集 -->
       <div class="mb-6">
         <h3 class="text-lg font-semibold mb-3">📊 原始LCU数据收集</h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium mb-2">游戏场次</label>
             <Input
@@ -45,6 +45,12 @@
             <Button @click="analyzeRawData" :disabled="isAnalyzingRaw" class="w-full" variant="outline">
               <Loader2 v-if="isAnalyzingRaw" class="w-4 h-4 mr-2 animate-spin" />
               {{ isAnalyzingRaw ? '分析中...' : '分析时间线' }}
+            </Button>
+          </div>
+          <div class="flex items-end">
+            <Button @click="analyzeThresholds" :disabled="isAnalyzingThresholds" class="w-full" variant="secondary">
+              <Loader2 v-if="isAnalyzingThresholds" class="w-4 h-4 mr-2 animate-spin" />
+              {{ isAnalyzingThresholds ? '分析中...' : '阈值分析' }}
             </Button>
           </div>
         </div>
@@ -168,6 +174,28 @@
           <AlertTitle>JSON结构查看失败</AlertTitle>
           <AlertDescription>
             {{ jsonStructureError }}
+          </AlertDescription>
+        </Alert>
+      </div>
+
+      <!-- 阈值分析结果 -->
+      <div v-if="thresholdAnalysisResult" class="mb-6">
+        <Alert>
+          <BarChart3 class="h-4 w-4" />
+          <AlertTitle>阈值分析结果</AlertTitle>
+          <AlertDescription>
+            <pre class="mt-2 text-sm whitespace-pre-wrap">{{ thresholdAnalysisResult }}</pre>
+          </AlertDescription>
+        </Alert>
+      </div>
+
+      <!-- 阈值分析错误 -->
+      <div v-if="thresholdAnalysisError" class="mb-6">
+        <Alert variant="destructive">
+          <AlertCircle class="h-4 w-4" />
+          <AlertTitle>阈值分析失败</AlertTitle>
+          <AlertDescription>
+            {{ thresholdAnalysisError }}
           </AlertDescription>
         </Alert>
       </div>
@@ -304,6 +332,11 @@ const isShowingJson = ref(false)
 const jsonStructureResult = ref('')
 const jsonStructureError = ref('')
 
+// 阈值分析相关
+const isAnalyzingThresholds = ref(false)
+const thresholdAnalysisResult = ref('')
+const thresholdAnalysisError = ref('')
+
 // 生成数据文件
 const generateData = async () => {
   isGenerating.value = true
@@ -430,6 +463,32 @@ const showJsonStructure = async () => {
     console.error('JSON结构查看失败:', error)
   } finally {
     isShowingJson.value = false
+  }
+}
+
+// 阈值分析
+const analyzeThresholds = async () => {
+  if (!rawDataFilePath.value.trim()) {
+    thresholdAnalysisError.value = '请输入原始数据文件路径'
+    return
+  }
+
+  isAnalyzingThresholds.value = true
+  thresholdAnalysisResult.value = ''
+  thresholdAnalysisError.value = ''
+
+  try {
+    const result = await invoke<string>('analyze_thresholds_from_raw_data', {
+      filePath: rawDataFilePath.value.trim()
+    })
+
+    thresholdAnalysisResult.value = result
+    console.log('阈值分析成功:', result)
+  } catch (error: any) {
+    thresholdAnalysisError.value = error.message || '阈值分析失败'
+    console.error('阈值分析失败:', error)
+  } finally {
+    isAnalyzingThresholds.value = false
   }
 }
 </script>

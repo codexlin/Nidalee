@@ -137,7 +137,7 @@
 
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <!-- 自动接受对局 -->
-              <div class="card-hover-effect rounded-xl bg-card">
+              <div class="card-hover-effect">
                 <FunctionCard
                   title="自动接受对局"
                   description="自动接受匹配到的对局，避免错过游戏机会"
@@ -147,7 +147,7 @@
               </div>
 
               <!-- 自动选择英雄 -->
-              <div class="card-hover-effect rounded-xl bg-card">
+              <div class="card-hover-effect">
                 <ChampionFunctionCard
                   title="自动选择英雄"
                   description="在选择阶段自动选择指定英雄，快速完成英雄选择"
@@ -164,7 +164,7 @@
               </div>
 
               <!-- 自动禁用英雄 -->
-              <div class="card-hover-effect rounded-xl bg-card">
+              <div class="card-hover-effect">
                 <ChampionFunctionCard
                   title="自动禁用英雄"
                   description="在禁用阶段自动禁用指定英雄，防止对手选择"
@@ -182,14 +182,17 @@
             </div>
 
             <!-- 符文配置导航提示 -->
-            <div class="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
+            <div class="mt-6 p-5 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/30 shadow-sm">
               <div class="flex items-start gap-3">
-                <Sparkles class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                <div class="flex-shrink-0 h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Sparkles class="h-5 w-5 text-primary" />
+                </div>
                 <div class="flex-1">
-                  <div class="text-sm font-medium text-primary">寻找符文自动配置？</div>
-                  <div class="text-xs text-muted-foreground mt-1">
-                    完整的符文自动应用和自定义配置功能已移至 <span class="font-semibold text-primary">"符文配置"</span> 标签页，
-                    支持智能匹配、OP.GG 推荐和自定义符文配置。
+                  <div class="text-sm font-semibold text-primary mb-1">寻找符文自动配置？</div>
+                  <div class="text-xs text-muted-foreground leading-relaxed">
+                    完整的符文自动应用和自定义配置功能已移至
+                    <span class="font-semibold text-primary px-1 py-0.5 rounded bg-primary/10">"符文配置"</span>
+                    标签页，支持智能匹配、OP.GG 推荐和自定义符文配置。
                   </div>
                 </div>
               </div>
@@ -241,20 +244,12 @@ const { defaultQueueTypes, applyDefaultFilterOnSearch, defaultMatchCount } = sto
 const autoFunctionStore = useAutoFunctionStore()
 const activityLogger = useActivityLogger()
 
-// 计算属性 - 使用 toRef 确保响应式
-const autoFunctions = computed(() => {
-  const functions = autoFunctionStore.autoFunctions
-  console.log('[SettingsView] autoFunctions computed:', functions)
-  return functions
-})
-
-const enabledFunctionsCount = computed(() => autoFunctionStore.enabledFunctionsCount)
-const isAnyFunctionEnabled = computed(() => autoFunctionStore.isAnyFunctionEnabled)
-const enabledFunctions = computed(() => autoFunctionStore.enabledFunctions)
+// 使用 storeToRefs 确保响应式
+const { autoFunctions, enabledFunctionsCount, isAnyFunctionEnabled, enabledFunctions } =
+  storeToRefs(autoFunctionStore)
 
 // 禁用所有功能
 const handleDisableAll = async () => {
-  console.log('Disabling all functions')
   autoFunctionStore.disableAllFunctions()
   activityLogger.log.info('已禁用所有自动功能', 'settings')
 }

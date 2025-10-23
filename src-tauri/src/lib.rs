@@ -95,6 +95,7 @@ pub fn run() {
             // 数据收集测试命令
             common::commands::data_collection::generate_test_data_file,
             common::commands::data_collection::analyze_data_file,
+            common::commands::threshold_analyzer::analyze_thresholds_from_raw_data,
             common::commands::data_collection::collect_raw_match_data,
             common::commands::data_collection::analyze_raw_match_timeline,
             common::commands::data_collection::show_raw_json_structure,

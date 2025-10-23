@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "../../../.."
+		},
+		{
+			"path": "../../../../../ace-admin-backend"
+		},
+		{
+			"path": "../../../../../my-gin-app"
+		},
+		{
+			"path": "../../../../../next-portfolio"
+		},
+		{
+			"path": "../../../../../vue-ace-admin"
+		}
+	],
+	"settings": {}
+}

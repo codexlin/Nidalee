@@ -61,9 +61,7 @@ export const useAutoFunctionStore = defineStore(
 
     // 启用指定功能
     const enableFunction = (key: keyof AutoFunctions) => {
-      console.log(`[autoFunctionStore] Enabling function:`, key)
       autoFunctions.value[key].enabled = true
-      console.log(`[autoFunctionStore] Function ${key} enabled. Current state:`, autoFunctions.value[key])
       return {
         key,
         enabled: true,
@@ -73,9 +71,7 @@ export const useAutoFunctionStore = defineStore(
 
     // 禁用指定功能
     const disableFunction = (key: keyof AutoFunctions) => {
-      console.log(`[autoFunctionStore] Disabling function:`, key)
       autoFunctions.value[key].enabled = false
-      console.log(`[autoFunctionStore] Function ${key} disabled. Current state:`, autoFunctions.value[key])
       return {
         key,
         enabled: false,
@@ -93,12 +89,7 @@ export const useAutoFunctionStore = defineStore(
     // 设置功能延迟
     const setFunctionDelay = (key: keyof AutoFunctions, delay: number) => {
       const newDelay = Math.max(0, delay)
-      console.log(`[autoFunctionStore] Setting delay for ${key}:`, {
-        old: autoFunctions.value[key].delay,
-        new: newDelay
-      })
       autoFunctions.value[key].delay = newDelay
-      console.log(`[autoFunctionStore] Delay set for ${key}. Current state:`, autoFunctions.value[key])
     }
 
     // 设置选择英雄列表（覆盖）

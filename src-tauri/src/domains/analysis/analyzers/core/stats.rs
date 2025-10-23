@@ -246,20 +246,24 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
     }
 }
 
-/// ⭐ v3.1: 将 role/lane 转换为中文位置名称
+/// ⭐ v3.2: 将 role/lane 转换为中文位置名称（基于真实数据优化）
 fn role_to_position(role: &str, lane: &str) -> String {
     let position = match (role, lane) {
-        // 标准位置匹配
-        ("DUO_CARRY", _) => "ADC",
-        ("DUO_SUPPORT", _) => "辅助",
+        // 标准位置匹配（优先匹配role）
+        ("DUO_CARRY", _) | ("CARRY", _) => "ADC",
+        ("DUO_SUPPORT", _) | ("SUPPORT", _) => "辅助",
         ("SOLO", "TOP") => "上单",
         ("SOLO", "MIDDLE") | ("SOLO", "MID") => "中单",
         ("NONE", "JUNGLE") | ("JUNGLE", _) => "打野",
+        ("DUO", "BOTTOM") => "下路", // DUO可能是ADC或辅助，但无法精确区分
 
         // 仅根据 lane 判断（当 role 是 NONE 但 lane 有值时）
         ("NONE", "TOP") => "上单",
         ("NONE", "MIDDLE") | ("NONE", "MID") => "中单",
         ("NONE", "BOTTOM") => "下路", // 无法区分 ADC/辅助
+
+        // SOLO + BOTTOM 的特殊情况（可能是单人路或特殊玩法）
+        ("SOLO", "BOTTOM") => "下路",
 
         // 没有 timeline 数据（大乱斗、自定义等）
         ("NONE", "NONE") => {

@@ -120,8 +120,10 @@ pub struct QueueStats {
 pub struct RawMatchData {
     /// 对局列表的原始JSON数据
     pub match_list_json: Value,
-    /// 对局详情的原始JSON数据（包含时间线）
+    /// 对局详情的原始JSON数据
     pub match_detail_json: Option<Value>,
+    /// 对局时间线的原始JSON数据 🔥 新增
+    pub match_timeline_json: Option<Value>,
     /// 游戏ID（用于快速访问）
     pub game_id: u64,
     /// 队列ID（用于快速过滤）
@@ -475,7 +477,7 @@ pub async fn collect_raw_match_data(
         let game_id = game.get("gameId").and_then(|g| g.as_u64()).unwrap_or(0);
         let queue_id = game.get("queueId").and_then(|g| g.as_i64()).unwrap_or(0) as i32;
 
-        // 获取对局详情数据（包含时间线）
+        // 获取对局详情数据
         let match_detail = if game_id > 0 {
             println!("🔍 获取对局详情: gameId={}", game_id);
             match get_match_detail(client, game_id).await {
@@ -492,9 +494,27 @@ pub async fn collect_raw_match_data(
             None
         };
 
+        // 🔥 获取对局时间线数据（关键！）
+        let match_timeline = if game_id > 0 {
+            println!("🔍 获取对局时间线: gameId={}", game_id);
+            match get_match_timeline(client, game_id).await {
+                Ok(timeline) => {
+                    println!("✅ 对局时间线获取成功: gameId={}", game_id);
+                    Some(timeline)
+                }
+                Err(e) => {
+                    println!("⚠️ 对局时间线获取失败: gameId={}, error={}", game_id, e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         let raw_match = RawMatchData {
             match_list_json: game.clone(), // 保存对局列表的原始JSON
             match_detail_json: match_detail, // 保存对局详情的原始JSON
+            match_timeline_json: match_timeline, // 🔥 保存对局时间线的原始JSON
             game_id,
             queue_id,
         };
@@ -570,6 +590,15 @@ async fn get_match_detail(client: &Client, game_id: u64) -> Result<Value, String
 
     lcu_get(client, &detail_url).await
         .map_err(|e| format!("获取对局详情失败: {}", e))
+}
+
+/// 🔥 获取单场对局的时间线数据（关键！）
+async fn get_match_timeline(client: &Client, game_id: u64) -> Result<Value, String> {
+    let timeline_url = format!("/lol-match-history/v1/game-timelines/{}", game_id);
+    println!("🌐 请求对局时间线URL: {}", timeline_url);
+
+    lcu_get(client, &timeline_url).await
+        .map_err(|e| format!("获取对局时间线失败: {}", e))
 }
 
 /// 分析原始对局数据的时间线特征
@@ -733,8 +762,56 @@ fn analyze_timeline_data(raw_matches: &[RawMatchData], report: &mut String) {
         }
     }
 
+    // 分析时间线API数据
+    let mut timeline_frames_count = 0;
+    let mut timeline_events_count = 0;
+    let mut has_position_data = 0;
+    let mut has_gold_data = 0;
+    let mut has_xp_data = 0;
+    let mut has_cs_data = 0;
+
+    for match_data in raw_matches {
+        if let Some(timeline_json) = &match_data.match_timeline_json {
+            if let Some(frames) = timeline_json.get("frames").and_then(|f| f.as_array()) {
+                timeline_frames_count += frames.len();
+
+                for frame in frames {
+                    // 统计事件
+                    if let Some(events) = frame.get("events").and_then(|e| e.as_array()) {
+                        timeline_events_count += events.len();
+                    }
+
+                    // 统计参与者帧数据
+                    if let Some(participant_frames) = frame.get("participantFrames").and_then(|p| p.as_object()) {
+                        for (_, pf) in participant_frames {
+                            if pf.get("position").is_some() {
+                                has_position_data += 1;
+                            }
+                            if pf.get("totalGold").is_some() {
+                                has_gold_data += 1;
+                            }
+                            if pf.get("xp").is_some() {
+                                has_xp_data += 1;
+                            }
+                            if pf.get("minionsKilled").is_some() {
+                                has_cs_data += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     report.push_str(&format!("\n⏰ 时间线数据分析:\n"));
     report.push_str(&format!("  有详情数据的参与者: {} 个\n", timeline_available_count));
+    report.push_str(&format!("\n🔥 时间线API数据:\n"));
+    report.push_str(&format!("  时间线帧数: {} 个\n", timeline_frames_count));
+    report.push_str(&format!("  游戏事件数: {} 个\n", timeline_events_count));
+    report.push_str(&format!("  位置数据点: {} 个\n", has_position_data));
+    report.push_str(&format!("  金币数据点: {} 个\n", has_gold_data));
+    report.push_str(&format!("  经验数据点: {} 个\n", has_xp_data));
+    report.push_str(&format!("  补刀数据点: {} 个\n", has_cs_data));
 
     if timeline_available_count > 0 {
         // 位置分布分析
@@ -918,6 +995,42 @@ pub async fn show_raw_json_structure(file_path: String, match_index: Option<usiz
         let detail_pretty_json = serde_json::to_string_pretty(detail_json)
             .map_err(|e| format!("详情JSON格式化失败: {}", e))?;
         report.push_str(&detail_pretty_json);
+    }
+
+    // 🔥 如果有对局时间线数据，也展示
+    if let Some(timeline_json) = &match_data.match_timeline_json {
+        report.push_str("\n\n🔥 完整对局时间线JSON (格式化):\n");
+        let timeline_pretty_json = serde_json::to_string_pretty(timeline_json)
+            .map_err(|e| format!("时间线JSON格式化失败: {}", e))?;
+        report.push_str(&timeline_pretty_json);
+
+        // 分析时间线数据结构
+        report.push_str("\n\n🔍 时间线数据结构分析:\n");
+        if let Some(frames) = timeline_json.get("frames").and_then(|f| f.as_array()) {
+            report.push_str(&format!("  总帧数: {} 帧\n", frames.len()));
+
+            if let Some(first_frame) = frames.first() {
+                // 分析第一帧
+                if let Some(participant_frames) = first_frame.get("participantFrames").and_then(|p| p.as_object()) {
+                    report.push_str(&format!("  参与者数: {} 个\n", participant_frames.len()));
+
+                    if let Some((_, first_pf)) = participant_frames.iter().next() {
+                        report.push_str("\n  参与者帧数据字段:\n");
+                        if let Some(obj) = first_pf.as_object() {
+                            for (key, _) in obj {
+                                report.push_str(&format!("    • {}\n", key));
+                            }
+                        }
+                    }
+                }
+
+                if let Some(events) = first_frame.get("events").and_then(|e| e.as_array()) {
+                    report.push_str(&format!("\n  第一帧事件数: {} 个\n", events.len()));
+                }
+            }
+        }
+    } else {
+        report.push_str("\n\n⚠️ 没有对局时间线数据\n");
     }
 
     println!("{}", report);

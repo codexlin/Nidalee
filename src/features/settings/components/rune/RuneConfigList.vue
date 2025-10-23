@@ -2,15 +2,15 @@
   <div class="space-y-4">
     <!-- 操作按钮 -->
     <div class="flex items-center gap-2">
-      <Button @click="handleAddConfig" class="flex items-center gap-2">
+      <Button @click="handleAddConfig" class="flex items-center gap-2 bg-primary hover:bg-primary/90 shadow-md">
         <Plus class="h-4 w-4" />
         新增配置
       </Button>
-      <Button @click="handleImportFromOpgg" variant="outline" class="flex items-center gap-2">
+      <Button @click="handleImportFromOpgg" variant="outline" class="flex items-center gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/50">
         <Download class="h-4 w-4" />
         从 OP.GG 导入
       </Button>
-      <Button v-if="configCount > 0" @click="handleExportConfigs" variant="outline" class="flex items-center gap-2">
+      <Button v-if="configCount > 0" @click="handleExportConfigs" variant="outline" class="flex items-center gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/50">
         <Upload class="h-4 w-4" />
         导出配置
       </Button>
@@ -42,7 +42,7 @@
       <div
         v-for="config in filteredConfigs"
         :key="config.id"
-        class="p-4 rounded-lg border border-border bg-background/50 hover:bg-background/80 hover:border-primary/50 transition-all duration-200"
+        class="group p-5 rounded-xl border border-border bg-card/50 backdrop-blur-sm hover:bg-card hover:border-primary/50 hover:shadow-md transition-all duration-200"
       >
         <div class="flex items-start justify-between gap-4">
           <!-- 配置信息 -->
@@ -82,19 +82,19 @@
               @click="handleSetDefault(config.id)"
               variant="ghost"
               size="sm"
-              class="h-8 w-8 p-0"
+              class="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
               title="设为默认"
             >
               <Star class="h-4 w-4" />
             </Button>
-            <Button @click="handleEditConfig(config)" variant="ghost" size="sm" class="h-8 w-8 p-0" title="编辑">
+            <Button @click="handleEditConfig(config)" variant="ghost" size="sm" class="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" title="编辑">
               <Pencil class="h-4 w-4" />
             </Button>
             <Button
               @click="handleDeleteConfig(config.id)"
               variant="ghost"
               size="sm"
-              class="h-8 w-8 p-0 text-destructive hover:text-destructive"
+              class="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
               title="删除"
             >
               <Trash2 class="h-4 w-4" />
@@ -105,19 +105,25 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="configCount === 0" class="py-16 text-center text-muted-foreground space-y-4">
-      <div class="inline-flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-        <Sparkles class="h-10 w-10" />
+    <div v-else-if="configCount === 0" class="py-16 text-center space-y-4">
+      <div class="inline-flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 shadow-sm">
+        <Sparkles class="h-10 w-10 text-primary" />
       </div>
       <div>
         <h3 class="text-lg font-semibold text-foreground mb-2">还没有符文配置</h3>
-        <p class="text-sm">点击"新增配置"创建您的第一个符文配置</p>
+        <p class="text-sm text-muted-foreground">点击"新增配置"创建您的第一个符文配置</p>
       </div>
     </div>
 
     <!-- 无搜索结果 -->
-    <div v-else class="py-16 text-center text-muted-foreground">
-      <p class="text-sm">没有找到匹配的配置</p>
+    <div v-else class="py-16 text-center space-y-3">
+      <div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+        <Search class="h-8 w-8 text-muted-foreground" />
+      </div>
+      <div>
+        <p class="text-sm text-foreground">没有找到匹配的配置</p>
+        <p class="text-xs text-muted-foreground mt-1">尝试调整搜索条件或筛选器</p>
+      </div>
     </div>
 
     <!-- 符文编辑器 Dialog -->
