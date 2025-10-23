@@ -135,8 +135,8 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
         }
 
         // 最近战绩
-        // ⭐ v3.1: 添加位置信息
-        let position = role_to_position(&player.role, &player.lane);
+        // ⭐ v3.1: 添加位置信息（传入queue_id以区分排位/非排位）
+        let position = role_to_position(&player.role, &player.lane, game.queue_id);
 
         // 获取英雄名称
         let champion_name = get_champion_info(player.champion_id)
@@ -247,7 +247,15 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
 }
 
 /// ⭐ v3.2: 将 role/lane 转换为中文位置名称（基于真实数据优化）
-fn role_to_position(role: &str, lane: &str) -> String {
+/// ⭐ v3.3: 增加 queue_id 参数，区分排位赛和非排位赛
+fn role_to_position(role: &str, lane: &str, queue_id: i64) -> String {
+    // ⭐ 非排位赛（大乱斗、无限火力等）直接返回"灵活"，不做位置识别
+    // 只有排位赛（420单排、440灵活排）才需要位置分析
+    if queue_id != 420 && queue_id != 440 {
+        return "灵活".to_string();
+    }
+
+    // ✅ 以下逻辑仅用于排位赛
     let position = match (role, lane) {
         // 标准位置匹配（优先匹配role）
         ("DUO_CARRY", _) | ("CARRY", _) => "ADC",
@@ -265,15 +273,15 @@ fn role_to_position(role: &str, lane: &str) -> String {
         // SOLO + BOTTOM 的特殊情况（可能是单人路或特殊玩法）
         ("SOLO", "BOTTOM") => "下路",
 
-        // 没有 timeline 数据（大乱斗、自定义等）
-        ("NONE", "NONE") => {
-            // 这种情况通常出现在：大乱斗、自定义游戏、或旧对局数据
-            "灵活"
+        // ⚠️ 排位赛中遇到位置数据缺失的情况（异常数据）
+        ("NONE", "NONE") | ("SOLO", "NONE") => {
+            println!("⚠️ 排位赛(queueId={})中位置数据缺失: role={}, lane={}", queue_id, role, lane);
+            "未知" // 标记为未知，便于追踪数据问题
         }
 
         // 其他未知情况，记录日志以便调试
         _ => {
-            println!("⚠️ 未识别的位置组合: role={}, lane={}", role, lane);
+            println!("⚠️ 未识别的位置组合: role={}, lane={}, queueId={}", role, lane, queue_id);
             "未知"
         }
     };

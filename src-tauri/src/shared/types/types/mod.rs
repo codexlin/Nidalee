@@ -1180,6 +1180,50 @@ pub struct PlayerMatchStats {
     pub advice: Vec<GameAdvice>,
 }
 
+/// ⭐ v3.4: 多位置分组分析结果
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/MultiPositionAnalysis.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct MultiPositionAnalysis {
+    /// 所有位置的统计（按场次从多到少排序）
+    pub position_stats: Vec<PositionStats>,
+
+    /// 主要位置（场次最多的）
+    pub main_position: String,
+
+    /// 总览数据（所有位置合计）
+    pub overall_stats: PlayerMatchStats,
+}
+
+/// ⭐ v3.4: 单个位置的统计数据
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/PositionStats.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct PositionStats {
+    /// 位置名称（打野、上单、中单、ADC、辅助、灵活）
+    pub position: String,
+
+    /// 该位置的场次
+    pub games: u32,
+
+    /// 该位置的胜场
+    pub wins: u32,
+
+    /// 该位置的胜率
+    pub win_rate: f64,
+
+    /// 该位置的统计数据
+    pub stats: PlayerMatchStats,
+}
+
 /// 单场比赛表现
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(

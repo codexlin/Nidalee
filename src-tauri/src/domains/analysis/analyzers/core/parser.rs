@@ -244,25 +244,67 @@ pub fn parse_games(games: &[Value], puuid: &str) -> Vec<ParsedGame> {
 }
 
 /// 识别玩家的主要位置
+/// ⭐ v3.3: 增强版 - 区分排位和非排位，使用统一的位置识别逻辑
 pub fn identify_main_role(parsed_games: &[ParsedGame]) -> String {
+    if parsed_games.is_empty() {
+        return "未知".to_string();
+    }
+
     let mut role_counts: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
 
     for game in parsed_games {
-        let role = match (game.player_data.role.as_str(), game.player_data.lane.as_str()) {
-            ("DUO_CARRY", _) => "ADC",
-            ("DUO_SUPPORT", _) => "辅助",
-            ("SOLO", "TOP") => "上单",
-            ("SOLO", "MIDDLE") | ("SOLO", "MID") => "中单",
-            ("NONE", "JUNGLE") | ("JUNGLE", _) => "打野",
-            _ => "未知",
-        };
+        let queue_id = game.queue_id;
 
-        *role_counts.entry(role.to_string()).or_insert(0) += 1;
+        // ⭐ 使用统一的位置识别逻辑
+        let role = identify_position_from_game(
+            &game.player_data.role,
+            &game.player_data.lane,
+            queue_id
+        );
+
+        *role_counts.entry(role).or_insert(0) += 1;
     }
 
+    // 返回出现次数最多的位置
     role_counts
         .into_iter()
         .max_by_key(|(_, count)| *count)
         .map(|(role, _)| role)
         .unwrap_or_else(|| "未知".to_string())
+}
+
+/// 从role/lane/queue_id识别位置（与stats.rs中的role_to_position保持一致）
+/// ⭐ 公开此函数以供service层使用
+pub fn identify_position_from_game(role: &str, lane: &str, queue_id: i64) -> String {
+    // ⭐ 非排位赛直接返回"灵活"
+    if queue_id != 420 && queue_id != 440 {
+        return "灵活".to_string();
+    }
+
+    // ✅ 排位赛才进行位置识别
+    match (role, lane) {
+        // 标准位置匹配
+        ("DUO_CARRY", _) | ("CARRY", _) => "ADC".to_string(),
+        ("DUO_SUPPORT", _) | ("SUPPORT", _) => "辅助".to_string(),
+        ("SOLO", "TOP") => "上单".to_string(),
+        ("SOLO", "MIDDLE") | ("SOLO", "MID") => "中单".to_string(),
+        ("NONE", "JUNGLE") | ("JUNGLE", _) => "打野".to_string(),
+        ("DUO", "BOTTOM") => "下路".to_string(),
+
+        // 仅根据 lane 判断
+        (_, "TOP") => "上单".to_string(),
+        (_, "JUNGLE") => "打野".to_string(),
+        (_, "MIDDLE") | (_, "MID") => "中单".to_string(),
+        ("SUPPORT", "BOTTOM") => "辅助".to_string(),
+        (_, "BOTTOM") => "ADC".to_string(),
+
+        // 排位赛中位置数据缺失
+        ("SOLO", "NONE") | ("NONE", "NONE") => {
+            // 不在这里打印日志，因为identify_main_role会被多次调用
+            "未知".to_string()
+        }
+
+        // 其他情况
+        _ => "未知".to_string(),
+    }
 }

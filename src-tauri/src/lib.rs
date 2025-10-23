@@ -39,6 +39,7 @@ pub fn run() {
             infrastructure::match_management::matchmaking::commands::decline_match,
             // 比赛记录
             infrastructure::match_management::matches::commands::get_match_history,
+            infrastructure::match_management::matches::commands_v2::get_match_history_with_positions,
             infrastructure::match_management::matches::commands::get_game_detail,
             infrastructure::match_management::matches::commands::get_player_tactical_advice,
             // 召唤师

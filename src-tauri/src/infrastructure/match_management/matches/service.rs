@@ -1,11 +1,12 @@
 use crate::domains::analysis::{
     analyze_advanced_traits, analyze_distribution_traits, analyze_player_stats, analyze_role_based_traits,
     analyze_timeline_traits, analyze_traits, analyze_win_loss_pattern, identify_main_role, identify_player_roles,
-    optimize_traits, parse_games, AnalysisContext, AnalysisStrategy,
+    identify_position_from_game, optimize_traits, parse_games, AnalysisContext, AnalysisStrategy,
 };
 use crate::domains::tactical_advice::generate_advice;
 use crate::shared::types::{
-    AdvicePerspective, GameAdvice, GameDetail, ParticipantInfo, ParticipantStats, PlayerMatchStats, TeamInfo, TeamStats,
+    AdvicePerspective, GameAdvice, GameDetail, MultiPositionAnalysis, ParticipantInfo, ParticipantStats,
+    PlayerMatchStats, PositionStats, TeamInfo, TeamStats,
 };
 use crate::shared::utils::{lcu_get, lcu_request_json};
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
@@ -329,14 +330,16 @@ fn analyze_match_list_data(
     current_puuid: &str,
     queue_id: Option<i32>,
 ) -> Result<PlayerMatchStats, String> {
-    // 默认使用 SelfImprovement 视角（用于Dashboard）
-    analyze_match_list_data_with_perspective(
-        match_list_data,
+    // ⭐ v3.4: 使用多位置分组分析，但只返回总览数据（保持向后兼容）
+    // TODO: 后续可以修改返回类型为 MultiPositionAnalysis
+    let multi_position_result = super::position_analysis::analyze_with_position_grouping(
+        match_list_data.clone(),
         current_puuid,
         queue_id,
-        AdvicePerspective::SelfImprovement,
-        None,
-    )
+    )?;
+
+    // 目前只返回overall_stats，保持API兼容性
+    Ok(multi_position_result.overall_stats)
 }
 
 /// 分析对局列表数据（支持指定建议视角）⭐
