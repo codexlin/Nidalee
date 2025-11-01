@@ -36,11 +36,13 @@
               <CardContent>
                 <div class="grid grid-cols-3 gap-4">
                   <div class="text-center">
-                    <div class="text-2xl font-bold text-green-600">{{ positionData.wins }}</div>
+                    <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ positionData.wins }}</div>
                     <div class="text-xs text-muted-foreground">胜场</div>
                   </div>
                   <div class="text-center">
-                    <div class="text-2xl font-bold text-red-600">{{ positionData.games - positionData.wins }}</div>
+                    <div class="text-2xl font-bold text-red-600 dark:text-red-400">
+                      {{ positionData.games - positionData.wins }}
+                    </div>
                     <div class="text-xs text-muted-foreground">负场</div>
                   </div>
                   <div class="text-center">
@@ -48,10 +50,10 @@
                       :class="[
                         'text-2xl font-bold',
                         positionData.winRate >= 55
-                          ? 'text-green-600'
+                          ? 'text-green-600 dark:text-green-400'
                           : positionData.winRate >= 50
-                            ? 'text-blue-600'
-                            : 'text-red-600'
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-red-600 dark:text-red-400'
                       ]"
                     >
                       {{ positionData.winRate.toFixed(1) }}%
@@ -75,15 +77,21 @@
                   </div>
                   <div class="bg-muted/50 rounded-lg p-3">
                     <div class="text-xs text-muted-foreground mb-1">击杀</div>
-                    <div class="text-lg font-bold text-green-600">{{ positionData.stats.avgKills.toFixed(1) }}</div>
+                    <div class="text-lg font-bold text-green-600 dark:text-green-400">
+                      {{ positionData.stats.avgKills.toFixed(1) }}
+                    </div>
                   </div>
                   <div class="bg-muted/50 rounded-lg p-3">
                     <div class="text-xs text-muted-foreground mb-1">死亡</div>
-                    <div class="text-lg font-bold text-red-600">{{ positionData.stats.avgDeaths.toFixed(1) }}</div>
+                    <div class="text-lg font-bold text-red-600 dark:text-red-400">
+                      {{ positionData.stats.avgDeaths.toFixed(1) }}
+                    </div>
                   </div>
                   <div class="bg-muted/50 rounded-lg p-3">
                     <div class="text-xs text-muted-foreground mb-1">助攻</div>
-                    <div class="text-lg font-bold text-blue-600">{{ positionData.stats.avgAssists.toFixed(1) }}</div>
+                    <div class="text-lg font-bold text-blue-600 dark:text-blue-400">
+                      {{ positionData.stats.avgAssists.toFixed(1) }}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -105,12 +113,22 @@
                     <span class="font-semibold">{{ positionData.stats.vspm.toFixed(2) }}</span>
                   </div>
                   <div class="flex justify-between items-center py-2 px-3 bg-muted/30 rounded">
-                    <span class="text-sm text-muted-foreground">伤害占比</span>
-                    <span class="font-semibold">{{ (positionData.stats.damageShare * 100).toFixed(1) }}%</span>
+                    <span class="text-sm text-muted-foreground">伤害/分钟</span>
+                    <span class="font-semibold">{{ positionData.stats.dpm.toFixed(0) }}</span>
                   </div>
                   <div class="flex justify-between items-center py-2 px-3 bg-muted/30 rounded">
                     <span class="text-sm text-muted-foreground">参团率</span>
-                    <span class="font-semibold">{{ (positionData.stats.killParticipation * 100).toFixed(1) }}%</span>
+                    <span class="font-semibold"
+                      >{{
+                        (
+                          (positionData.stats.avgAssists /
+                            (positionData.stats.avgKills +
+                              positionData.stats.avgDeaths +
+                              positionData.stats.avgAssists)) *
+                            100 || 0
+                        ).toFixed(1)
+                      }}%</span
+                    >
                   </div>
                 </div>
               </CardContent>
@@ -177,8 +195,8 @@
 
 <script setup lang="ts">
 import PositionComparisonChart from './PositionComparisonChart.vue'
-import PositionChampionPool from './PositionChampionPool.vue'
 import PositionTrendChart from './PositionTrendChart.vue'
+import PositionChampionPool from './PositionChampionPool.vue'
 
 interface Props {
   open: boolean

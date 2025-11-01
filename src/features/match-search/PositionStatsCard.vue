@@ -35,7 +35,11 @@
               <div
                 :class="[
                   'text-xs font-medium',
-                  pos.winRate >= 55 ? 'text-green-600' : pos.winRate >= 50 ? 'text-blue-600' : 'text-red-600'
+                  pos.winRate >= 55
+                    ? 'text-green-600 dark:text-green-400'
+                    : pos.winRate >= 50
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-red-600 dark:text-red-400'
                 ]"
               >
                 胜率 {{ pos.winRate.toFixed(1) }}%

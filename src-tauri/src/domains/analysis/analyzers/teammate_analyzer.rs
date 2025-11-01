@@ -4,7 +4,7 @@
 /// - 分析队友的优缺点和配合能力
 /// - 识别队友的打法风格和习惯
 /// - 生成团队配合建议
-use crate::domains::analysis::analyzers::core::timeline_parser::{
+use crate::domains::analysis::analyzers::core::timeline_analyzer::{
     TimelineAnalysis
 };
 use crate::shared::types::PlayerMatchStats;

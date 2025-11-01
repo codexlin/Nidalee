@@ -3,7 +3,7 @@
 /// 职责：
 /// - 基于位置信息识别对线对手
 /// - 计算对手相对优势
-use crate::domains::analysis::analyzers::core::timeline_parser::{TimelineFrame, ParticipantFrame};
+use crate::domains::analysis::analyzers::core::timeline_analyzer::{TimelineFrame, ParticipantFrame};
 use std::collections::HashMap;
 
 /// 对手识别结果

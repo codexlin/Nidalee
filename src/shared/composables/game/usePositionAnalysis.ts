@@ -1,4 +1,10 @@
 import { invoke } from '@tauri-apps/api/core'
+import { useAnalysisSettingsStore, AnalysisMode } from '@/shared/stores/features/analysisSettingsStore'
+
+/**
+ * 分析模式枚举（与后端保持一致）
+ */
+export { AnalysisMode }
 
 /**
  * 多位置分组分析 Composable
@@ -12,16 +18,23 @@ export function usePositionAnalysis() {
   /**
    * 获取多位置分组分析数据
    * @param count 对局数量
-   * @param queueId 队列ID (420=单排, 440=灵活组排, null=所有模式)
+   * @param analysisMode 分析模式（前端用户选择，如果为null则使用设置中的默认模式）
    */
-  const fetchPositionAnalysis = async (count: number = 20, queueId: number | null = null) => {
+  const fetchPositionAnalysis = async (count: number = 20, analysisMode: AnalysisMode | null = null) => {
+    const analysisSettings = useAnalysisSettingsStore()
+
+    // 如果未指定分析模式，使用设置中的默认模式
+    const mode = analysisMode || analysisSettings.config.defaultMode
+    const depth = analysisSettings.config.depth
+
     try {
       loading.value = true
       error.value = null
 
       const result = await invoke<MultiPositionAnalysis>('get_match_history_with_positions', {
         count,
-        queueId
+        analysisMode: mode,
+        analysisDepth: depth
       })
 
       positionAnalysis.value = result

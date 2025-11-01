@@ -98,20 +98,6 @@
       <!-- 分隔符 -->
       <div class="h-8 w-px bg-border flex-shrink-0" />
 
-      <!-- 战术建议按钮（仅敌方显示）-->
-      <button
-        v-if="!isLocal && !player.isBot && player.displayName"
-        @click.stop="handleTacticalAdvice"
-        class="ml-auto flex-shrink-0 p-1.5 rounded-md hover:bg-primary/10 transition-colors group/btn"
-        :title="isAlly ? '查看协作建议' : '查看针对性战术'"
-      >
-        <Target
-          v-if="!isAlly"
-          class="h-4 w-4 text-muted-foreground group-hover/btn:text-destructive transition-colors"
-        />
-        <Users v-else class="h-4 w-4 text-muted-foreground group-hover/btn:text-primary transition-colors" />
-      </button>
-
       <!-- 召唤师技能 -->
       <div class="flex gap-0.5 flex-shrink-0">
         <div
@@ -228,37 +214,14 @@
     </div>
   </div>
 
-  <!-- 战术建议对话框 - 使用预生成的建议 ⭐ -->
-  <TacticalAdviceDialog
-    v-if="!player.isBot"
-    v-model:open="showTacticalDialog"
-    :player-name="player.displayName || '未知召唤师'"
-    :perspective="isAlly ? 'Collaboration' : 'Targeting'"
-    :advice="playerAdvice"
-    :loading="false"
-  />
+  <!-- 战术建议功能已移除，现在使用新的多位置分析系统 -->
 </template>
 
 <script setup lang="ts">
-import { Target, Users } from 'lucide-vue-next'
 import { getChampionIconUrl, getChampionName, getSpellMeta, getQueueName } from '@/lib'
-import TacticalAdviceDialog from './TacticalAdviceDialog.vue'
 
 // 判断是否为排位赛
 const props = defineProps<{ player: any; playerStats?: any; isLocal?: boolean; isAlly?: boolean }>()
-
-// 战术建议对话框状态
-const showTacticalDialog = ref(false)
-
-// 处理战术建议点击 - 直接显示已生成的建议
-const handleTacticalAdvice = () => {
-  showTacticalDialog.value = true
-}
-
-// 从 playerStats 中获取已生成的建议
-const playerAdvice = computed(() => {
-  return props.playerStats?.advice || []
-})
 
 const isRanked = computed(() => {
   // 420/440 为排位赛队列ID

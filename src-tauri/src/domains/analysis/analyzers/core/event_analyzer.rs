@@ -4,7 +4,7 @@
 /// - 分析游戏事件（击杀、推塔、打龙）
 /// - 统计玩家参与度
 /// - 识别关键事件
-use crate::domains::analysis::analyzers::core::timeline_parser::{TimelineFrame, GameEvent};
+use crate::domains::analysis::analyzers::core::timeline_analyzer::{TimelineFrame, GameEvent};
 use std::collections::HashMap;
 
 /// 事件统计

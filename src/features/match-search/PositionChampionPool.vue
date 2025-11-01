@@ -20,7 +20,9 @@
               <span class="text-sm text-muted-foreground">{{ champ.games }} 场</span>
             </div>
             <div class="flex items-center gap-4 text-xs">
-              <span :class="champ.winRate >= 50 ? 'text-green-600' : 'text-red-600'">
+              <span
+                :class="champ.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
+              >
                 胜率 {{ champ.winRate.toFixed(1) }}%
               </span>
               <span class="text-muted-foreground">{{ champ.wins }}胜 {{ champ.games - champ.wins }}负</span>
@@ -49,6 +51,7 @@ interface ChampionStat {
   games: number
   wins: number
   winRate: number
+  avgKda: number
 }
 
 interface Props {
@@ -57,11 +60,18 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// TODO: 从后端获取英雄数据，目前使用模拟数据
+// 使用后端返回的英雄池数据
 const championStats = computed<ChampionStat[]>(() => {
-  // 这里需要后端支持，返回该位置的英雄统计
-  // 暂时返回空数组
-  return []
+  const championPool = props.positionData.championPool || []
+
+  return championPool.map((champ) => ({
+    championId: champ.championId,
+    championName: champ.championName,
+    games: champ.games,
+    wins: champ.wins,
+    winRate: champ.winRate,
+    avgKda: champ.avgKda
+  }))
 })
 
 const totalGames = computed(() => {

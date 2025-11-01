@@ -17,12 +17,5 @@ pub use intelligent_analysis_service::{
     TacticalSummary,
 };
 
-// 重新导出增强分析服务
-pub use enhanced_analysis_service::{
-    EnhancedAnalysisService,
-    AnalysisConfig,
-    UnifiedAnalysisResult,
-    AnalysisMetadata,
-    analyze_with_default_config,
-    analyze_with_full_features,
-};
+// 注意：EnhancedAnalysisService 已废弃，已集成到旧系统中
+// 如需使用，请参考 infrastructure/match_management/matches/service.rs

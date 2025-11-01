@@ -51,7 +51,7 @@ pub fn generate_advice(
     strategy: &AnalysisStrategy,
 ) -> Vec<GameAdvice> {
     // 只在排位模式下生成建议
-    if !matches!(strategy, AnalysisStrategy::Ranked) {
+    if !matches!(strategy, AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked) {
         println!("⏭️  建议系统：非排位模式，跳过");
         return Vec::new();
     }

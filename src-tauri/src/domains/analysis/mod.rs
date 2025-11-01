@@ -34,7 +34,8 @@ pub mod thresholds;
 pub mod queue_config;
 
 // 重新导出核心API（保持向后兼容）
-pub use analyzers::core::parser::{identify_main_role, identify_position_from_game, parse_games, ParsedGame};
+pub use analyzers::core::parser::{identify_main_role, identify_position_from_game, parse_games, ParsedGame, ParsedPlayerData, TimelineData};
+pub use analyzers::core::timeline_analyzer::{parse_timeline_data, TimelineAnalysis, PhaseAnalysis, KeyEvent, OpponentComparison};
 pub use analyzers::core::stats::{analyze_player_stats, AnalysisContext};
 pub use analyzers::core::strategy::AnalysisStrategy;
 
@@ -43,7 +44,7 @@ pub use analyzers::traits::basic::analyze_traits;
 pub use analyzers::traits::distribution::{analyze_distribution_traits, analyze_win_loss_pattern};
 pub use analyzers::traits::merger::optimize_traits;
 pub use analyzers::traits::role::{analyze_role_based_traits, identify_player_roles};
-pub use analyzers::traits::timeline::analyze_timeline_traits;
+pub use analyzers::traits::timeline::{analyze_timeline_traits, generate_timeline_advice};
 
 // 重新导出新的智能分析API
 pub use services::{
@@ -52,10 +53,5 @@ pub use services::{
     ComprehensiveAdvice,
     AdviceTarget,
     TacticalSummary,
-    EnhancedAnalysisService,
-    AnalysisConfig,
-    UnifiedAnalysisResult,
-    AnalysisMetadata,
-    analyze_with_default_config,
-    analyze_with_full_features,
+    // 注意：EnhancedAnalysisService 已废弃，已集成到旧系统中
 };

@@ -17,3 +17,4 @@ pub mod role;
 pub mod timeline;
 
 // 重新导出
+pub use timeline::{analyze_timeline_traits, generate_timeline_advice};

@@ -2,6 +2,7 @@ use crate::domains::analysis::{
     analyze_advanced_traits, analyze_distribution_traits, analyze_player_stats, analyze_role_based_traits,
     analyze_timeline_traits, analyze_traits, analyze_win_loss_pattern, identify_main_role, identify_player_roles,
     identify_position_from_game, optimize_traits, parse_games, AnalysisContext, AnalysisStrategy,
+    parse_timeline_data, TimelineAnalysis,
 };
 use crate::domains::tactical_advice::generate_advice;
 use crate::shared::types::{
@@ -332,10 +333,11 @@ fn analyze_match_list_data(
 ) -> Result<PlayerMatchStats, String> {
     // ⭐ v3.4: 使用多位置分组分析，但只返回总览数据（保持向后兼容）
     // TODO: 后续可以修改返回类型为 MultiPositionAnalysis
-    let multi_position_result = super::position_analysis::analyze_with_position_grouping(
+    let multi_position_result = super::position_analysis::analyze_with_analysis_mode(
         match_list_data.clone(),
         current_puuid,
-        queue_id,
+        None, // 使用默认的MixedRanked模式
+        None, // 使用默认的Deep深度
     )?;
 
     // 目前只返回overall_stats，保持API兼容性
@@ -344,6 +346,190 @@ fn analyze_match_list_data(
 
 /// 分析对局列表数据（支持指定建议视角）⭐
 ///
+/// 分析frames时间线数据
+fn analyze_frames_timeline_data(games: &[Value], target_puuid: &str) -> Option<TimelineAnalysis> {
+    // 查找包含match_timeline_json的游戏
+    for game in games {
+        if let Some(timeline_json) = game.get("match_timeline_json") {
+            // 查找目标玩家的participant_id
+            if let Some(participant_identities) = game.get("participantIdentities").and_then(|p| p.as_array()) {
+                for identity in participant_identities {
+                    if identity["player"]["puuid"].as_str() == Some(target_puuid) {
+                        let participant_id = identity["participantId"].as_i64().unwrap_or(0) as i32;
+
+                        // 识别对手（简化版，实际应该基于位置信息）
+                        let opponent_id = identify_lane_opponent_simple(game, participant_id);
+
+                        return parse_timeline_data(timeline_json, participant_id, opponent_id);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// 简化的对手识别（基于队伍ID）
+fn identify_lane_opponent_simple(game: &Value, target_participant_id: i32) -> Option<i32> {
+    let participants = game.get("participants")?.as_array()?;
+
+    // 找到目标玩家
+    let target_participant = participants.iter().find(|p| {
+        p["participantId"].as_i64().unwrap_or(0) as i32 == target_participant_id
+    })?;
+
+    let target_team_id = target_participant["teamId"].as_i64().unwrap_or(0) as i32;
+
+    // 找到敌方队伍中的第一个玩家作为对手
+    for participant in participants {
+        let team_id = participant["teamId"].as_i64().unwrap_or(0) as i32;
+        let participant_id = participant["participantId"].as_i64().unwrap_or(0) as i32;
+
+        if team_id != target_team_id {
+            return Some(participant_id);
+        }
+    }
+
+    None
+}
+
+/// 基于frames分析生成特征
+fn generate_frames_based_traits(timeline_analysis: &TimelineAnalysis, main_role: &str) -> Vec<crate::shared::types::SummonerTrait> {
+    let mut traits = Vec::new();
+
+    // 对手分析特征
+    if timeline_analysis.opponent_comparison.overall_advantage > 5.0 {
+        traits.push(crate::shared::types::SummonerTrait {
+            name: "对线优势".to_string(),
+            description: "整体表现优于对手".to_string(),
+            score: 8,
+            trait_type: "good".to_string(),
+        });
+    } else if timeline_analysis.opponent_comparison.overall_advantage < -5.0 {
+        traits.push(crate::shared::types::SummonerTrait {
+            name: "对线劣势".to_string(),
+            description: "整体表现不如对手".to_string(),
+            score: 4,
+            trait_type: "bad".to_string(),
+        });
+    }
+
+    // 分阶段效率特征
+    if timeline_analysis.early_game.cs_per_minute > 8.0 {
+        traits.push(crate::shared::types::SummonerTrait {
+            name: "对线强势".to_string(),
+            description: "对线期补刀效率高".to_string(),
+            score: 8,
+            trait_type: "good".to_string(),
+        });
+    }
+
+    if timeline_analysis.mid_game.gold_per_minute > timeline_analysis.early_game.gold_per_minute * 1.1 {
+        traits.push(crate::shared::types::SummonerTrait {
+            name: "中期爆发".to_string(),
+            description: "中期金币获取效率提升".to_string(),
+            score: 7,
+            trait_type: "good".to_string(),
+        });
+    }
+
+    // 关键事件特征
+    let kill_events = timeline_analysis.key_events.iter()
+        .filter(|e| e.event_type == "CHAMPION_KILL" && e.importance_score > 0.0)
+        .count();
+
+    if kill_events > 3 {
+        traits.push(crate::shared::types::SummonerTrait {
+            name: "击杀机器".to_string(),
+            description: "关键击杀次数多".to_string(),
+            score: 8,
+            trait_type: "good".to_string(),
+        });
+    }
+
+    traits
+}
+
+/// 生成基于时间线分析的增强建议
+fn generate_timeline_enhanced_advice(timeline_analysis: &TimelineAnalysis, main_role: &str) -> Vec<crate::shared::types::GameAdvice> {
+    let mut advice = Vec::new();
+
+    // 对线期建议
+    if timeline_analysis.early_game.cs_difference < -10.0 {
+        advice.push(crate::shared::types::GameAdvice {
+            title: "对线期补刀劣势".to_string(),
+            problem: "对线期补刀被对手压制".to_string(),
+            evidence: format!("前10分钟补刀差: {:.1}", timeline_analysis.early_game.cs_difference),
+            suggestions: vec![
+                "加强补刀练习，提高基本功".to_string(),
+                "注意兵线控制，避免被压制".to_string(),
+                "考虑换血时机，寻找击杀机会".to_string(),
+            ],
+            priority: 8,
+            category: crate::shared::types::AdviceCategory::Laning,
+            perspective: crate::shared::types::AdvicePerspective::SelfImprovement,
+            affected_role: Some(main_role.to_string()),
+            target_player: None,
+        });
+    } else if timeline_analysis.early_game.cs_difference > 10.0 {
+        advice.push(crate::shared::types::GameAdvice {
+            title: "对线期优势明显".to_string(),
+            problem: "对线期补刀优势明显".to_string(),
+            evidence: format!("前10分钟补刀差: +{:.1}", timeline_analysis.early_game.cs_difference),
+            suggestions: vec![
+                "继续保持压制，扩大优势".to_string(),
+                "考虑游走支援其他路".to_string(),
+                "注意视野控制，防止被抓".to_string(),
+            ],
+            priority: 6,
+            category: crate::shared::types::AdviceCategory::Laning,
+            perspective: crate::shared::types::AdvicePerspective::SelfImprovement,
+            affected_role: Some(main_role.to_string()),
+            target_player: None,
+        });
+    }
+
+    // 发育期建议
+    if timeline_analysis.mid_game.cs_per_minute < 6.0 {
+        advice.push(crate::shared::types::GameAdvice {
+            title: "中期发育缓慢".to_string(),
+            problem: "中期补刀效率偏低".to_string(),
+            evidence: format!("中期补刀/分: {:.1}", timeline_analysis.mid_game.cs_per_minute),
+            suggestions: vec![
+                "注意发育节奏，不要盲目参团".to_string(),
+                "寻找安全的补刀机会".to_string(),
+                "考虑换线发育".to_string(),
+            ],
+            priority: 7,
+            category: crate::shared::types::AdviceCategory::Farming,
+            perspective: crate::shared::types::AdvicePerspective::SelfImprovement,
+            affected_role: Some(main_role.to_string()),
+            target_player: None,
+        });
+    }
+
+    // 对手比较建议
+    if timeline_analysis.opponent_comparison.overall_advantage < -5.0 {
+        advice.push(crate::shared::types::GameAdvice {
+            title: "整体表现不如对手".to_string(),
+            problem: "各项指标都不如对手".to_string(),
+            evidence: format!("综合优势: {:.1}", timeline_analysis.opponent_comparison.overall_advantage),
+            suggestions: vec![
+                "需要提升对线技巧".to_string(),
+                "加强基本功练习".to_string(),
+                "学习对手的打法".to_string(),
+            ],
+            priority: 9,
+            category: crate::shared::types::AdviceCategory::Laning,
+            perspective: crate::shared::types::AdvicePerspective::SelfImprovement,
+            affected_role: Some(main_role.to_string()),
+            target_player: None,
+        });
+    }
+
+    advice
+}
+
 /// 用于 TeamAnalysis 时可以为敌方生成 Targeting，为队友生成 Collaboration
 fn analyze_match_list_data_with_perspective(
     match_list_data: Value,
@@ -422,6 +608,12 @@ fn analyze_match_list_data_with_perspective(
         let main_role = identify_main_role(&parsed_games);
         traits.extend(analyze_timeline_traits(&parsed_games, &main_role));
         println!("✅ 时间线分析：识别对线期和发育曲线特征");
+
+        // ⭐ 第4.6层：基于frames的深度时间线分析（新增）
+        if let Some(timeline_analysis) = analyze_frames_timeline_data(games, current_puuid) {
+            traits.extend(generate_frames_based_traits(&timeline_analysis, &main_role));
+            println!("✅ Frames时间线分析：深度分析对手差距和关键事件");
+        }
     }
 
     // 第5层：胜负模式（所有模式都执行，但其他模式会简化）
@@ -435,7 +627,7 @@ fn analyze_match_list_data_with_perspective(
     player_stats.traits = optimized_traits;
 
     // === 第6步: 生成智能建议（仅排位模式）⭐ v3.0 ===
-    if matches!(strategy, AnalysisStrategy::Ranked) {
+    if matches!(strategy, AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked) {
         let main_role = identify_main_role(&parsed_games);
         player_stats.advice = generate_advice(
             &player_stats,
@@ -450,6 +642,13 @@ fn analyze_match_list_data_with_perspective(
             player_stats.advice.len(),
             advice_perspective
         );
+
+        // ⭐ 第6.1步: 集成时间线分析建议（新增）
+        if let Some(timeline_analysis) = analyze_frames_timeline_data(games, current_puuid) {
+            let timeline_advice = generate_timeline_enhanced_advice(&timeline_analysis, &main_role);
+            player_stats.advice.extend(timeline_advice);
+            println!("✅ 时间线建议：生成基于frames数据的深度建议");
+        }
     }
 
     println!("✅ 分析完成 ({:?}):", strategy);
@@ -519,7 +718,7 @@ pub async fn get_player_tactical_advice(
     println!("✅ 解析完成：{} 场对局", parsed_games.len());
 
     // 4. 确定分析策略（默认使用排位策略，因为我们需要深度分析）
-    let strategy = AnalysisStrategy::Ranked;
+    let strategy = AnalysisStrategy::SoloRanked;
 
     // 5. 分析玩家数据
     let context = AnalysisContext::new().with_queue_id(420); // 排位模式

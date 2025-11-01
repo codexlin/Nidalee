@@ -4,7 +4,7 @@
 /// - 统一访问 frames 数据
 /// - 将 TimelineAnalysis 转换为 TimelineData 格式（兼容旧系统）
 use crate::domains::analysis::analyzers::core::parser::TimelineData;
-use crate::domains::analysis::analyzers::core::timeline_parser::{
+use crate::domains::analysis::analyzers::core::timeline_analyzer::{
     parse_timeline_data, TimelineAnalysis
 };
 use serde_json::Value;
@@ -17,20 +17,20 @@ impl TimelineBridge {
         Self
     }
 
-    /// 解析时间线数据（仅从 frames）
-    pub fn parse_timeline(&self, match_data: &Value, participant_id: i32) -> Option<TimelineData> {
+    /// 解析时间线数据（从 frames 数据）
+    pub fn parse_timeline(&self, match_data: &Value, participant_id: i32, opponent_id: Option<i32>) -> Option<TimelineData> {
         // 1. 解析 frames 数据
         let timeline_analysis = match_data.get("match_timeline_json")
-            .and_then(|timeline_json| parse_timeline_data(timeline_json))?;
+            .and_then(|timeline_json| parse_timeline_data(timeline_json, participant_id, opponent_id))?;
 
         // 2. 转换为旧的 TimelineData 格式（保持兼容）
         Some(self.convert_timeline_analysis_to_legacy_format(&timeline_analysis, participant_id))
     }
 
     /// 获取完整的时间线分析
-    pub fn get_full_timeline_analysis(&self, match_data: &Value) -> Option<TimelineAnalysis> {
+    pub fn get_full_timeline_analysis(&self, match_data: &Value, participant_id: i32, opponent_id: Option<i32>) -> Option<TimelineAnalysis> {
         match_data.get("match_timeline_json")
-            .and_then(|timeline_json| parse_timeline_data(timeline_json))
+            .and_then(|timeline_json| parse_timeline_data(timeline_json, participant_id, opponent_id))
     }
 
     /// 将新的 TimelineAnalysis 转换为旧的 TimelineData 格式
@@ -101,7 +101,7 @@ mod tests {
             }
         });
 
-        let result = bridge.parse_timeline(&match_data, 1);
+        let result = bridge.parse_timeline(&match_data, 1, None);
         assert!(result.is_some());
     }
 
@@ -114,7 +114,7 @@ mod tests {
             }
         });
 
-        let result = bridge.get_full_timeline_analysis(&match_data);
+        let result = bridge.get_full_timeline_analysis(&match_data, 1, None);
         // 空 frames 应该返回 None
         assert!(result.is_none());
     }

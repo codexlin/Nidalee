@@ -4,7 +4,7 @@
 /// - 整合所有分析器（时间线、对手、队友、自我提升）
 /// - 提供统一的分析接口
 /// - 生成综合性的战术建议
-use crate::domains::analysis::analyzers::core::timeline_parser::{
+use crate::domains::analysis::analyzers::core::timeline_analyzer::{
     parse_timeline_data, TimelineAnalysis
 };
 use crate::domains::analysis::analyzers::opponent_analyzer::{
@@ -88,7 +88,9 @@ pub fn perform_intelligent_analysis(
 
     // 1. 解析时间线数据
     let timeline_analysis = if let Some(timeline_json) = match_data.get("match_timeline_json") {
-        parse_timeline_data(timeline_json)
+        // 识别对线对手
+        let opponent_id = identify_lane_opponent(match_data, target_participant_id);
+        parse_timeline_data(timeline_json, target_participant_id, opponent_id)
     } else {
         None
     };
@@ -511,6 +513,49 @@ fn is_teammate(target_participant_id: i32, participant_id: i32) -> bool {
     target_team == participant_team && participant_id != target_participant_id
 }
 
+/// 识别对线对手
+fn identify_lane_opponent(match_data: &Value, target_participant_id: i32) -> Option<i32> {
+    // 获取目标玩家的位置信息
+    let participants = match_data.get("participants")?.as_array()?;
+
+    let target_participant = participants
+        .iter()
+        .find(|p| {
+            p.get("participantId")
+                .and_then(|id| id.as_i64())
+                .map(|id| id == target_participant_id as i64)
+                .unwrap_or(false)
+        })?;
+
+    let target_timeline = target_participant.get("timeline")?;
+    let target_lane = target_timeline.get("lane")?.as_str()?;
+    let target_role = target_timeline.get("role")?.as_str()?;
+
+    // 查找对线对手（同lane/role的敌方玩家）
+    for participant in participants {
+        if let Some(participant_id) = participant.get("participantId").and_then(|id| id.as_i64()) {
+            let participant_id = participant_id as i32;
+
+            // 只查找对手
+            if is_opponent(target_participant_id, participant_id) {
+                if let Some(timeline) = participant.get("timeline") {
+                    if let (Some(lane), Some(role)) = (
+                        timeline.get("lane").and_then(|l| l.as_str()),
+                        timeline.get("role").and_then(|r| r.as_str())
+                    ) {
+                        // 匹配同一路线的对手
+                        if lane == target_lane && role == target_role {
+                            return Some(participant_id);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
 /// 提取比赛ID
 fn extract_match_id(match_data: &Value) -> Result<String, String> {
     match_data.get("gameId")
@@ -553,3 +598,4 @@ mod tests {
         assert!(!is_teammate(1, 1)); // 自己不是队友
     }
 }
+

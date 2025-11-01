@@ -1,271 +1,182 @@
-use crate::domains::analysis::analyzers::core::parser::{ParsedGame, TimelineData};
-use crate::domains::analysis::thresholds;
-/// 时间线特征分析器
+/// 时间线特征分析器 - 基于时间线数据生成玩家特征
 ///
 /// 职责：
-/// - 基于分阶段数据分析对线期、发育期、后期表现
-/// - 识别对线压制力、发育稳定性、成长曲线
-/// - 生成时间线相关的特征标签
-///
-/// 核心指标：
-/// - CS差（补刀差）：判断对线压制力
-/// - 经验差：判断等级优势
-/// - 金币/分钟：判断发育效率
-/// - 发育曲线：判断打法风格（对线型/游走型）
+/// - 分析时间线数据生成特征标签
+/// - 识别对线期表现模式
+/// - 分析发育期效率
+/// - 评估后期表现
+/// - 生成时间线相关的建议
+use crate::domains::analysis::analyzers::core::timeline_analyzer::TimelineAnalysis;
 use crate::shared::types::SummonerTrait;
 
-/// 时间线特征分析
-///
-/// 输入：解析后的对局数据（含时间线）
-/// 输出：时间线相关的特征标签
-pub fn analyze_timeline_traits(games: &[ParsedGame], role: &str) -> Vec<SummonerTrait> {
+/// 分析时间线特征
+pub fn analyze_timeline_traits(
+    games: &[crate::domains::analysis::analyzers::core::parser::ParsedGame],
+    main_role: &str,
+) -> Vec<SummonerTrait> {
     let mut traits = Vec::new();
 
-    // 数据量不足，不分析
-    if games.len() < 5 {
-        return traits;
-    }
-
-    // 1. 对线期分析（0-10分钟）⭐ 核心
-    traits.extend(analyze_laning_phase(games, role));
-
-    // 2. 发育曲线分析（对比各阶段）
-    traits.extend(analyze_growth_curve(games));
-
-    // 3. 等级优势分析
-    traits.extend(analyze_level_advantage(games));
-
-    traits
-}
-
-/// 对线期分析（0-10分钟）
-///
-/// 核心指标：CS差（补刀差）
-/// - CS差 > +15：对线压制
-/// - CS差 -5~+5：均势对线
-/// - CS差 < -15：对线弱势
-fn analyze_laning_phase(games: &[ParsedGame], role: &str) -> Vec<SummonerTrait> {
-    let mut traits = Vec::new();
-
-    let mut total_cs_diff = 0.0;
-    let mut valid_games = 0;
-
-    // 统计对线期CS差
+    // 分析每场游戏的时间线数据
     for game in games {
-        if let Some(timeline) = &game.player_data.timeline_data {
-            if let Some(cs_diff) = timeline.cs_diff_0_10 {
-                total_cs_diff += cs_diff;
-                valid_games += 1;
-            }
+        if let Some(ref timeline_data) = game.player_data.timeline_data {
+            traits.extend(analyze_single_game_timeline(timeline_data, main_role));
         }
     }
 
-    // 数据不足，不分析
-    if valid_games < 5 {
-        return traits;
-    }
+    // 聚合多场游戏的特征
+    aggregate_timeline_traits(&traits)
+}
 
-    let avg_cs_diff = total_cs_diff / valid_games as f64;
+/// 分析单场游戏的时间线特征
+fn analyze_single_game_timeline(
+    timeline_data: &crate::domains::analysis::analyzers::core::parser::TimelineData,
+    _main_role: &str,
+) -> Vec<SummonerTrait> {
+    let mut traits = Vec::new();
 
-    // 使用 thresholds 判断对线表现 ⭐
-    if avg_cs_diff >= thresholds::laning_phase::CS_DIFF_DOMINATE {
-        // 对线压制
-        traits.push(SummonerTrait {
-            name: "对线压制".to_string(),
-            description: format!("前10分钟平均领先{:.1}刀，对线压制力强", avg_cs_diff),
-            score: avg_cs_diff as i32,
-            trait_type: "good".to_string(),
-        });
-    } else if avg_cs_diff >= thresholds::laning_phase::CS_DIFF_ADVANTAGE {
-        // 对线优势
-        traits.push(SummonerTrait {
-            name: "对线优势".to_string(),
-            description: format!("前10分钟平均领先{:.1}刀，对线有优势", avg_cs_diff),
-            score: avg_cs_diff as i32,
-            trait_type: "good".to_string(),
-        });
-    } else if avg_cs_diff >= thresholds::laning_phase::CS_DIFF_NEUTRAL_LOW
-        && avg_cs_diff <= thresholds::laning_phase::CS_DIFF_NEUTRAL_HIGH
-    {
-        // 均势对线（一般不显示，除非特别稳定）
-        if valid_games >= 10 {
+    // 对线期分析 (0-10分钟)
+    if let Some(cs_diff) = timeline_data.cs_diff_0_10 {
+        if cs_diff > 15.0 {
+            traits.push(SummonerTrait {
+                name: "对线压制".to_string(),
+                description: "对线期补刀优势明显".to_string(),
+                score: 8,
+                trait_type: "good".to_string(),
+            });
+        } else if cs_diff < -20.0 {
+            traits.push(SummonerTrait {
+                name: "对线劣势".to_string(),
+                description: "对线期补刀被压制".to_string(),
+                score: 6,
+                trait_type: "bad".to_string(),
+            });
+        } else if cs_diff > -5.0 && cs_diff < 5.0 {
             traits.push(SummonerTrait {
                 name: "稳健对线".to_string(),
-                description: format!("前10分钟补刀均势（{:+.1}刀），对线稳健", avg_cs_diff),
-                score: 50,
+                description: "对线期表现稳定".to_string(),
+                score: 7,
                 trait_type: "good".to_string(),
             });
         }
-    } else if avg_cs_diff <= thresholds::laning_phase::CS_DIFF_SUPPRESSED {
-        // 对线弱势
-        traits.push(SummonerTrait {
-            name: "对线弱势".to_string(),
-            description: format!("前10分钟平均落后{:.1}刀，对线承压", -avg_cs_diff),
-            score: (-avg_cs_diff) as i32,
-            trait_type: "bad".to_string(),
-        });
-    } else if avg_cs_diff <= thresholds::laning_phase::CS_DIFF_DISADVANTAGE {
-        // 对线劣势
-        traits.push(SummonerTrait {
-            name: "对线劣势".to_string(),
-            description: format!("前10分钟平均落后{:.1}刀，对线有压力", -avg_cs_diff),
-            score: (-avg_cs_diff) as i32,
-            trait_type: "bad".to_string(),
-        });
+    }
+
+    // 发育期分析 (10-20分钟)
+    if let Some(cs_per_min) = timeline_data.cs_per_min_10_20 {
+        if cs_per_min > 8.0 {
+            traits.push(SummonerTrait {
+                name: "高效发育".to_string(),
+                description: "中期补刀效率高".to_string(),
+                score: 8,
+                trait_type: "good".to_string(),
+            });
+        } else if cs_per_min < 5.0 {
+            traits.push(SummonerTrait {
+                name: "发育缓慢".to_string(),
+                description: "中期补刀效率偏低".to_string(),
+                score: 5,
+                trait_type: "bad".to_string(),
+            });
+        }
+    }
+
+    // 金币效率分析
+    if let Some(gold_0_10) = timeline_data.gold_per_min_0_10 {
+        if let Some(gold_10_20) = timeline_data.gold_per_min_10_20 {
+            if gold_10_20 > gold_0_10 * 1.2 {
+                traits.push(SummonerTrait {
+                    name: "爆发成长".to_string(),
+                    description: "中期金币获取效率提升".to_string(),
+                    score: 7,
+                    trait_type: "good".to_string(),
+                });
+            }
+        }
+    }
+
+    // 后期分析 (20分钟+)
+    if let Some(cs_20_end) = timeline_data.cs_per_min_20_end {
+        if cs_20_end < 6.0 {
+            traits.push(SummonerTrait {
+                name: "后期乏力".to_string(),
+                description: "后期补刀效率下降".to_string(),
+                score: 4,
+                trait_type: "bad".to_string(),
+            });
+        }
+    }
+
+    // 承伤分析
+    if let Some(damage_taken) = timeline_data.damage_taken_per_min_0_10 {
+        if damage_taken > 800.0 {
+            traits.push(SummonerTrait {
+                name: "激进打法".to_string(),
+                description: "对线期承伤较高".to_string(),
+                score: 6,
+                trait_type: "bad".to_string(),
+            });
+        } else if damage_taken < 400.0 {
+            traits.push(SummonerTrait {
+                name: "保守打法".to_string(),
+                description: "对线期承伤较低".to_string(),
+                score: 7,
+                trait_type: "good".to_string(),
+            });
+        }
     }
 
     traits
 }
 
-/// 发育曲线分析
-///
-/// 对比对线期和中期的经济效率
-/// - 中期 > 对线期 * 1.15：爆发成长（游走型打法）
-/// - 各阶段稳定 > 400：稳定发育
-/// - 中期下降：发育节奏问题
-fn analyze_growth_curve(games: &[ParsedGame]) -> Vec<SummonerTrait> {
-    let mut traits = Vec::new();
+/// 聚合多场游戏的时间线特征
+fn aggregate_timeline_traits(traits: &[SummonerTrait]) -> Vec<SummonerTrait> {
+    let mut trait_counts: std::collections::HashMap<String, (SummonerTrait, usize)> = std::collections::HashMap::new();
 
-    let mut early_gold_sum = 0.0;
-    let mut mid_gold_sum = 0.0;
-    let mut late_gold_sum = 0.0;
-    let mut valid_games = 0;
-
-    // 统计各阶段金币效率
-    for game in games {
-        if let Some(timeline) = &game.player_data.timeline_data {
-            if let (Some(early), Some(mid)) = (timeline.gold_per_min_0_10, timeline.gold_per_min_10_20) {
-                early_gold_sum += early;
-                mid_gold_sum += mid;
-                if let Some(late) = timeline.gold_per_min_20_end {
-                    late_gold_sum += late;
-                }
-                valid_games += 1;
-            }
-        }
+    for trait_item in traits {
+        let key = trait_item.name.clone();
+        let entry = trait_counts.entry(key).or_insert_with(|| (trait_item.clone(), 0));
+        entry.1 += 1;
     }
 
-    if valid_games < 5 {
-        return traits;
-    }
+    // 转换为Vec并按频率排序
+    let mut result: Vec<SummonerTrait> = trait_counts
+        .into_values()
+        .map(|(trait_item, _)| trait_item)
+        .collect();
 
-    let avg_early_gold = early_gold_sum / valid_games as f64;
-    let avg_mid_gold = mid_gold_sum / valid_games as f64;
-
-    // 使用 thresholds 判断发育曲线 ⭐
-    // 爆发成长（中期经济提升显著）
-    if avg_mid_gold > avg_early_gold * thresholds::growth::MID_GAME_BOOST {
-        let growth_rate = (avg_mid_gold / avg_early_gold - 1.0) * 100.0;
-        traits.push(SummonerTrait {
-            name: "爆发成长".to_string(),
-            description: format!(
-                "中期经济效率提升{:.0}%（{}→{}），游走支援能力强",
-                growth_rate, avg_early_gold as i32, avg_mid_gold as i32
-            ),
-            score: 70,
-            trait_type: "good".to_string(),
-        });
-    }
-    // 稳定发育（各阶段经济都不错）
-    else if avg_early_gold >= thresholds::growth::STABLE_GOLD_EARLY
-        && avg_mid_gold >= thresholds::growth::STABLE_GOLD_MID
-    {
-        traits.push(SummonerTrait {
-            name: "稳定发育".to_string(),
-            description: format!(
-                "各阶段经济稳定（{:.0}/{:.0}），发育能力强",
-                avg_early_gold, avg_mid_gold
-            ),
-            score: 65,
-            trait_type: "good".to_string(),
-        });
-    }
-    // 中期乏力（经济下降）
-    else if avg_mid_gold < avg_early_gold * thresholds::growth::MID_GAME_DECLINE {
-        let decline_rate = (1.0 - avg_mid_gold / avg_early_gold) * 100.0;
-        traits.push(SummonerTrait {
-            name: "中期乏力".to_string(),
-            description: format!(
-                "中期经济效率下降{:.0}%（{}→{}），发育节奏需优化",
-                decline_rate, avg_early_gold as i32, avg_mid_gold as i32
-            ),
-            score: decline_rate as i32,
-            trait_type: "bad".to_string(),
-        });
-    }
-
-    traits
+    result.sort_by(|a, b| b.score.cmp(&a.score));
+    result
 }
 
-/// 等级优势分析
-///
-/// 基于经验差判断抢等级能力
-fn analyze_level_advantage(games: &[ParsedGame]) -> Vec<SummonerTrait> {
-    let mut traits = Vec::new();
+/// 基于时间线分析生成建议
+pub fn generate_timeline_advice(
+    timeline_analysis: &TimelineAnalysis,
+    _main_role: &str,
+) -> Vec<String> {
+    let mut advice = Vec::new();
 
-    let mut total_xp_diff = 0.0;
-    let mut valid_games = 0;
-
-    // 统计对线期经验差
-    for game in games {
-        if let Some(timeline) = &game.player_data.timeline_data {
-            if let Some(xp_diff) = timeline.xp_diff_0_10 {
-                total_xp_diff += xp_diff;
-                valid_games += 1;
-            }
-        }
+    // 对线期建议
+    if timeline_analysis.early_game.cs_difference < -10.0 {
+        advice.push("对线期补刀被压制，建议加强补刀练习".to_string());
+    } else if timeline_analysis.early_game.cs_difference > 10.0 {
+        advice.push("对线期补刀优势明显，继续保持压制".to_string());
     }
 
-    if valid_games < 5 {
-        return traits;
+    // 发育期建议
+    if timeline_analysis.mid_game.cs_per_minute < 6.0 {
+        advice.push("中期补刀效率偏低，注意发育节奏".to_string());
     }
 
-    let avg_xp_diff = total_xp_diff / valid_games as f64;
-
-    // 使用 thresholds 判断等级差 ⭐
-    // 等级优势
-    if avg_xp_diff >= thresholds::laning_phase::XP_DIFF_ADVANTAGE {
-        traits.push(SummonerTrait {
-            name: "等级优势".to_string(),
-            description: format!("前10分钟平均经验领先{:.0}，抢等级能力强", avg_xp_diff),
-            score: 60,
-            trait_type: "good".to_string(),
-        });
-    }
-    // 等级劣势
-    else if avg_xp_diff <= thresholds::laning_phase::XP_DIFF_DISADVANTAGE {
-        traits.push(SummonerTrait {
-            name: "等级劣势".to_string(),
-            description: format!("前10分钟平均经验落后{:.0}，对线期被压制", -avg_xp_diff),
-            score: 50,
-            trait_type: "bad".to_string(),
-        });
+    // 后期建议
+    if timeline_analysis.late_game.cs_per_minute < timeline_analysis.mid_game.cs_per_minute {
+        advice.push("后期补刀效率下降，注意保持发育".to_string());
     }
 
-    traits
-}
-
-/// 计算平均时间线指标（辅助函数）
-#[allow(dead_code)]
-fn calculate_avg_timeline_metric<F>(games: &[ParsedGame], extractor: F) -> Option<f64>
-where
-    F: Fn(&TimelineData) -> Option<f64>,
-{
-    let mut sum = 0.0;
-    let mut count = 0;
-
-    for game in games {
-        if let Some(timeline) = &game.player_data.timeline_data {
-            if let Some(value) = extractor(timeline) {
-                sum += value;
-                count += 1;
-            }
-        }
+    // 对手比较建议
+    if timeline_analysis.opponent_comparison.overall_advantage < -5.0 {
+        advice.push("整体表现不如对手，需要提升对线技巧".to_string());
+    } else if timeline_analysis.opponent_comparison.overall_advantage > 5.0 {
+        advice.push("整体表现优于对手，保持当前状态".to_string());
     }
 
-    if count == 0 {
-        None
-    } else {
-        Some(sum / count as f64)
-    }
+    advice
 }

@@ -16,6 +16,6 @@ pub trait AdviceAnalyzer: Send + Sync {
     /// 是否启用（根据策略）
     fn is_enabled(&self, strategy: &AnalysisStrategy) -> bool {
         // 默认：只在排位模式下启用
-        matches!(strategy, AnalysisStrategy::Ranked)
+        matches!(strategy, AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked)
     }
 }

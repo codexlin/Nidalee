@@ -4,7 +4,7 @@
 /// - 基于时间线数据分析玩家自身表现
 /// - 识别个人优缺点和改进空间
 /// - 生成针对性的自我提升建议
-use crate::domains::analysis::analyzers::core::timeline_parser::{
+use crate::domains::analysis::analyzers::core::timeline_analyzer::{
     TimelineAnalysis, PhaseAnalysis, KeyEvent
 };
 use crate::shared::types::{PlayerMatchStats, SummonerTrait};

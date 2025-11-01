@@ -13,12 +13,14 @@ use crate::shared::types::MultiPositionAnalysis;
 #[tauri::command]
 pub async fn get_match_history_with_positions(
     count: Option<u32>,
-    queue_id: Option<i32>,
+    analysis_mode: Option<crate::domains::analysis::analyzers::core::strategy::AnalysisMode>,
+    analysis_depth: Option<crate::domains::analysis::analyzers::core::strategy::AnalysisDepth>,
 ) -> Result<MultiPositionAnalysis, String> {
     println!("🔢 ===== get_match_history_with_positions 命令被调用 =====");
     println!("📥 接收到的参数:");
     println!("   - count: {:?}", count);
-    println!("   - queue_id: {:?}", queue_id);
+    println!("   - analysis_mode: {:?}", analysis_mode);
+    println!("   - analysis_depth: {:?}", analysis_depth);
 
     let client = http_client::get_lcu_client();
 
@@ -50,10 +52,11 @@ pub async fn get_match_history_with_positions(
 
     // 第3步：多位置分组分析
     println!("\n📍 第3步：多位置分组分析");
-    let multi_position_result = super::position_analysis::analyze_with_position_grouping(
+    let multi_position_result = super::position_analysis::analyze_with_analysis_mode(
         match_list_data,
         puuid,
-        queue_id,
+        analysis_mode,
+        analysis_depth,
     )?;
 
     println!("\n✅ ===== 多位置分析查询完成 =====");

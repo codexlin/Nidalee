@@ -1,5 +1,8 @@
 /// 增强分析服务 - 整合新旧系统
 ///
+/// ⚠️ 已废弃：此服务已被集成到旧系统中
+/// 请使用 infrastructure/match_management/matches/service.rs 中的统一分析流程
+///
 /// 设计理念：
 /// - 渐进式增强：旧系统继续工作，新系统作为可选增强
 /// - 向后兼容：不破坏现有功能
@@ -107,6 +110,7 @@ pub struct AnalysisMetadata {
 }
 
 /// 增强分析服务
+#[deprecated(note = "此服务已被集成到旧系统中，请使用 infrastructure/match_management/matches/service.rs")]
 pub struct EnhancedAnalysisService {
     config: AnalysisConfig,
     timeline_bridge: TimelineBridge,
@@ -129,50 +133,27 @@ impl EnhancedAnalysisService {
     }
 
     /// 执行完整分析
+    #[deprecated(note = "此服务已被集成到旧系统中，请使用 infrastructure/match_management/matches/service.rs")]
     pub fn analyze(
         &self,
         match_data: &Value,
         target_puuid: &str,
         target_participant_id: i32,
     ) -> Result<UnifiedAnalysisResult, String> {
-        let start_time = std::time::Instant::now();
+        eprintln!("⚠️  EnhancedAnalysisService 已废弃，请使用新的统一分析流程");
+        eprintln!("   请使用 infrastructure/match_management/matches/service.rs 中的 analyze_match_list_data_with_perspective");
 
-        // 1. 评估数据质量
-        let data_quality_score = self.assess_data_quality(match_data);
-
-        // 2. 执行旧系统分析（始终执行，保证基础功能）
-        let player_stats = self.analyze_with_legacy_system(match_data, target_puuid)?;
-
-        // 3. 执行新系统智能分析（可选）
-        let intelligent_analysis = if self.config.enable_intelligent_analysis {
-            match perform_intelligent_analysis(match_data, target_puuid, target_participant_id) {
-                Ok(analysis) => Some(analysis),
-                Err(e) => {
-                    eprintln!("⚠️  智能分析失败，降级到基础分析: {}", e);
-                    None
-                }
-            }
-        } else {
-            None
-        };
-
-        // 4. 合并建议
-        let all_advice = self.merge_advice(&player_stats, &intelligent_analysis);
-
-        // 5. 生成元数据
-        let analysis_time_ms = start_time.elapsed().as_millis() as u64;
-        let metadata = AnalysisMetadata {
-            data_source: "frames".to_string(), // 只使用 frames 数据源
-            intelligent_analysis_enabled: self.config.enable_intelligent_analysis,
-            analysis_time_ms,
-            data_quality_score,
-        };
-
+        // 返回一个占位符结果
         Ok(UnifiedAnalysisResult {
-            player_stats,
-            intelligent_analysis,
-            all_advice,
-            metadata,
+            player_stats: PlayerMatchStats::default(),
+            intelligent_analysis: None,
+            all_advice: Vec::new(),
+            metadata: AnalysisMetadata {
+                data_source: "deprecated".to_string(),
+                intelligent_analysis_enabled: false,
+                analysis_time_ms: 0,
+                data_quality_score: 0,
+            },
         })
     }
 
@@ -309,21 +290,29 @@ impl EnhancedAnalysisService {
 }
 
 /// 快捷函数：使用默认配置执行分析
+#[deprecated(note = "此服务已被集成到旧系统中，请使用 infrastructure/match_management/matches/service.rs")]
 pub fn analyze_with_default_config(
     match_data: &Value,
     target_puuid: &str,
     target_participant_id: i32,
 ) -> Result<UnifiedAnalysisResult, String> {
+    eprintln!("⚠️  analyze_with_default_config 已废弃，请使用新的统一分析流程");
+    eprintln!("   请使用 infrastructure/match_management/matches/service.rs 中的 analyze_match_list_data_with_perspective");
+
     let service = EnhancedAnalysisService::with_default_config();
     service.analyze(match_data, target_puuid, target_participant_id)
 }
 
 /// 快捷函数：使用完整配置执行分析
+#[deprecated(note = "此服务已被集成到旧系统中，请使用 infrastructure/match_management/matches/service.rs")]
 pub fn analyze_with_full_features(
     match_data: &Value,
     target_puuid: &str,
     target_participant_id: i32,
 ) -> Result<UnifiedAnalysisResult, String> {
+    eprintln!("⚠️  analyze_with_full_features 已废弃，请使用新的统一分析流程");
+    eprintln!("   请使用 infrastructure/match_management/matches/service.rs 中的 analyze_match_list_data_with_perspective");
+
     let service = EnhancedAnalysisService::new(AnalysisConfig::full_featured());
     service.analyze(match_data, target_puuid, target_participant_id)
 }

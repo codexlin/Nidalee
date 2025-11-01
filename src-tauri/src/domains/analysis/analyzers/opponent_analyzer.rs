@@ -4,7 +4,7 @@
 /// - 分析对手的优缺点
 /// - 识别对手的打法风格
 /// - 生成针对性的战术建议
-use crate::domains::analysis::analyzers::core::timeline_parser::{
+use crate::domains::analysis::analyzers::core::timeline_analyzer::{
     TimelineAnalysis
 };
 use crate::shared::types::PlayerMatchStats;
