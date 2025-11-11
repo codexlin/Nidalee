@@ -1,4 +1,3 @@
-
 // 自动功能配置接口
 interface AutoFunctionConfig {
   enabled: boolean
