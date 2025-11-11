@@ -86,3 +86,16 @@ export function usePositionAnalysis() {
     reset
   }
 }
+
+
+  return {
+    loading,
+    error,
+    positionAnalysis,
+    selectedPosition,
+    fetchPositionAnalysis,
+    selectPosition,
+    clearSelectedPosition,
+    reset
+  }
+}

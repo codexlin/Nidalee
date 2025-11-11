@@ -78,3 +78,6 @@ pub async fn get_match_history_with_positions(
     Ok(multi_position_result)
 }
 
+
+}
+

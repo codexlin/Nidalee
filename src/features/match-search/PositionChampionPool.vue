@@ -78,3 +78,13 @@ const totalGames = computed(() => {
   return championStats.value.reduce((sum, champ) => sum + champ.games, 0)
 })
 </script>
+
+    winRate: champ.winRate,
+    avgKda: champ.avgKda
+  }))
+})
+
+const totalGames = computed(() => {
+  return championStats.value.reduce((sum, champ) => sum + champ.games, 0)
+})
+</script>

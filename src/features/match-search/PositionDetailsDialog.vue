@@ -220,3 +220,21 @@ const getPositionIcon = (position: string): string => {
   return icons[position] || '?'
 }
 </script>
+
+const props = defineProps<Props>()
+const emit = defineEmits<{
+  close: []
+}>()
+
+const getPositionIcon = (position: string): string => {
+  const icons: Record<string, string> = {
+    上单: '上',
+    打野: '野',
+    中单: '中',
+    ADC: '下',
+    辅助: '辅',
+    灵活: '灵'
+  }
+  return icons[position] || '?'
+}
+</script>

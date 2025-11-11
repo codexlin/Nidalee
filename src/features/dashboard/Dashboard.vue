@@ -92,10 +92,31 @@ const handleFetchMatchHistory = async () => {
 const handleQueueChange = async (queueId: number | null) => {
   toggle()
   selectedQueueId.value = queueId
+
+  let nextMode: AnalysisMode
+  if (queueId === null) {
+    nextMode = AnalysisMode.MixedRanked
+  } else {
+    switch (queueId) {
+      case 420:
+        nextMode = AnalysisMode.SoloRanked
+        break
+      case 440:
+        nextMode = AnalysisMode.FlexRanked
+        break
+      case 450:
+        nextMode = AnalysisMode.Aram
+        break
+      default:
+        nextMode = AnalysisMode.AllModes
+        break
+    }
+  }
+
+  selectedAnalysisMode.value = nextMode
   activityLogger.log.info(`切换队列类型: ${queueId || '全部'}`, 'data')
   await updateMatchHistory(queueId)
-  // 同时刷新位置分析（使用用户选择的模式）
-  await fetchPositionAnalysis(30, selectedAnalysisMode.value)
+  await fetchPositionAnalysis(30, nextMode)
   toggle()
 }
 
