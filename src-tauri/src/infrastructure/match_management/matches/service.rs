@@ -663,9 +663,6 @@ fn analyze_match_list_data_with_perspective(
     Ok(player_stats)
 }
 
-/// 获取指定玩家的战术建议
-///
-/// 用于针对敌人或协作队友生成建议
 pub async fn get_player_tactical_advice(
     client: &Client,
     summoner_name: String,
@@ -676,7 +673,6 @@ pub async fn get_player_tactical_advice(
     println!("   召唤师: {}", summoner_name);
     println!("   视角: {:?}", perspective);
 
-    // 1. 根据召唤师名称获取PUUID
     let summoner_url = format!(
         "/lol-summoner/v1/summoners?name={}",
         utf8_percent_encode(&summoner_name, NON_ALPHANUMERIC)
@@ -693,7 +689,6 @@ pub async fn get_player_tactical_advice(
 
     println!("✅ 获取到PUUID: {}", puuid);
 
-    // 2. 获取玩家战绩（最近20场排位）
     let match_history_url = format!(
         "/lol-match-history/v1/products/lol/{}/matches?begIndex=0&endIndex=20",
         puuid
@@ -713,227 +708,22 @@ pub async fn get_player_tactical_advice(
         return Ok(Vec::new());
     }
 
-    // 3. 解析战绩数据
     let parsed_games = parse_games(match_list_data, &puuid);
     println!("✅ 解析完成：{} 场对局", parsed_games.len());
 
-    // 4. 确定分析策略（默认使用排位策略，因为我们需要深度分析）
     let strategy = AnalysisStrategy::SoloRanked;
-
-    // 5. 分析玩家数据
-    let context = AnalysisContext::new().with_queue_id(420); // 排位模式
+    let context = AnalysisContext::new().with_queue_id(420);
     let player_stats = analyze_player_stats(&parsed_games, &puuid, context);
 
-    // 6. 识别主要位置
     let main_role = target_role.unwrap_or_else(|| identify_main_role(&parsed_games));
     println!("✅ 主要位置: {}", main_role);
 
-    // 7. 生成建议（使用指定的视角）
     let advice = generate_advice(
         &player_stats,
         &parsed_games,
         &main_role,
         perspective,
-        Some(summoner_name.clone()), // 传递目标玩家名称
-        &strategy,
-    );
-
-    println!("💡 生成建议：共 {} 条", advice.len());
-
-    Ok(advice)
-}
-
-        .and_then(|games_obj| games_obj.get("games"))
-        .and_then(|g| g.as_array())
-        .unwrap_or(&empty_games);
-
-    println!("📊 找到 {} 场对局记录", games.len());
-
-    // === 第1步: Parser 层 - 解析原始数据为统一格式 ===
-    let parsed_games = parse_games(games, current_puuid);
-    println!("✅ Parser: 解析了 {} 场对局数据", parsed_games.len());
-
-    // === 第2步: Strategy 层 - 根据队列选择分析策略 ===
-    let strategy = if let Some(qid) = queue_id {
-        let strategy = AnalysisStrategy::from_queue_id(qid as i64);
-        println!("🎯 Strategy: {} (queueId={})", strategy.description(), qid);
-        strategy
-    } else {
-        let strategy = AnalysisStrategy::from_games(&parsed_games);
-        println!("🎯 Strategy: {} (自动推断)", strategy.description());
-        strategy
-    };
-    println!("📊 分析方案: {}", strategy.analysis_layers());
-
-    // === 第3步: Analyzer 层 - 使用解析后的数据进行统计计算 ===
-    let mut context = AnalysisContext::new();
-
-    // 根据队列ID设置分析上下文（精确匹配）
-    if let Some(qid) = queue_id {
-        context = context.with_queue_id(qid);
-    }
-
-    let mut player_stats = analyze_player_stats(&parsed_games, current_puuid, context);
-
-    // === 第4步: 多层次特征分析（根据策略决定分析深度）===
-    let mut traits = Vec::new();
-
-    // 第1层：基础特征（所有模式都执行）
-    traits.extend(analyze_traits(&player_stats));
-
-    // 第1.5层：队列感知特征（所有模式都执行，提供队列特定的评估）
-    traits.extend(crate::domains::analysis::analyzers::traits::queue_aware::analyze_queue_aware_traits(
-        &player_stats,
-        queue_id,
-    ));
-
-    // 第2-5层：深度分析（仅排位模式）
-    if strategy.enable_advanced_analysis() {
-        // 第2层：深度特征（参团率、伤害占比、稳定性、趋势）
-        traits.extend(analyze_advanced_traits(&player_stats, games, current_puuid));
-    }
-
-    if strategy.enable_role_analysis() {
-        // 第3层：位置特征（基于位置的专项分析）
-        let role_stats_map = identify_player_roles(games, current_puuid);
-        traits.extend(analyze_role_based_traits(&player_stats, &role_stats_map));
-    }
-
-    if strategy.enable_distribution_analysis() {
-        // 第4层：分布特征（高光时刻、崩盘场次、稳定性）
-        traits.extend(analyze_distribution_traits(&player_stats.recent_performance));
-
-        // ⭐ 第4.5层：时间线特征（对线压制、稳定发育、爆发成长）NEW
-        let main_role = identify_main_role(&parsed_games);
-        traits.extend(analyze_timeline_traits(&parsed_games, &main_role));
-        println!("✅ 时间线分析：识别对线期和发育曲线特征");
-
-        // ⭐ 第4.6层：基于frames的深度时间线分析（新增）
-        if let Some(timeline_analysis) = analyze_frames_timeline_data(games, current_puuid) {
-            traits.extend(generate_frames_based_traits(&timeline_analysis, &main_role));
-            println!("✅ Frames时间线分析：深度分析对手差距和关键事件");
-        }
-    }
-
-    // 第5层：胜负模式（所有模式都执行，但其他模式会简化）
-    traits.extend(analyze_win_loss_pattern(&player_stats.recent_performance));
-
-    // === 第5步: 智能去重优化 ===
-    // 根据策略限制特征数量
-    let max_traits = strategy.max_traits();
-    let mut optimized_traits = optimize_traits(traits);
-    optimized_traits.truncate(max_traits);
-    player_stats.traits = optimized_traits;
-
-    // === 第6步: 生成智能建议（仅排位模式）⭐ v3.0 ===
-    if matches!(strategy, AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked) {
-        let main_role = identify_main_role(&parsed_games);
-        player_stats.advice = generate_advice(
-            &player_stats,
-            &parsed_games,
-            &main_role,
-            advice_perspective, // 使用传入的视角 ⭐
-            target_player_name, // 使用传入的目标名称 ⭐
-            &strategy,
-        );
-        println!(
-            "💡 建议生成：共 {} 条建议（视角：{:?}）",
-            player_stats.advice.len(),
-            advice_perspective
-        );
-
-        // ⭐ 第6.1步: 集成时间线分析建议（新增）
-        if let Some(timeline_analysis) = analyze_frames_timeline_data(games, current_puuid) {
-            let timeline_advice = generate_timeline_enhanced_advice(&timeline_analysis, &main_role);
-            player_stats.advice.extend(timeline_advice);
-            println!("✅ 时间线建议：生成基于frames数据的深度建议");
-        }
-    }
-
-    println!("✅ 分析完成 ({:?}):", strategy);
-    println!(
-        "   总对局={}, 胜场={}, 胜率={:.1}%",
-        player_stats.total_games, player_stats.wins, player_stats.win_rate
-    );
-    println!("   今日对局: {}/{}", player_stats.today_wins, player_stats.today_games);
-    println!("   识别特征: {}个 (限制{}个)", player_stats.traits.len(), max_traits);
-    println!("   智能建议: {}条", player_stats.advice.len());
-
-    Ok(player_stats)
-}
-
-/// 获取指定玩家的战术建议
-///
-/// 用于针对敌人或协作队友生成建议
-pub async fn get_player_tactical_advice(
-    client: &Client,
-    summoner_name: String,
-    perspective: AdvicePerspective,
-    target_role: Option<String>,
-) -> Result<Vec<GameAdvice>, String> {
-    println!("🎯 开始获取玩家战术建议");
-    println!("   召唤师: {}", summoner_name);
-    println!("   视角: {:?}", perspective);
-
-    // 1. 根据召唤师名称获取PUUID
-    let summoner_url = format!(
-        "/lol-summoner/v1/summoners?name={}",
-        utf8_percent_encode(&summoner_name, NON_ALPHANUMERIC)
-    );
-
-    let summoner_response: Value = lcu_request_json(&client, Method::GET, &summoner_url, None)
-        .await
-        .map_err(|e| format!("获取召唤师信息失败: {}", e))?;
-
-    let puuid = summoner_response["puuid"]
-        .as_str()
-        .ok_or("无法获取玩家PUUID")?
-        .to_string();
-
-    println!("✅ 获取到PUUID: {}", puuid);
-
-    // 2. 获取玩家战绩（最近20场排位）
-    let match_history_url = format!(
-        "/lol-match-history/v1/products/lol/{}/matches?begIndex=0&endIndex=20",
-        puuid
-    );
-
-    let match_list_response: Value = lcu_request_json(&client, Method::GET, &match_history_url, None)
-        .await
-        .map_err(|e| format!("获取战绩失败: {}", e))?;
-
-    let match_list_data = match_list_response["games"]["games"]
-        .as_array()
-        .ok_or("无法解析战绩数据")?;
-
-    println!("✅ 获取到{}场对局", match_list_data.len());
-
-    if match_list_data.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    // 3. 解析战绩数据
-    let parsed_games = parse_games(match_list_data, &puuid);
-    println!("✅ 解析完成：{} 场对局", parsed_games.len());
-
-    // 4. 确定分析策略（默认使用排位策略，因为我们需要深度分析）
-    let strategy = AnalysisStrategy::SoloRanked;
-
-    // 5. 分析玩家数据
-    let context = AnalysisContext::new().with_queue_id(420); // 排位模式
-    let player_stats = analyze_player_stats(&parsed_games, &puuid, context);
-
-    // 6. 识别主要位置
-    let main_role = target_role.unwrap_or_else(|| identify_main_role(&parsed_games));
-    println!("✅ 主要位置: {}", main_role);
-
-    // 7. 生成建议（使用指定的视角）
-    let advice = generate_advice(
-        &player_stats,
-        &parsed_games,
-        &main_role,
-        perspective,
-        Some(summoner_name.clone()), // 传递目标玩家名称
+        Some(summoner_name.clone()),
         &strategy,
     );
 
