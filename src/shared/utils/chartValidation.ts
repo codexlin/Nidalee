@@ -205,12 +205,7 @@ export function generateChartErrorMessage(validation: ChartDataValidation): stri
   return message.trim()
 }
 
-
-
-
-
-
-
+/**
  * 图表数据验证和错误处理工具
  */
 
@@ -416,10 +411,3 @@ export function generateChartErrorMessage(validation: ChartDataValidation): stri
 
   return message.trim()
 }
-
-
-
-
-
-
-

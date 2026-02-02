@@ -98,7 +98,3 @@ const getPositionIcon = (position: string): string => {
   return icons[position] || '?'
 }
 </script>
-
-  return icons[position] || '?'
-}
-</script>

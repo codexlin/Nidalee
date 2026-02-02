@@ -9,11 +9,11 @@ export enum AnalysisDepth {
 
 // 分析模式枚举
 export enum AnalysisMode {
-  SoloRanked = 'SoloRanked',
-  FlexRanked = 'FlexRanked',
-  MixedRanked = 'MixedRanked',
-  Aram = 'Aram',
-  AllModes = 'AllModes'
+  SoloRanked = 'soloRanked',
+  FlexRanked = 'flexRanked',
+  MixedRanked = 'mixedRanked',
+  Aram = 'aram',
+  AllModes = 'allModes'
 }
 
 // 分析配置接口

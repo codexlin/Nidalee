@@ -327,15 +327,3 @@ watch(
     0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 </style>
-
-.card-hover-effect {
-  transition: all 0.2s ease-in-out;
-}
-
-.card-hover-effect:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 8px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-</style>
