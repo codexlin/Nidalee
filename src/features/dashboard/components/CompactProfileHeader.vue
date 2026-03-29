@@ -10,39 +10,39 @@
     <div class="relative px-5">
       <div class="flex items-center justify-between gap-6">
         <!-- 左栏：头像 + 基本信息 -->
-        <div class="flex items-center gap-3 w-[200px] shrink-0">
-          <div class="relative group shrink-0">
-            <div class="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div class="flex items-center gap-4 w-[240px] shrink-0">
+          <div class="relative shrink-0">
             <img
               v-if="summonerInfo?.profileIconId"
               :src="getProfileIconUrl(summonerInfo.profileIconId)"
-              class="relative h-16 w-16 rounded-full ring-1 ring-border/50 group-hover:ring-primary/30 transition-all"
+              class="relative h-20 w-20 rounded-full ring-2 ring-border/50 shadow-md"
             />
             <div
               v-else
-              class="relative h-16 w-16 rounded-full bg-muted ring-1 ring-border/50 flex items-center justify-center"
+              class="relative h-20 w-20 rounded-full bg-muted ring-2 ring-border/50 flex items-center justify-center"
             >
-              <User class="h-7 w-7 text-muted-foreground" />
+              <User class="h-9 w-9 text-muted-foreground" />
             </div>
-            <span class="absolute -bottom-1 -right-1 bg-background text-foreground text-xs font-bold px-1.5 rounded-full ring-1 ring-border shadow-sm">
+            <span class="absolute -bottom-1 -right-1 bg-background text-foreground text-sm font-bold px-2 rounded-full ring-1 ring-border shadow-sm">
               {{ summonerInfo?.summonerLevel || 0 }}
             </span>
           </div>
-          <div class="min-w-0">
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <h3 class="font-semibold text-lg truncate">{{ summonerInfo?.gameName || summonerInfo?.displayName || '未知召唤师' }}</h3>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <h3 class="font-bold text-lg truncate">{{ summonerInfo?.gameName || summonerInfo?.displayName || '未知召唤师' }}</h3>
+              <span v-if="summonerInfo?.tagLine" class="text-muted-foreground text-sm font-medium">#{{ summonerInfo.tagLine }}</span>
               <Badge
                 :variant="isConnected ? 'default' : 'secondary'"
-                :class="['gap-1 px-1.5 h-5 text-xs shrink-0', isConnected ? 'bg-green-500/10 text-green-700 dark:text-green-400' : '']"
+                :class="['gap-1 px-2 h-6 text-xs shrink-0', isConnected ? 'bg-green-500/10 text-green-700 dark:text-green-400' : '']"
               >
-                <div :class="['w-1 h-1 rounded-full', isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400']" />
-                {{ isConnected ? '在线' : '离线' }}
+                <div :class="['w-1.5 h-1.5 rounded-full shrink-0', isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400']" />
+                {{ isConnected ? '已连接' : '未连接' }}
               </Badge>
             </div>
-            <div class="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
-              <span>{{ (summonerInfo?.challengePoints || 0).toLocaleString() }}</span>
-              <span>•</span>
-              <span>{{ sessionDuration }}</span>
+            <div class="flex items-center gap-3 text-sm text-muted-foreground">
+              <span>挑战积分: <span class="text-foreground font-medium">{{ (summonerInfo?.challengePoints || 0).toLocaleString() }}</span></span>
+              <span class="w-px h-3 bg-border/30" />
+              <span>会话: <span class="text-foreground font-medium">{{ sessionDuration }}</span></span>
             </div>
           </div>
         </div>
@@ -50,15 +50,12 @@
         <!-- 中栏：段位信息（镜像设计，去边框） -->
         <div class="flex-1 flex items-center justify-center gap-8">
           <!-- 单双排位（左侧） -->
-          <div
-            class="flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group w-[170px]"
-            @click="handleRankClick('solo')"
-          >
+          <div class="flex items-center gap-3 px-4 py-2 rounded-xl cursor-pointer w-[170px]" @click="handleRankClick('solo')">
             <div class="relative shrink-0">
               <img
                 v-if="soloRank.tier !== 'UNRANKED'"
                 :src="getTierIconUrl(soloRank.tier)"
-                class="h-12 w-12 transition-transform group-hover:scale-110 breath-glow"
+                class="h-12 w-12 breath-glow"
                 :style="getRankGlowStyle(soloRank.tier)"
               />
               <div v-else class="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center">
@@ -84,10 +81,7 @@
           <div class="w-px h-12 bg-border/30" />
 
           <!-- 灵活组排（右侧，镜像） -->
-          <div
-            class="flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group w-[170px]"
-            @click="handleRankClick('flex')"
-          >
+          <div class="flex items-center gap-3 px-4 py-2 rounded-xl cursor-pointer w-[170px]" @click="handleRankClick('flex')">
             <div class="flex flex-col items-end shrink-0">
               <span class="text-base font-bold text-foreground">{{ flexRank.leaguePoints }}<span class="text-xs font-normal text-muted-foreground ml-0.5">LP</span></span>
               <span class="text-xs font-medium" :class="flexRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
@@ -105,7 +99,7 @@
               <img
                 v-if="flexRank.tier !== 'UNRANKED'"
                 :src="getTierIconUrl(flexRank.tier)"
-                class="h-12 w-12 transition-transform group-hover:scale-110 breath-glow"
+                class="h-12 w-12 breath-glow"
                 :style="getRankGlowStyle(flexRank.tier)"
               />
               <div v-else class="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center">
