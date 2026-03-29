@@ -33,43 +33,43 @@
               <h3 class="font-semibold text-base truncate">{{ summonerInfo?.gameName || summonerInfo?.displayName || '未知召唤师' }}</h3>
               <Badge
                 :variant="isConnected ? 'default' : 'secondary'"
-                :class="['gap-1 px-1.5 h-5 text-xs', isConnected ? 'bg-green-500/10 text-green-700 dark:text-green-400' : '']"
+                :class="['gap-1 px-1.5 h-5 text-xs shrink-0', isConnected ? 'bg-green-500/10 text-green-700 dark:text-green-400' : '']"
               >
-                <div :class="['w-1 h-1 rounded-full shrink-0', isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400']" />
+                <div :class="['w-1 h-1 rounded-full', isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400']" />
                 {{ isConnected ? '在线' : '离线' }}
               </Badge>
             </div>
             <div class="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-              <span>积分: {{ (summonerInfo?.challengePoints || 0).toLocaleString() }}</span>
+              <span>{{ (summonerInfo?.challengePoints || 0).toLocaleString() }}</span>
               <span>•</span>
               <span>{{ sessionDuration }}</span>
             </div>
           </div>
         </div>
 
-        <!-- 中栏：段位信息（镜像设计） -->
-        <div class="flex-1 flex items-center justify-center gap-6">
+        <!-- 中栏：段位信息（镜像设计，去边框） -->
+        <div class="flex-1 flex items-center justify-center gap-8">
           <!-- 单双排位（左侧） -->
           <div
-            class="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border/50 bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-all cursor-pointer group w-[160px]"
+            class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group w-[170px]"
             @click="handleRankClick('solo')"
           >
             <div class="relative shrink-0">
               <img
                 v-if="soloRank.tier !== 'UNRANKED'"
                 :src="getTierIconUrl(soloRank.tier)"
-                class="h-9 w-9 transition-transform group-hover:scale-110 breath-glow"
+                class="h-11 w-11 transition-transform group-hover:scale-110 breath-glow"
                 :style="getRankGlowStyle(soloRank.tier)"
               />
-              <div v-else class="h-9 w-9 rounded-full bg-muted flex items-center justify-center border border-border/50">
-                <Shield class="h-5 w-5 text-muted-foreground" />
+              <div v-else class="h-11 w-11 rounded-full bg-muted/50 flex items-center justify-center">
+                <Shield class="h-6 w-6 text-muted-foreground" />
               </div>
             </div>
             <div class="flex flex-col flex-1 min-w-0">
               <span class="text-xs text-muted-foreground">单双排位</span>
               <span class="text-sm font-semibold truncate">{{ soloRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(soloRank.tier) }}</span>
             </div>
-            <div class="flex flex-col items-end shrink-0 text-right">
+            <div class="flex flex-col items-end shrink-0">
               <span class="text-sm font-bold text-foreground">{{ soloRank.leaguePoints }}</span>
               <span class="text-xs font-medium" :class="soloRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                 {{ soloRank.winRate }}%
@@ -78,14 +78,14 @@
           </div>
 
           <!-- 分隔线 -->
-          <div class="w-px h-10 bg-border/50" />
+          <div class="w-px h-12 bg-border/30" />
 
           <!-- 灵活组排（右侧，镜像） -->
           <div
-            class="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border/50 bg-gradient-to-l from-primary/5 to-transparent hover:from-primary/10 transition-all cursor-pointer group w-[160px]"
+            class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group w-[170px]"
             @click="handleRankClick('flex')"
           >
-            <div class="flex flex-col items-end shrink-0 text-right">
+            <div class="flex flex-col items-end shrink-0">
               <span class="text-sm font-bold text-foreground">{{ flexRank.leaguePoints }}</span>
               <span class="text-xs font-medium" :class="flexRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                 {{ flexRank.winRate }}%
@@ -99,44 +99,45 @@
               <img
                 v-if="flexRank.tier !== 'UNRANKED'"
                 :src="getTierIconUrl(flexRank.tier)"
-                class="h-9 w-9 transition-transform group-hover:scale-110 breath-glow"
+                class="h-11 w-11 transition-transform group-hover:scale-110 breath-glow"
                 :style="getRankGlowStyle(flexRank.tier)"
               />
-              <div v-else class="h-9 w-9 rounded-full bg-muted flex items-center justify-center border border-border/50">
-                <Shield class="h-5 w-5 text-muted-foreground" />
+              <div v-else class="h-11 w-11 rounded-full bg-muted/50 flex items-center justify-center">
+                <Shield class="h-6 w-6 text-muted-foreground" />
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 右栏：统计信息 -->
-        <div class="flex items-center gap-3 w-[180px] justify-end shrink-0">
+        <!-- 右栏：统计信息（竖向紧凑布局） -->
+        <div class="flex items-center gap-3 w-[200px] justify-end shrink-0">
           <!-- 自动功能 -->
-          <div class="flex flex-col items-center px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
-            <Sparkles class="h-3.5 w-3.5 text-purple-500" />
+          <div class="flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors">
+            <Sparkles class="h-4 w-4 text-purple-500" />
             <span class="text-xs font-medium text-purple-700 dark:text-purple-300 mt-0.5">自动</span>
-            <span class="text-sm font-bold text-purple-600 dark:text-purple-400">{{ enabledFunctionsCount }}</span>
+            <span class="text-base font-bold text-purple-600 dark:text-purple-400">{{ enabledFunctionsCount }}</span>
           </div>
 
           <!-- 今日战绩 -->
-          <div class="flex flex-col items-center px-2.5 py-1.5">
+          <div class="flex flex-col items-center justify-center px-3 py-2 rounded-lg hover:bg-muted/30 transition-colors">
             <span class="text-xs text-muted-foreground">今日</span>
-            <div class="flex items-center gap-1">
-              <span class="text-lg font-bold">{{ todayMatches?.total || 0 }}</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-lg font-bold text-foreground">{{ todayMatches?.total || 0 }}</span>
+              <span class="text-xs text-muted-foreground">场</span>
             </div>
             <div class="flex items-center gap-0.5 text-xs">
-              <span class="font-bold text-green-600 dark:text-green-400">{{ todayMatches?.wins || 0 }}</span>
+              <span class="font-semibold text-green-600 dark:text-green-400">{{ todayMatches?.wins || 0 }}</span>
               <span class="text-muted-foreground">/</span>
-              <span class="font-bold text-red-600 dark:text-red-400">{{ todayMatches?.losses || 0 }}</span>
+              <span class="font-semibold text-red-600 dark:text-red-400">{{ todayMatches?.losses || 0 }}</span>
             </div>
           </div>
 
           <!-- 胜率 Badge -->
           <Badge
             :variant="winRate >= 60 ? 'default' : winRate >= 50 ? 'secondary' : 'destructive'"
-            class="h-fit px-2.5 py-1.5"
+            class="h-fit px-3 py-2"
           >
-            <span class="text-sm font-bold">{{ winRate.toFixed(0) }}%</span>
+            <span class="text-base font-bold">{{ winRate.toFixed(0) }}%</span>
           </Badge>
         </div>
       </div>
