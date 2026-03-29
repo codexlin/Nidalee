@@ -179,11 +179,11 @@
             <Calendar class="h-5 w-5 mr-2 text-muted-foreground" />
             最近对局
           </h4>
-          <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))">
+          <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))">
             <div
               v-for="game in (matchStatistics?.recentPerformance || []).slice(0, showCount)"
               :key="game.gameCreation"
-              class="group relative flex bg-card border rounded-lg cursor-pointer transition-all duration-150 hover:shadow-md hover:border-primary/30"
+              class="group relative flex bg-gradient-to-br from-card/80 to-muted/60 border rounded-lg cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md backdrop-blur-sm"
               @click="openGameDetail(game)"
             >
               <!-- 左侧状态条 -->
@@ -196,9 +196,9 @@
                       v-if="game.championId"
                       :src="getChampionIconUrl(game.championId)"
                       alt=""
-                      class="h-7 w-7 rounded-full"
+                      class="h-9 w-9 rounded-full border-2 border-primary/20"
                     />
-                    <span class="font-semibold text-sm">{{ getChampionName(game.championId) }}</span>
+                    <span class="font-semibold text-base">{{ getChampionName(game.championId) }}</span>
                   </div>
                   <div class="flex items-center gap-2">
                     <span class="text-xs text-muted-foreground tabular-nums">{{ formatGameTime(game.gameDuration) }}</span>
@@ -209,7 +209,7 @@
                 </div>
                 <!-- 中部：KDA + 表现标签 -->
                 <div class="flex items-center justify-between">
-                  <span class="font-mono font-bold text-sm tabular-nums">
+                  <span class="font-mono font-bold text-base tabular-nums">
                     <span class="text-red-500">{{ game.kills }}</span>
                     <span class="text-gray-500">/</span>
                     <span class="text-gray-500">{{ game.deaths }}</span>

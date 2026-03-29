@@ -5,17 +5,10 @@
       召唤师特征
     </h4>
 
-    <!-- 调试：无数据时显示提示 -->
-    <div v-if="!matchStatistics" class="text-center py-6 text-sm text-muted-foreground">
-      暂无统计数据
-    </div>
-    <div v-else-if="!matchStatistics.traits || matchStatistics.traits.length === 0" class="text-center py-6 text-sm text-muted-foreground">
+    <!-- 无数据提示 -->
+    <div v-if="!matchStatistics || !matchStatistics.traits || matchStatistics.traits.length === 0" class="text-center py-6 text-sm text-muted-foreground">
       <p>暂无特征数据</p>
       <p class="text-xs mt-1">需要更多对局数据来分析召唤师特征</p>
-      <!-- 调试信息 -->
-      <p class="text-xs text-muted-foreground/50 mt-2">
-        调试: matchStatistics keys = {{ Object.keys(matchStatistics).join(', ') }}
-      </p>
     </div>
     <div v-else class="flex flex-wrap gap-1">
       <template v-for="trait in traits" :key="trait.name">
