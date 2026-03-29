@@ -100,7 +100,7 @@ declare global {
   const useCurrentRunePage: typeof import('../src/shared/composables/data/useVersionedData')['useCurrentRunePage']
   const useDataStore: typeof import('../src/shared/stores/core/dataStore')['useDataStore']
   const useDebouncedModel: typeof import('../src/shared/composables/utils/useDebouncedModel')['useDebouncedModel']
-  const useDebouncedNumberModel: typeof import('../src/shared/composables/utils/useDebouncedModel')['useDebouncedNumberModel']
+  const useDebouncedNumberModel: typeof import('../src/shared/composables/utils/useDebouncedNumberModel')['useDebouncedNumberModel']
   const useDeepseekSuggestion: typeof import('../src/shared/composables/game/useDeepseekSuggestion')['useDeepseekSuggestion']
   const useDeviceWebSocket: typeof import('../src/shared/composables/app/useDeviceWebSocket')['useDeviceWebSocket']
   const useErrorHandler: typeof import('../src/shared/composables/utils/useErrorHandler')['useErrorHandler']
@@ -164,6 +164,9 @@ declare global {
   // @ts-ignore
   export type { PerkStyle, PerkSlot, Perk } from '../src/shared/composables/game/useRuneData'
   import('../src/shared/composables/game/useRuneData')
+  // @ts-ignore
+  export type { DebouncedNumberModelOptions } from '../src/shared/composables/utils/useDebouncedNumberModel'
+  import('../src/shared/composables/utils/useDebouncedNumberModel')
   // @ts-ignore
   export type { ErrorInfo, RetryConfig } from '../src/shared/composables/utils/useErrorHandler'
   import('../src/shared/composables/utils/useErrorHandler')
