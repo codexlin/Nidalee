@@ -85,6 +85,20 @@ impl ConnectionManager {
         let mut last_state = ConnectionState::Disconnected;
 
         loop {
+            // ⚡ 优化：如果 WebSocket 已连接，跳过轮询检查
+            // WebSocket 连接正常说明客户端肯定在运行，不需要额外验证
+            use crate::infrastructure::real_time::websocket::service::is_ws_connected;
+            if is_ws_connected() {
+                log::debug!(
+                    target: "connection::service",
+                    "WebSocket is connected, skipping connection check (redundant)"
+                );
+                // WS 连接时，降低检查频率（30秒检查一次 WS 状态）
+                tokio::time::sleep(Duration::from_secs(30)).await;
+                continue;
+            }
+
+            // WebSocket 未连接，执行正常的轮询检查
             let current_state = self.check_connection_state().await;
 
             // 状态变化时通知前端

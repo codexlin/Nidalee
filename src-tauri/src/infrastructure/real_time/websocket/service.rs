@@ -15,6 +15,7 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async_tls_with_config, tungstenite::client::IntoClientRequest};
 
 static WS_RUNNING: AtomicBool = AtomicBool::new(false);
+static WS_CONNECTED: AtomicBool = AtomicBool::new(false);  // ← 新增：WebSocket 是否真正连接
 static WS_TASK: OnceCell<tokio::task::JoinHandle<()>> = OnceCell::new();
 static WS_SENDER: OnceCell<
     Arc<
@@ -30,6 +31,11 @@ static WS_EVENT_HANDLER: OnceCell<Arc<WsEventHandler>> = OnceCell::new();
 /// 检查 WebSocket 是否正在运行
 pub fn is_ws_running() -> bool {
     WS_RUNNING.load(Ordering::SeqCst)
+}
+
+/// 检查 WebSocket 是否已连接（用于 ConnectionManager 判断是否需要轮询）
+pub fn is_ws_connected() -> bool {
+    WS_CONNECTED.load(Ordering::SeqCst)
 }
 
 /// Gets the global event handler instance.
@@ -172,6 +178,7 @@ async fn connect_and_run_ws(app: &tauri::AppHandle, auth: &crate::shared::types:
     };
 
     log::info!("[lcu-ws] WebSocket connection successful.");
+    WS_CONNECTED.store(true, Ordering::SeqCst);  // ← 标记连接已建立
 
     // Dynamic subscription set: start with base subscriptions and add more as the game phase changes.
     let mut subscribed: HashSet<String> = HashSet::new();
@@ -252,6 +259,7 @@ async fn connect_and_run_ws(app: &tauri::AppHandle, auth: &crate::shared::types:
                     Ok(_) => { /* Ignore non-text messages */ }
                     Err(e) => {
                         log::error!("[lcu-ws] WebSocket read error: {}", e);
+                        WS_CONNECTED.store(false, Ordering::SeqCst);  // ← 标记连接断开
                         return Err(format!("WebSocket read error: {}", e).into());
                     }
                 }
@@ -264,6 +272,9 @@ async fn connect_and_run_ws(app: &tauri::AppHandle, auth: &crate::shared::types:
         }
     }
 
+    // WebSocket 正常退出或循环结束时
+    WS_CONNECTED.store(false, Ordering::SeqCst);  // ← 标记连接断开
+    log::info!("[lcu-ws] WebSocket connection closed.");
     Ok(())
 }
 
