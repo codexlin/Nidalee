@@ -109,22 +109,22 @@
           </div>
         </div>
 
-        <!-- 右栏：统计信息（竖向紧凑布局） -->
-        <div class="flex items-center gap-3 w-[200px] justify-end shrink-0">
-          <!-- 自动功能 -->
-          <div class="flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors">
-            <Sparkles class="h-4 w-4 text-purple-500" />
-            <span class="text-xs font-medium text-purple-700 dark:text-purple-300 mt-0.5">自动</span>
-            <span class="text-base font-bold text-purple-600 dark:text-purple-400">{{ enabledFunctionsCount }}</span>
+        <!-- 右栏：统计信息（横向紧凑布局） -->
+        <div class="flex items-center gap-3 w-[220px] justify-end shrink-0">
+          <!-- 自动功能（紧凑） -->
+          <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors">
+            <Sparkles class="h-3.5 w-3.5 text-purple-500 shrink-0" />
+            <span class="text-xs font-medium text-purple-700 dark:text-purple-300">自动</span>
+            <span class="text-sm font-bold text-purple-600 dark:text-purple-400">{{ enabledFunctionsCount }}</span>
           </div>
 
           <!-- 今日战绩 -->
-          <div class="flex flex-col items-center justify-center px-3 py-2 rounded-lg hover:bg-muted/30 transition-colors">
-            <span class="text-xs text-muted-foreground">今日</span>
-            <div class="flex items-baseline gap-1">
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/30 transition-colors">
+            <div class="flex items-baseline gap-0.5">
+              <span class="text-xs text-muted-foreground">今日</span>
               <span class="text-lg font-bold text-foreground">{{ todayMatches?.total || 0 }}</span>
-              <span class="text-xs text-muted-foreground">场</span>
             </div>
+            <div class="w-px h-4 bg-border/30" />
             <div class="flex items-center gap-0.5 text-xs">
               <span class="font-semibold text-green-600 dark:text-green-400">{{ todayMatches?.wins || 0 }}</span>
               <span class="text-muted-foreground">/</span>
@@ -135,9 +135,9 @@
           <!-- 胜率 Badge -->
           <Badge
             :variant="winRate >= 60 ? 'default' : winRate >= 50 ? 'secondary' : 'destructive'"
-            class="h-fit px-3 py-2"
+            class="h-fit px-2.5 py-1.5"
           >
-            <span class="text-base font-bold">{{ winRate.toFixed(0) }}%</span>
+            <span class="text-sm font-bold">{{ winRate.toFixed(0) }}%</span>
           </Badge>
         </div>
       </div>
