@@ -94,108 +94,117 @@
 
         <!-- 自动化功能 -->
         <TabsContent value="automation" class="space-y-8">
-          <div class="space-y-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-2xl font-bold text-foreground">自动功能配置</h2>
-                <p class="text-muted-foreground">配置各种自动化游戏功能和执行延迟</p>
-              </div>
-              <div class="flex items-center gap-4">
-                <Badge
-                  variant="secondary"
-                  class="px-4 py-2 text-sm font-medium bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  已启用: {{ enabledFunctionsCount }} 项
-                </Badge>
-                <Button
-                  variant="destructive"
-                  size="default"
-                  @click="handleDisableAll"
-                  :disabled="!isAnyFunctionEnabled"
-                  class="gap-2 transition-all hover:bg-destructive/90 disabled:opacity-50"
-                >
-                  <X class="h-4 w-4" />
-                  全部禁用
-                </Button>
-              </div>
-            </div>
-
-            <!-- 功能状态摘要 -->
-            <div v-if="isAnyFunctionEnabled" class="p-6 bg-muted/30 rounded-lg border border-border">
-              <h3 class="text-lg font-semibold text-foreground mb-4">已启用功能</h3>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div
-                  v-for="func in enabledFunctions"
-                  :key="func.key"
-                  class="flex items-center gap-3 p-3 bg-card rounded-lg border border-border"
-                >
-                  <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span class="text-sm font-medium text-foreground">{{ func.name }}</span>
+          <Card
+            class="p-8 rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border"
+          >
+            <div class="space-y-6">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-xl font-bold text-primary">自动化功能配置</h2>
+                  <p class="text-sm text-muted-foreground">配置各种自动化游戏功能和执行延迟</p>
+                </div>
+                <div class="flex items-center gap-4">
+                  <Badge
+                    variant="secondary"
+                    class="px-4 py-2 text-sm font-medium bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    已启用: {{ enabledFunctionsCount }} 项
+                  </Badge>
+                  <Button
+                    variant="destructive"
+                    size="default"
+                    @click="handleDisableAll"
+                    :disabled="!isAnyFunctionEnabled"
+                    class="gap-2 transition-all hover:bg-destructive/90 disabled:opacity-50"
+                  >
+                    <X class="h-4 w-4" />
+                    全部禁用
+                  </Button>
                 </div>
               </div>
-            </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <!-- 自动接受对局 -->
-              <div class="card-hover-effect rounded-xl bg-card">
-                <FunctionCard
-                  title="自动接受对局"
-                  description="自动接受匹配到的对局，避免错过游戏机会"
-                  v-model:enabled="autoFunctions.acceptMatch.enabled"
-                  v-model:delay="autoFunctions.acceptMatch.delay"
-                />
+              <div class="border-t border-dashed border-border pt-6">
+                <div class="space-y-6">
+                  <!-- 功能状态摘要 -->
+                  <div v-if="isAnyFunctionEnabled" class="p-6 bg-muted/30 rounded-lg border border-border">
+                    <h3 class="text-lg font-semibold text-foreground mb-4">已启用功能</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div
+                        v-for="func in enabledFunctions"
+                        :key="func.key"
+                        class="flex items-center gap-3 p-3 bg-card rounded-lg border border-border"
+                      >
+                        <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm font-medium text-foreground">{{ func.name }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 功能卡片 -->
+                  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <!-- 自动接受对局 -->
+                    <div class="card-hover-effect rounded-xl bg-card">
+                      <FunctionCard
+                        title="自动接受对局"
+                        description="自动接受匹配到的对局，避免错过游戏机会"
+                        v-model:enabled="autoFunctions.acceptMatch.enabled"
+                        v-model:delay="autoFunctions.acceptMatch.delay"
+                      />
+                    </div>
+
+                    <!-- 自动选择英雄 -->
+                    <div class="card-hover-effect rounded-xl bg-card">
+                      <ChampionFunctionCard
+                        title="自动选择英雄"
+                        description="在选择阶段自动选择指定英雄，快速完成英雄选择"
+                        v-model:enabled="autoFunctions.selectChampion.enabled"
+                        v-model:delay="autoFunctions.selectChampion.delay"
+                        :champion-list="autoFunctions.selectChampion.championList"
+                        :show-risk-warning="true"
+                        risk-warning-text="⚠️ 请设置适当的延迟"
+                        @champion-add="autoFunctionStore.addChampionSelect"
+                        @champion-remove="autoFunctionStore.removeChampionSelect"
+                        @champion-reorder="autoFunctionStore.reorderChampionSelect"
+                        @champion-clear="autoFunctionStore.clearChampionSelect"
+                      />
+                    </div>
+
+                    <!-- 自动禁用英雄 -->
+                    <div class="card-hover-effect rounded-xl bg-card">
+                      <ChampionFunctionCard
+                        title="自动禁用英雄"
+                        description="在禁用阶段自动禁用指定英雄，防止对手选择"
+                        v-model:enabled="autoFunctions.banChampion.enabled"
+                        v-model:delay="autoFunctions.banChampion.delay"
+                        :champion-list="autoFunctions.banChampion.championList"
+                        :show-risk-warning="true"
+                        risk-warning-text="⚠️ 请设置适当的延迟"
+                        @champion-add="autoFunctionStore.addChampionBan"
+                        @champion-remove="autoFunctionStore.removeChampionBan"
+                        @champion-reorder="autoFunctionStore.reorderChampionBan"
+                        @champion-clear="autoFunctionStore.clearChampionBan"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <!-- 自动选择英雄 -->
-              <div class="card-hover-effect rounded-xl bg-card">
-                <ChampionFunctionCard
-                  title="自动选择英雄"
-                  description="在选择阶段自动选择指定英雄，快速完成英雄选择"
-                  v-model:enabled="autoFunctions.selectChampion.enabled"
-                  v-model:delay="autoFunctions.selectChampion.delay"
-                  :champion-list="autoFunctions.selectChampion.championList"
-                  :show-risk-warning="true"
-                  risk-warning-text="⚠️ 请设置适当的延迟"
-                  @champion-add="autoFunctionStore.addChampionSelect"
-                  @champion-remove="autoFunctionStore.removeChampionSelect"
-                  @champion-reorder="autoFunctionStore.reorderChampionSelect"
-                  @champion-clear="autoFunctionStore.clearChampionSelect"
-                />
-              </div>
-
-              <!-- 自动禁用英雄 -->
-              <div class="card-hover-effect rounded-xl bg-card">
-                <ChampionFunctionCard
-                  title="自动禁用英雄"
-                  description="在禁用阶段自动禁用指定英雄，防止对手选择"
-                  v-model:enabled="autoFunctions.banChampion.enabled"
-                  v-model:delay="autoFunctions.banChampion.delay"
-                  :champion-list="autoFunctions.banChampion.championList"
-                  :show-risk-warning="true"
-                  risk-warning-text="⚠️ 请设置适当的延迟"
-                  @champion-add="autoFunctionStore.addChampionBan"
-                  @champion-remove="autoFunctionStore.removeChampionBan"
-                  @champion-reorder="autoFunctionStore.reorderChampionBan"
-                  @champion-clear="autoFunctionStore.clearChampionBan"
-                />
-              </div>
-            </div>
-
-            <!-- 符文配置导航提示 -->
-            <div class="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
-              <div class="flex items-start gap-3">
-                <Sparkles class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                <div class="flex-1">
-                  <div class="text-sm font-medium text-primary">寻找符文自动配置？</div>
-                  <div class="text-xs text-muted-foreground mt-1">
-                    完整的符文自动应用和自定义配置功能已移至
-                    <span class="font-semibold text-primary">"符文配置"</span> 标签页， 支持智能匹配、OP.GG
-                    推荐和自定义符文配置。
+              <!-- 符文配置导航提示 -->
+              <div class="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <div class="flex items-start gap-3">
+                  <Sparkles class="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <div class="flex-1">
+                    <div class="text-sm font-medium text-primary">寻找符文自动配置？</div>
+                    <div class="text-xs text-muted-foreground mt-1">
+                      完整的符文自动应用和自定义配置功能已移至
+                      <span class="font-semibold text-primary">"符文配置"</span> 标签页， 支持智能匹配、OP.GG
+                      推荐和自定义符文配置。
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
         </TabsContent>
 
         <!-- 智能分析 -->
