@@ -1,5 +1,5 @@
 <template>
-  <Card class="relative overflow-hidden">
+  <Card class="relative overflow-hidden rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border">
     <!-- 装饰性光晕 (右下角) -->
     <div class="absolute -bottom-20 -right-20 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 

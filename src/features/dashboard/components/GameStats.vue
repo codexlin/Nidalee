@@ -1,5 +1,5 @@
 <template>
-  <Card class="p-6">
+  <Card class="p-8 rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border">
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <div>
