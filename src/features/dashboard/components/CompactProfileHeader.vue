@@ -46,91 +46,87 @@
         </div>
 
         <!-- 中栏：段位信息（镜像设计） -->
-        <div class="flex-1 flex items-center justify-center gap-8">
+        <div class="flex-1 flex items-center justify-center gap-10">
           <!-- 单双排位（左侧） -->
-          <div class="flex items-center gap-3 px-3 py-2 rounded-xl">
-            <div class="relative shrink-0">
+          <div class="flex items-center gap-4 px-4 py-3 rounded-xl">
+            <div class="relative shrink-0 p-1.5">
               <img
                 v-if="soloRank.tier !== 'UNRANKED'"
                 :src="getTierIconUrl(soloRank.tier)"
-                class="h-12 w-12 breath-glow"
+                class="h-14 w-14 breath-glow"
                 :style="getRankGlowStyle(soloRank.tier)"
               />
-              <div v-else class="h-12 w-12 rounded-full bg-muted/40 flex items-center justify-center border border-border/30">
-                <Shield class="h-5 w-5 text-muted-foreground" />
+              <div v-else class="h-14 w-14 rounded-full bg-muted/40 flex items-center justify-center border border-border/30">
+                <Shield class="h-6 w-6 text-muted-foreground" />
               </div>
             </div>
-            <div class="flex flex-col flex-1 min-w-0 gap-0.5">
-              <div class="flex items-center gap-1 text-xs text-muted-foreground">
-                <User class="h-3 w-3" />
+            <div class="flex flex-col flex-1 min-w-0 gap-1">
+              <div class="flex items-center gap-1 text-sm text-muted-foreground">
+                <User class="h-3.5 w-3.5" />
                 <span>单双排位</span>
               </div>
-              <span class="text-base font-semibold truncate">
+              <span class="text-lg font-semibold truncate">
                 {{ soloRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(soloRank.tier) }}
                 <span v-if="soloRank.tier !== 'UNRANKED' && soloRank.rank" class="text-muted-foreground/70 font-normal">{{ soloRank.rank }}</span>
               </span>
             </div>
-            <div class="flex flex-col items-end shrink-0 gap-0.5">
-              <span class="text-base font-bold text-foreground">{{ soloRank.leaguePoints }}<span class="text-xs font-normal text-muted-foreground/70 ml-0.5">LP</span></span>
-              <span class="text-xs font-semibold" :class="soloRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+            <div class="flex flex-col items-end shrink-0 gap-1">
+              <span class="text-lg font-bold text-foreground tabular-nums">{{ soloRank.leaguePoints }}<span class="text-sm font-normal text-muted-foreground/70 ml-0.5">LP</span></span>
+              <span class="text-sm font-semibold" :class="soloRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                 {{ soloRank.winRate }}%
               </span>
             </div>
           </div>
 
           <!-- 分隔线 -->
-          <div class="w-px h-10 bg-border/40" />
+          <div class="w-px h-12 bg-border/40" />
 
           <!-- 灵活组排（右侧，镜像） -->
-          <div class="flex items-center gap-3 px-3 py-2 rounded-xl">
-            <div class="flex flex-col items-end shrink-0 gap-0.5">
-              <span class="text-base font-bold text-foreground">{{ flexRank.leaguePoints }}<span class="text-xs font-normal text-muted-foreground/70 ml-0.5">LP</span></span>
-              <span class="text-xs font-semibold" :class="flexRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+          <div class="flex items-center gap-4 px-4 py-3 rounded-xl">
+            <div class="flex flex-col items-end shrink-0 gap-1">
+              <span class="text-lg font-bold text-foreground tabular-nums">{{ flexRank.leaguePoints }}<span class="text-sm font-normal text-muted-foreground/70 ml-0.5">LP</span></span>
+              <span class="text-sm font-semibold" :class="flexRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                 {{ flexRank.winRate }}%
               </span>
             </div>
-            <div class="flex flex-col flex-1 min-w-0 text-right gap-0.5">
-              <div class="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+            <div class="flex flex-col flex-1 min-w-0 text-right gap-1">
+              <div class="flex items-center justify-end gap-1 text-sm text-muted-foreground">
                 <span>灵活组排</span>
-                <Users class="h-3 w-3" />
+                <Users class="h-3.5 w-3.5" />
               </div>
-              <span class="text-base font-semibold truncate">
+              <span class="text-lg font-semibold truncate">
                 {{ flexRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(flexRank.tier) }}
                 <span v-if="flexRank.tier !== 'UNRANKED' && flexRank.rank" class="text-muted-foreground/70 font-normal">{{ flexRank.rank }}</span>
               </span>
             </div>
-            <div class="relative shrink-0">
+            <div class="relative shrink-0 p-1.5">
               <img
                 v-if="flexRank.tier !== 'UNRANKED'"
                 :src="getTierIconUrl(flexRank.tier)"
-                class="h-12 w-12 breath-glow"
+                class="h-14 w-14 breath-glow"
                 :style="getRankGlowStyle(flexRank.tier)"
               />
-              <div v-else class="h-12 w-12 rounded-full bg-muted/40 flex items-center justify-center border border-border/30">
-                <Shield class="h-5 w-5 text-muted-foreground" />
+              <div v-else class="h-14 w-14 rounded-full bg-muted/40 flex items-center justify-center border border-border/30">
+                <Shield class="h-6 w-6 text-muted-foreground" />
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 右栏：今日统计（三行竖排，统一宽度） -->
-        <div class="flex flex-col gap-1.5 text-base text-right min-w-[120px]">
-          <div class="flex items-center justify-end gap-2">
-            <span class="text-muted-foreground w-20">今日对局</span>
-            <span class="font-semibold text-foreground w-8 text-right">{{ todayMatches?.total || 0 }}</span>
+        <!-- 右栏：今日统计（严格对齐，Grid 布局） -->
+        <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-base items-center">
+          <span class="text-muted-foreground">今日对局</span>
+          <span class="font-semibold text-foreground text-right tabular-nums">{{ todayMatches?.total || 0 }}</span>
+
+          <span class="text-muted-foreground">今日战绩</span>
+          <div class="flex items-center justify-end gap-1 tabular-nums">
+            <span class="font-semibold text-green-600 dark:text-green-400">{{ todayMatches?.wins || 0 }}</span>
+            <span class="text-muted-foreground">/</span>
+            <span class="font-semibold text-red-600 dark:text-red-400">{{ todayMatches?.losses || 0 }}</span>
           </div>
-          <div class="flex items-center justify-end gap-2">
-            <span class="text-muted-foreground w-20">今日战绩</span>
-            <div class="flex items-center gap-1 w-20 justify-end">
-              <span class="font-semibold text-green-600 dark:text-green-400">{{ todayMatches?.wins || 0 }}</span>
-              <span class="text-muted-foreground">/</span>
-              <span class="font-semibold text-red-600 dark:text-red-400">{{ todayMatches?.losses || 0 }}</span>
-            </div>
-          </div>
-          <div class="flex items-center justify-end gap-2">
-            <span class="text-muted-foreground w-20">今日胜率</span>
-            <span class="font-semibold w-16 text-right" :class="winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">{{ winRate.toFixed(0) }}%</span>
-          </div>
+
+          <span class="text-muted-foreground">今日胜率</span>
+          <span class="font-semibold text-right tabular-nums" :class="winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">{{ winRate.toFixed(0) }}%</span>
         </div>
       </div>
     </div>
