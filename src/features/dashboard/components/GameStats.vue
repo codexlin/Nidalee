@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between">
         <div>
           <h3 class="text-lg font-semibold flex items-center">
-            <BarChart class="h-5 w-5 mr-2 text-blue-500" />
+            <BarChart class="h-5 w-5 mr-2 text-muted-foreground" />
             游戏统计
           </h3>
           <p class="text-sm text-muted-foreground">近期游戏数据概览</p>
@@ -66,33 +66,44 @@
 
       <!-- 统计数据展示 -->
       <div v-else class="space-y-6">
-        <!-- 总体数据概览 -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div class="text-center p-4 rounded-lg bg-muted/30">
-            <Trophy class="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-            <p class="text-2xl font-bold text-foreground">{{ matchStatistics?.totalGames || 0 }}</p>
-            <p class="text-sm text-muted-foreground">总对局</p>
+        <!-- 总体数据概览（紧凑水平布局） -->
+        <div class="flex items-center justify-between gap-4 p-4 rounded-lg border bg-card/50">
+          <div class="flex items-center gap-3 flex-1">
+            <Trophy class="h-5 w-5 text-yellow-500 shrink-0" />
+            <div class="min-w-0">
+              <p class="text-xl font-bold text-foreground tabular-nums">{{ matchStatistics?.totalGames || 0 }}</p>
+              <p class="text-xs text-muted-foreground">总对局</p>
+            </div>
           </div>
-          <div class="text-center p-4 rounded-lg bg-green-500/10">
-            <Award class="h-8 w-8 text-green-500 mx-auto mb-2" />
-            <p class="text-2xl font-bold text-green-600 dark:text-green-400">
-              {{ matchStatistics?.wins || 0 }}
-            </p>
-            <p class="text-sm text-muted-foreground">胜场</p>
+          <div class="w-px h-10 bg-border" />
+          <div class="flex items-center gap-3 flex-1">
+            <Award class="h-5 w-5 text-green-500 shrink-0" />
+            <div class="min-w-0">
+              <p class="text-xl font-bold text-green-600 dark:text-green-400 tabular-nums">
+                {{ matchStatistics?.wins || 0 }}
+              </p>
+              <p class="text-xs text-muted-foreground">胜场</p>
+            </div>
           </div>
-          <div class="text-center p-4 rounded-lg bg-red-500/10">
-            <Target class="h-8 w-8 text-red-500 mx-auto mb-2" />
-            <p class="text-2xl font-bold text-red-600 dark:text-red-400">
-              {{ matchStatistics?.losses || 0 }}
-            </p>
-            <p class="text-sm text-muted-foreground">负场</p>
+          <div class="w-px h-10 bg-border" />
+          <div class="flex items-center gap-3 flex-1">
+            <Target class="h-5 w-5 text-red-500 shrink-0" />
+            <div class="min-w-0">
+              <p class="text-xl font-bold text-red-600 dark:text-red-400 tabular-nums">
+                {{ matchStatistics?.losses || 0 }}
+              </p>
+              <p class="text-xs text-muted-foreground">负场</p>
+            </div>
           </div>
-          <div class="text-center p-4 rounded-lg bg-blue-500/10">
-            <TrendingUp class="h-8 w-8 text-blue-500 mx-auto mb-2" />
-            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {{ (matchStatistics?.winRate || 0).toFixed(1) }}%
-            </p>
-            <p class="text-sm text-muted-foreground">胜率</p>
+          <div class="w-px h-10 bg-border" />
+          <div class="flex items-center gap-3 flex-1">
+            <TrendingUp class="h-5 w-5 text-blue-500 shrink-0" />
+            <div class="min-w-0">
+              <p class="text-xl font-bold text-blue-600 dark:text-blue-400 tabular-nums">
+                {{ (matchStatistics?.winRate || 0).toFixed(1) }}%
+              </p>
+              <p class="text-xs text-muted-foreground">胜率</p>
+            </div>
           </div>
         </div>
 
@@ -100,31 +111,31 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-4">
             <h4 class="font-semibold flex items-center">
-              <Swords class="h-4 w-4 mr-2 text-red-500" />
+              <Swords class="h-5 w-5 mr-2 text-red-500" />
               KDA统计
             </h4>
-            <div class="grid grid-cols-3 gap-4">
-              <div class="text-center p-3 rounded-lg border">
-                <p class="text-lg font-bold text-foreground">
+            <div class="flex items-center gap-3">
+              <div class="flex-1 text-center p-3 rounded-lg border">
+                <p class="text-lg font-bold text-foreground tabular-nums">
                   {{ (matchStatistics?.avgKills || 0).toFixed(1) }}
                 </p>
                 <p class="text-xs text-muted-foreground">平均击杀</p>
               </div>
-              <div class="text-center p-3 rounded-lg border">
-                <p class="text-lg font-bold text-foreground">
+              <div class="flex-1 text-center p-3 rounded-lg border">
+                <p class="text-lg font-bold text-foreground tabular-nums">
                   {{ (matchStatistics?.avgDeaths || 0).toFixed(1) }}
                 </p>
                 <p class="text-xs text-muted-foreground">平均死亡</p>
               </div>
-              <div class="text-center p-3 rounded-lg border">
-                <p class="text-lg font-bold text-foreground">
+              <div class="flex-1 text-center p-3 rounded-lg border">
+                <p class="text-lg font-bold text-foreground tabular-nums">
                   {{ (matchStatistics?.avgAssists || 0).toFixed(1) }}
                 </p>
                 <p class="text-xs text-muted-foreground">平均助攻</p>
               </div>
             </div>
-            <div class="text-center p-3 rounded-lg bg-purple-500/10">
-              <p class="text-xl font-bold text-purple-600 dark:text-purple-400">
+            <div class="text-center p-3 rounded-lg border">
+              <p class="text-xl font-bold text-foreground tabular-nums">
                 {{ (matchStatistics?.avgKda || 0).toFixed(2) }}
               </p>
               <p class="text-sm text-muted-foreground">平均KDA</p>
@@ -136,7 +147,7 @@
           <!-- 常用英雄 -->
           <div class="space-y-4">
             <h4 class="font-semibold flex items-center">
-              <Star class="h-4 w-4 mr-2 text-yellow-500" />
+              <Star class="h-5 w-5 mr-2 text-muted-foreground" />
               常用英雄
             </h4>
             <div class="space-y-2">
@@ -158,12 +169,12 @@
                   </div>
                   <div>
                     <p class="font-medium text-sm">{{ getChampionName(champion.championId) }}</p>
-                    <p class="text-xs text-muted-foreground">{{ champion.games }}场</p>
+                    <p class="text-xs text-muted-foreground tabular-nums">{{ champion.games }}场</p>
                   </div>
                 </div>
                 <div class="text-right">
                   <p
-                    class="text-sm font-bold"
+                    class="text-sm font-bold tabular-nums"
                     :class="[
                       champion.winRate >= 60
                         ? 'text-green-600 dark:text-green-400'
@@ -184,7 +195,7 @@
         <!-- 最近对局 -->
         <div class="space-y-4" v-if="matchStatistics?.recentPerformance?.length > 0">
           <h4 class="font-semibold flex items-center">
-            <Calendar class="h-4 w-4 mr-2 text-blue-500" />
+            <Calendar class="h-5 w-5 mr-2 text-muted-foreground" />
             最近对局
           </h4>
           <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))">
@@ -214,14 +225,14 @@
                 </div>
                 <!-- KDA区 -->
                 <div class="flex items-center justify-between text-sm mb-3">
-                  <span class="font-mono font-bold text-lg">
+                  <span class="font-mono font-bold text-lg tabular-nums">
                     <span class="text-red-500">{{ game.kills }}</span>
                     <span class="text-gray-400">/</span>
                     <span class="text-gray-400">{{ game.deaths }}</span>
                     <span class="text-gray-400">/</span>
                     <span class="text-blue-500">{{ game.assists }}</span>
                   </span>
-                  <span class="text-muted-foreground">{{ formatGameTime(game.gameDuration) }}</span>
+                  <span class="text-muted-foreground tabular-nums">{{ formatGameTime(game.gameDuration) }}</span>
                 </div>
                 <!-- 只保留一条淡色分割线 -->
                 <div class="border-t border-blacl/10 dark:border-white/10 my-2"></div>
@@ -271,7 +282,7 @@
           </div>
         </div>
         <div v-else class="text-center text-muted-foreground py-8">
-          <div class="text-3xl mb-2">🎮</div>
+          <Gamepad2 class="h-12 w-12 mx-auto mb-3 opacity-50" />
           <p>暂无对局记录</p>
         </div>
       </div>
@@ -290,6 +301,7 @@ import {
   Calendar,
   Clock,
   Flame,
+  Gamepad2,
   Loader2,
   Meh,
   RefreshCw,
