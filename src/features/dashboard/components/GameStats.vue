@@ -144,43 +144,33 @@
               <Star class="h-5 w-5 mr-2 text-muted-foreground" />
               常用英雄
             </h4>
-            <div class="space-y-2">
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
               <div
-                v-for="champion in (matchStatistics?.favoriteChampions || []).slice(0, 5)"
+                v-for="champion in (matchStatistics?.favoriteChampions || []).slice(0, 10)"
                 :key="champion.championId"
-                class="flex items-center justify-between p-2 rounded-lg border"
+                class="flex flex-col items-center p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
               >
-                <div class="flex items-center space-x-2">
-                  <div class="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <img
-                      v-if="champion.championId"
-                      :src="getChampionIconUrl(champion.championId)"
-                      lazyload
-                      alt=""
-                      class="h-8 w-8 rounded-full"
-                    />
-                    <span v-else class="text-xs font-bold">{{ getChampionName(champion.championId).charAt(0) }}</span>
-                  </div>
-                  <div>
-                    <p class="font-medium text-sm">{{ getChampionName(champion.championId) }}</p>
-                    <p class="text-xs text-muted-foreground tabular-nums">{{ champion.games }}场</p>
-                  </div>
-                </div>
-                <div class="text-right">
-                  <p
-                    class="text-sm font-bold tabular-nums"
-                    :class="[
-                      champion.winRate >= 60
-                        ? 'text-green-600 dark:text-green-400'
-                        : champion.winRate >= 50
-                          ? 'text-yellow-600 dark:text-yellow-400'
-                          : 'text-red-600 dark:text-red-400'
-                    ]"
-                  >
-                    {{ champion.winRate.toFixed(0) }}%
-                  </p>
-                  <p class="text-xs text-muted-foreground">{{ champion.wins }}胜</p>
-                </div>
+                <img
+                  v-if="champion.championId"
+                  :src="getChampionIconUrl(champion.championId)"
+                  loading="lazy"
+                  alt=""
+                  class="h-10 w-10 rounded-full border-2 border-primary/20"
+                />
+                <p class="text-xs font-medium text-center mt-1.5 truncate w-full">{{ getChampionName(champion.championId) }}</p>
+                <p
+                  class="text-sm font-bold tabular-nums mt-0.5"
+                  :class="[
+                    champion.winRate >= 60
+                      ? 'text-green-600 dark:text-green-400'
+                      : champion.winRate >= 50
+                        ? 'text-yellow-600 dark:text-yellow-400'
+                        : 'text-red-600 dark:text-red-400'
+                  ]"
+                >
+                  {{ champion.winRate.toFixed(0) }}%
+                </p>
+                <p class="text-[10px] text-muted-foreground tabular-nums">{{ champion.games }}场</p>
               </div>
             </div>
           </div>
