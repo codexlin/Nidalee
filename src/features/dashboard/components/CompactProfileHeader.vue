@@ -67,10 +67,13 @@
             </div>
             <div class="flex flex-col flex-1 min-w-0">
               <span class="text-xs text-muted-foreground">单双排位</span>
-              <span class="text-sm font-semibold truncate">{{ soloRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(soloRank.tier) }}</span>
+              <span class="text-sm font-semibold truncate">
+                {{ soloRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(soloRank.tier) }}
+                <span v-if="soloRank.tier !== 'UNRANKED' && soloRank.rank" class="text-muted-foreground font-normal">{{ soloRank.rank }}</span>
+              </span>
             </div>
             <div class="flex flex-col items-end shrink-0">
-              <span class="text-sm font-bold text-foreground">{{ soloRank.leaguePoints }}</span>
+              <span class="text-sm font-bold text-foreground">{{ soloRank.leaguePoints }}<span class="text-xs font-normal text-muted-foreground ml-0.5">LP</span></span>
               <span class="text-xs font-medium" :class="soloRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                 {{ soloRank.winRate }}%
               </span>
@@ -86,14 +89,17 @@
             @click="handleRankClick('flex')"
           >
             <div class="flex flex-col items-end shrink-0">
-              <span class="text-sm font-bold text-foreground">{{ flexRank.leaguePoints }}</span>
+              <span class="text-sm font-bold text-foreground">{{ flexRank.leaguePoints }}<span class="text-xs font-normal text-muted-foreground ml-0.5">LP</span></span>
               <span class="text-xs font-medium" :class="flexRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                 {{ flexRank.winRate }}%
               </span>
             </div>
             <div class="flex flex-col flex-1 min-w-0 text-right">
               <span class="text-xs text-muted-foreground">灵活组排</span>
-              <span class="text-sm font-semibold truncate">{{ flexRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(flexRank.tier) }}</span>
+              <span class="text-sm font-semibold truncate">
+                {{ flexRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(flexRank.tier) }}
+                <span v-if="flexRank.tier !== 'UNRANKED' && flexRank.rank" class="text-muted-foreground font-normal">{{ flexRank.rank }}</span>
+              </span>
             </div>
             <div class="relative shrink-0">
               <img
