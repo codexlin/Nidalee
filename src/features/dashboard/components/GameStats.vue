@@ -117,14 +117,7 @@
               <p class="text-xl font-bold text-orange-600 dark:text-orange-400 tabular-nums">
                 {{ (matchStatistics?.avgKda || 0).toFixed(2) }}
               </p>
-              <p class="text-xs text-muted-foreground tabular-nums">
-                <span class="text-red-500/80">{{ (matchStatistics?.avgKills || 0).toFixed(1) }}</span>
-                <span class="mx-0.5">/</span>
-                <span>{{ (matchStatistics?.avgDeaths || 0).toFixed(1) }}</span>
-                <span class="mx-0.5">/</span>
-                <span class="text-blue-600/70">{{ (matchStatistics?.avgAssists || 0).toFixed(1) }}</span>
-                <span class="ml-1 text-muted-foreground">KDA</span>
-              </p>
+              <p class="text-xs text-muted-foreground">平均KDA</p>
             </div>
           </div>
         </div>
