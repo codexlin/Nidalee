@@ -114,16 +114,17 @@
           <div class="flex items-center gap-3 flex-1">
             <Flame class="h-5 w-5 text-orange-500 shrink-0" />
             <div class="min-w-0">
-              <p class="text-sm text-muted-foreground tabular-nums">
-                <span class="text-orange-600 dark:text-orange-400">{{ (matchStatistics?.avgKills || 0).toFixed(1) }}</span>
+              <p class="text-xl font-bold text-orange-600 dark:text-orange-400 tabular-nums">
+                {{ (matchStatistics?.avgKda || 0).toFixed(2) }}
+              </p>
+              <p class="text-xs text-muted-foreground tabular-nums">
+                <span class="text-orange-600/70">{{ (matchStatistics?.avgKills || 0).toFixed(1) }}</span>
                 <span class="mx-0.5">/</span>
                 <span>{{ (matchStatistics?.avgDeaths || 0).toFixed(1) }}</span>
                 <span class="mx-0.5">/</span>
-                <span class="text-blue-600 dark:text-blue-400">{{ (matchStatistics?.avgAssists || 0).toFixed(1) }}</span>
-                <span class="mx-1 text-muted-foreground">=</span>
-                <span class="text-lg font-bold text-orange-600 dark:text-orange-400">{{ (matchStatistics?.avgKda || 0).toFixed(2) }}</span>
+                <span class="text-blue-600/70">{{ (matchStatistics?.avgAssists || 0).toFixed(1) }}</span>
+                <span class="ml-1 text-muted-foreground">KDA</span>
               </p>
-              <p class="text-xs text-muted-foreground">KDA</p>
             </div>
           </div>
         </div>
@@ -131,10 +132,6 @@
         <!-- 召唤师特征分析 + 常用英雄 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-4">
-            <h4 class="font-semibold flex items-center">
-              <Sparkles class="h-5 w-5 mr-2 text-muted-foreground" />
-              召唤师特征
-            </h4>
             <SummonerTraits :match-statistics="matchStatistics" />
           </div>
 
@@ -290,7 +287,6 @@ import {
   Meh,
   RefreshCw,
   Smile,
-  Sparkles,
   Star,
   Target,
   TrendingUp,
