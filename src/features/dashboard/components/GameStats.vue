@@ -118,7 +118,7 @@
                 {{ (matchStatistics?.avgKda || 0).toFixed(2) }}
               </p>
               <p class="text-xs text-muted-foreground tabular-nums">
-                <span class="text-orange-600/70">{{ (matchStatistics?.avgKills || 0).toFixed(1) }}</span>
+                <span class="text-red-500/80">{{ (matchStatistics?.avgKills || 0).toFixed(1) }}</span>
                 <span class="mx-0.5">/</span>
                 <span>{{ (matchStatistics?.avgDeaths || 0).toFixed(1) }}</span>
                 <span class="mx-0.5">/</span>
