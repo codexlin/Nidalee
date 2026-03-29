@@ -68,6 +68,7 @@
       <div v-else class="space-y-6">
         <!-- 总体数据概览（紧凑水平布局） -->
         <div class="flex items-center justify-between gap-4 p-4 rounded-lg border bg-card/50">
+          <!-- 总对局 -->
           <div class="flex items-center gap-3 flex-1">
             <Trophy class="h-5 w-5 text-yellow-500 shrink-0" />
             <div class="min-w-0">
@@ -76,6 +77,7 @@
             </div>
           </div>
           <div class="w-px h-10 bg-border" />
+          <!-- 胜场 -->
           <div class="flex items-center gap-3 flex-1">
             <Award class="h-5 w-5 text-green-500 shrink-0" />
             <div class="min-w-0">
@@ -86,6 +88,7 @@
             </div>
           </div>
           <div class="w-px h-10 bg-border" />
+          <!-- 负场 -->
           <div class="flex items-center gap-3 flex-1">
             <Target class="h-5 w-5 text-red-500 shrink-0" />
             <div class="min-w-0">
@@ -96,6 +99,7 @@
             </div>
           </div>
           <div class="w-px h-10 bg-border" />
+          <!-- 胜率 -->
           <div class="flex items-center gap-3 flex-1">
             <TrendingUp class="h-5 w-5 text-blue-500 shrink-0" />
             <div class="min-w-0">
@@ -105,42 +109,32 @@
               <p class="text-xs text-muted-foreground">胜率</p>
             </div>
           </div>
+          <div class="w-px h-10 bg-border" />
+          <!-- KDA -->
+          <div class="flex items-center gap-3 flex-1">
+            <Flame class="h-5 w-5 text-orange-500 shrink-0" />
+            <div class="min-w-0">
+              <p class="text-sm text-muted-foreground tabular-nums">
+                <span class="text-orange-600 dark:text-orange-400">{{ (matchStatistics?.avgKills || 0).toFixed(1) }}</span>
+                <span class="mx-0.5">/</span>
+                <span>{{ (matchStatistics?.avgDeaths || 0).toFixed(1) }}</span>
+                <span class="mx-0.5">/</span>
+                <span class="text-blue-600 dark:text-blue-400">{{ (matchStatistics?.avgAssists || 0).toFixed(1) }}</span>
+                <span class="mx-1 text-muted-foreground">=</span>
+                <span class="text-lg font-bold text-orange-600 dark:text-orange-400">{{ (matchStatistics?.avgKda || 0).toFixed(2) }}</span>
+              </p>
+              <p class="text-xs text-muted-foreground">KDA</p>
+            </div>
+          </div>
         </div>
 
-        <!-- KDA统计 -->
+        <!-- 召唤师特征分析 + 常用英雄 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-4">
             <h4 class="font-semibold flex items-center">
-              <Swords class="h-5 w-5 mr-2 text-red-500" />
-              KDA统计
+              <Sparkles class="h-5 w-5 mr-2 text-muted-foreground" />
+              召唤师特征
             </h4>
-            <div class="flex items-center gap-3">
-              <div class="flex-1 text-center p-3 rounded-lg border">
-                <p class="text-lg font-bold text-foreground tabular-nums">
-                  {{ (matchStatistics?.avgKills || 0).toFixed(1) }}
-                </p>
-                <p class="text-xs text-muted-foreground">平均击杀</p>
-              </div>
-              <div class="flex-1 text-center p-3 rounded-lg border">
-                <p class="text-lg font-bold text-foreground tabular-nums">
-                  {{ (matchStatistics?.avgDeaths || 0).toFixed(1) }}
-                </p>
-                <p class="text-xs text-muted-foreground">平均死亡</p>
-              </div>
-              <div class="flex-1 text-center p-3 rounded-lg border">
-                <p class="text-lg font-bold text-foreground tabular-nums">
-                  {{ (matchStatistics?.avgAssists || 0).toFixed(1) }}
-                </p>
-                <p class="text-xs text-muted-foreground">平均助攻</p>
-              </div>
-            </div>
-            <div class="text-center p-3 rounded-lg border">
-              <p class="text-xl font-bold text-foreground tabular-nums">
-                {{ (matchStatistics?.avgKda || 0).toFixed(2) }}
-              </p>
-              <p class="text-sm text-muted-foreground">平均KDA</p>
-            </div>
-            <!-- 召唤师特征分析 -->
             <SummonerTraits :match-statistics="matchStatistics" />
           </div>
 
@@ -306,8 +300,8 @@ import {
   Meh,
   RefreshCw,
   Smile,
+  Sparkles,
   Star,
-  Swords,
   Target,
   TrendingUp,
   Trophy,
