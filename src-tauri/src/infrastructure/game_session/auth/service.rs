@@ -305,3 +305,111 @@ fn get_lcu_cmdline_unix() -> Option<String> {
 
 //     None
 // }
+
+/// 🔍 验证：对比 lockfile 和进程命令行获取的信息是否一致
+/// 用于验证 lockfile 方案是否可以替代进程命令行方案
+pub fn verify_lockfile_vs_cmdline() {
+    log::info!("========== 开始验证 lockfile vs 进程命令行 ==========");
+
+    // 1. 从进程命令行获取
+    let cmdline_info = get_lcu_cmdline().and_then(|cmdline| {
+        let remoting_token_re = Regex::new(r"--remoting-auth-token=([^\s]+)").unwrap();
+        let app_port_re = Regex::new(r"--app-port=([^\s]+)").unwrap();
+
+        let token = remoting_token_re.captures(&cmdline)?.get(1)?.as_str().to_string();
+        let port = app_port_re.captures(&cmdline)?.get(1)?.as_str().parse::<u16>().ok()?;
+
+        Some((port, token))
+    });
+
+    // 2. 从 lockfile 获取
+    let lockfile_info = get_lcu_from_lockfile();
+
+    match (cmdline_info, lockfile_info) {
+        (Some(cmdline), Some(lockfile)) => {
+            let port_match = cmdline.0 == lockfile.0;
+            let token_match = cmdline.1 == lockfile.1;
+
+            log::info!("┌─ 进程命令行 ──────────────────────┐");
+            log::info!("│ 端口: {:>5}                     │", cmdline.0);
+            log::info!("│ Token: {}... ({} 字符) │", &cmdline.1[..8.min(cmdline.1.len())], cmdline.1.len());
+            log::info!("└────────────────────────────────┘");
+
+            log::info!("┌─ Lockfile ────────────────────────┐");
+            log::info!("│ 端口: {:>5}                     │", lockfile.0);
+            log::info!("│ Token: {}... ({} 字符) │", &lockfile.1[..8.min(lockfile.1.len())], lockfile.1.len());
+            log::info!("└────────────────────────────────┘");
+
+            log::info!("┌─ 对比结果 ────────────────────────┐");
+            log::info!("│ 端口: {}                         │", if port_match { "✓ 一致" } else { "✗ 不一致" });
+            log::info!("│ Token: {}                        │", if token_match { "✓ 一致" } else { "✗ 不一致" });
+            log::info!("└────────────────────────────────┘");
+
+            if port_match && token_match {
+                log::info!("✅ 验证成功：lockfile 和进程命令行获取的信息完全一致！");
+            } else {
+                log::warn!("⚠️  验证失败：两种方式获取的信息不一致！");
+            }
+        }
+        (None, None) => {
+            log::error!("❌ 验证失败：两种方式都无法获取 LCU 信息（LoL 客户端可能未启动）");
+        }
+        (None, Some(_)) => {
+            log::info!("✅ Lockfile 方式成功，进程命令行失败（可能需要管理员权限）");
+        }
+        (Some(_), None) => {
+            log::warn!("⚠️  进程命令行方式成功，lockfile 失败");
+        }
+    }
+
+    log::info!("==============================================");
+}
+
+/// 从 lockfile 读取 LCU 连接信息
+/// lockfile 路径：C:\Riot Games\League of Legends\lockfile
+#[cfg(target_os = "windows")]
+fn get_lcu_from_lockfile() -> Option<(u16, String)> {
+    use std::fs;
+    use std::path::PathBuf;
+
+    // 尝试多个可能的 lockfile 路径
+    let possible_paths = vec![
+        r"C:\Riot Games\League of Legends\lockfile",
+        r"D:\Riot Games\League of Legends\lockfile",
+        r"E:\Riot Games\League of Legends\lockfile",
+    ];
+
+    for path_str in possible_paths {
+        let path = PathBuf::from(path_str);
+        if path.exists() {
+            match fs::read_to_string(&path) {
+                Ok(content) => {
+                    // lockfile 格式: LeagueClient:PID:Port:Password
+                    let parts: Vec<&str> = content.trim().split(':').collect();
+                    if parts.len() >= 4 {
+                        let _process_name = parts[0];
+                        let _pid = parts[1];
+                        let port: u16 = parts[2].parse().ok()?;
+                        let token = parts[3].to_string();
+
+                        log::debug!("[LCU] 从 lockfile 读取: port={}, token={}...", port, &token[..8.min(token.len())]);
+                        return Some((port, token));
+                    }
+                }
+                Err(e) => {
+                    log::debug!("[LCU] 无法读取 lockfile {:?}: {}", path, e);
+                }
+            }
+        }
+    }
+
+    log::debug!("[LCU] 未找到 lockfile");
+    None
+}
+
+/// 非 Windows 平台不支持 lockfile
+#[cfg(not(target_os = "windows"))]
+fn get_lcu_from_lockfile() -> Option<(u16, String)> {
+    log::warn!("[LCU] lockfile 方案仅支持 Windows 平台");
+    None
+}

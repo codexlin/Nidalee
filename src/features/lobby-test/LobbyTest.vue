@@ -1,5 +1,44 @@
 <template>
   <div class="p-6 max-w-4xl mx-auto space-y-6">
+    <!-- 🔍 LCU 认证验证工具 -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          LCU 认证验证
+        </CardTitle>
+        <CardDescription>对比 lockfile 和进程命令行获取的认证信息</CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="flex gap-2">
+          <Button @click="handleVerify" :disabled="isVerifying">
+            <svg v-if="!isVerifying" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <svg v-else class="w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ isVerifying ? '验证中...' : '开始验证' }}
+          </Button>
+          <Button variant="outline" @click="handleClearLogs" v-if="verifyLogs.length > 0"> 清空日志 </Button>
+        </div>
+
+        <!-- 验证日志 -->
+        <div v-if="verifyLogs.length > 0" class="p-3 rounded-lg bg-muted max-h-60 overflow-y-auto text-xs font-mono space-y-1">
+          <div v-for="(log, index) in verifyLogs" :key="index" :class="getLogClass(log)">
+            {{ log }}
+          </div>
+        </div>
+        <div v-else class="p-3 rounded-lg bg-muted/50 text-center text-sm text-muted-foreground">
+          点击"开始验证"按钮，对比两种方式获取的 LCU 认证信息
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- 房间聊天测试 -->
     <Card>
       <CardHeader>
         <CardTitle>房间聊天测试</CardTitle>
@@ -96,7 +135,48 @@
 </template>
 
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import { useLobbyChat } from '@/composables/lobby'
+
+// LCU 验证相关
+const isVerifying = ref(false)
+const verifyLogs = ref<string[]>([])
+
+const getLogClass = (log: string) => {
+  if (log.includes('✅') || log.includes('一致')) return 'text-green-500'
+  if (log.includes('❌') || log.includes('不一致') || log.includes('失败')) return 'text-red-500'
+  if (log.includes('⚠️')) return 'text-yellow-500'
+  return 'text-muted-foreground'
+}
+
+const handleVerify = async () => {
+  isVerifying.value = true
+  verifyLogs.value = []
+
+  try {
+    await invoke('verify_lockfile_vs_cmdline')
+    // 延迟一下让后端日志输出完成
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    // 提示用户查看后端日志
+    verifyLogs.value = [
+      '========== 验证完成 ==========',
+      '✅ 请查看应用后端日志查看详细对比结果',
+      '📍 日志位置：终端输出或日志文件',
+      '============================'
+    ]
+  } catch (error) {
+    verifyLogs.value = [
+      '❌ 验证失败：' + (error instanceof Error ? error.message : '未知错误')
+    ]
+  } finally {
+    isVerifying.value = false
+  }
+}
+
+const handleClearLogs = () => {
+  verifyLogs.value = []
+}
 
 const {
   currentLobby,

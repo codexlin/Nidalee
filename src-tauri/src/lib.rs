@@ -19,6 +19,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // 认证 / 连接
             infrastructure::game_session::auth::commands::get_auth_info,
+            infrastructure::game_session::auth::commands::verify_lockfile_vs_cmdline,
             infrastructure::game_session::connection::commands::get_connection_state,
             infrastructure::game_session::connection::commands::force_refresh_connection,
             infrastructure::game_session::connection::commands::check_connection_state_command,
