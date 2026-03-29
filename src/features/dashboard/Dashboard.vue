@@ -12,8 +12,6 @@
         :win-rate="winRate"
         :solo-rank="soloRank"
         :flex-rank="flexRank"
-        :session-duration="sessionDuration"
-        :enabled-functions-count="enabledFunctionsCount"
       />
 
       <GameStats
@@ -54,10 +52,6 @@ import { AnalysisMode } from '@/shared/stores/features/analysisSettingsStore'
 
 const { loading, toggle } = useLoading()
 
-// 会话时长
-const sessionStore = useSessionStore()
-const sessionDuration = computed(() => sessionStore.formattedTotal)
-
 // 单双排位信息
 const soloRank = computed(() => {
   const tier = summonerInfo.value?.soloRankTier
@@ -93,11 +87,9 @@ const { updateMatchHistory } = useSummonerAndMatchUpdater();
 const dataStore = useDataStore()
 const connectionStore = useConnectionStore()
 const activityLogger = useActivityLogger()
-const autoFunctionStore = useAutoFunctionStore()
 
 const { summonerInfo, matchStatistics, isDataLoading } = storeToRefs(dataStore)
 const { isConnected } = storeToRefs(connectionStore)
-const { enabledFunctionsCount } = storeToRefs(autoFunctionStore)
 
 // 当前选中的队列ID（null = 全部模式）
 const selectedQueueId = ref<number | null>(null)

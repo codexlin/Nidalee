@@ -39,10 +39,8 @@
                 {{ isConnected ? '已连接' : '未连接' }}
               </Badge>
             </div>
-            <div class="flex items-center gap-3 text-sm text-muted-foreground">
+            <div class="flex items-center gap-2 text-sm text-muted-foreground">
               <span>挑战积分: <span class="text-foreground font-medium">{{ (summonerInfo?.challengePoints || 0).toLocaleString() }}</span></span>
-              <span class="w-px h-3 bg-border/30" />
-              <span>会话: <span class="text-foreground font-medium">{{ sessionDuration }}</span></span>
             </div>
           </div>
         </div>
@@ -110,14 +108,7 @@
         </div>
 
         <!-- 右栏：统计信息（横向紧凑布局） -->
-        <div class="flex items-center gap-3  justify-end shrink-0">
-          <!-- 自动功能（紧凑） -->
-          <div class="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors">
-            <Sparkles class="h-4 w-4 text-purple-500 shrink-0" />
-            <span class="text-xs font-medium text-purple-700 dark:text-purple-300">自动</span>
-            <span class="text-sm font-bold text-purple-600 dark:text-purple-400">{{ enabledFunctionsCount }}</span>
-          </div>
-
+        <div class="flex items-center gap-3 justify-end shrink-0">
           <!-- 今日战绩 -->
           <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/30 transition-colors">
             <div class="flex items-baseline gap-0.5">
@@ -147,7 +138,7 @@
 
 <script setup lang="ts">
 import { getProfileIconUrl, getTierIconUrl } from '@/lib'
-import { User, Shield, Sparkles } from 'lucide-vue-next'
+import { User, Shield } from 'lucide-vue-next'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 
@@ -171,8 +162,6 @@ const props = defineProps<{
   winRate: number
   soloRank: RankInfo
   flexRank: RankInfo
-  sessionDuration: string
-  enabledFunctionsCount: number
 }>()
 
 // 段位短名称映射
