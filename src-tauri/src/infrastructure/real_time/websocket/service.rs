@@ -27,6 +27,11 @@ static WS_SENDER: OnceCell<
 // Global instance of the event handler, used to access the cache from commands.
 static WS_EVENT_HANDLER: OnceCell<Arc<WsEventHandler>> = OnceCell::new();
 
+/// 检查 WebSocket 是否正在运行
+pub fn is_ws_running() -> bool {
+    WS_RUNNING.load(Ordering::SeqCst)
+}
+
 /// Gets the global event handler instance.
 pub fn get_event_handler() -> Option<Arc<WsEventHandler>> {
     WS_EVENT_HANDLER.get().cloned()

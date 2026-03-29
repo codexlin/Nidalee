@@ -175,6 +175,9 @@ const emit = defineEmits<{
   save: [config: RuneConfig]
 }>()
 
+// 使用缓存的英雄数据
+const { data: allChampionsData } = useChampionSummaryQuery()
+
 // 状态
 const isEditing = computed(() => !!props.config)
 const championSearch = ref('')
@@ -247,30 +250,25 @@ const isFormValid = computed(() => {
 })
 
 // 英雄搜索
-const handleChampionSearch = async () => {
+const handleChampionSearch = () => {
   if (!championSearch.value || championSearch.value.length < 2) {
     championSearchResults.value = []
     return
   }
 
-  try {
-    // 调用后端 API 搜索英雄
-    const allChampions = await invoke<any[]>('get_all_champion_data')
+  // 使用缓存的英雄数据（无需等待）
+  const allChampions = allChampionsData.value || []
 
-    // 根据输入过滤英雄
-    const query = championSearch.value.toLowerCase()
-    championSearchResults.value = allChampions
-      .filter(
-        (champ) =>
-          champ.name.toLowerCase().includes(query) ||
-          champ.alias.toLowerCase().includes(query) ||
-          champ.title?.toLowerCase().includes(query)
-      )
-      .slice(0, 10) // 最多显示10个结果
-  } catch (error) {
-    console.error('搜索英雄失败:', error)
-    championSearchResults.value = []
-  }
+  // 根据输入过滤英雄
+  const query = championSearch.value.toLowerCase()
+  championSearchResults.value = allChampions
+    .filter(
+      (champ) =>
+        champ.name.toLowerCase().includes(query) ||
+        champ.alias.toLowerCase().includes(query) ||
+        champ.title?.toLowerCase().includes(query)
+    )
+    .slice(0, 10) // 最多显示10个结果
 }
 
 const selectChampion = (champion: any) => {

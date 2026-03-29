@@ -120,11 +120,117 @@ Each feature in `src/features/` is self-contained with:
 - **Components**: From `src/components/**` and `src/features/**`
 - Vue APIs: `vue`, `vue-router`, `pinia`
 
+> **TIPS**: Do NOT manually import composables/stores from `src/shared/composables/**` or `src/shared/stores/**`. They are auto-imported by `unplugin-auto-import`. See `types/auto-imports.d.ts` for the full list of auto-imported symbols.
+
 ### UI Components
 - Uses shadcn-vue (New York style, neutral base color)
 - Components in `src/components/ui/`
 - Icons: lucide-vue-next
 - Component resolution via `unplugin-vue-components`
+
+## Data Classification
+
+Understanding the data lifecycle helps optimize caching and reduce unnecessary API calls.
+
+### Static Data (版本化缓存)
+**Definition**: Data that only changes when the LoL game version updates (typically every 2 weeks).
+
+**Cache Strategy**: Use `['static', 'category', version]` as query key. Invalidated automatically when game version changes.
+
+**Query Key Pattern**: `['static', '<category>', version]`
+
+| Data | Query Key | Source | Composable |
+|------|-----------|--------|------------|
+| 英雄列表 (Champions) | `['static', 'champions', version]` | LCU API | `useChampions()` |
+| 符文样式 (Rune Styles) | `['static', 'runes', version]` | LCU API | `useRuneStyles()` |
+| 符文详情 (Perks) | `['static', 'perks', version]` | LCU API | `usePerks()` |
+| 符文图标 (Perk Icons) | `['static', 'perkIcons', version]` | LCU API | `usePerkIcons()` |
+| 召唤师技能 (Summoner Spells) | `['static', 'spells', version]` | LCU API | `useSummonerSpells()` |
+| 游戏物品 (Items) | `['static', 'items', version]` | LCU API | - |
+| 游戏模式 (Game Modes) | `['static', 'gameModes', version]` | LCU API | - |
+| 地图 (Maps) | `['static', 'maps', version]` | LCU API | - |
+| 队列 (Queues) | `['static', 'queues', version]` | LCU API | - |
+
+**Cache Config**: `staleTime: Infinity, gcTime: Infinity`
+
+---
+
+### Semi-Static Data (会话缓存)
+**Definition**: Data that changes per game session or user action, but doesn't need frequent updates.
+
+**Cache Strategy**: Medium cache time (minutes to hours), manual refresh when needed.
+
+| Data | Query Key | Source | Cache Time |
+|------|-----------|--------|------------|
+| 当前召唤师信息 (Current Summoner) | `['currentSummoner']` | LCU API | 5 min |
+| 战绩历史 (Match History) | `['matchHistory', summonerId]` | LCU API | 5 min |
+| 英雄详情/皮肤 (Champion Details) | `['championDetails', championId]` | Community Dragon | 1 hour |
+| OP.GG 推荐 (OP.GG Builds) | `['opgg', 'build', championId, position, version]` | OP.GG API | 1 hour |
+| OP.GG 强度榜 (OP.GG Tier List) | `['opgg', 'tierList', version]` | OP.GG API | 1 hour |
+| 当前符文页 (Current Rune Page) | `['currentRunePage']` | LCU API | 1 min |
+
+---
+
+### Dynamic Data (轮询数据)
+**Definition**: Data that changes frequently during gameplay. Requires periodic polling.
+
+**Cache Strategy**: Short cache time, refreshed via polling or WebSocket fallback.
+
+| Data | Query Key | Polling Interval | Fallback Strategy |
+|------|-----------|------------------|-------------------|
+| 匹配状态 (Matchmaking State) | `['matchmakingState']` | 5-15s | WebSocket + HTTP fallback |
+| 大厅信息 (Lobby Info) | `['lobby']` | 5-15s | WebSocket + HTTP fallback |
+| 英雄选择会话 (Champ Select) | `['champSelect']` | Real-time | WebSocket only |
+
+---
+
+### Real-Time Data (WebSocket 实时推送)
+**Definition**: Data that must be updated immediately when changes occur. Delivered via LCU WebSocket.
+
+**WebSocket Events**: All prefixed with `/` and monitored via `OnJsonApiEvent`
+
+| Event Name | LCU Path | Trigger | Frontend Handler |
+|------------|----------|---------|------------------|
+| `gameflow-phase-change` | `/lol-gameflow/v1/gameflow-phase` | Game phase changes | `handleGamePhaseChange()` |
+| `lobby-change` | `/lol-lobby/v2/lobby` | Lobby updated | `handleLobbyChange()` |
+| `champ-select-session-changed` | `/lol-champ-select/v1/session` | Champ select updates | `handleChampSelectChange()` |
+| `matchmaking-state-changed` | `/lol-matchmaking/v1/search` | Matchmaking status | `matchmakingStore.updateState()` |
+| `connection-state-changed` | - | Connection status | `connectionStore.updateConnectionState()` |
+| `game-finished` | - | Game ends | `matchAnalysisStore.clearAllData()` |
+| `team-analysis-data` | - | Analysis complete | `matchAnalysisStore.setTeamAnalysisData()` |
+
+**WebSocket Subscription** (dynamic based on game phase):
+```rust
+// Always subscribed
+"/lol-gameflow/v1/gameflow-phase"
+"/lol-gameflow/v1/session"
+"/lol-summoner/v1/current-summoner"
+
+// Phase-specific subscriptions
+"Lobby/Matchmaking/None" → "/lol-lobby/v2/lobby", "/lol-matchmaking/v1/search"
+"ChampSelect" → "/lol-champ-select/v1/session"
+```
+
+---
+
+### Cache Invalidation Strategy
+
+**Version Change Detection**:
+```typescript
+// On connection established, check game version
+if (newVersion !== currentVersion) {
+  queryClient.invalidateQueries({ queryKey: ['static'] })
+}
+```
+
+**Manual Refresh**:
+```typescript
+// Refresh all static data
+await queryClient.invalidateQueries({ queryKey: ['gameVersion'] })
+
+// Refresh specific category
+await queryClient.invalidateQueries({ queryKey: ['static', 'champions'] })
+```
 
 ## Important Notes
 

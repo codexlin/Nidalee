@@ -427,9 +427,6 @@
 </template>
 
 <script setup lang="ts">
-import { useActivityLogger } from '@/shared/composables/utils/useActivityLogger'
-import { useFormatters } from '@/shared/composables/utils/useFormatters'
-import { useSearchMatches } from '@/shared/composables/game/useSearchMatches'
 import {
   getChampionIconUrl,
   getChampionName,

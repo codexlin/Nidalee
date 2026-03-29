@@ -67,7 +67,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { useMatchAnalysisStore } from './store'
 import { useUserRuneStore } from '@/shared/stores/features/userRuneStore'
-import { useAutoRune } from '@/shared/composables/game/useAutoRune'
 
 // Use Pinia Store
 const matchAnalysisStore = useMatchAnalysisStore()

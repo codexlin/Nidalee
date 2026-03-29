@@ -289,7 +289,6 @@
 </template>
 
 <script setup lang="ts">
-import { useRuneData } from '@/shared/composables/game/useRuneData'
 import { Sparkles, Check, Zap, AlertCircle } from 'lucide-vue-next'
 
 interface Props {

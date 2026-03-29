@@ -200,30 +200,79 @@ impl ConnectionManager {
         }
     }
 
+    /// 检测 LoL 进程是否存在（优化版：记录进程名快速查找）
     async fn has_lol_process(&self) -> bool {
         use once_cell::sync::Lazy;
-        use std::sync::Mutex;
-        use sysinfo::{ProcessRefreshKind, RefreshKind, System};
+        use std::sync::{Mutex, RwLock};
+        use sysinfo::{ProcessRefreshKind, Pid, RefreshKind, System};
+        use std::collections::HashMap;
 
-        // ✅ 优化：使用静态 System 实例，避免每次都创建新实例
+        // 缓存：上次找到的 LoL 进程名 -> PID
+        struct CachedProcess {
+            name: String,
+            pid: Option<u32>,
+        }
+        static CACHED_PROCESS: Lazy<RwLock<Option<CachedProcess>>> = Lazy::new(|| RwLock::new(None));
+
+        // 快速路径：检查缓存的进程是否仍然存在
+        {
+            let cache = CACHED_PROCESS.read().unwrap();
+            if let Some(ref cached) = *cache {
+                let mut system = PROCESS_SYSTEM.lock().unwrap();
+                // 只刷新单个进程的信息，非常快
+                if let Some(pid) = cached.pid {
+                    if system.refresh_process(Pid::from_u32(pid), ProcessRefreshKind::everything()) {
+                        // 进程仍然存在，验证名称
+                        if let Some(process) = system.process(Pid::from_u32(pid)) {
+                            let name = process.name().to_string_lossy();
+                            if name.eq_ignore_ascii_case(&cached.name) {
+                                log::trace!("[连接管理] 使用缓存的 LoL 进程: {} (PID: {})", name, pid);
+                                return true;
+                            }
+                        }
+                    }
+                }
+                // 缓存失效，清除
+                drop(cache);
+            }
+        }
+
+        // 慢速路径：缓存未命中，执行完整扫描
+        log::debug!("[连接管理] 扫描 LoL 进程...");
         static PROCESS_SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new()));
 
         let mut system = PROCESS_SYSTEM.lock().unwrap();
-        // ✅ 优化：只刷新进程列表，不刷新其他系统信息
-        system.refresh_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::everything()));
+        system.refresh_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::new()));
 
         let possible_names = ["LeagueClientUx.exe", "LeagueClient.exe", "LeagueOfLegends.exe"];
+        let mut found_info: Option<(String, u32)> = None;
 
-        for (_pid, process) in system.processes() {
+        for (pid, process) in system.processes() {
             let process_name = process.name().to_string_lossy();
-            if possible_names
+            if let Some(matched_name) = possible_names
                 .iter()
-                .any(|name| process_name.eq_ignore_ascii_case(name))
+                .find(|name| process_name.eq_ignore_ascii_case(name))
             {
-                return true;
+                found_info = Some((matched_name.to_string(), pid.as_u32()));
+                break;
             }
         }
-        false
+
+        if let Some((name, pid)) = found_info {
+            // 缓存找到的进程信息
+            let mut cache = CACHED_PROCESS.write().unwrap();
+            *cache = Some(CachedProcess {
+                name: name.clone(),
+                pid: Some(pid),
+            });
+            log::debug!("[连接管理] 找到 LoL 进程: {} (PID: {})", name, pid);
+            true
+        } else {
+            // 清除缓存
+            let mut cache = CACHED_PROCESS.write().unwrap();
+            *cache = None;
+            false
+        }
     }
 
     async fn handle_state_change(&self, old_state: &ConnectionState, new_state: &ConnectionState) {
@@ -256,21 +305,43 @@ impl ConnectionManager {
     }
 
     async fn get_check_interval(&self, state: &ConnectionState) -> Duration {
-        let info = self.info.read().await;
+        use crate::infrastructure::real_time::websocket::service::is_ws_running;
+
+        // ⚡ 优化：WebSocket 运行时，大幅降低 HTTP 检查频率
+        // WebSocket 已经在实时监控连接状态，HTTP 检查只是回退方案
+        let ws_running = is_ws_running();
 
         match state {
-            // ✅ 优化：连接正常时降低频率（WebSocket 已提供实时监控 + 10s fallback）
-            ConnectionState::Connected => Duration::from_secs(10),
-            ConnectionState::Disconnected => {
-                if info.consecutive_failures > 20 {
-                    Duration::from_secs(20) // ✅ 优化：长期断开时进一步降低频率
+            ConnectionState::Connected => {
+                // WebSocket 运行时：几乎不需要检查
+                // WebSocket 断开时：保持较低频率的回退检查
+                if ws_running {
+                    Duration::from_secs(120) // 2 分钟（从 60s 增加）
                 } else {
-                    Duration::from_secs(5) // ✅ 优化：初期断开时适度检查
+                    Duration::from_secs(30)  // WS 未运行时的回退检查
                 }
             }
-            ConnectionState::ProcessFound => Duration::from_secs(3), // ✅ 优化：进程存在时等待认证就绪
-            ConnectionState::Unstable => Duration::from_secs(5),     // ✅ 优化：不稳定时降低频率
-            ConnectionState::AuthExpired => Duration::from_secs(5),  // ✅ 优化：认证过期时降低频率
+            ConnectionState::Disconnected => {
+                // WebSocket 未运行时需要更频繁的检查来发现连接
+                if !ws_running && self.consecutive_failures() <= 10 {
+                    Duration::from_secs(5)   // 初期：5 秒
+                } else {
+                    Duration::from_secs(30)  // 长期断开：30 秒
+                }
+            }
+            ConnectionState::ProcessFound => Duration::from_secs(2), // 进程启动，等待认证就绪
+            ConnectionState::Unstable => Duration::from_secs(15),
+            ConnectionState::AuthExpired => Duration::from_secs(10),
+        }
+    }
+
+    /// 获取连续失败次数（内部辅助方法）
+    fn consecutive_failures(&self) -> u32 {
+        // 注意：这里是同步读取，可能略有延迟，但在循环中可以接受
+        if let Ok(info) = self.info.try_read() {
+            info.consecutive_failures
+        } else {
+            0
         }
     }
 

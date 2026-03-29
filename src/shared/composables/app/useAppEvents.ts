@@ -1,10 +1,12 @@
 import { useMatchAnalysisStore } from '@/features/match-analysis/store'
 import { listen } from '@tauri-apps/api/event'
 import { debounce, isObject } from 'radash'
+import { useQueryClient } from '@tanstack/vue-query'
 
 // 创建一个模块级别的状态，用于跟踪监听器
 let unlisteners: (() => void)[] = []
 let isListeningStarted = false
+let currentGameVersion: string | null = null
 
 /**
  * 应用事件处理组合式函数
@@ -17,6 +19,7 @@ export function useAppEvents() {
   const connectionStore = useConnectionStore()
   const matchmakingStore = useMatchmakingStore()
   const matchAnalysisStore = useMatchAnalysisStore()
+  const queryClient = useQueryClient()  // ← 移到外层，所有函数共享同一个实例
 
   const { handleGamePhaseChange } = gamePhaseManager
   const { handleLobbyChange, handleChampSelectChange } = champSelectManager
@@ -57,6 +60,32 @@ export function useAppEvents() {
   const handleConnectionStateChange = async (event: any) => {
     const state = event.payload as ConnectedState
     await connectionStore.updateConnectionState(isObject(state) ? state.state : state)
+
+    // 当连接成功时，检查游戏版本
+    if (isObject(state) ? state.state === 'Connected' : state === 'Connected') {
+      await checkGameVersion()
+    }
+  }
+
+  // 检查游戏版本，版本变化时清空静态数据缓存
+  const checkGameVersion = async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core')
+      const newVersion = await invoke<string>('get_game_version')
+
+      if (newVersion && newVersion !== currentGameVersion) {
+        if (currentGameVersion) {
+          console.log(`[AppEvents] 检测到游戏版本变化: ${currentGameVersion} → ${newVersion}`)
+          // 清空所有静态数据缓存
+          queryClient.invalidateQueries({ queryKey: ['static'] })
+        } else {
+          console.log(`[AppEvents] 当前游戏版本: ${newVersion}`)
+        }
+        currentGameVersion = newVersion
+      }
+    } catch (error) {
+      console.error('[AppEvents] 检查游戏版本失败:', error)
+    }
   }
 
   const handleConnectionStateChangeDebounced = debounce({ delay: 300 }, handleConnectionStateChange)

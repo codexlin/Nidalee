@@ -193,7 +193,6 @@ import { useGameHelper } from '../composables/useGameHelper'
 import { getChampionIconUrlByAlias } from '@/lib'
 import { ArrowLeft, Search, Users, X } from 'lucide-vue-next'
 import { debounce } from 'radash'
-import { useChampionSummaryQuery, useChampionDetailsQuery } from '@/shared/composables/game/useChampionQuery'
 
 const { setSummonerBackgroundSkin } = useGameHelper()
 const searchText = ref('')
