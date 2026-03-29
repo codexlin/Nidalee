@@ -10,7 +10,7 @@
     <div class="relative px-5">
       <div class="flex items-center justify-between gap-6">
         <!-- 左栏：头像 + 基本信息 -->
-        <div class="flex items-center gap-4 w-[240px] shrink-0">
+        <div class="flex items-center gap-4  shrink-0">
           <div class="relative shrink-0">
             <img
               v-if="summonerInfo?.profileIconId"
@@ -50,7 +50,7 @@
         <!-- 中栏：段位信息（镜像设计） -->
         <div class="flex-1 flex items-center justify-center gap-8">
           <!-- 单双排位（左侧） -->
-          <div class="flex items-center gap-3 px-4 py-2 rounded-xl w-[170px]">
+          <div class="flex items-center gap-3 px-4 py-2 rounded-xl ">
             <div class="relative shrink-0">
               <img
                 v-if="soloRank.tier !== 'UNRANKED'"
@@ -81,7 +81,7 @@
           <div class="w-px h-12 bg-border/30" />
 
           <!-- 灵活组排（右侧，镜像） -->
-          <div class="flex items-center gap-3 px-4 py-2 rounded-xl w-[170px]">
+          <div class="flex items-center gap-3 px-4 py-2 rounded-xl ">
             <div class="flex flex-col items-end shrink-0">
               <span class="text-base font-bold text-foreground">{{ flexRank.leaguePoints }}<span class="text-xs font-normal text-muted-foreground ml-0.5">LP</span></span>
               <span class="text-xs font-medium" :class="flexRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
@@ -110,7 +110,7 @@
         </div>
 
         <!-- 右栏：统计信息（横向紧凑布局） -->
-        <div class="flex items-center gap-3 w-[220px] justify-end shrink-0">
+        <div class="flex items-center gap-3  justify-end shrink-0">
           <!-- 自动功能（紧凑） -->
           <div class="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors">
             <Sparkles class="h-4 w-4 text-purple-500 shrink-0" />
