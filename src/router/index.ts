@@ -42,6 +42,11 @@ const router = createRouter({
       path: '/data-collection-test',
       name: 'data-collection-test',
       component: () => import('../views/DataCollectionTestView.vue')
+    },
+    {
+      path: '/lobby-test',
+      name: 'lobby-test',
+      component: () => import('../features/lobby-test/LobbyTest.vue')
     }
   ]
 })

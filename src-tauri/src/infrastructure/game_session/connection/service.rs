@@ -232,17 +232,16 @@ impl ConnectionManager {
         {
             let cache = CACHED_PROCESS.read().unwrap();
             if let Some(ref cached) = *cache {
-                let mut system = PROCESS_SYSTEM.lock().unwrap();
-                // 只刷新单个进程的信息，非常快
                 if let Some(pid) = cached.pid {
-                    if system.refresh_process(Pid::from_u32(pid), ProcessRefreshKind::everything()) {
-                        // 进程仍然存在，验证名称
-                        if let Some(process) = system.process(Pid::from_u32(pid)) {
-                            let name = process.name().to_string_lossy();
-                            if name.eq_ignore_ascii_case(&cached.name) {
-                                log::trace!("[连接管理] 使用缓存的 LoL 进程: {} (PID: {})", name, pid);
-                                return true;
-                            }
+                    let mut system = PROCESS_SYSTEM.lock().unwrap();
+                    // 刷新进程信息
+                    system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+                    // 进程仍然存在，验证名称
+                    if let Some(process) = system.process(Pid::from_u32(pid)) {
+                        let name = process.name().to_string_lossy();
+                        if name.eq_ignore_ascii_case(&cached.name) {
+                            log::trace!("[连接管理] 使用缓存的 LoL 进程: {} (PID: {})", name, pid);
+                            return true;
                         }
                     }
                 }
@@ -256,7 +255,7 @@ impl ConnectionManager {
         static PROCESS_SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new()));
 
         let mut system = PROCESS_SYSTEM.lock().unwrap();
-        system.refresh_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::new()));
+        system.refresh_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::everything()));
 
         let possible_names = ["LeagueClientUx.exe", "LeagueClient.exe", "LeagueOfLegends.exe"];
         let mut found_info: Option<(String, u32)> = None;

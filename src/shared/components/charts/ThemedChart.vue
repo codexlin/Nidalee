@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
-import Button from '@/shared/components/ui/button/index.vue'
+import { Button } from '@/components/ui/button'
 import { useSettingsStore } from '@/shared/stores/ui/settingsStore'
 
 interface Props {

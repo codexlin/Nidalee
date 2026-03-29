@@ -244,15 +244,11 @@ import { useAnalysisSettingsStore, AnalysisDepth, AnalysisMode } from '@/shared/
 import { RotateCcw, Download, Upload } from 'lucide-vue-next'
 
 // 组件导入
-import Card from '@/shared/components/ui/card/Card.vue'
-import Switch from '@/shared/components/ui/switch/Switch.vue'
-import Select from '@/shared/components/ui/select/Select.vue'
-import SelectContent from '@/shared/components/ui/select/SelectContent.vue'
-import SelectItem from '@/shared/components/ui/select/SelectItem.vue'
-import SelectTrigger from '@/shared/components/ui/select/SelectTrigger.vue'
-import SelectValue from '@/shared/components/ui/select/SelectValue.vue'
-import Slider from '@/shared/components/ui/slider/Slider.vue'
-import Button from '@/shared/components/ui/button/Button.vue'
+import { Card } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Slider } from '@/components/ui/slider'
+import { Button } from '@/components/ui/button'
 
 const analysisSettings = useAnalysisSettingsStore()
 

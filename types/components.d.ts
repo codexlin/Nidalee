@@ -23,6 +23,7 @@ declare module 'vue' {
     AlertDialogTitle: typeof import('./../src/components/ui/alert-dialog/AlertDialogTitle.vue')['default']
     AlertDialogTrigger: typeof import('./../src/components/ui/alert-dialog/AlertDialogTrigger.vue')['default']
     AnalysisHeader: typeof import('./../src/features/match-analysis/components/analysis/AnalysisHeader.vue')['default']
+    AnalysisSettingsTab: typeof import('./../src/features/settings/components/analysis/AnalysisSettingsTab.vue')['default']
     AppHoverCard: typeof import('./../src/shared/components/common/AppHoverCard.vue')['default']
     AppSidebar: typeof import('./../src/components/layout/AppSidebar.vue')['default']
     AppUpdateDialog: typeof import('./../src/components/AppUpdateDialog.vue')['default']
