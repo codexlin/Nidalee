@@ -47,10 +47,10 @@
           </div>
         </div>
 
-        <!-- 中栏：段位信息（镜像设计，去边框） -->
+        <!-- 中栏：段位信息（镜像设计） -->
         <div class="flex-1 flex items-center justify-center gap-8">
           <!-- 单双排位（左侧） -->
-          <div class="flex items-center gap-3 px-4 py-2 rounded-xl cursor-pointer w-[170px]" @click="handleRankClick('solo')">
+          <div class="flex items-center gap-3 px-4 py-2 rounded-xl w-[170px]">
             <div class="relative shrink-0">
               <img
                 v-if="soloRank.tier !== 'UNRANKED'"
@@ -81,7 +81,7 @@
           <div class="w-px h-12 bg-border/30" />
 
           <!-- 灵活组排（右侧，镜像） -->
-          <div class="flex items-center gap-3 px-4 py-2 rounded-xl cursor-pointer w-[170px]" @click="handleRankClick('flex')">
+          <div class="flex items-center gap-3 px-4 py-2 rounded-xl w-[170px]">
             <div class="flex flex-col items-end shrink-0">
               <span class="text-base font-bold text-foreground">{{ flexRank.leaguePoints }}<span class="text-xs font-normal text-muted-foreground ml-0.5">LP</span></span>
               <span class="text-xs font-medium" :class="flexRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
@@ -174,14 +174,6 @@ const props = defineProps<{
   sessionDuration: string
   enabledFunctionsCount: number
 }>()
-
-const emit = defineEmits<{
-  (e: 'rank-click', queueType: 'solo' | 'flex'): void
-}>()
-
-const handleRankClick = (queueType: 'solo' | 'flex') => {
-  emit('rank-click', queueType)
-}
 
 // 段位短名称映射
 const formatRankTierShort = (tier: string): string => {

@@ -14,7 +14,6 @@
         :flex-rank="flexRank"
         :session-duration="sessionDuration"
         :enabled-functions-count="enabledFunctionsCount"
-        @rank-click="handleRankClick"
       />
 
       <GameStats
@@ -87,14 +86,9 @@ const flexRank = computed(() => {
     leaguePoints: summonerInfo.value?.flexRankLp || 0,
     winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0
   }
-})
+});
 
-// 处理段位卡片点击
-const handleRankClick = (queueType: 'solo' | 'flex') => {
-  // 可以在此处添加展开详情的逻辑，例如打开弹窗或抽屉
-  console.log('Rank clicked:', queueType)
-}
-const { updateMatchHistory } = useSummonerAndMatchUpdater()
+const { updateMatchHistory } = useSummonerAndMatchUpdater();
 
 const dataStore = useDataStore()
 const connectionStore = useConnectionStore()
