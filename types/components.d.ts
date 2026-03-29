@@ -58,6 +58,7 @@ declare module 'vue' {
     ComboboxTrigger: typeof import('./../src/components/ui/combobox/ComboboxTrigger.vue')['default']
     ComboboxViewport: typeof import('./../src/components/ui/combobox/ComboboxViewport.vue')['default']
     CompactPlayerCard: typeof import('./../src/features/match-analysis/components/analysis/CompactPlayerCard.vue')['default']
+    CompactProfileHeader: typeof import('./../src/features/dashboard/components/CompactProfileHeader.vue')['default']
     ConnectionStatus: typeof import('./../src/components/layout/ConnectionStatus.vue')['default']
     CountersCard: typeof import('./../src/features/opgg/components/CountersCard.vue')['default']
     Dashboard: typeof import('./../src/features/dashboard/Dashboard.vue')['default']
