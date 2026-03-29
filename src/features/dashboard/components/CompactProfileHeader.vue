@@ -7,7 +7,7 @@
     <div class="absolute -top-16 -left-16 w-48 h-48 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
 
     <!-- 主内容：左中右三栏布局 -->
-    <div class="relative p-4">
+    <div class="relative px-4 py-3">
       <div class="flex items-center justify-between gap-6">
         <!-- 左栏：头像 + 基本信息 -->
         <div class="flex items-center gap-3 w-[200px] shrink-0">
