@@ -262,6 +262,7 @@
 <script setup lang="ts">
 import { getChampionIconUrl, getChampionName, getQueueName } from '@/lib'
 import {
+  Award,
   BarChart,
   Calendar,
   Clock,
