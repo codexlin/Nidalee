@@ -4,12 +4,16 @@
       <Spinner class="size-6 text-primary" />
     </div>
     <template v-else>
-      <SummonerCard :summoner-info="summonerInfo" is-dashboard />
-      <StatisticsCards
+      <!-- 紧凑型 Profile Header -->
+      <CompactProfileHeader
         :is-connected="isConnected"
+        :summoner-info="summonerInfo"
         :today-matches="todayMatches"
         :win-rate="winRate"
-        :enabled-functions-count="enabledFunctionsCount"
+        :solo-rank="soloRank"
+        :flex-rank="flexRank"
+        :session-duration="sessionDuration"
+        @rank-click="handleRankClick"
       />
 
       <GameStats
@@ -45,19 +49,59 @@
 <script setup lang="ts">
 import PositionStatsCard from '@/features/match-search/PositionStatsCard.vue'
 import PositionDetailsDialog from '@/features/match-search/PositionDetailsDialog.vue'
+import CompactProfileHeader from './components/CompactProfileHeader.vue'
 import { AnalysisMode } from '@/shared/stores/features/analysisSettingsStore'
 
 const { loading, toggle } = useLoading()
+
+// 会话时长
+const sessionStore = useSessionStore()
+const sessionDuration = computed(() => sessionStore.formattedTotal)
+
+// 单双排位信息
+const soloRank = computed(() => {
+  const tier = summonerInfo.value?.soloRankTier
+  const wins = summonerInfo.value?.soloRankWins || 0
+  const losses = summonerInfo.value?.soloRankLosses || 0
+  const totalGames = wins + losses
+
+  return {
+    tier: tier || 'UNRANKED',
+    rank: summonerInfo.value?.soloRankDivision || '',
+    leaguePoints: summonerInfo.value?.soloRankLp || 0,
+    winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0
+  }
+})
+
+// 灵活组排信息
+const flexRank = computed(() => {
+  const tier = summonerInfo.value?.flexRankTier
+  const wins = summonerInfo.value?.flexRankWins || 0
+  const losses = summonerInfo.value?.flexRankLosses || 0
+  const totalGames = wins + losses
+
+  return {
+    tier: tier || 'UNRANKED',
+    rank: summonerInfo.value?.flexRankDivision || '',
+    leaguePoints: summonerInfo.value?.flexRankLp || 0,
+    winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0
+  }
+})
+
+// 处理段位卡片点击
+const handleRankClick = (queueType: 'solo' | 'flex') => {
+  // 可以在此处添加展开详情的逻辑，例如打开弹窗或抽屉
+  console.log('Rank clicked:', queueType)
+}
 const { updateMatchHistory } = useSummonerAndMatchUpdater()
 
 const dataStore = useDataStore()
 const connectionStore = useConnectionStore()
 const activityLogger = useActivityLogger()
-const autoFunctionStore = useAutoFunctionStore()
 
 const { summonerInfo, matchStatistics, isDataLoading } = storeToRefs(dataStore)
 const { isConnected } = storeToRefs(connectionStore)
-const { enabledFunctionsCount } = storeToRefs(autoFunctionStore)
+// enabledFunctionsCount 已整合到 CompactProfileHeader 中，此处不再需要单独显示
 
 // 当前选中的队列ID（null = 全部模式）
 const selectedQueueId = ref<number | null>(null)
