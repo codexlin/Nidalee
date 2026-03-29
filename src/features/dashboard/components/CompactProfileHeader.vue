@@ -6,134 +6,135 @@
     <!-- 装饰性光晕 (左上角，更淡) -->
     <div class="absolute -top-16 -left-16 w-48 h-48 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
 
-    <!-- 主内容 -->
+    <!-- 主内容：左中右三栏布局 -->
     <div class="relative p-4">
-      <div class="flex items-start gap-4">
-        <!-- Avatar with Level Badge -->
-        <div class="relative group shrink-0">
-          <div class="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-          <img
-            v-if="summonerInfo?.profileIconId"
-            :src="getProfileIconUrl(summonerInfo.profileIconId)"
-            class="relative h-16 w-16 rounded-full ring-1 ring-border/50 group-hover:ring-primary/30 transition-all"
-          />
+      <div class="flex items-center justify-between gap-6">
+        <!-- 左栏：头像 + 基本信息 -->
+        <div class="flex items-center gap-3 w-[200px] shrink-0">
+          <div class="relative group shrink-0">
+            <div class="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+            <img
+              v-if="summonerInfo?.profileIconId"
+              :src="getProfileIconUrl(summonerInfo.profileIconId)"
+              class="relative h-14 w-14 rounded-full ring-1 ring-border/50 group-hover:ring-primary/30 transition-all"
+            />
+            <div
+              v-else
+              class="relative h-14 w-14 rounded-full bg-muted ring-1 ring-border/50 flex items-center justify-center"
+            >
+              <User class="h-6 w-6 text-muted-foreground" />
+            </div>
+            <span class="absolute -bottom-1 -right-1 bg-background text-foreground text-xs font-bold px-1.5 rounded-full ring-1 ring-border shadow-sm">
+              {{ summonerInfo?.summonerLevel || 0 }}
+            </span>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <h3 class="font-semibold text-base truncate">{{ summonerInfo?.gameName || summonerInfo?.displayName || '未知召唤师' }}</h3>
+              <Badge
+                :variant="isConnected ? 'default' : 'secondary'"
+                :class="['gap-1 px-1.5 h-5 text-xs', isConnected ? 'bg-green-500/10 text-green-700 dark:text-green-400' : '']"
+              >
+                <div :class="['w-1 h-1 rounded-full shrink-0', isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400']" />
+                {{ isConnected ? '在线' : '离线' }}
+              </Badge>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+              <span>积分: {{ (summonerInfo?.challengePoints || 0).toLocaleString() }}</span>
+              <span>•</span>
+              <span>{{ sessionDuration }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 中栏：段位信息（镜像设计） -->
+        <div class="flex-1 flex items-center justify-center gap-6">
+          <!-- 单双排位（左侧） -->
           <div
-            v-else
-            class="relative h-16 w-16 rounded-full bg-muted ring-1 ring-border/50 flex items-center justify-center"
+            class="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border/50 bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-all cursor-pointer group w-[160px]"
+            @click="handleRankClick('solo')"
           >
-            <User class="h-7 w-7 text-muted-foreground" />
-          </div>
-          <span class="absolute -bottom-1 -right-1 bg-background text-foreground text-xs font-bold px-1.5 rounded-full ring-1 ring-border shadow-sm">
-            {{ summonerInfo?.summonerLevel || 0 }}
-          </span>
-        </div>
-
-        <!-- Middle Section: Summoner Info + Ranked Stats -->
-        <div class="flex-1 min-w-0 space-y-3">
-          <!-- Name + Status Row -->
-          <div class="flex items-center gap-2 flex-wrap">
-            <h3 class="font-semibold text-base">{{ summonerInfo?.gameName || summonerInfo?.displayName || '未知召唤师' }}</h3>
-            <span v-if="summonerInfo?.tagLine" class="text-muted-foreground text-sm">#{{ summonerInfo.tagLine }}</span>
-            <Badge
-              :variant="isConnected ? 'default' : 'secondary'"
-              :class="['gap-1 text-xs', isConnected ? 'bg-green-500/10 text-green-700 dark:text-green-400' : '']"
-            >
-              <div :class="['w-1.5 h-1.5 rounded-full shrink-0', isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400']" />
-              {{ isConnected ? '已连接' : '未连接' }}
-            </Badge>
-          </div>
-
-          <!-- Info Row -->
-          <div class="flex items-center gap-3 text-sm text-muted-foreground">
-            <span>挑战积分: <span class="text-foreground font-medium">{{ summonerInfo?.challengePoints?.toLocaleString() || 0 }}</span></span>
-            <span>•</span>
-            <span>会话: <span class="text-foreground font-medium">{{ sessionDuration }}</span></span>
-          </div>
-
-          <!-- Ranked Stats Row (Compact) -->
-          <div class="flex items-center gap-3">
-            <!-- Solo Rank -->
-            <div
-              class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group"
-              @click="handleRankClick('solo')"
-            >
-              <div class="relative">
-                <img
-                  v-if="soloRank.tier !== 'UNRANKED'"
-                  :src="getTierIconUrl(soloRank.tier)"
-                  class="h-7 w-7 transition-transform group-hover:scale-110 breath-glow"
-                  :style="getRankGlowStyle(soloRank.tier)"
-                />
-                <div v-else class="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
-                  <Shield class="h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
-              <div class="flex flex-col">
-                <span class="text-xs text-muted-foreground leading-tight">单双</span>
-                <span class="text-sm font-semibold leading-tight">{{ soloRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(soloRank.tier) }}</span>
-              </div>
-              <div class="flex flex-col items-end">
-                <span class="text-xs font-medium leading-tight">{{ soloRank.leaguePoints }}</span>
-                <span class="text-xs leading-tight" :class="soloRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-                  {{ soloRank.winRate }}%
-                </span>
+            <div class="relative shrink-0">
+              <img
+                v-if="soloRank.tier !== 'UNRANKED'"
+                :src="getTierIconUrl(soloRank.tier)"
+                class="h-9 w-9 transition-transform group-hover:scale-110 breath-glow"
+                :style="getRankGlowStyle(soloRank.tier)"
+              />
+              <div v-else class="h-9 w-9 rounded-full bg-muted flex items-center justify-center border border-border/50">
+                <Shield class="h-5 w-5 text-muted-foreground" />
               </div>
             </div>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span class="text-xs text-muted-foreground">单双排位</span>
+              <span class="text-sm font-semibold truncate">{{ soloRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(soloRank.tier) }}</span>
+            </div>
+            <div class="flex flex-col items-end shrink-0 text-right">
+              <span class="text-sm font-bold text-foreground">{{ soloRank.leaguePoints }}</span>
+              <span class="text-xs font-medium" :class="soloRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                {{ soloRank.winRate }}%
+              </span>
+            </div>
+          </div>
 
-            <!-- Flex Rank -->
-            <div
-              class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group"
-              @click="handleRankClick('flex')"
-            >
-              <div class="relative">
-                <img
-                  v-if="flexRank.tier !== 'UNRANKED'"
-                  :src="getTierIconUrl(flexRank.tier)"
-                  class="h-7 w-7 transition-transform group-hover:scale-110 breath-glow"
-                  :style="getRankGlowStyle(flexRank.tier)"
-                />
-                <div v-else class="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
-                  <Shield class="h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
-              <div class="flex flex-col">
-                <span class="text-xs text-muted-foreground leading-tight">灵活</span>
-                <span class="text-sm font-semibold leading-tight">{{ flexRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(flexRank.tier) }}</span>
-              </div>
-              <div class="flex flex-col items-end">
-                <span class="text-xs font-medium leading-tight">{{ flexRank.leaguePoints }}</span>
-                <span class="text-xs leading-tight" :class="flexRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-                  {{ flexRank.winRate }}%
-                </span>
+          <!-- 分隔线 -->
+          <div class="w-px h-10 bg-border/50" />
+
+          <!-- 灵活组排（右侧，镜像） -->
+          <div
+            class="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border/50 bg-gradient-to-l from-primary/5 to-transparent hover:from-primary/10 transition-all cursor-pointer group w-[160px]"
+            @click="handleRankClick('flex')"
+          >
+            <div class="flex flex-col items-end shrink-0 text-right">
+              <span class="text-sm font-bold text-foreground">{{ flexRank.leaguePoints }}</span>
+              <span class="text-xs font-medium" :class="flexRank.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                {{ flexRank.winRate }}%
+              </span>
+            </div>
+            <div class="flex flex-col flex-1 min-w-0 text-right">
+              <span class="text-xs text-muted-foreground">灵活组排</span>
+              <span class="text-sm font-semibold truncate">{{ flexRank.tier === 'UNRANKED' ? '未定级' : formatRankTierShort(flexRank.tier) }}</span>
+            </div>
+            <div class="relative shrink-0">
+              <img
+                v-if="flexRank.tier !== 'UNRANKED'"
+                :src="getTierIconUrl(flexRank.tier)"
+                class="h-9 w-9 transition-transform group-hover:scale-110 breath-glow"
+                :style="getRankGlowStyle(flexRank.tier)"
+              />
+              <div v-else class="h-9 w-9 rounded-full bg-muted flex items-center justify-center border border-border/50">
+                <Shield class="h-5 w-5 text-muted-foreground" />
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Right Section: Stats -->
-        <div class="flex items-center gap-3 pl-3 border-l border-border/50 shrink-0">
-          <!-- Auto Functions -->
-          <div class="flex flex-col items-center px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
-            <Sparkles class="h-4 w-4 text-purple-500" />
+        <!-- 右栏：统计信息 -->
+        <div class="flex items-center gap-3 w-[180px] justify-end shrink-0">
+          <!-- 自动功能 -->
+          <div class="flex flex-col items-center px-2.5 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
+            <Sparkles class="h-3.5 w-3.5 text-purple-500" />
             <span class="text-xs font-medium text-purple-700 dark:text-purple-300 mt-0.5">自动</span>
             <span class="text-sm font-bold text-purple-600 dark:text-purple-400">{{ enabledFunctionsCount }}</span>
           </div>
 
-          <!-- Today's Stats -->
-          <div class="flex flex-col items-center px-3 py-2">
+          <!-- 今日战绩 -->
+          <div class="flex flex-col items-center px-2.5 py-1.5">
             <span class="text-xs text-muted-foreground">今日</span>
-            <span class="text-lg font-bold">{{ todayMatches?.total || 0 }}</span>
-            <div class="flex items-center gap-1 text-xs">
+            <div class="flex items-center gap-1">
+              <span class="text-lg font-bold">{{ todayMatches?.total || 0 }}</span>
+            </div>
+            <div class="flex items-center gap-0.5 text-xs">
               <span class="font-bold text-green-600 dark:text-green-400">{{ todayMatches?.wins || 0 }}</span>
               <span class="text-muted-foreground">/</span>
               <span class="font-bold text-red-600 dark:text-red-400">{{ todayMatches?.losses || 0 }}</span>
             </div>
           </div>
 
-          <!-- Win Rate Badge -->
+          <!-- 胜率 Badge -->
           <Badge
             :variant="winRate >= 60 ? 'default' : winRate >= 50 ? 'secondary' : 'destructive'"
-            class="h-fit px-3 py-1.5"
+            class="h-fit px-2.5 py-1.5"
           >
             <span class="text-sm font-bold">{{ winRate.toFixed(0) }}%</span>
           </Badge>
