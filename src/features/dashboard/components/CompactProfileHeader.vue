@@ -46,31 +46,39 @@
             </Badge>
           </div>
           <div class="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
-            <span
-              >挑战积分: <span class="text-foreground font-medium">{{ summonerInfo?.challengePoints?.toLocaleString() || 0 }}</span></span
-            >
+            <span>挑战积分: <span class="text-foreground font-medium">{{ summonerInfo?.challengePoints?.toLocaleString() || 0 }}</span></span>
             <span>•</span>
             <span>会话: <span class="text-foreground font-medium">{{ sessionDuration }}</span></span>
           </div>
         </div>
 
-        <!-- Today's Quick Stats -->
+        <!-- Right Section: Stats + Auto Functions -->
         <div class="flex items-center gap-4 pl-4 border-l border-border/50">
-          <div class="text-center">
-            <p class="text-xs text-muted-foreground">今日</p>
-            <p class="font-semibold">{{ todayMatches?.total || 0 }}</p>
+          <!-- Auto Functions Count -->
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
+            <Sparkles class="h-4 w-4 text-purple-500" />
+            <span class="text-sm font-medium text-purple-700 dark:text-purple-300">自动功能</span>
+            <span class="text-sm font-bold text-purple-600 dark:text-purple-400">{{ enabledFunctionsCount }}</span>
           </div>
-          <div class="flex items-center gap-1 text-sm">
-            <span class="font-bold text-green-600 dark:text-green-400">{{ todayMatches?.wins || 0 }}</span>
-            <span class="text-muted-foreground">/</span>
-            <span class="font-bold text-red-600 dark:text-red-400">{{ todayMatches?.losses || 0 }}</span>
+
+          <!-- Today's Quick Stats -->
+          <div class="flex items-center gap-3">
+            <div class="text-center">
+              <p class="text-xs text-muted-foreground">今日</p>
+              <p class="font-semibold">{{ todayMatches?.total || 0 }}</p>
+            </div>
+            <div class="flex items-center gap-1 text-sm">
+              <span class="font-bold text-green-600 dark:text-green-400">{{ todayMatches?.wins || 0 }}</span>
+              <span class="text-muted-foreground">/</span>
+              <span class="font-bold text-red-600 dark:text-red-400">{{ todayMatches?.losses || 0 }}</span>
+            </div>
+            <Badge
+              :variant="winRate >= 60 ? 'default' : winRate >= 50 ? 'secondary' : 'destructive'"
+              class="font-semibold"
+            >
+              {{ winRate.toFixed(0) }}%
+            </Badge>
           </div>
-          <Badge
-            :variant="winRate >= 60 ? 'default' : winRate >= 50 ? 'secondary' : 'destructive'"
-            class="font-semibold"
-          >
-            {{ winRate.toFixed(0) }}%
-          </Badge>
         </div>
       </div>
 
@@ -83,14 +91,25 @@
         >
           <div class="relative shrink-0">
             <img
-              :src="getRankIconUrl(soloRank.tier)"
-              class="h-10 w-10 transition-transform group-hover:scale-105"
+              v-if="soloRank.tier !== 'UNRANKED'"
+              :src="getTierIconUrl(soloRank.tier)"
+              :alt="soloRank.tier"
+              class="h-12 w-12 transition-transform group-hover:scale-110 breath-glow"
+              :style="getRankGlowStyle(soloRank.tier)"
             />
-            <div class="absolute inset-0 bg-primary/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div
+              v-else
+              class="h-12 w-12 rounded-full bg-muted flex items-center justify-center border border-border/50"
+            >
+              <Shield class="h-6 w-6 text-muted-foreground" />
+            </div>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-xs text-muted-foreground">单双排位</p>
-            <p class="font-semibold truncate">{{ soloRank.tier }} {{ soloRank.rank }}</p>
+            <p class="text-xs text-muted-foreground flex items-center gap-1">
+              <User class="h-3 w-3" />
+              单双排位
+            </p>
+            <p class="font-semibold truncate">{{ formatRankTier(soloRank.tier) }} {{ soloRank.rank }}</p>
           </div>
           <div class="text-right shrink-0">
             <p class="font-bold text-foreground">{{ soloRank.leaguePoints }}<span class="text-xs font-normal text-muted-foreground">LP</span></p>
@@ -107,14 +126,25 @@
         >
           <div class="relative shrink-0">
             <img
-              :src="getRankIconUrl(flexRank.tier)"
-              class="h-10 w-10 transition-transform group-hover:scale-105"
+              v-if="flexRank.tier !== 'UNRANKED'"
+              :src="getTierIconUrl(flexRank.tier)"
+              :alt="flexRank.tier"
+              class="h-12 w-12 transition-transform group-hover:scale-110 breath-glow"
+              :style="getRankGlowStyle(flexRank.tier)"
             />
-            <div class="absolute inset-0 bg-primary/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div
+              v-else
+              class="h-12 w-12 rounded-full bg-muted flex items-center justify-center border border-border/50"
+            >
+              <Shield class="h-6 w-6 text-muted-foreground" />
+            </div>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-xs text-muted-foreground">灵活组排</p>
-            <p class="font-semibold truncate">{{ flexRank.tier }} {{ flexRank.rank }}</p>
+            <p class="text-xs text-muted-foreground flex items-center gap-1">
+              <Users class="h-3 w-3" />
+              灵活组排
+            </p>
+            <p class="font-semibold truncate">{{ formatRankTier(flexRank.tier) }} {{ flexRank.rank }}</p>
           </div>
           <div class="text-right shrink-0">
             <p class="font-bold text-foreground">{{ flexRank.leaguePoints }}<span class="text-xs font-normal text-muted-foreground">LP</span></p>
@@ -129,8 +159,8 @@
 </template>
 
 <script setup lang="ts">
-import { getProfileIconUrl, getRankIconUrl } from '@/lib'
-import { User } from 'lucide-vue-next'
+import { getProfileIconUrl, getTierIconUrl } from '@/lib'
+import { User, Users, Shield, Sparkles } from 'lucide-vue-next'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 
@@ -155,6 +185,7 @@ const props = defineProps<{
   soloRank: RankInfo
   flexRank: RankInfo
   sessionDuration: string
+  enabledFunctionsCount: number
 }>()
 
 const emit = defineEmits<{
@@ -164,4 +195,73 @@ const emit = defineEmits<{
 const handleRankClick = (queueType: 'solo' | 'flex') => {
   emit('rank-click', queueType)
 }
+
+// 段位中文映射
+const formatRankTier = (tier: string): string => {
+  const tierMap: Record<string, string> = {
+    UNRANKED: '未定级',
+    IRON: '坚韧黑铁',
+    BRONZE: '英勇青铜',
+    SILVER: '不屈白银',
+    GOLD: '荣耀黄金',
+    PLATINUM: '华贵铂金',
+    EMERALD: '流光翡翠',
+    DIAMOND: '璀璨钻石',
+    MASTER: '超凡大师',
+    GRANDMASTER: '傲世宗师',
+    CHALLENGER: '最强王者'
+  }
+  return tierMap[tier] || tier
+}
+
+// 段位光晕颜色
+const rankGlowColorMap: Record<string, string> = {
+  IRON: '#6e6e6e',
+  BRONZE: '#b87333',
+  SILVER: '#bfc1c2',
+  GOLD: '#f7c873',
+  PLATINUM: '#3fd8e0',
+  EMERALD: '#34d399',
+  DIAMOND: '#60a5fa',
+  MASTER: '#a78bfa',
+  GRANDMASTER: '#f87171',
+  CHALLENGER: '#ffe066'
+}
+
+const getRankGlowStyle = (tier: string) => {
+  const color = rankGlowColorMap[tier]
+  if (!color) return {}
+  return {
+    '--glow-color': color,
+    '--glow-color-a': color + '80'
+  } as any
+}
 </script>
+
+<style scoped>
+@keyframes breath-glow {
+  0% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      0 0 12px 2px var(--glow-color),
+      0 0 24px 4px var(--glow-color-a);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.2),
+      0 0 20px 6px var(--glow-color),
+      0 0 40px 8px var(--glow-color-a);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      0 0 12px 2px var(--glow-color),
+      0 0 24px 4px var(--glow-color-a);
+  }
+}
+
+.breath-glow {
+  animation: breath-glow 2.4s ease-in-out infinite;
+  border-radius: 50%;
+}
+</style>

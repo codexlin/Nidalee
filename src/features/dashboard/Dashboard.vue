@@ -13,6 +13,7 @@
         :solo-rank="soloRank"
         :flex-rank="flexRank"
         :session-duration="sessionDuration"
+        :enabled-functions-count="enabledFunctionsCount"
         @rank-click="handleRankClick"
       />
 
@@ -98,10 +99,11 @@ const { updateMatchHistory } = useSummonerAndMatchUpdater()
 const dataStore = useDataStore()
 const connectionStore = useConnectionStore()
 const activityLogger = useActivityLogger()
+const autoFunctionStore = useAutoFunctionStore()
 
 const { summonerInfo, matchStatistics, isDataLoading } = storeToRefs(dataStore)
 const { isConnected } = storeToRefs(connectionStore)
-// enabledFunctionsCount 已整合到 CompactProfileHeader 中，此处不再需要单独显示
+const { enabledFunctionsCount } = storeToRefs(autoFunctionStore)
 
 // 当前选中的队列ID（null = 全部模式）
 const selectedQueueId = ref<number | null>(null)
