@@ -11,7 +11,8 @@ use crate::domains::analysis::{
 };
 use crate::domains::tactical_advice::generate_advice;
 use crate::shared::types::{
-    AdvicePerspective, MultiPositionAnalysis, PositionStats, ChampionStat, TrendPoint,
+    AdvicePerspective, ChampionStat, MultiPositionAnalysis, PlayerMatchStats, PositionStats,
+    TrendPoint,
 };
 use crate::infrastructure::data_services::champion_data::service::get_champion_info;
 use serde_json::Value;
@@ -69,8 +70,17 @@ pub fn analyze_with_analysis_mode(
 
     println!("🔍 过滤后剩余 {} 场对局", filtered_games.len());
 
+    // 过滤后为空属于正常业务结果（例如近期没有排位），不应让前端当成失败
     if filtered_games.is_empty() {
-        return Err(format!("没有符合条件的对局数据（模式：{}）", analysis_mode.description()));
+        println!(
+            "ℹ️ 模式「{}」下无符合条件的对局，返回空统计",
+            analysis_mode.description()
+        );
+        return Ok(MultiPositionAnalysis {
+            position_stats: vec![],
+            main_position: "未知".to_string(),
+            overall_stats: PlayerMatchStats::default(),
+        });
     }
 
     // 3. 确定分析策略
