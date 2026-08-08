@@ -12,10 +12,7 @@ export interface DebouncedNumberModelOptions {
  * 为数字模型创建防抖版本
  * 用于滑块、输入框等需要防抖的场景
  */
-export function useDebouncedNumberModel(
-  model: Ref<number>,
-  options: DebouncedNumberModelOptions = {}
-) {
+export function useDebouncedNumberModel(model: Ref<number>, options: DebouncedNumberModelOptions = {}) {
   const { delay = 500 } = options
 
   const pendingValue = ref<number>(model.value)

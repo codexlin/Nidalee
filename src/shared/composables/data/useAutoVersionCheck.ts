@@ -22,37 +22,32 @@ export function useAutoVersionCheck() {
       return // 已经在监听
     }
 
-    versionCheckUnlistener = await listen<ConnectionState>(
-      'connection-state-changed',
-      async (event) => {
-        const state = event.payload
+    versionCheckUnlistener = await listen<ConnectionState>('connection-state-changed', async (event) => {
+      const state = event.payload
 
-        // 只在连接成功时检查版本
-        if (state.state === 'Connected') {
-          console.log('[VersionCheck] 连接成功，检查游戏版本...')
+      // 只在连接成功时检查版本
+      if (state.state === 'Connected') {
+        console.log('[VersionCheck] 连接成功，检查游戏版本...')
 
-          // 记录旧版本
-          const oldVersion = queryClient.getQueryData(['gameVersion'])
+        // 记录旧版本
+        const oldVersion = queryClient.getQueryData(['gameVersion'])
 
-          // 刷新版本查询
-          await queryClient.invalidateQueries({ queryKey: ['gameVersion'] })
+        // 刷新版本查询
+        await queryClient.invalidateQueries({ queryKey: ['gameVersion'] })
 
-          // 等待版本数据更新
-          setTimeout(() => {
-            const newVersion = queryClient.getQueryData(['gameVersion'])
+        // 等待版本数据更新
+        setTimeout(() => {
+          const newVersion = queryClient.getQueryData(['gameVersion'])
 
-            if (oldVersion !== newVersion) {
-              console.log(
-                `[VersionCheck] 版本变化: ${oldVersion} → ${newVersion}，清空静态数据缓存`
-              )
-              // 版本变化后，其他版本化的查询会自动失效并重新获取
-            } else {
-              console.log('[VersionCheck] 版本未变化，保持缓存')
-            }
-          }, 100)
-        }
+          if (oldVersion !== newVersion) {
+            console.log(`[VersionCheck] 版本变化: ${oldVersion} → ${newVersion}，清空静态数据缓存`)
+            // 版本变化后，其他版本化的查询会自动失效并重新获取
+          } else {
+            console.log('[VersionCheck] 版本未变化，保持缓存')
+          }
+        }, 100)
       }
-    )
+    })
 
     console.log('[VersionCheck] 版本检查监听已启动')
   }
@@ -77,7 +72,7 @@ export function useAutoVersionCheck() {
 
   return {
     startVersionCheck,
-    stopVersionCheck,
+    stopVersionCheck
   }
 }
 
@@ -112,7 +107,7 @@ export function useVersionChange(callback: (newVersion: string, oldVersion: stri
   }
 
   // 初始化当前版本
-  currentVersion = queryClient.getQueryData<string>(['gameVersion'])
+  currentVersion = queryClient.getQueryData<string>(['gameVersion']) ?? null
 
   return { checkAndNotify }
 }

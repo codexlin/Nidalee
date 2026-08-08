@@ -41,8 +41,8 @@ export function usePositionAnalysis() {
       console.log('📊 多位置分析结果:', result)
 
       return result
-    } catch (e: any) {
-      error.value = e?.message || '获取位置分析失败'
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : '获取位置分析失败'
       console.error('❌ 获取位置分析失败:', e)
       positionAnalysis.value = null
       return null

@@ -1,5 +1,7 @@
 <template>
-  <Card class="relative overflow-hidden rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border">
+  <Card
+    class="relative overflow-hidden rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border"
+  >
     <!-- 装饰性光晕 (右下角) -->
     <div class="absolute -bottom-20 -right-20 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -187,6 +189,7 @@
 </template>
 
 <script setup lang="ts">
+import type { StyleValue } from 'vue'
 import { getProfileIconUrl, getTierIconUrl } from '@/lib'
 import { Shield, User, Users } from 'lucide-vue-next'
 import { Badge } from '@/components/ui/badge'
@@ -207,7 +210,7 @@ interface TodayMatches {
 
 const props = defineProps<{
   isConnected: boolean
-  summonerInfo: any
+  summonerInfo: SummonerInfo | null
   todayMatches: TodayMatches
   winRate: number
   soloRank: RankInfo
@@ -245,13 +248,13 @@ const rankGlowColorMap: Record<string, string> = {
   CHALLENGER: '#ffe066'
 }
 
-const getRankGlowStyle = (tier: string) => {
+const getRankGlowStyle = (tier: string): StyleValue => {
   const color = rankGlowColorMap[tier]
   if (!color) return {}
   return {
     '--glow-color': color,
     '--glow-color-a': color + '80'
-  } as any
+  } as StyleValue
 }
 </script>
 

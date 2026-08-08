@@ -1,5 +1,5 @@
 import { useMatchAnalysisStore } from '@/features/match-analysis/store'
-import { listen } from '@tauri-apps/api/event'
+import { listen, type Event } from '@tauri-apps/api/event'
 import { debounce, isObject } from 'radash'
 import { useQueryClient } from '@tanstack/vue-query'
 
@@ -19,34 +19,34 @@ export function useAppEvents() {
   const connectionStore = useConnectionStore()
   const matchmakingStore = useMatchmakingStore()
   const matchAnalysisStore = useMatchAnalysisStore()
-  const queryClient = useQueryClient()  // ← 移到外层，所有函数共享同一个实例
+  const queryClient = useQueryClient() // ← 移到外层，所有函数共享同一个实例
 
   const { handleGamePhaseChange } = gamePhaseManager
   const { handleLobbyChange, handleChampSelectChange } = champSelectManager
 
   // 事件处理函数
-  const handleGameFlowPhaseChange = (event: any) => {
+  const handleGameFlowPhaseChange = (event: Event<string>) => {
     console.log('[AppEvents] 游戏阶段变化:', event.payload)
     const phase = event.payload as string
     handleGamePhaseChange(phase)
   }
 
-  const handleGameflowSessionChanged = (event: any) => {
+  const handleGameflowSessionChanged = (event: Event<unknown>) => {
     console.log('[AppEvents] Gameflow Session 变化:', event.payload)
     // 可根据需要处理
   }
 
-  const handleLobbyChangeEvent = (event: any) => {
+  const handleLobbyChangeEvent = (event: Event<LobbyInfo | null>) => {
     console.log('[AppEvents] 大厅变化:', event.payload)
     handleLobbyChange(event.payload as LobbyInfo | null)
   }
 
-  const handleChampSelectSessionChanged = (event: any) => {
+  const handleChampSelectSessionChanged = (event: Event<ChampSelectSession | null>) => {
     console.log('[AppEvents] 英雄选择 Session 变化:', event.payload)
     handleChampSelectChange(event.payload)
   }
 
-  const handleMatchmakingStateChanged = (event: any) => {
+  const handleMatchmakingStateChanged = (event: Event<MatchmakingState>) => {
     console.log('[AppEvents] 匹配状态变化:', event.payload)
     matchmakingStore.updateState(event.payload)
   }
@@ -57,7 +57,7 @@ export function useAppEvents() {
     matchAnalysisStore.setTeamAnalysisData(event.payload)
   }
 
-  const handleConnectionStateChange = async (event: any) => {
+  const handleConnectionStateChange = async (event: Event<unknown>) => {
     const state = event.payload as ConnectedState
     await connectionStore.updateConnectionState(isObject(state) ? state.state : state)
 

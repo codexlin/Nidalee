@@ -340,8 +340,8 @@ const generateData = async () => {
 
     generationResult.value = result
     console.log('数据生成成功:', result)
-  } catch (error: any) {
-    errorMessage.value = error.message || '生成数据文件失败'
+  } catch (error: unknown) {
+    errorMessage.value = (error instanceof Error ? error.message : String(error)) || '生成数据文件失败'
     console.error('数据生成失败:', error)
   } finally {
     isGenerating.value = false
@@ -366,8 +366,8 @@ const analyzeData = async () => {
 
     analysisResult.value = result
     console.log('数据分析成功:', result)
-  } catch (error: any) {
-    analysisError.value = error.message || '分析数据文件失败'
+  } catch (error: unknown) {
+    analysisError.value = (error instanceof Error ? error.message : String(error)) || '分析数据文件失败'
     console.error('数据分析失败:', error)
   } finally {
     isAnalyzing.value = false
@@ -391,8 +391,9 @@ const collectRawData = async () => {
 
     rawCollectionResult.value = result
     console.log('原始数据收集成功:', result)
-  } catch (error: any) {
-    rawCollectionError.value = error.message || '收集原始数据失败'
+  } catch (error: unknown) {
+    rawCollectionError.value =
+      (error instanceof Error ? error.message : String(error)) || '收集原始数据失败'
     console.error('原始数据收集失败:', error)
   } finally {
     isCollectingRaw.value = false
@@ -417,8 +418,9 @@ const analyzeRawData = async () => {
 
     rawAnalysisResult.value = result
     console.log('原始数据分析成功:', result)
-  } catch (error: any) {
-    rawAnalysisError.value = error.message || '分析原始数据失败'
+  } catch (error: unknown) {
+    rawAnalysisError.value =
+      (error instanceof Error ? error.message : String(error)) || '分析原始数据失败'
     console.error('原始数据分析失败:', error)
   } finally {
     isAnalyzingRaw.value = false
@@ -444,8 +446,9 @@ const showJsonStructure = async () => {
 
     jsonStructureResult.value = result
     console.log('JSON结构查看成功:', result)
-  } catch (error: any) {
-    jsonStructureError.value = error.message || '查看JSON结构失败'
+  } catch (error: unknown) {
+    jsonStructureError.value =
+      (error instanceof Error ? error.message : String(error)) || '查看JSON结构失败'
     console.error('JSON结构查看失败:', error)
   } finally {
     isShowingJson.value = false
@@ -470,8 +473,9 @@ const analyzeThresholds = async () => {
 
     thresholdAnalysisResult.value = result
     console.log('阈值分析成功:', result)
-  } catch (error: any) {
-    thresholdAnalysisError.value = error.message || '阈值分析失败'
+  } catch (error: unknown) {
+    thresholdAnalysisError.value =
+      (error instanceof Error ? error.message : String(error)) || '阈值分析失败'
     console.error('阈值分析失败:', error)
   } finally {
     isAnalyzingThresholds.value = false

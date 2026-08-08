@@ -314,42 +314,33 @@ const selectedSubPerks = ref<number[]>([])
 const selectedStatMods = ref<number[]>([])
 
 // 计算属性
-const primaryStyle = computed(() => perkStyles.value.find((s: any) => s.id === props.primaryStyleId))
+const primaryStyle = computed(() => perkStyles.value.find((s) => s.id === props.primaryStyleId))
 
-const subStyle = computed(() => perkStyles.value.find((s: any) => s.id === props.subStyleId))
+const subStyle = computed(() => perkStyles.value.find((s) => s.id === props.subStyleId))
 
 const availableSubStyles = computed(() => {
   if (!primaryStyle.value) return []
-  return perkStyles.value.filter((s: any) => primaryStyle.value!.allowedSubStyles.includes(s.id))
+  return perkStyles.value.filter((s) => primaryStyle.value!.allowedSubStyles.includes(s.id))
 })
 
 const primaryStyleSlots = computed(() => {
   if (!primaryStyle.value) return []
   // 只返回主系符文槽位（基石 + 普通符文），排除属性碎片
-  return primaryStyle.value.slots.filter((s: any) => s.type === 'kKeyStone' || s.type === 'kMixedRegularSplashable')
+  return primaryStyle.value.slots.filter((s) => s.type === 'kKeyStone' || s.type === 'kMixedRegularSplashable')
 })
 
 // 副系符文按层级分组
 const subStyleSlots = computed(() => {
   if (!subStyle.value) return []
   // 只返回普通符文槽位（排除基石和属性碎片）
-  return subStyle.value.slots.filter((s: any) => s.type === 'kMixedRegularSplashable')
-})
-
-// 保留旧的 subStylePerks 用于兼容性
-const subStylePerks = computed(() => {
-  const allPerks: number[] = []
-  subStyleSlots.value.forEach((slot: any) => {
-    allPerks.push(...slot.perks)
-  })
-  return allPerks
+  return subStyle.value.slots.filter((s) => s.type === 'kMixedRegularSplashable')
 })
 
 // 属性碎片槽位 - 只从主系获取（所有符文系的属性碎片都相同）
 const statModSlots = computed(() => {
   if (!primaryStyle.value) return []
   // 属性碎片在所有符文系中都是相同的，只需要从主系获取一次
-  return primaryStyle.value.slots.filter((s: any) => s.type === 'kStatMod')
+  return primaryStyle.value.slots.filter((s) => s.type === 'kStatMod')
 })
 
 const totalSelectedPerks = computed(() => {
@@ -362,7 +353,7 @@ const selectPrimaryStyle = (styleId: number) => {
   // 重置主系符文选择
   selectedPrimaryPerks.value = []
   // 如果当前副系不可用，重置副系
-  const newPrimaryStyle = perkStyles.value.find((s: any) => s.id === styleId)
+  const newPrimaryStyle = perkStyles.value.find((s) => s.id === styleId)
   if (newPrimaryStyle && !newPrimaryStyle.allowedSubStyles.includes(props.subStyleId)) {
     emit('update:subStyleId', newPrimaryStyle.allowedSubStyles[0] || 8000)
     selectedSubPerks.value = []
@@ -411,7 +402,7 @@ const updateSelectedPerkIds = () => {
 }
 
 const getPerkIconUrl = (perkId: number) => {
-  const perk = perks.value.find((p: any) => p.id === perkId)
+  const perk = perks.value.find((p) => p.id === perkId)
   if (perk) {
     return runeData.getPerkIconUrl(perk.iconPath)
   }
@@ -419,7 +410,7 @@ const getPerkIconUrl = (perkId: number) => {
 }
 
 const getPerkName = (perkId: number) => {
-  const perk = perks.value.find((p: any) => p.id === perkId)
+  const perk = perks.value.find((p) => p.id === perkId)
   return perk?.name || `符文 ${perkId}`
 }
 

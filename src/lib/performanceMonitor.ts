@@ -5,11 +5,18 @@
 
 import { eventBus, GameEvents } from './eventBus'
 
+interface MetricStats {
+  average: number
+  max: number
+  min: number
+  count: number
+}
+
 interface PerformanceMetric {
   label: string
   duration: number
   timestamp: number
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 interface SlowOperation {
@@ -17,7 +24,7 @@ interface SlowOperation {
   duration: number
   threshold: number
   timestamp: number
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 class PerformanceMonitor {
@@ -39,7 +46,7 @@ class PerformanceMonitor {
    * @param label 计时标签
    * @param metadata 额外元数据
    */
-  endTiming(label: string, metadata?: Record<string, any>): number {
+  endTiming(label: string, metadata?: Record<string, unknown>): number {
     // 检查是否存在对应的 start mark
     const startMark = performance.getEntriesByName(`${label}-start`)[0]
     if (!startMark) {
@@ -143,24 +150,17 @@ class PerformanceMonitor {
   /**
    * 获取所有指标
    */
-  getAllMetrics(): Record<
-    string,
-    {
-      average: number
-      max: number
-      min: number
-      count: number
-    }
-  > {
-    const result: Record<string, any> = {}
+  getAllMetrics(): Record<string, MetricStats> {
+    const result: Record<string, MetricStats> = {}
 
     this.metrics.forEach((times, label) => {
-      result[label] = {
+      const stats: MetricStats = {
         average: this.getAverageTime(label),
         max: this.getMaxTime(label),
         min: this.getMinTime(label),
         count: times.length
       }
+      result[label] = stats
     })
 
     return result

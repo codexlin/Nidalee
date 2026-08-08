@@ -2,23 +2,23 @@ export const useDataStore = defineStore(
   'data',
   () => {
     // 召唤师数据
-    const summonerInfo = ref<any>(null)
-    const summonerRank = ref<any>(null)
+    const summonerInfo = ref<SummonerInfo | null>(null)
+    const summonerRank = ref<unknown>(null)
     const isSummonerLoaded = ref(false)
     const isSummonerLoading = ref(false)
 
     // 战绩数据
-    const matchHistory = ref<any[]>([])
-    const matchStatistics = ref<any>(null)
+    const matchHistory = ref<MatchPerformance[]>([])
+    const matchStatistics = ref<PlayerMatchStats | null>(null)
     const isMatchHistoryLoaded = ref(false)
     const isMatchHistoryLoading = ref(false)
 
     // 游戏数据
     const gameVersion = ref<string>('')
-    const champions = ref<any[]>([])
-    const items = ref<any[]>([])
-    const runes = ref<any[]>([])
-    const skins = ref<any[]>([])
+    const champions = ref<ChampionInfo[]>([])
+    const items = ref<Array<{ id: number | string; [key: string]: unknown }>>([])
+    const runes = ref<Array<{ id: number | string; [key: string]: unknown }>>([])
+    const skins = ref<unknown[]>([])
 
     // 计算属性
     const summonerLevel = computed(() => {
@@ -44,13 +44,13 @@ export const useDataStore = defineStore(
     })
 
     // 召唤师相关方法
-    const setSummonerInfo = (info: any) => {
+    const setSummonerInfo = (info: SummonerInfo) => {
       summonerInfo.value = info
       isSummonerLoaded.value = true
       isSummonerLoading.value = false
     }
 
-    const setSummonerRank = (rank: any) => {
+    const setSummonerRank = (rank: unknown) => {
       summonerRank.value = rank
     }
 
@@ -66,13 +66,13 @@ export const useDataStore = defineStore(
     }
 
     // 战绩相关方法
-    const setMatchHistory = (matches: any[]) => {
+    const setMatchHistory = (matches: MatchPerformance[]) => {
       matchHistory.value = matches
       isMatchHistoryLoaded.value = true
       isMatchHistoryLoading.value = false
     }
 
-    const addMatchToHistory = (match: any) => {
+    const addMatchToHistory = (match: MatchPerformance) => {
       matchHistory.value.unshift(match)
       // 限制历史记录数量
       if (matchHistory.value.length > 100) {
@@ -80,7 +80,7 @@ export const useDataStore = defineStore(
       }
     }
 
-    const setMatchStatistics = (stats: any) => {
+    const setMatchStatistics = (stats: PlayerMatchStats) => {
       matchStatistics.value = stats
       isMatchHistoryLoaded.value = true
       isMatchHistoryLoading.value = false
@@ -102,19 +102,19 @@ export const useDataStore = defineStore(
       gameVersion.value = version
     }
 
-    const setChampions = (champList: any[]) => {
+    const setChampions = (champList: ChampionInfo[]) => {
       champions.value = champList
     }
 
-    const setItems = (itemList: any[]) => {
+    const setItems = (itemList: Array<{ id: number | string; [key: string]: unknown }>) => {
       items.value = itemList
     }
 
-    const setRunes = (runeList: any[]) => {
+    const setRunes = (runeList: Array<{ id: number | string; [key: string]: unknown }>) => {
       runes.value = runeList
     }
 
-    const setSkins = (skinList: any[]) => {
+    const setSkins = (skinList: unknown[]) => {
       skins.value = skinList
     }
 

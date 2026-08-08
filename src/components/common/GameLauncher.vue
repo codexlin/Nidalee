@@ -58,7 +58,7 @@
               <Input
                 id="game-path"
                 v-model="gamePath"
-                placeholder="C:\Riot Games\League of Legends\LeagueClient.exe 或 E:\WeGameApps\英雄联盟\Launcher\client.exe"
+                placeholder="eg: D:\WeGameApps\英雄联盟（含经典模式）\Launcher\Client.exe"
                 class="flex-1 bg-background text-foreground placeholder:text-muted-foreground"
               />
               <Button @click="selectGamePath" variant="outline" size="sm" class="px-3">

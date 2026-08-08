@@ -132,6 +132,7 @@
 <script setup lang="ts">
 import { useUserRuneStore } from '@/shared/stores/features/userRuneStore'
 import { Zap, Sparkles, Globe, User, Settings, CheckCircle2 } from 'lucide-vue-next'
+import type { AcceptableValue } from 'reka-ui'
 import RuneConfigList from './RuneConfigList.vue'
 
 // 确保 userRuneStore 在组件加载时初始化
@@ -162,11 +163,13 @@ const handleAutoApplyChange = async (enabled: boolean) => {
   await userRuneStore.updateAutoApply({ enabled })
 }
 
-const handleStrategyChange = async (strategy: string) => {
+const handleStrategyChange = async (strategy: AcceptableValue) => {
+  if (typeof strategy !== 'string') return
   await userRuneStore.updateAutoApply({ strategy: strategy as 'auto' | 'opgg' | 'custom' })
 }
 
-const handleTierChange = async (tier: string) => {
+const handleTierChange = async (tier: AcceptableValue) => {
+  if (typeof tier !== 'string') return
   await userRuneStore.updateAutoApply({ opggTier: tier })
 }
 

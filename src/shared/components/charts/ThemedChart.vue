@@ -20,14 +20,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { shallowRef, ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { useSettingsStore } from '@/shared/stores/ui/settingsStore'
+import type { Chart, ChartConfiguration, ChartData, ChartOptions } from 'chart.js'
+
+type SupportedChartType = 'radar' | 'line' | 'bar' | 'pie'
 
 interface Props {
-  type: 'radar' | 'line' | 'bar' | 'pie'
-  data: any
-  options?: any
+  type: SupportedChartType
+  data: ChartData<SupportedChartType>
+  options?: ChartOptions<SupportedChartType>
   height?: string
   loading?: boolean
 }
@@ -40,7 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 const settingsStore = useSettingsStore()
 const chartContainer = ref<HTMLCanvasElement>()
 const error = ref<string | null>(null)
-const chartInstance = ref<any>(null)
+const chartInstance = shallowRef<Chart | null>(null)
 
 // 获取当前主题颜色
 const themeColors = computed(() => {
@@ -65,10 +68,10 @@ const themeColors = computed(() => {
 // 动态导入图表库
 const loadChartLibrary = async () => {
   try {
-    const { Chart, registerables } = await import('chart.js')
-    Chart.register(...registerables)
-    return Chart
-  } catch (err) {
+    const { Chart: ChartJS, registerables } = await import('chart.js')
+    ChartJS.register(...registerables)
+    return ChartJS
+  } catch (err: unknown) {
     console.error('Failed to load chart library:', err)
     throw new Error('图表库加载失败')
   }
@@ -80,7 +83,7 @@ const createChart = async () => {
 
   try {
     error.value = null
-    const Chart = await loadChartLibrary()
+    const ChartCtor = await loadChartLibrary()
 
     // 销毁旧图表
     if (chartInstance.value) {
@@ -91,7 +94,7 @@ const createChart = async () => {
     const colors = themeColors.value
 
     // 创建新图表
-    chartInstance.value = new Chart(chartContainer.value, {
+    chartInstance.value = new ChartCtor(chartContainer.value, {
       type: props.type,
       data: props.data,
       options: {
@@ -154,11 +157,11 @@ const createChart = async () => {
                 }
               }
             : undefined,
-        ...props.options
+        ...(props.options ?? {})
       }
-    })
-  } catch (err: any) {
-    error.value = err.message || '图表创建失败'
+    } as ChartConfiguration)
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : '图表创建失败'
     console.error('Chart creation failed:', err)
   }
 }

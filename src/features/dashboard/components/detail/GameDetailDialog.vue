@@ -4,8 +4,9 @@
       <DialogHeader>
         <DialogTitle>游戏详细信息</DialogTitle>
         <DialogDescription v-if="selectedGame">
-          {{ getChampionName(selectedGame.championId) }} - {{ getQueueName(selectedGame.queueId) }} -
-          {{ formatRelativeTime(selectedGame.gameCreation) }}
+          {{ getChampionName(selectedGame.championId) }} -
+          {{ getQueueName(selectedGame.queueId ?? 0) }} -
+          {{ formatRelativeTime(selectedGame.gameCreation ?? 0) }}
         </DialogDescription>
       </DialogHeader>
 
@@ -31,8 +32,8 @@
                   {{ formatNumber(gameDetailData?.blueTeamStats?.totalDamageDealtToChampions || 0) }}
                   | 视野: {{ gameDetailData?.blueTeamStats?.visionScore || 0 }} | BAN:
                   <span
-                    v-for="ban in getTeamBans('100', gameDetailData?.teams)"
-                    :key="ban.championId"
+                    v-for="(ban, banIndex) in getTeamBans('100', gameDetailData?.teams)"
+                    :key="ban.championId ?? `blue-ban-${banIndex}`"
                     class="inline-block mx-0.5"
                   >
                     <img
@@ -167,8 +168,8 @@
                   {{ formatNumber(gameDetailData?.redTeamStats?.totalDamageDealtToChampions || 0) }}
                   | 视野: {{ gameDetailData?.redTeamStats?.visionScore || 0 }} | BAN:
                   <span
-                    v-for="ban in getTeamBans('200', gameDetailData?.teams)"
-                    :key="ban.championId"
+                    v-for="(ban, banIndex) in getTeamBans('200', gameDetailData?.teams)"
+                    :key="ban.championId ?? `red-ban-${banIndex}`"
                     class="inline-block mx-0.5"
                   >
                     <img
@@ -442,7 +443,7 @@ import { toast } from 'vue-sonner'
 import { Info, X } from 'lucide-vue-next'
 
 const props = defineProps<{
-  selectedGame: RecentGame | null
+  selectedGame: MatchPerformance | null
 }>()
 
 const visible = defineModel<boolean>('visible')
@@ -456,7 +457,7 @@ const dataStore = useDataStore()
 const gameVersion = computed(() => dataStore.gameVersion)
 
 const isDetailsOpen = ref(false)
-const selectedPlayer = ref<any>(null)
+const selectedPlayer = ref<{ displayName: string } | null>(null)
 
 const { fetchSummonerInfo, currentRestult, loading: searchLoading } = useSearchMatches()
 
@@ -464,25 +465,30 @@ const { fetchSummonerInfo, currentRestult, loading: searchLoading } = useSearchM
 watch(
   () => props.selectedGame,
   async (newGame) => {
-    if (newGame) {
-      loading.value = true
-      try {
-        const result = await invoke<GameDetail>('get_game_detail', {
-          gameId: newGame.gameId
-        })
-        gameDetailData.value = result
-        console.log('gameDetailData', gameDetailData.value)
-      } catch (err) {
-        console.error('获取游戏详细信息失败:', err)
-        activityLogger.logError.apiError(`获取游戏详细信息失败: ${err}`)
-      } finally {
-        loading.value = false
-      }
+    if (newGame?.gameId == null) {
+      gameDetailData.value = null
+      return
+    }
+
+    loading.value = true
+    try {
+      const result = await invoke<GameDetail>('get_game_detail', {
+        gameId: newGame.gameId
+      })
+      gameDetailData.value = result
+      console.log('gameDetailData', gameDetailData.value)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error('获取游戏详细信息失败:', message)
+      activityLogger.logError.apiError(`获取游戏详细信息失败: ${message}`)
+      gameDetailData.value = null
+    } finally {
+      loading.value = false
     }
   }
 )
 
-const openSummonerDetails = async (participant: any) => {
+const openSummonerDetails = async (participant: ParticipantInfo) => {
   selectedPlayer.value = {
     displayName: participant.summonerName
   }
@@ -525,7 +531,7 @@ const getTeamResult = (teamId: string) => {
   return team.win === 'Win' ? '胜利' : '失败'
 }
 
-const getTeamBans = (teamId: string, teams: any[]) => {
+const getTeamBans = (teamId: string, teams?: TeamInfo[] | null) => {
   if (!teams) return []
   const team = teams.find((t) => t.teamId && t.teamId.toString() === teamId)
   return team?.bans || []

@@ -43,8 +43,8 @@ export function useSearchMatches() {
         currentRestult.value = null
       }
       return null
-    } catch (e: any) {
-      error.value = e?.message || '查询失败'
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : '查询失败'
       currentRestult.value = null
       return null
     } finally {
@@ -71,8 +71,8 @@ export function useSearchMatches() {
         selectedQueueTypes.value = [...settingsStore.defaultQueueTypes]
       }
       await fetchSummonerInfo(names.value)
-    } catch (e: any) {
-      error.value = e.message || '查询失败'
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : '查询失败'
     } finally {
       loading.value = false
     }

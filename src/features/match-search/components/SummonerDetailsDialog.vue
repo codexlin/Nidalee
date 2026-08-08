@@ -88,8 +88,8 @@ import { Info, X } from 'lucide-vue-next'
 
 interface Props {
   open: boolean
-  summoner?: any
-  summonerResult?: any // 查询结果数据
+  summoner?: SummonerInfo | { displayName?: string }
+  summonerResult?: SummonerWithMatches // 查询结果数据
   loading?: boolean
 }
 

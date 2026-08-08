@@ -63,7 +63,7 @@ export function useMatchFilter() {
       avgAssists,
       avgKda,
       recentPerformance: filteredRecentPerformance,
-      favoriteChampions: favoriteChampions as any // 类型转换，避免结构不完全匹配
+      favoriteChampions: favoriteChampions as AnalysisChampionStats[]
     }
   }
 

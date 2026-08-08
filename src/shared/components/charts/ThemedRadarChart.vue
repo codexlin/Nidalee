@@ -19,7 +19,7 @@
 <script setup lang="ts">
 import ThemedChart from '@/shared/components/charts/ThemedChart.vue'
 import { validateRadarData, generateChartErrorMessage } from '@/shared/utils/chartValidation'
-import { useSettingsStore } from '@/shared/stores/ui/settingsStore'
+import type { TooltipItem } from 'chart.js'
 
 interface Props {
   positionData: PositionStats
@@ -89,7 +89,7 @@ const chartOptions = computed(() => ({
     },
     tooltip: {
       callbacks: {
-        label: (context: any) => {
+        label: (context: TooltipItem<'radar'>) => {
           const labels = ['KDA', '补刀', '视野', '参团', '输出', '胜率']
           return `${labels[context.dataIndex]}: ${context.parsed.r.toFixed(1)}/10`
         }

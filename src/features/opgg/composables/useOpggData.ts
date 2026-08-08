@@ -12,8 +12,8 @@ export interface OpggState {
   loading: boolean
   error: string | null
   message: string
-  championBuild: any | null
-  tierList: any | null
+  championBuild: OpggChampionBuild | null
+  tierList: OpggTierList | null
 }
 
 export function useOpggData() {

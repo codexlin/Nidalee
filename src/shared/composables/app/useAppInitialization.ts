@@ -9,8 +9,8 @@ export function useAppInitialization() {
   const dataStore = useDataStore()
   const settingsStore = useSettingsStore()
   const activityStore = useActivityStore()
-  const { isConnected: _isConnected } = useConnection()
-  const { updateSummonerAndMatches: _updateSummonerAndMatches } = useSummonerAndMatchUpdater()
+  // const { isConnected: _isConnected } = useConnection()
+  // const { updateSummonerAndMatches: _updateSummonerAndMatches } = useSummonerAndMatchUpdater()
   const connectionStore = useConnectionStore()
 
   const isInitialized = ref(false)

@@ -1,5 +1,5 @@
 <template>
-  <Dialog :open="open" @update:open="(val) => emit('close')">
+  <Dialog :open="open" @update:open="() => emit('close')">
     <DialogContent class="max-w-5xl max-h-[85vh] overflow-y-auto" aria-describedby="position-details-description">
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">

@@ -10,7 +10,6 @@ interface ChampionInfo {
   alias: string
   squarePortraitPath: string
   roles: string[]
-  [key: string]: any // 允许其他可能的属性
 }
 // 为游戏中的玩家定义一个新的、独立的“增强”类型
 interface EnrichedLivePlayer {
@@ -33,8 +32,7 @@ interface EnrichedLivePlayer {
   tagLine?: string | null
   profileIconId?: bigint | null
   tier?: string | null
-  recentMatches?: Array<any> | null
-  [key: string]: any
+  recentMatches?: Array<MatchPerformance> | null
 }
 // 和 TeamCard.vue 中使用相同的通用接口
 interface PlayerDisplayInfo {
@@ -45,7 +43,8 @@ interface PlayerDisplayInfo {
   assignedPosition?: string
   spell1Id?: number | null
   spell2Id?: number | null
-  [key: string]: any // 保持灵活性
+  cellId?: number
+  puuid?: string | null
 }
 // 定义一个“富集”后的玩家类型，继承自原始类型并添加前端需要的字段
 interface EnrichedChampSelectPlayer extends ChampSelectPlayer {

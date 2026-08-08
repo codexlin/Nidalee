@@ -23,7 +23,7 @@
                 <div>
                   <p class="text-sm text-muted-foreground">预估时间</p>
                   <p class="text-2xl font-bold text-primary">
-                    {{ formatTime(matchmakingState.estimatedQueueTime) }}
+                    {{ formatTime(matchmakingState?.estimatedQueueTime ?? 0) }}
                   </p>
                 </div>
                 <div>
@@ -136,7 +136,7 @@ const formatTime = (timeValue: number) => {
 }
 
 // --- Generic Status Logic ---
-const statusIcon = shallowRef<any>(Gamepad2)
+const statusIcon = shallowRef<unknown>(Gamepad2)
 const statusTitle = ref('')
 const statusDescription = ref('')
 

@@ -131,9 +131,7 @@ const filteredChampions = computed(() => {
   const search = searchText.value.toLowerCase()
   return champions.value.filter(
     (champion) =>
-      champion.name.toLowerCase().includes(search) ||
-      champion.alias.toLowerCase().includes(search) ||
-      (champion.description && champion.description.toLowerCase().includes(search))
+      champion.name.toLowerCase().includes(search) || champion.alias.toLowerCase().includes(search)
   )
 })
 
@@ -151,12 +149,19 @@ const loadChampions = async () => {
 
     if (response.success && response.data) {
       // 将 Community Dragon 的英雄数据转换为 ChampionInfo 格式
-      const championList: ChampionInfo[] = response.data.filter((champion) => champion.id > 0) // 过滤掉 id 为 -1 的"无"选项
+      const championList: ChampionInfo[] = response.data
+        .filter((champion) => champion.id > 0) // 过滤掉 id 为 -1 的"无"选项
+        .map((champion) => ({
+          id: champion.id,
+          name: champion.name,
+          alias: champion.alias,
+          squarePortraitPath: champion.squarePortraitPath,
+          roles: champion.roles
+        }))
+        .filter((champion) => !champion.alias.includes('Ruby_'))
+        .sort((a, b) => a.name.localeCompare(b.name))
 
-      // 按名称排序
-      championList.sort((a, b) => a.name.localeCompare(b.name))
-
-      champions.value = championList.filter((champion) => !champion.alias.includes('Ruby_'))
+      champions.value = championList
       console.log(`✅ 成功加载 ${championList.length} 个英雄`)
     } else {
       throw new Error(response.error || '获取英雄数据失败')

@@ -19,6 +19,7 @@ interface AutoFunctions {
   acceptMatch: AutoFunctionConfig
   selectChampion: AutoSelectConfig
   banChampion: AutoBanConfig
+  runeConfig: AutoFunctionConfig
 }
 
 export const useAutoFunctionStore = defineStore(
@@ -39,6 +40,10 @@ export const useAutoFunctionStore = defineStore(
         enabled: false,
         delay: 2000, // 默认2秒延迟
         championList: []
+      },
+      runeConfig: {
+        enabled: false,
+        delay: 1500 // 默认1.5秒延迟
       }
     })
 
@@ -46,7 +51,8 @@ export const useAutoFunctionStore = defineStore(
     const functionNames = {
       acceptMatch: '自动接受对局',
       selectChampion: '自动选择英雄',
-      banChampion: '自动禁用英雄'
+      banChampion: '自动禁用英雄',
+      runeConfig: '自动应用符文'
     } as const
 
     // 切换自动功能开关

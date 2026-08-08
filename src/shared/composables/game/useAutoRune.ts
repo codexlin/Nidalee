@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { useUserRuneStore } from '@/shared/stores/features/userRuneStore'
+import { useUserRuneStore, type RuneConfig } from '@/shared/stores/features/userRuneStore'
 import { useMatchAnalysisStore } from '@/features/match-analysis/store'
 import { useAutoFunctionStore } from '@/shared/stores/features/autoFunctionStore'
 import { getChampionName } from '@/lib'
@@ -28,7 +28,7 @@ export function useAutoRune() {
   /**
    * 应用用户自定义符文
    */
-  const applyUserConfig = async (config: any, _championId: number, championName: string): Promise<void> => {
+  const applyUserConfig = async (config: RuneConfig, _championId: number, championName: string): Promise<void> => {
     console.log('[AutoRune] 应用用户自定义符文:', config)
 
     // 调用后端应用自定义符文

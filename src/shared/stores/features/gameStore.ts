@@ -11,8 +11,8 @@ export const useGameStore = defineStore(
     const isReadyCheck = shallowRef(false)
 
     // 英雄选择状态
-    const champSelectSession = ref<any>(null)
-    const lobbyInfo = ref<any>(null)
+    const champSelectSession = ref<ChampSelectSession | null>(null)
+    const lobbyInfo = ref<LobbyInfo | null>(null)
 
     // 游戏数据
     const currentGameId = shallowRef<string | null>(null)
@@ -58,7 +58,7 @@ export const useGameStore = defineStore(
     }
 
     // 更新英雄选择会话
-    const updateChampSelectSession = async (session: any) => {
+    const updateChampSelectSession = async (session: ChampSelectSession | null) => {
       // 通过深度比较过滤掉无意义的重复更新
       if (isEqual(champSelectSession.value, session)) {
         return
@@ -76,7 +76,7 @@ export const useGameStore = defineStore(
     }
 
     // 检查并执行自动操作
-    const checkAndExecuteAutoActions = async (session: any) => {
+    const checkAndExecuteAutoActions = async (session: ChampSelectSession) => {
       try {
         const autoFunctionStore = useAutoFunctionStore()
         const { checkAndExecuteAutoActions: checkAutoActions, getAutoOpggChampionId } = useChampSelect()
@@ -108,7 +108,7 @@ export const useGameStore = defineStore(
     }
 
     // 更新大厅信息
-    const updateLobbyInfo = (lobby: any) => {
+    const updateLobbyInfo = (lobby: LobbyInfo | null) => {
       console.log('[GameStore] 更新大厅信息:', lobby)
       lobbyInfo.value = lobby
     }

@@ -150,7 +150,7 @@
 
 <script setup lang="ts">
 import { AlertCircle, Info, CheckCircle } from 'lucide-vue-next'
-import { useOpggData } from './composables/useOpggData'
+import { useOpggData, type OpggConfig } from './composables/useOpggData'
 import { useOpggRunes } from './composables/useOpggRunes'
 
 // 获取数据存储
@@ -161,7 +161,7 @@ const opggData = useOpggData()
 const opggRunes = useOpggRunes()
 
 // 处理配置更新
-const handleConfigUpdate = (newConfig: any) => {
+const handleConfigUpdate = (newConfig: OpggConfig) => {
   // 更新配置
   Object.assign(opggData.config.value, newConfig)
 }

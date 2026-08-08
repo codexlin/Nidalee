@@ -19,7 +19,7 @@ export function useChampSelectManager() {
   }
 
   // 选人会话变更处理（触发自动选人）
-  const handleChampSelectChange = (session: any) => {
+  const handleChampSelectChange = (session: ChampSelectSession | null) => {
     if (!session) {
       console.log('[ChampSelectManager] 选人会话已清空')
       gameStore.updateChampSelectSession(null)

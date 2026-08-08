@@ -18,9 +18,9 @@ const queryClient = new QueryClient({
       // 组件挂载时不自动重新请求（如果数据在 gcTime 内）
       refetchOnMount: false,
       // 重试次数
-      retry: 1,
-    },
-  },
+      retry: 1
+    }
+  }
 })
 
 app.use(VueQueryPlugin, { queryClient })

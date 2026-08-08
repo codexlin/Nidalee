@@ -3,7 +3,7 @@
  * 实现发布-订阅模式，提高系统解耦性
  */
 
-type EventCallback = (data?: any) => void
+type EventCallback = (data?: unknown) => void
 
 class EventBus {
   private listeners = new Map<string, EventCallback[]>()
@@ -61,7 +61,7 @@ class EventBus {
    * @param event 事件名称
    * @param data 事件数据
    */
-  emit(event: string, data?: any): void {
+  emit(event: string, data?: unknown): void {
     // 触发普通监听器
     const listeners = this.listeners.get(event)
     if (listeners) {

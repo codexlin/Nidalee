@@ -41,7 +41,7 @@ export function useDeviceWebSocket() {
       })
       wsInstance.ws.value?.addEventListener('error', (e) => {
         status.value = 'ERROR'
-        lastError.value = 'WebSocket 错误: ' + (e as any)?.toString()
+        lastError.value = 'WebSocket 错误: ' + (e as unknown)?.toString()
         console.log('WebSocket错误:', e)
       })
 
@@ -70,7 +70,7 @@ export function useDeviceWebSocket() {
         }
       })
     } catch (e) {
-      lastError.value = '获取设备ID或连接WebSocket失败: ' + (e as any)?.toString()
+      lastError.value = '获取设备ID或连接WebSocket失败: ' + (e as unknown)?.toString()
       status.value = 'ERROR'
     }
   })

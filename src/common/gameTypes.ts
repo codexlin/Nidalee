@@ -1,3 +1,4 @@
+import type { Component } from 'vue'
 import { Gamepad2, Swords, Users, Zap, Flame, Target, Crown, Trophy, Shield, Gamepad } from 'lucide-vue-next'
 
 // 游戏类型定义接口
@@ -5,7 +6,7 @@ export interface GameType {
   id: number
   name: string
   description: string
-  icon: any
+  icon: Component
   category: 'ranked' | 'casual' | 'special' | 'ai' | 'custom'
 }
 

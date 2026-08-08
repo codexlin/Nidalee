@@ -44,7 +44,7 @@
 import { computed } from 'vue'
 import { useColorMode } from '@vueuse/core'
 
-const isDark = computed(() => useColorMode().value == 'dark')
+const isDark = computed(() => useColorMode().value === 'dark')
 
 function handleContact() {
   window.open('https://codexlin.com', '_blank')

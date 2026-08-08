@@ -218,6 +218,7 @@
 <script setup lang="ts">
 import { Sword, Package, Target, Footprints, Wand2 } from 'lucide-vue-next'
 import { getItemIconUrl, getAllItems } from '@/lib'
+import type { DDragonItem } from '@/lib/dataApi'
 
 // 使用后端生成的类型
 interface Props {
@@ -231,7 +232,7 @@ const dataStore = useDataStore()
 const gameVersion = computed(() => dataStore.gameVersion)
 
 // 拉取所有物品详细信息
-const allItems = ref<Record<string, any>>({})
+const allItems = ref<Record<string, DDragonItem>>({})
 
 onMounted(async () => {
   if (gameVersion.value) {
@@ -243,7 +244,7 @@ onMounted(async () => {
 
 // 获取装备名称（优先用 DDragon 详细信息）
 const getItemName = (itemId: number): string => {
-  return allItems.value?.[itemId]?.name || `物品${itemId}`
+  return allItems.value?.[String(itemId)]?.name || `物品${itemId}`
 }
 
 // 格式化百分比
@@ -267,20 +268,6 @@ const filteredLastItems = computed(() => {
     .sort((a, b) => b.pickRate - a.pickRate)
 })
 
-// 获取起始装备的标题
-const getStartItemTitle = (index: number): string => {
-  switch (index) {
-    case 0:
-      return '起始装备方案一'
-    case 1:
-      return '起始装备方案二'
-    case 2:
-      return '起始装备方案三'
-    default:
-      return `起始装备方案${index + 1}`
-  }
-}
-
 // 获取起始装备方案的编号
 const getStartItemSchemeNumber = (index: number): string => {
   switch (index) {
@@ -295,20 +282,6 @@ const getStartItemSchemeNumber = (index: number): string => {
   }
 }
 
-// 获取核心装备的标题
-const getCoreItemTitle = (index: number): string => {
-  switch (index) {
-    case 0:
-      return '核心装备方案一'
-    case 1:
-      return '核心装备方案二'
-    case 2:
-      return '核心装备方案三'
-    default:
-      return `核心装备方案${index + 1}`
-  }
-}
-
 // 获取核心装备方案的编号
 const getCoreItemSchemeNumber = (index: number): string => {
   switch (index) {
@@ -320,20 +293,6 @@ const getCoreItemSchemeNumber = (index: number): string => {
       return '三'
     default:
       return ''
-  }
-}
-
-// 获取鞋子选择的标题
-const getBootTitle = (index: number): string => {
-  switch (index) {
-    case 0:
-      return '鞋子选择方案一'
-    case 1:
-      return '鞋子选择方案二'
-    case 2:
-      return '鞋子选择方案三'
-    default:
-      return `鞋子选择方案${index + 1}`
   }
 }
 

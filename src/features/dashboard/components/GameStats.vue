@@ -1,5 +1,7 @@
 <template>
-  <Card class="p-8 rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border">
+  <Card
+    class="p-8 rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border"
+  >
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <div>
@@ -147,7 +149,9 @@
                   alt=""
                   class="h-10 w-10 rounded-full border-2 border-primary/20"
                 />
-                <p class="text-xs font-medium text-center mt-1.5 truncate w-full">{{ getChampionName(champion.championId) }}</p>
+                <p class="text-xs font-medium text-center mt-1.5 truncate w-full">
+                  {{ getChampionName(champion.championId) }}
+                </p>
                 <p
                   class="text-sm font-bold tabular-nums mt-0.5"
                   :class="[
@@ -194,7 +198,9 @@
                     <span class="font-semibold text-base">{{ getChampionName(game.championId) }}</span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <span class="text-xs text-muted-foreground tabular-nums">{{ formatGameTime(game.gameDuration) }}</span>
+                    <span class="text-xs text-muted-foreground tabular-nums">{{
+                      formatGameTime(game.gameDuration ?? 0)
+                    }}</span>
                     <Badge :variant="game.win ? 'default' : 'destructive'" class="text-xs px-1.5 py-0 h-5">
                       {{ game.win ? '胜' : '负' }}
                     </Badge>
@@ -212,27 +218,31 @@
                   <div
                     class="px-2 py-0.5 rounded text-xs font-medium"
                     :class="[
-                      (game.performanceRating || '').includes('超神') || (game.performanceRating || '').includes('亮眼')
+                      getPerformanceRating(game).includes('超神') || getPerformanceRating(game).includes('亮眼')
                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         : '',
-                      (game.performanceRating || '').includes('不错') ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : '',
-                      (game.performanceRating || '').includes('需要加油') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : '',
-                      (game.performanceRating || '').includes('五杀') || (game.performanceRating || '').includes('四杀')
+                      getPerformanceRating(game).includes('不错')
+                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                        : '',
+                      getPerformanceRating(game).includes('需要加油')
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        : '',
+                      getPerformanceRating(game).includes('五杀') || getPerformanceRating(game).includes('四杀')
                         ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                         : ''
                     ]"
                   >
-                    {{ game.performanceRating }}
+                    {{ getPerformanceRating(game) }}
                   </div>
                 </div>
                 <!-- 底部：时间 + 模式（单行） -->
                 <div class="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                   <span class="flex items-center gap-1">
                     <Clock class="w-3 h-3" />
-                    {{ formatRelativeTime(game.gameCreation) }}
+                    {{ formatRelativeTime(game.gameCreation ?? 0) }}
                   </span>
                   <span>·</span>
-                  <span>{{ getQueueName(game.queueId) }}</span>
+                  <span>{{ getQueueName(game.queueId ?? 0) }}</span>
                 </div>
               </div>
             </div>
@@ -270,30 +280,39 @@ import {
   Wifi
 } from 'lucide-vue-next'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import type { AcceptableValue } from 'reka-ui'
 
 const dialogOpen = ref(false)
-const selectedGame = ref(null)
+const selectedGame = ref<MatchPerformance | null>(null)
 
 const props = defineProps<{
   isConnected: boolean
   matchHistoryLoading: boolean
-  matchStatistics: any
+  matchStatistics: PlayerMatchStats | null
   selectedQueueId?: number | null
 }>()
 
-const openGameDetail = (game: any) => {
+/** MatchPerformance 运行时可能附带表现评级字段 */
+const getPerformanceRating = (game: MatchPerformance): string => {
+  if ('performanceRating' in game && typeof game.performanceRating === 'string') {
+    return game.performanceRating
+  }
+  return ''
+}
+
+const openGameDetail = (game: MatchPerformance) => {
   selectedGame.value = game
   console.log(game)
   dialogOpen.value = true
 }
 const emit = defineEmits<{
   (e: 'fetch-match-history'): void
-  (e: 'open-game-detail', game: any): void
+  (e: 'open-game-detail', game: MatchPerformance): void
   (e: 'queue-change', queueId: number | null): void
 }>()
 
 // 处理队列选择
-const handleQueueSelect = (value: any) => {
+const handleQueueSelect = (value: AcceptableValue) => {
   if (!value || value === 'all') {
     emit('queue-change', null)
   } else {

@@ -56,7 +56,7 @@
       v-if="selectedPlayer"
       :open="showPlayerDetails"
       :summoner="selectedPlayer"
-      :summoner-result="currentRestult"
+      :summoner-result="currentRestult ?? undefined"
       :loading="summonerLoading"
       @close="closePlayerDetails"
     />
@@ -67,6 +67,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { useMatchAnalysisStore } from './store'
 import { useUserRuneStore } from '@/shared/stores/features/userRuneStore'
+import type { UIPlayerData } from '@/types/match-analysis'
 
 // Use Pinia Store
 const matchAnalysisStore = useMatchAnalysisStore()
@@ -154,10 +155,10 @@ onBeforeUnmount(() => {
 
 // Summoner details logic
 const { fetchSummonerInfo, currentRestult, loading: summonerLoading } = useSearchMatches()
-const selectedPlayer = ref<any>(null)
+const selectedPlayer = ref<UIPlayerData | null>(null)
 const showPlayerDetails = ref(false)
 
-const handlePlayerDetails = async (player: any) => {
+const handlePlayerDetails = async (player: UIPlayerData) => {
   selectedPlayer.value = player
   showPlayerDetails.value = true
   if (player.displayName && player.displayName !== '未知召唤师') {

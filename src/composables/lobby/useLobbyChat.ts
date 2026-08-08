@@ -3,7 +3,6 @@
  * 提供房间聊天相关的功能
  */
 import { invoke } from '@tauri-apps/api/core'
-import type { LobbyInfo } from '@/types/generated/LobbyInfo'
 
 /**
  * 获取当前房间信息

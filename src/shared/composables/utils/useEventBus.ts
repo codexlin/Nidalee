@@ -24,7 +24,7 @@ export function useEventBus() {
    * @param event 事件名称
    * @param callback 回调函数
    */
-  const _subscribeOnce = (event: string, callback: EventCallback) => {
+  const subscribeOnce = (event: string, callback: EventCallback) => {
     eventBus.once(event, callback)
   }
 
@@ -33,7 +33,7 @@ export function useEventBus() {
    * @param event 事件名称
    * @param data 事件数据
    */
-  const emit = (event: string, data?: any) => {
+  const emit = (event: string, data?: unknown) => {
     eventBus.emit(event, data)
   }
 
@@ -67,6 +67,7 @@ export function useEventBus() {
 
   return {
     subscribe,
+    subscribeOnce,
     emit,
     unsubscribe,
     unsubscribeAll,
@@ -82,10 +83,10 @@ export function useEventBus() {
  */
 export function useReactiveEvent<T>(event: string, initialValue: T): Ref<T> {
   const { subscribe } = useEventBus()
-  const value = ref<T>(initialValue)
+  const value = shallowRef<T>(initialValue)
 
-  subscribe(event, (data: T) => {
-    value.value = data
+  subscribe(event, (data) => {
+    value.value = data as T
   })
 
   return value
@@ -100,7 +101,7 @@ export function useGameEvents() {
   return {
     // 游戏阶段事件
     onGamePhaseChanged: (callback: (phase: string | null) => void) =>
-      subscribe(GameEvents.GAME_PHASE_CHANGED, callback),
+      subscribe(GameEvents.GAME_PHASE_CHANGED, (data) => callback(data as string | null)),
 
     onGameStarted: (callback: () => void) => subscribe(GameEvents.GAME_STARTED, callback),
 
@@ -109,19 +110,20 @@ export function useGameEvents() {
     // LiveClient 事件
     onLiveClientAvailable: (callback: () => void) => subscribe(GameEvents.LIVECLIENT_AVAILABLE, callback),
 
-    onLiveClientDataFetched: (callback: (data: any) => void) => subscribe(GameEvents.LIVECLIENT_DATA_FETCHED, callback),
+    onLiveClientDataFetched: (callback: (data: unknown) => void) =>
+      subscribe(GameEvents.LIVECLIENT_DATA_FETCHED, callback),
 
-    onLiveClientError: (callback: (error: any) => void) => subscribe(GameEvents.LIVECLIENT_ERROR, callback),
+    onLiveClientError: (callback: (error: unknown) => void) => subscribe(GameEvents.LIVECLIENT_ERROR, callback),
 
     // 数据更新事件
-    onPlayerDataUpdated: (callback: (data: any) => void) => subscribe(GameEvents.PLAYER_DATA_UPDATED, callback),
+    onPlayerDataUpdated: (callback: (data: unknown) => void) => subscribe(GameEvents.PLAYER_DATA_UPDATED, callback),
 
-    onMatchHistoryUpdated: (callback: (data: any) => void) => subscribe(GameEvents.MATCH_HISTORY_UPDATED, callback),
+    onMatchHistoryUpdated: (callback: (data: unknown) => void) => subscribe(GameEvents.MATCH_HISTORY_UPDATED, callback),
 
-    onChampionDataLoaded: (callback: (data: any) => void) => subscribe(GameEvents.CHAMPION_DATA_LOADED, callback),
+    onChampionDataLoaded: (callback: (data: unknown) => void) => subscribe(GameEvents.CHAMPION_DATA_LOADED, callback),
 
     // 连接状态事件
-    onConnectionStateChanged: (callback: (state: any) => void) =>
+    onConnectionStateChanged: (callback: (state: unknown) => void) =>
       subscribe(GameEvents.CONNECTION_STATE_CHANGED, callback),
 
     onLcuConnected: (callback: () => void) => subscribe(GameEvents.LCU_CONNECTED, callback),
@@ -129,29 +131,29 @@ export function useGameEvents() {
     onLcuDisconnected: (callback: () => void) => subscribe(GameEvents.LCU_DISCONNECTED, callback),
 
     // 性能事件
-    onPerformanceMetric: (callback: (metric: any) => void) => subscribe(GameEvents.PERFORMANCE_METRIC, callback),
+    onPerformanceMetric: (callback: (metric: unknown) => void) => subscribe(GameEvents.PERFORMANCE_METRIC, callback),
 
-    onSlowOperation: (callback: (operation: any) => void) => subscribe(GameEvents.SLOW_OPERATION, callback),
+    onSlowOperation: (callback: (operation: unknown) => void) => subscribe(GameEvents.SLOW_OPERATION, callback),
 
     // 发布事件
     emitGamePhaseChanged: (phase: string | null) => emit(GameEvents.GAME_PHASE_CHANGED, phase),
 
     emitLiveClientAvailable: () => emit(GameEvents.LIVECLIENT_AVAILABLE),
 
-    emitLiveClientDataFetched: (data: any) => emit(GameEvents.LIVECLIENT_DATA_FETCHED, data),
+    emitLiveClientDataFetched: (data: unknown) => emit(GameEvents.LIVECLIENT_DATA_FETCHED, data),
 
-    emitLiveClientError: (error: any) => emit(GameEvents.LIVECLIENT_ERROR, error),
+    emitLiveClientError: (error: unknown) => emit(GameEvents.LIVECLIENT_ERROR, error),
 
-    emitPlayerDataUpdated: (data: any) => emit(GameEvents.PLAYER_DATA_UPDATED, data),
+    emitPlayerDataUpdated: (data: unknown) => emit(GameEvents.PLAYER_DATA_UPDATED, data),
 
-    emitMatchHistoryUpdated: (data: any) => emit(GameEvents.MATCH_HISTORY_UPDATED, data),
+    emitMatchHistoryUpdated: (data: unknown) => emit(GameEvents.MATCH_HISTORY_UPDATED, data),
 
-    emitChampionDataLoaded: (data: any) => emit(GameEvents.CHAMPION_DATA_LOADED, data),
+    emitChampionDataLoaded: (data: unknown) => emit(GameEvents.CHAMPION_DATA_LOADED, data),
 
-    emitConnectionStateChanged: (state: any) => emit(GameEvents.CONNECTION_STATE_CHANGED, state),
+    emitConnectionStateChanged: (state: unknown) => emit(GameEvents.CONNECTION_STATE_CHANGED, state),
 
-    emitPerformanceMetric: (metric: any) => emit(GameEvents.PERFORMANCE_METRIC, metric),
+    emitPerformanceMetric: (metric: unknown) => emit(GameEvents.PERFORMANCE_METRIC, metric),
 
-    emitSlowOperation: (operation: any) => emit(GameEvents.SLOW_OPERATION, operation)
+    emitSlowOperation: (operation: unknown) => emit(GameEvents.SLOW_OPERATION, operation)
   }
 }

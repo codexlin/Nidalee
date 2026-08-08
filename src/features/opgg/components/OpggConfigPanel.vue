@@ -113,6 +113,7 @@
 <script setup lang="ts">
 import { Check, ChevronsUpDown, Search, Settings } from 'lucide-vue-next'
 import { getAllChampions } from '@/lib'
+import type { DDragonChampion } from '@/lib/dataApi'
 
 interface Props {
   config: {
@@ -128,10 +129,15 @@ interface Props {
   positions: Array<{ value: string; label: string }>
 }
 
+interface ChampionOption {
+  value: number
+  label: string
+}
+
 interface Emits {
   (e: 'update:config', value: Props['config']): void
 }
-const selectedChampion = ref<any>()
+const selectedChampion = ref<ChampionOption | undefined>()
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
@@ -146,7 +152,7 @@ const dataStore = useDataStore()
 const gameVersion = computed(() => dataStore.gameVersion)
 
 // 拉取所有英雄数据
-const allChampions = ref<any[]>([])
+const allChampions = ref<DDragonChampion[]>([])
 onMounted(async () => {
   if (gameVersion.value) {
     const data = await getAllChampions(gameVersion.value)
@@ -155,9 +161,9 @@ onMounted(async () => {
 })
 
 const championOptions = computed(() =>
-  allChampions.value.map((champ: any) => ({
+  allChampions.value.map((champ) => ({
     value: Number(champ.key),
-    label: champ.name + (champ.alias ? `（${champ.alias}）` : '')
+    label: champ.name
   }))
 )
 

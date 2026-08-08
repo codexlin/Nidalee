@@ -2,6 +2,15 @@
  * 图表数据验证和错误处理工具
  */
 
+export interface WinRateTrendPoint {
+  cumulativeWinRate: number
+  movingAvgWinRate: number
+}
+
+export type PositionStatsWithTrend = PositionStats & {
+  winRateTrend?: WinRateTrendPoint[]
+}
+
 export interface ChartDataValidation {
   isValid: boolean
   errors: string[]
@@ -19,7 +28,9 @@ export interface PositionStatsValidation {
 /**
  * 验证位置统计数据
  */
-export function validatePositionStats(positionData: any): PositionStatsValidation {
+export function validatePositionStats(
+  positionData: PositionStatsWithTrend | null | undefined
+): PositionStatsValidation {
   const errors: string[] = []
   const gamesCount = positionData?.games || 0
 
@@ -44,13 +55,13 @@ export function validatePositionStats(positionData: any): PositionStatsValidatio
   }
 
   // 检查英雄池数据
-  const hasChampionPool = positionData.championPool && positionData.championPool.length > 0
+  const hasChampionPool = !!positionData.stats?.favoriteChampions?.length
   if (!hasChampionPool && gamesCount > 0) {
     errors.push('英雄池数据缺失')
   }
 
   // 检查趋势数据
-  const hasTrendData = positionData.winRateTrend && positionData.winRateTrend.length > 0
+  const hasTrendData = !!positionData.winRateTrend?.length
   if (!hasTrendData && gamesCount > 0) {
     errors.push('胜率趋势数据缺失')
   }
@@ -67,7 +78,7 @@ export function validatePositionStats(positionData: any): PositionStatsValidatio
 /**
  * 验证雷达图数据
  */
-export function validateRadarData(stats: any): ChartDataValidation {
+export function validateRadarData(stats: PlayerMatchStats | null | undefined): ChartDataValidation {
   const errors: string[] = []
   const warnings: string[] = []
 
@@ -77,7 +88,7 @@ export function validateRadarData(stats: any): ChartDataValidation {
   }
 
   // 检查必要字段
-  const requiredFields = ['avgKda', 'cspm', 'vspm', 'avgKills', 'avgDeaths', 'avgAssists', 'dpm']
+  const requiredFields = ['avgKda', 'cspm', 'vspm', 'avgKills', 'avgDeaths', 'avgAssists', 'dpm'] as const
   for (const field of requiredFields) {
     if (stats[field] === undefined || stats[field] === null) {
       errors.push(`缺少必要字段: ${field}`)
@@ -100,7 +111,9 @@ export function validateRadarData(stats: any): ChartDataValidation {
 /**
  * 验证趋势图数据
  */
-export function validateTrendData(trendData: any[]): ChartDataValidation {
+export function validateTrendData(
+  trendData: WinRateTrendPoint[] | null | undefined
+): ChartDataValidation {
   const errors: string[] = []
   const warnings: string[] = []
 
@@ -140,7 +153,9 @@ export function validateTrendData(trendData: any[]): ChartDataValidation {
 /**
  * 验证英雄池数据
  */
-export function validateChampionPool(championPool: any[]): ChartDataValidation {
+export function validateChampionPool(
+  championPool: AnalysisChampionStats[] | null | undefined
+): ChartDataValidation {
   const errors: string[] = []
   const warnings: string[] = []
 

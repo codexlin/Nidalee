@@ -154,7 +154,7 @@ export interface CommunityDragonPerk {
   recommendationDescriptor: string
   iconPath: string
   endOfGameStatDescs: string[]
-  recommendationDescriptorAttributes: Record<string, any>
+  recommendationDescriptorAttributes: Record<string, unknown>
 }
 
 export interface CommunityDragonSkin {
@@ -174,7 +174,7 @@ export interface CommunityDragonSkin {
     chromaPath: string
     colors: string[]
   }>
-  questSkinInfo?: any
+  questSkinInfo?: unknown
   description?: string
   regionRarityId?: number
   rarityGemPath?: string
@@ -363,12 +363,12 @@ export async function fetchChampions(version?: string): Promise<ApiResponse<DDra
 /**
  * 获取召唤师技能数据
  */
-export async function fetchSummonerSpells(version?: string): Promise<ApiResponse<any>> {
+export async function fetchSummonerSpells(version?: string): Promise<ApiResponse<unknown>> {
   try {
     const gameVersion = version || (await getLatestVersion())
     const url = `https://ddragon.leagueoflegends.com/cdn/${gameVersion}/data/zh_CN/summoner.json`
 
-    const { data, error, statusCode } = await useApiFetch(url).json<any>()
+    const { data, error, statusCode } = await useApiFetch(url).json<unknown>()
 
     if (error.value) {
       throw new Error(error.value)
@@ -667,9 +667,9 @@ export async function fetchOpggChampionBuildRaw(params: {
   champion_id: number
   position?: string
   tier: string
-}): Promise<ApiResponse<any>> {
+}): Promise<ApiResponse<unknown>> {
   try {
-    const data = await invoke<any>('get_opgg_champion_build_raw', {
+    const data = await invoke<unknown>('get_opgg_champion_build_raw', {
       region: params.region,
       mode: params.mode,
       championId: params.champion_id,

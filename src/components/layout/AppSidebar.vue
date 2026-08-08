@@ -112,7 +112,12 @@
           <SidebarMenuItem>
             <SidebarMenuButton class="text-md" asChild tooltip="客户端设置" :is-active="isActiveRoute('/settings')">
               <router-link to="/settings">
-                <Settings :size="18" :stroke-width="2" class="shrink-0" :class="{ 'text-primary': isActiveRoute('/settings') }" />
+                <Settings
+                  :size="18"
+                  :stroke-width="2"
+                  class="shrink-0"
+                  :class="{ 'text-primary': isActiveRoute('/settings') }"
+                />
                 <span>客户端设置</span>
               </router-link>
             </SidebarMenuButton>

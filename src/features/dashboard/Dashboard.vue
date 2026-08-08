@@ -80,9 +80,9 @@ const flexRank = computed(() => {
     leaguePoints: summonerInfo.value?.flexRankLp || 0,
     winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0
   }
-});
+})
 
-const { updateMatchHistory } = useSummonerAndMatchUpdater();
+const { updateMatchHistory } = useSummonerAndMatchUpdater()
 
 const dataStore = useDataStore()
 const connectionStore = useConnectionStore()

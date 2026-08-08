@@ -181,7 +181,7 @@ const { data: allChampionsData } = useChampionSummaryQuery()
 // 状态
 const isEditing = computed(() => !!props.config)
 const championSearch = ref('')
-const championSearchResults = ref<any[]>([])
+const championSearchResults = ref<ChampionInfo[]>([])
 const isImporting = ref(false)
 
 // 表单数据
@@ -264,14 +264,12 @@ const handleChampionSearch = () => {
   championSearchResults.value = allChampions
     .filter(
       (champ) =>
-        champ.name.toLowerCase().includes(query) ||
-        champ.alias.toLowerCase().includes(query) ||
-        champ.title?.toLowerCase().includes(query)
+        champ.name.toLowerCase().includes(query) || champ.alias.toLowerCase().includes(query)
     )
     .slice(0, 10) // 最多显示10个结果
 }
 
-const selectChampion = (champion: any) => {
+const selectChampion = (champion: ChampionInfo) => {
   formData.championId = champion.id
   formData.championName = champion.name
   championSearch.value = champion.name
@@ -288,7 +286,7 @@ const handleImportFromOpgg = async () => {
   isImporting.value = true
   try {
     // 调用后端获取 OP.GG 推荐
-    const build = await invoke<any>('get_opgg_champion_build', {
+    const build = await invoke<OpggChampionBuild>('get_opgg_champion_build', {
       region: 'kr',
       mode: 'ranked',
       championId: formData.championId,
@@ -317,7 +315,7 @@ const handleImportFromOpgg = async () => {
 const handleLoadFromClient = async () => {
   isImporting.value = true
   try {
-    const currentPage = await invoke<any>('get_current_rune_page')
+    const currentPage = await invoke<RunePage>('get_current_rune_page')
     if (currentPage) {
       formData.primaryStyleId = currentPage.primaryStyleId
       formData.subStyleId = currentPage.subStyleId

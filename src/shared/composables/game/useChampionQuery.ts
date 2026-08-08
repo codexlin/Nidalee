@@ -4,8 +4,9 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { computed, ref, type Ref } from 'vue'
+import { computed, type Ref } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
+import type { CommunityDragonChampion } from '@/lib/dataApi'
 
 interface QueryResult<T> {
   data: Ref<T | null>
@@ -23,7 +24,7 @@ function useGameVersion() {
     queryFn: () => invoke<string>('get_game_version'),
     staleTime: Infinity,
     gcTime: Infinity,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: false
   })
 }
 
@@ -31,16 +32,16 @@ function useGameVersion() {
  * 查询所有英雄列表（版本化缓存）
  * 使用游戏版本号作为缓存 key，版本变化时自动刷新
  */
-export function useChampionSummaryQuery(): QueryResult<any[]> {
+export function useChampionSummaryQuery(): QueryResult<ChampionInfo[]> {
   const { data: version } = useGameVersion()
 
   const query = useQuery({
     queryKey: computed(() => ['static', 'champions', version.value] as const),
-    queryFn: () => invoke<any[]>('get_all_champion_data'),
+    queryFn: () => invoke<ChampionInfo[]>('get_all_champion_data'),
     staleTime: Infinity, // 版本不变时，数据永远新鲜
     gcTime: Infinity,
     refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value),
+    enabled: computed(() => !!version.value)
   })
 
   return {
@@ -49,7 +50,7 @@ export function useChampionSummaryQuery(): QueryResult<any[]> {
     error: computed(() => query.error.value?.message ?? null),
     refetch: async () => {
       await query.refetch()
-    },
+    }
   }
 }
 
@@ -58,10 +59,12 @@ export function useChampionSummaryQuery(): QueryResult<any[]> {
  * 从 Community Dragon API 获取
  * 使用静态缓存（英雄详情很少变化）
  */
-export function useChampionDetailsQuery(championId: Ref<number | null>): QueryResult<any> {
+export function useChampionDetailsQuery(
+  championId: Ref<number | null>
+): QueryResult<CommunityDragonChampion | null> {
   const query = useQuery({
     queryKey: computed(() => ['championDetails', championId.value] as const),
-    queryFn: async () => {
+    queryFn: async (): Promise<CommunityDragonChampion | null> => {
       if (!championId.value || championId.value <= 0) {
         return null
       }
@@ -73,12 +76,12 @@ export function useChampionDetailsQuery(championId: Ref<number | null>): QueryRe
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      return response.json()
+      return (await response.json()) as CommunityDragonChampion
     },
     staleTime: 1000 * 60 * 60, // 1 小时
     gcTime: 1000 * 60 * 60 * 24, // 24 小时
     refetchOnWindowFocus: false,
-    enabled: computed(() => championId.value !== null && championId.value > 0),
+    enabled: computed(() => championId.value !== null && championId.value > 0)
   })
 
   return {
@@ -87,6 +90,6 @@ export function useChampionDetailsQuery(championId: Ref<number | null>): QueryRe
     error: computed(() => query.error.value?.message ?? null),
     refetch: async () => {
       await query.refetch()
-    },
+    }
   }
 }

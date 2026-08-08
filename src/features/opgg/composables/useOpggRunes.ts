@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { getChampionName } from '@/lib'
+import type { OpggConfig } from './useOpggData'
 
 export function useOpggRunes() {
   const applying = ref(false)
@@ -7,7 +8,7 @@ export function useOpggRunes() {
   const applySuccess = ref<string | null>(null)
 
   // 应用最佳符文
-  const applyBestRunes = async (championId: number, config: any) => {
+  const applyBestRunes = async (championId: number, config: OpggConfig) => {
     if (!championId) {
       applyError.value = '请先选择英雄'
       return
@@ -17,7 +18,7 @@ export function useOpggRunes() {
   }
 
   // 应用特定符文
-  const applySpecificRunes = async (runeIndex: number, championId: number, config: any) => {
+  const applySpecificRunes = async (runeIndex: number, championId: number, config: OpggConfig) => {
     if (!championId) {
       applyError.value = '请先选择英雄'
       return

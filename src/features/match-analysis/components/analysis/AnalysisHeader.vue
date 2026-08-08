@@ -173,26 +173,6 @@ const phaseIndicatorClass = computed(() => {
   }
 })
 
-// 数据状态相关
-const dataStatusText = computed(() => {
-  if (props.loading) return '加载中'
-  if (props.hasData) return '数据就绪'
-  if (props.phase === 'ChampSelect' && props.teamType === 'enemy') return '选择中'
-  return '无数据'
-})
-
-const dataStatusClass = computed(() => {
-  if (props.loading) return 'text-yellow-600 dark:text-yellow-400'
-  if (props.hasData) return 'text-green-600 dark:text-green-400'
-  return 'text-gray-500 dark:text-gray-400'
-})
-
-const dataIndicatorClass = computed(() => {
-  if (props.loading) return 'bg-yellow-500 animate-pulse'
-  if (props.hasData) return 'bg-green-500'
-  return 'bg-gray-500'
-})
-
 // 对局类型样式
 const queueClass = computed(() => {
   if (isRankedGame.value) {

@@ -1,6 +1,6 @@
 // 数据API模块
 export * from './dataApi'
-import type { CommunityDragonPerk } from './dataApi'
+import type { CommunityDragonPerk, DDragonChampionsResponse, DDragonItemsResponse } from './dataApi'
 import { getGameTypeById, getMapById } from '@/common'
 
 // 主题配置模块
@@ -177,26 +177,34 @@ export const formatRelativeTime = (timestamp: number): string => {
 }
 
 // 游戏数据处理函数
-export const getTeamResult = (teamId: string, teams: any[]): string => {
+export const getTeamResult = (teamId: string, teams: TeamInfo[]): string => {
   if (!teams) return ''
-  const team = teams.find((t) => t.teamId.toString() === teamId)
+  const team = teams.find((t) => t.teamId?.toString() === teamId)
   if (!team) return ''
   return team.win === 'Win' ? '胜方' : '败方'
 }
 
-export const getTeamParticipants = (teamId: string, gameDetail: any): any[] => {
+export const getTeamParticipants = (teamId: string, gameDetail: GameDetail): ParticipantInfo[] => {
   if (!gameDetail?.participants) return []
-  return gameDetail.participants.filter((p: any) => p.teamId.toString() === teamId)
+  return gameDetail.participants.filter((p) => p.teamId.toString() === teamId)
 }
 
-export const getTeamBans = (teamId: string, teams: any[]): any[] => {
+export const getTeamBans = (teamId: string, teams: TeamInfo[]): BanInfo[] => {
   if (!teams) return []
-  const team = teams.find((t) => t.teamId.toString() === teamId)
+  const team = teams.find((t) => t.teamId?.toString() === teamId)
   return team?.bans || []
 }
 
-export const getPlayerDisplayName = (participantId: number, gameDetail: any): string => {
-  const identity = gameDetail.participantIdentities?.find((id: any) => id.participantId === participantId)
+// 兼容旧版 Riot API 结构（不与当前 GameDetail 一一对应），仅供本函数内部使用
+interface LegacyGameDetail {
+  participantIdentities?: Array<{
+    participantId: number
+    player?: { gameName?: string; tagLine?: string; summonerName?: string }
+  }>
+}
+
+export const getPlayerDisplayName = (participantId: number, gameDetail: LegacyGameDetail): string => {
+  const identity = gameDetail.participantIdentities?.find((id) => id.participantId === participantId)
   if (!identity?.player) return '未知玩家'
 
   const { gameName, tagLine, summonerName } = identity.player
@@ -545,8 +553,10 @@ export const getSpellIconUrl = (spellId: number | null): string => {
   return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${spellId}.png`
 }
 // 召唤师技能图标
-export const getSpellMeta = (spellId: number | null): { label: string; icon: string } => {
-  if (!spellId) return { label: '', icon: '' }
+export const getSpellMeta = (spellId: number | bigint | null): { label: string; icon: string } => {
+  if (spellId === null || spellId === undefined) return { label: '', icon: '' }
+  const id = Number(spellId)
+  if (!id) return { label: '', icon: '' }
   const spellMap: Record<number, { label: string; icon: string }> = {
     1: { label: '净化', icon: new URL('@/assets/SpellIconFiles/1.png', import.meta.url).href },
     3: { label: '虚弱', icon: new URL('@/assets/SpellIconFiles/3.png', import.meta.url).href },
@@ -560,7 +570,7 @@ export const getSpellMeta = (spellId: number | null): { label: string; icon: str
     21: { label: '屏障', icon: new URL('@/assets/SpellIconFiles/21.png', import.meta.url).href },
     32: { label: '雪球', icon: new URL('@/assets/SpellIconFiles/32.png', import.meta.url).href }
   }
-  return spellMap[spellId] || { label: `技能${spellId}`, icon: '' }
+  return spellMap[id] || { label: `技能${id}`, icon: '' }
 }
 // 段位图标
 export const getTierIconUrl = (tier: string | undefined): string => {
@@ -598,7 +608,10 @@ export const getAllSummonerSpells = async (gameVersion: string, language: string
   return await resp.json()
 }
 // 获取所有英雄基础信息
-export const getAllChampions = async (gameVersion: string, language: string = 'zh_CN'): Promise<any> => {
+export const getAllChampions = async (
+  gameVersion: string,
+  language: string = 'zh_CN'
+): Promise<DDragonChampionsResponse> => {
   const resp = await fetch(`https://ddragon.leagueoflegends.com/cdn/${gameVersion}/data/${language}/champion.json`)
   return await resp.json()
 }
@@ -608,7 +621,7 @@ export const getChampionDetail = async (
   championName: string,
   gameVersion: string,
   language: string = 'zh_CN'
-): Promise<any> => {
+): Promise<unknown> => {
   const resp = await fetch(
     `https://ddragon.leagueoflegends.com/cdn/${gameVersion}/data/${language}/champion/${championName}.json`
   )
@@ -619,14 +632,17 @@ export const getChampionInfoById = async (
   championId: number,
   gameVersion: string,
   language: string = 'zh_CN'
-): Promise<any> => {
+): Promise<unknown> => {
   const resp = await fetch(
     `https://raw.communitydragon.org/${gameVersion}/plugins/rcp-be-lol-game-data/global/${language}/v1/champions/${championId}.json`
   )
   return await resp.json()
 }
 // 获取所有物品数据
-export const getAllItems = async (gameVersion: string, language: string = 'zh_CN'): Promise<any> => {
+export const getAllItems = async (
+  gameVersion: string,
+  language: string = 'zh_CN'
+): Promise<DDragonItemsResponse> => {
   const resp = await fetch(`https://ddragon.leagueoflegends.com/cdn/${gameVersion}/data/${language}/item.json`)
   return await resp.json()
 }

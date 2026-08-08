@@ -191,6 +191,7 @@
 <script setup lang="ts">
 import { useGameHelper } from '../composables/useGameHelper'
 import { getChampionIconUrlByAlias } from '@/lib'
+import type { CommunityDragonSkin } from '@/lib/dataApi'
 import { ArrowLeft, Search, Users, X } from 'lucide-vue-next'
 import { debounce } from 'radash'
 
@@ -206,8 +207,8 @@ const {
 const champions = computed<ChampionInfo[]>(() =>
   championsData.value
     ? championsData.value
-        .filter((c: any) => c.id > 0 && !c.alias.includes('Ruby_'))
-        .sort((a: any, b: any) => a.name.localeCompare(b.name))
+        .filter((c) => c.id > 0 && !c.alias.includes('Ruby_'))
+        .sort((a, b) => a.name.localeCompare(b.name))
     : []
 )
 const selectedChampion = ref<ChampionInfo | null>(null)
@@ -217,8 +218,8 @@ const {
   isLoading: loadingSkins,
   error: skinsError,
   refetch: reloadSkins
-} = useChampionDetailsQuery(selectedChampionId as any)
-const championSkins = computed<any[]>(() => championDetails.value?.skins ?? [])
+} = useChampionDetailsQuery(selectedChampionId)
+const championSkins = computed<CommunityDragonSkin[]>(() => championDetails.value?.skins ?? [])
 const applyingSkinId = ref<number | null>(null) // 跟踪正在应用的皮肤ID
 const shakeSkinId = ref<number | null>(null)
 
@@ -234,10 +235,7 @@ const filteredChampions = computed(() => {
   if (!debouncedSearchText.value.trim()) return champions.value
   const search = debouncedSearchText.value.toLowerCase()
   return champions.value.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search) ||
-      c.alias.toLowerCase().includes(search) ||
-      (c.description && c.description.toLowerCase().includes(search))
+    (c) => c.name.toLowerCase().includes(search) || c.alias.toLowerCase().includes(search)
   )
 })
 
@@ -253,14 +251,14 @@ const clearChampion = () => {
 
 // champions 和 championSkins 由 useQuery 自动管理，无需手动加载函数
 
-const getSkinImageUrl = (skin: any): string => {
+const getSkinImageUrl = (skin: CommunityDragonSkin): string => {
   // 皮肤ID一般为 英雄ID*1000+皮肤编号
-  if (!selectedChampion.value?.alias || typeof skin.id !== 'number') return ''
+  if (!selectedChampion.value?.alias) return ''
   const skinNum = skin.id % 1000
   return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${selectedChampion.value.alias}_${skinNum}.jpg`
 }
 
-const applySkinBackground = async (skin: any) => {
+const applySkinBackground = async (skin: CommunityDragonSkin) => {
   try {
     applyingSkinId.value = skin.id
     shakeSkinId.value = skin.id // 触发抖动

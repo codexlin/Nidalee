@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import type { AutoFunctions } from '@/shared/stores/features/autoFunctionStore'
 
 export function useChampSelect() {
   /**
@@ -76,7 +77,7 @@ export function useChampSelect() {
    * @param autoFunctions 自动功能配置
    * @returns {number | false} 选完英雄返回 championId，否则返回 false
    */
-  function getAutoOpggChampionId(session: ChampSelectSession, autoFunctions: any): number | false {
+  function getAutoOpggChampionId(session: ChampSelectSession, autoFunctions: AutoFunctions): number | false {
     if (!session?.actions || session.localPlayerCellId === undefined) return false
     if (!autoFunctions?.runeConfig?.enabled) return false
 
@@ -92,7 +93,7 @@ export function useChampSelect() {
   }
   async function checkAndExecuteAutoActions(
     session: ChampSelectSession,
-    autoFunctions: any,
+    autoFunctions: AutoFunctions,
     executedActions: ExecutedActions
   ): Promise<boolean> {
     console.log('[🤖 AutoChampSelect] ===== 检查自动选人操作 =====')
@@ -171,7 +172,7 @@ export function useChampSelect() {
   }
   async function tryAutoBan(
     action: ChampSelectAction,
-    autoFunctions: any,
+    autoFunctions: AutoFunctions,
     picked: Set<number>,
     banned: Set<number>,
     preselected: Set<number>,
@@ -209,7 +210,7 @@ export function useChampSelect() {
   }
   async function tryAutoPick(
     action: ChampSelectAction,
-    autoFunctions: any,
+    autoFunctions: AutoFunctions,
     picked: Set<number>,
     banned: Set<number>,
     preselected: Set<number>,

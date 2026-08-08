@@ -6,7 +6,10 @@
     </h4>
 
     <!-- 无数据提示 -->
-    <div v-if="!matchStatistics || !matchStatistics.traits || matchStatistics.traits.length === 0" class="text-center py-6 text-sm text-muted-foreground">
+    <div
+      v-if="!matchStatistics || !matchStatistics.traits || matchStatistics.traits.length === 0"
+      class="text-center py-6 text-sm text-muted-foreground"
+    >
       <p>暂无特征数据</p>
       <p class="text-xs mt-1">需要更多对局数据来分析召唤师特征</p>
     </div>
@@ -85,6 +88,7 @@
 </template>
 
 <script setup lang="ts">
+import type { Component } from 'vue'
 import {
   AlertTriangle,
   Award,
@@ -107,7 +111,7 @@ interface UITrait {
   detail: string
   score: number
   variant: 'default' | 'secondary' | 'destructive' | 'outline'
-  icon: any
+  icon: Component
   type: 'good' | 'bad'
 }
 
@@ -124,7 +128,7 @@ const selectTrait = (trait: UITrait) => {
 }
 
 // ✨ 图标映射（根据特征名称）
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, Component> = {
   大神: Crown,
   稳定: Award,
   坑货: Meh,

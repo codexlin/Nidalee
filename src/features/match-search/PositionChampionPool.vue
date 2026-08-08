@@ -51,7 +51,6 @@ interface ChampionStat {
   games: number
   wins: number
   winRate: number
-  avgKda: number
 }
 
 interface Props {
@@ -62,15 +61,14 @@ const props = defineProps<Props>()
 
 // 使用后端返回的英雄池数据
 const championStats = computed<ChampionStat[]>(() => {
-  const championPool = props.positionData.championPool || []
+  const championPool = props.positionData.stats.favoriteChampions || []
 
   return championPool.map((champ) => ({
     championId: champ.championId,
     championName: champ.championName,
     games: champ.games,
     wins: champ.wins,
-    winRate: champ.winRate,
-    avgKda: champ.avgKda
+    winRate: champ.winRate
   }))
 })
 

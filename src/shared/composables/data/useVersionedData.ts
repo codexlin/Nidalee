@@ -19,56 +19,56 @@ export function useGameVersion(): UseQueryReturnType<string, Error> {
     staleTime: Infinity, // 版本号不会过期
     gcTime: Infinity, // 永久保留版本信息
     refetchOnWindowFocus: false,
-    retry: 1,
+    retry: 1
   })
 }
 
 /**
  * 英雄列表查询（版本化）
  */
-export function useChampions(): UseQueryReturnType<any[], Error> {
+export function useChampions(): UseQueryReturnType<ChampionInfo[], Error> {
   const { data: version } = useGameVersion()
 
   return useQuery({
     // 版本号作为 key 的一部分，版本变化自动失效
     queryKey: computed(() => ['static', 'champions', version.value] as const),
-    queryFn: () => invoke<any[]>('get_all_champion_data'),
+    queryFn: () => invoke<ChampionInfo[]>('get_all_champion_data'),
     staleTime: Infinity, // 版本不变时，数据永远新鲜
     gcTime: Infinity,
     refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value),
+    enabled: computed(() => !!version.value)
   })
 }
 
 /**
  * 符文样式查询（版本化）
  */
-export function useRuneStyles(): UseQueryReturnType<any, Error> {
+export function useRuneStyles(): UseQueryReturnType<unknown, Error> {
   const { data: version } = useGameVersion()
 
   return useQuery({
     queryKey: computed(() => ['static', 'runes', version.value] as const),
-    queryFn: () => invoke<any>('get_lcu_rune_styles'),
+    queryFn: () => invoke<unknown>('get_lcu_rune_styles'),
     staleTime: Infinity,
     gcTime: Infinity,
     refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value),
+    enabled: computed(() => !!version.value)
   })
 }
 
 /**
  * 符文详情查询（版本化）
  */
-export function usePerks(): UseQueryReturnType<any, Error> {
+export function usePerks(): UseQueryReturnType<unknown, Error> {
   const { data: version } = useGameVersion()
 
   return useQuery({
     queryKey: computed(() => ['static', 'perks', version.value] as const),
-    queryFn: () => invoke<any>('get_lcu_perks'),
+    queryFn: () => invoke<unknown>('get_lcu_perks'),
     staleTime: Infinity,
     gcTime: Infinity,
     refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value),
+    enabled: computed(() => !!version.value)
   })
 }
 
@@ -84,35 +84,35 @@ export function usePerkIcons(): UseQueryReturnType<Record<number, string>, Error
     staleTime: Infinity,
     gcTime: Infinity,
     refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value),
+    enabled: computed(() => !!version.value)
   })
 }
 
 /**
  * 召唤师技能查询（版本化）
  */
-export function useSummonerSpells(): UseQueryReturnType<any[], Error> {
+export function useSummonerSpells(): UseQueryReturnType<unknown[], Error> {
   const { data: version } = useGameVersion()
 
   return useQuery({
     queryKey: computed(() => ['static', 'spells', version.value] as const),
-    queryFn: () => invoke<any[]>('get_all_summoner_spell_data'),
+    queryFn: () => invoke<unknown[]>('get_all_summoner_spell_data'),
     staleTime: Infinity,
     gcTime: Infinity,
     refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value),
+    enabled: computed(() => !!version.value)
   })
 }
 
 /**
  * 当前符文页查询（动态数据，不版本化）
  */
-export function useCurrentRunePage(): UseQueryReturnType<any, Error> {
+export function useCurrentRunePage(): UseQueryReturnType<unknown, Error> {
   return useQuery({
     queryKey: ['currentRunePage'],
-    queryFn: () => invoke<any>('get_current_rune_page'),
+    queryFn: () => invoke<unknown>('get_current_rune_page'),
     staleTime: 1000 * 60, // 1 分钟
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: false
   })
 }
 
@@ -166,7 +166,7 @@ export function useStaticData() {
     spellsQuery,
     isLoading,
     error,
-    isReady,
+    isReady
   }
 }
 
@@ -192,8 +192,8 @@ export function useChampionById(championId: Ref<number | null>) {
   const champion = computed(() => {
     if (!championId.value || !champions.value) return null
     return (
-      champions.value.find((c: any) => c.id === championId.value) ||
-      champions.value.find((c: any) => c.alias === String(championId.value))
+      champions.value.find((c: ChampionInfo) => c.id === championId.value) ||
+      champions.value.find((c: ChampionInfo) => c.alias === String(championId.value))
     )
   })
 
@@ -209,7 +209,7 @@ export function useChampionByName(name: Ref<string | null>) {
   const champion = computed(() => {
     if (!name.value || !champions.value) return null
     const searchName = name.value.toLowerCase()
-    return champions.value.find((c: any) => {
+    return champions.value.find((c: ChampionInfo) => {
       const cName = c.name?.toLowerCase() || ''
       const cAlias = c.alias?.toLowerCase() || ''
       return cName === searchName || cAlias === searchName
@@ -232,30 +232,19 @@ export function useOpggBuild(
   const { data: version } = useGameVersion()
 
   return useQuery({
-    queryKey: computed(() => [
-      'opgg',
-      'build',
-      championId.value,
-      position.value,
-      version.value
-    ] as const),
+    queryKey: computed(() => ['opgg', 'build', championId.value, position.value, version.value] as const),
     queryFn: () =>
       invoke('get_opgg_champion_build', {
         championId: championId.value,
         position: position.value || 'MIDDLE',
         region: 'cn',
         mode: 'ranked',
-        tier: 'platinum_plus',
+        tier: 'platinum_plus'
       }),
     staleTime: 1000 * 60 * 60, // 1 小时（OP.GG 数据可能更新）
     gcTime: 1000 * 60 * 60 * 24, // 24 小时
     refetchOnWindowFocus: false,
-    enabled: computed(
-      () =>
-        !!version.value &&
-        championId.value > 0 &&
-        (options?.enabled?.value ?? true)
-    ),
+    enabled: computed(() => !!version.value && championId.value > 0 && (options?.enabled?.value ?? true))
   })
 }
 
@@ -271,12 +260,12 @@ export function useOpggTierList() {
       invoke('get_opgg_tier_list', {
         region: 'cn',
         mode: 'ranked',
-        tier: 'platinum_plus',
+        tier: 'platinum_plus'
       }),
     staleTime: 1000 * 60 * 60, // 1 小时
     gcTime: 1000 * 60 * 60 * 24,
     refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value),
+    enabled: computed(() => !!version.value)
   })
 }
 

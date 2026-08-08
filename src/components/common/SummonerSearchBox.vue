@@ -20,11 +20,9 @@
 
 <script setup lang="ts">
 import { Search } from 'lucide-vue-next'
-defineProps({
-  loading: {
-    type: Boolean,
-    default: false
-  }
+
+withDefaults(defineProps<{ loading?: boolean }>(), {
+  loading: false
 })
 const summonerName = defineModel<string>('summonerName', { default: '' })
 const emits = defineEmits(['onSearch'])

@@ -91,8 +91,8 @@
           <div class="h-8 w-px bg-border flex-shrink-0" />
           <div class="flex gap-0.5 flex-shrink-0">
             <div
-              v-for="spellId in [player.spell1Id, player.spell2Id]"
-              :key="spellId"
+              v-for="(spellId, spellIdx) in [player.spell1Id, player.spell2Id]"
+              :key="spellIdx"
               class="w-6 h-6 rounded overflow-hidden ring-1 ring-border/40"
             >
               <img
@@ -170,13 +170,13 @@
                 :key="idx"
                 class="relative flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px]"
                 :class="[match.win ? 'bg-green-500/12 dark:bg-green-500/20' : 'bg-red-500/12 dark:bg-red-500/20']"
-                :title="`${getQueueName(match.queueId)} - ${getChampionName(match.championId)} - ${match.win ? '胜利' : '失败'} ${match.kills}/${match.deaths}/${match.assists}`"
+                :title="`${getQueueName(match.queueId ?? 0)} - ${getChampionName(match.championId)} - ${match.win ? '胜利' : '失败'} ${match.kills}/${match.deaths}/${match.assists}`"
               >
                 <div
                   class="w-4.5 h-4.5 rounded-full text-[9px] font-bold text-white leading-none flex-shrink-0 flex items-center justify-center"
-                  :class="getQueueTypeColor(match.queueId)"
+                  :class="getQueueTypeColor(match.queueId ?? 0)"
                 >
-                  {{ getQueueTypeShortBadge(match.queueId) }}
+                  {{ getQueueTypeShortBadge(match.queueId ?? 0) }}
                 </div>
                 <img
                   v-if="match.championId"
@@ -257,16 +257,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { Badge } from '@/components/ui/badge'
 import { Lightbulb } from 'lucide-vue-next'
 import { getChampionIconUrl, getChampionName, getSpellMeta, getQueueName } from '@/lib'
+import type { UIPlayerData } from '@/types/match-analysis'
 
-const props = defineProps<{ player: any; playerStats?: any; isLocal?: boolean; isAlly?: boolean }>()
+/** 对局分析玩家展示：基于 UIPlayerData，兼容选人阶段的 assignedPosition */
+type CompactPlayer = UIPlayerData & { assignedPosition?: string | null }
 
-const emit = defineEmits<{ select: [player: any] }>()
+const props = defineProps<{
+  player: CompactPlayer
+  playerStats?: PlayerMatchStats | null
+  isLocal?: boolean
+  isAlly?: boolean
+}>()
+
+const emit = defineEmits<{ select: [player: CompactPlayer] }>()
 
 const adviceList = computed(() => props.playerStats?.advice ?? [])
 const hasAdvice = computed(() => adviceList.value.length > 0)

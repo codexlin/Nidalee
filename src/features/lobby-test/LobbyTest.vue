@@ -5,7 +5,12 @@
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
           <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           LCU 认证验证
         </CardTitle>
@@ -15,11 +20,20 @@
         <div class="flex gap-2">
           <Button @click="handleVerify" :disabled="isVerifying">
             <svg v-if="!isVerifying" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
             <svg v-else class="w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
             </svg>
             {{ isVerifying ? '验证中...' : '开始验证' }}
           </Button>
@@ -27,7 +41,10 @@
         </div>
 
         <!-- 验证日志 -->
-        <div v-if="verifyLogs.length > 0" class="p-3 rounded-lg bg-muted max-h-60 overflow-y-auto text-xs font-mono space-y-1">
+        <div
+          v-if="verifyLogs.length > 0"
+          class="p-3 rounded-lg bg-muted max-h-60 overflow-y-auto text-xs font-mono space-y-1"
+        >
           <div v-for="(log, index) in verifyLogs" :key="index" :class="getLogClass(log)">
             {{ log }}
           </div>
@@ -156,7 +173,7 @@ const handleVerify = async () => {
   try {
     await invoke('verify_lockfile_vs_cmdline')
     // 延迟一下让后端日志输出完成
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     // 提示用户查看后端日志
     verifyLogs.value = [
@@ -166,9 +183,7 @@ const handleVerify = async () => {
       '============================'
     ]
   } catch (error) {
-    verifyLogs.value = [
-      '❌ 验证失败：' + (error instanceof Error ? error.message : '未知错误')
-    ]
+    verifyLogs.value = ['❌ 验证失败：' + (error instanceof Error ? error.message : '未知错误')]
   } finally {
     isVerifying.value = false
   }
@@ -184,9 +199,9 @@ const {
   canSendMessage,
   refreshLobby,
   sendMessage,
-  sendNidaleeMessage,
+  sendNidaleeMessage: _sendNidaleeMessage,
   sendChampionRecommendation,
-  sendTacticTip
+  sendTacticTip: _sendTacticTip
 } = useLobbyChat()
 
 // 消息输入

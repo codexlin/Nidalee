@@ -297,12 +297,13 @@
 </template>
 
 <script setup lang="ts">
+import type { StyleValue } from 'vue'
 import { getTierIconUrl } from '@/lib'
 import { Shield, Trophy, User, Users } from 'lucide-vue-next'
 import { appContextKey, type AppContext } from '@/types'
 const { isDark } = inject(appContextKey) as AppContext
 defineProps<{
-  summonerInfo: any
+  summonerInfo: SummonerInfo
   isDashboard?: boolean
 }>()
 const { getProfileIconUrl } = useGameAssets()
@@ -371,7 +372,7 @@ const getRankColor = (tier: string): string => {
   return colorMap[tier] || 'bg-gray-500/20 text-gray-600 dark:text-gray-400'
 }
 
-const getRankWinRate = (wins?: number, losses?: number): number => {
+const getRankWinRate = (wins?: number | null, losses?: number | null): number => {
   if (!wins && !losses) return 0
   const totalGames = (wins || 0) + (losses || 0)
   if (totalGames === 0) return 0
@@ -472,7 +473,7 @@ const rankGlowColorMap: Record<string, string> = {
   CHALLENGER: '#ffe066'
 }
 
-const getRankGlowBreathStyle = (tier: string) => {
+const getRankGlowBreathStyle = (tier: string): StyleValue => {
   const color = rankGlowColorMap[tier] || '#a3a3a3'
   return {
     '--glow-color': color,
@@ -480,7 +481,7 @@ const getRankGlowBreathStyle = (tier: string) => {
     borderColor: color,
     background: '#fff',
     transition: 'box-shadow 0.5s, border-color 0.5s'
-  } as any
+  } as StyleValue
 }
 
 const getBadgeStyle = (tier: string) => {

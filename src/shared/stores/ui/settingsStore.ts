@@ -190,7 +190,7 @@ export const useSettingsStore = defineStore(
     }
 
     // 导入设置
-    const importSettings = (settings: any) => {
+    const importSettings = (settings: Partial<ReturnType<typeof exportSettings>>) => {
       if (settings.theme) {
         selectedColor.value = settings.theme.color || 'neutral'
         selectedRadius.value = settings.theme.radius || 0.5

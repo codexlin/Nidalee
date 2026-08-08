@@ -100,7 +100,7 @@ const presets = ref<GameTypePreset[]>(
   }))
 )
 
-const selectedTypes = defineModel<number[]>('selectedTypes', { default: [] })
+const selectedTypes = defineModel<number[]>('selectedTypes', { default: () => [] as number[] })
 
 // 计算预设选择状态
 const updatePresetStates = () => {

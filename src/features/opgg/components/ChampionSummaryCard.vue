@@ -63,17 +63,18 @@ interface Props {
 
 defineProps<Props>()
 
-// 格式化百分比
-const formatPercentage = (value: number | null | undefined): string => {
-  if (value == null) return 'N/A'
-  return (value * 100).toFixed(1) + '%'
+const createFormatter = <T, R = string>(formatter: (value: T) => R, fallback: R = 'N/A' as R) => {
+  return (value: T | null | undefined): R => {
+    if (value === null || value === undefined) return fallback
+    return formatter(value)
+  }
 }
 
+// 格式化百分比
+const formatPercentage = createFormatter((value: number) => `${(value * 100).toFixed(1)}%`, 'N/A')
+
 // 格式化KDA
-const formatKda = (value: number | null | undefined): string => {
-  if (value == null) return 'N/A'
-  return value.toFixed(2)
-}
+const formatKda = createFormatter((value: number) => value.toFixed(2), 'N/A')
 
 // 图标错误处理
 const onChampionImageError = (event: Event) => {

@@ -12,9 +12,12 @@
 
 <script setup lang="ts">
 import ThemedChart from '@/shared/components/charts/ThemedChart.vue'
+import type { PositionStatsWithTrend, WinRateTrendPoint } from '@/shared/utils/chartValidation'
+import type { TooltipItem } from 'chart.js'
 
 interface Props {
-  positionData: PositionStats
+  // 后端暂未提供 winRateTrend，预留字段供未来接入
+  positionData: PositionStatsWithTrend
 }
 
 const props = defineProps<Props>()
@@ -51,9 +54,9 @@ const chartData = computed(() => {
   }
 
   // 使用真实数据
-  const labels = trendData.map((_, index) => `第${index + 1}场`)
-  const cumulativeData = trendData.map((point) => point.cumulativeWinRate)
-  const movingAvgData = trendData.map((point) => point.movingAvgWinRate)
+  const labels = trendData.map((_: WinRateTrendPoint, index: number) => `第${index + 1}场`)
+  const cumulativeData = trendData.map((point: WinRateTrendPoint) => point.cumulativeWinRate)
+  const movingAvgData = trendData.map((point: WinRateTrendPoint) => point.movingAvgWinRate)
 
   return {
     labels,
@@ -116,8 +119,9 @@ const chartOptions = computed(() => ({
     },
     tooltip: {
       callbacks: {
-        label: (context: any) => {
-          return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`
+        label: (context: TooltipItem<'line'>) => {
+          const y = context.parsed.y
+          return `${context.dataset.label}: ${y == null ? '-' : y.toFixed(1)}%`
         }
       }
     }
@@ -140,7 +144,7 @@ const chartOptions = computed(() => ({
       min: 0,
       max: 100,
       ticks: {
-        callback: (value: any) => `${value}%`,
+        callback: (value: string | number) => `${value}%`,
         font: {
           size: 11,
           family: 'Satoshi, "Noto Sans SC", "Microsoft YaHei", sans-serif'

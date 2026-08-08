@@ -33,7 +33,7 @@ import { Search, Zap } from 'lucide-vue-next'
 interface Props {
   loading: boolean
   championId: number
-  championBuild: any | null
+  championBuild: OpggChampionBuild | null
 }
 
 interface Emits {
