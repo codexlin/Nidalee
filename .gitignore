@@ -1,3 +1,6 @@
+# Local debug dumps
+tmp/
+
 # Logs
 logs
 *.log
