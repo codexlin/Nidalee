@@ -1,11 +1,12 @@
 [source.crates-io]
 replace-with = 'tuna'
 
+# sparse 协议比 git index 快很多
 [source.tuna]
-registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
+registry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"
 
 [source.sjtu]
-registry = "https://mirrors.sjtug.sjtu.edu.cn/git/crates.io-index"
+registry = "sparse+https://mirrors.sjtug.sjtu.edu.cn/crates.io-index/"
 
 [source.ustc]
-registry = "git://mirrors.ustc.edu.cn/crates.io-index"
+registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
