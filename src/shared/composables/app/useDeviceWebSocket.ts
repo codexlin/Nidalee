@@ -10,6 +10,30 @@ export function useDeviceWebSocket() {
   const lastError = ref<string | null>(null)
 
   const connectionStore = useConnectionStore()
+
+  const handleServerMessage = (event: MessageEvent) => {
+    lastServerMsg.value = String(event.data)
+    try {
+      const obj = JSON.parse(String(event.data))
+      if (obj && typeof obj === 'object') {
+        console.log('WebSocket响应:', obj)
+        if ('code' in obj && typeof obj.code === 'number') {
+          if (obj.code === 403) {
+            connectionStore.hasAuth = false
+            void router.replace('/forbidden')
+          } else if (obj.code >= 200 && obj.code < 300) {
+            connectionStore.hasAuth = true
+            if (router.currentRoute.value.path === '/forbidden') {
+              void router.replace('/')
+            }
+          }
+        }
+      }
+    } catch {
+      console.log('WebSocket响应:', event.data)
+    }
+  }
+
   onMounted(async () => {
     console.log('useDeviceWebSocket', import.meta.env.VITE_WS_BASE_URL)
     try {
@@ -19,6 +43,23 @@ export function useDeviceWebSocket() {
       const wsUrl = `${import.meta.env.VITE_WS_BASE_URL}/${hash}`
 
       const wsInstance = useWebSocket(wsUrl, {
+        onConnected() {
+          status.value = 'OPEN'
+          lastError.value = null
+          console.log('WebSocket连接成功')
+        },
+        onDisconnected() {
+          status.value = 'CLOSED'
+          console.log('WebSocket连接关闭')
+        },
+        onError(_socket, event) {
+          status.value = 'ERROR'
+          lastError.value = `WebSocket 错误: ${String(event)}`
+          console.log('WebSocket错误:', event)
+        },
+        onMessage(_socket, event) {
+          handleServerMessage(event)
+        },
         autoReconnect: {
           retries: 10,
           delay: 3000,
@@ -30,49 +71,15 @@ export function useDeviceWebSocket() {
       })
 
       ws.value = wsInstance
-
-      wsInstance.ws.value?.addEventListener('open', () => {
-        status.value = 'OPEN'
-        console.log('WebSocket连接成功')
-      })
-      wsInstance.ws.value?.addEventListener('close', () => {
-        status.value = 'CLOSED'
-        console.log('WebSocket连接关闭')
-      })
-      wsInstance.ws.value?.addEventListener('error', (e) => {
-        status.value = 'ERROR'
-        lastError.value = 'WebSocket 错误: ' + (e as unknown)?.toString()
-        console.log('WebSocket错误:', e)
-      })
-
-      wsInstance.ws.value?.addEventListener('message', (event) => {
-        lastServerMsg.value = event.data
-        try {
-          const obj = JSON.parse(event.data)
-          if (obj && typeof obj === 'object') {
-            console.log('WebSocket响应:', obj)
-            if ('code' in obj) {
-              if (obj.code === 403) {
-                connectionStore.hasAuth = false
-                // 直接跳转到 403 页面
-                router.replace('/forbidden')
-              } else if (obj.code === 201 || (obj.code >= 200 && obj.code < 300)) {
-                connectionStore.hasAuth = true
-                // 如果当前在 403 页面，可以跳回首页
-                if (router.currentRoute.value.path === '/forbidden') {
-                  router.replace('/')
-                }
-              }
-            }
-          }
-        } catch {
-          console.log('WebSocket响应:', event.data)
-        }
-      })
     } catch (e) {
       lastError.value = '获取设备ID或连接WebSocket失败: ' + (e as unknown)?.toString()
       status.value = 'ERROR'
     }
+  })
+
+  onBeforeUnmount(() => {
+    ws.value?.close()
+    ws.value = null
   })
 
   return {

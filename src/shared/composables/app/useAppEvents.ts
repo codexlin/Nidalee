@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/vue-query'
 // 创建一个模块级别的状态，用于跟踪监听器
 let unlisteners: (() => void)[] = []
 let isListeningStarted = false
+let listenerGeneration = 0
 let currentGameVersion: string | null = null
 
 /**
@@ -97,6 +98,7 @@ export function useAppEvents() {
 
   const stopListening = () => {
     if (!isListeningStarted) return
+    listenerGeneration += 1
     console.log(`[AppEvents] 停止 ${unlisteners.length} 个全局事件监听器...`)
     unlisteners.forEach((unlisten) => unlisten())
     unlisteners = []
@@ -106,33 +108,59 @@ export function useAppEvents() {
 
   const startListening = async () => {
     if (isListeningStarted) return
-    stopListening()
     isListeningStarted = true
+    const generation = ++listenerGeneration
+    const registered: (() => void)[] = []
+
+    const register = async <T>(event: string, handler: (event: Event<T>) => void) => {
+      const unlisten = await listen<T>(event, handler)
+      if (!isListeningStarted || listenerGeneration !== generation) {
+        unlisten()
+        return false
+      }
+      registered.push(unlisten)
+      return true
+    }
 
     try {
-      unlisteners = [
-        await listen('gameflow-phase-change', handleGameFlowPhaseChange),
-        await listen('gameflow-session-changed', handleGameflowSessionChanged),
-        await listen('lobby-change', handleLobbyChangeEvent),
-        await listen('champ-select-session-changed', handleChampSelectSessionChanged),
-        await listen('matchmaking-state-changed', handleMatchmakingStateChanged),
-        await listen('connection-state-changed', handleConnectionStateChangeDebounced),
-        await listen('game-finished', handleGameFinished),
-        await listen('team-analysis-data', handleTeamAnalysisData)
+      const registrations = [
+        () => register('gameflow-phase-change', handleGameFlowPhaseChange),
+        () => register('gameflow-session-changed', handleGameflowSessionChanged),
+        () => register('lobby-change', handleLobbyChangeEvent),
+        () => register('champ-select-session-changed', handleChampSelectSessionChanged),
+        () => register('matchmaking-state-changed', handleMatchmakingStateChanged),
+        () => register('connection-state-changed', handleConnectionStateChangeDebounced),
+        () => register('game-finished', handleGameFinished),
+        () => register('team-analysis-data', handleTeamAnalysisData)
       ]
+
+      for (const registration of registrations) {
+        if (!(await registration())) {
+          registered.forEach((unlisten) => unlisten())
+          return
+        }
+      }
+
+      unlisteners = registered
       console.log(`[AppEvents] ${unlisteners.length} 个全局事件监听已启动`)
 
       // 启动时，额外尝试从后端获取一次缓存数据
       console.log('[AppEvents] 🔄 尝试从后端缓存恢复数据...')
       const { invoke } = await import('@tauri-apps/api/core')
       const cachedData = await invoke<TeamAnalysisData | null>('get_cached_analysis_data')
+      if (!isListeningStarted || listenerGeneration !== generation) return
       if (cachedData) {
         console.log('[AppEvents] ✅ 找到缓存数据，正在恢复...')
         handleTeamAnalysisData({ payload: cachedData })
       }
     } catch (error) {
       console.error('[AppEvents] 启动全局事件监听失败:', error)
-      stopListening()
+      registered.forEach((unlisten) => unlisten())
+      if (listenerGeneration === generation) {
+        unlisteners = []
+        isListeningStarted = false
+        listenerGeneration += 1
+      }
     }
   }
 
