@@ -20,6 +20,13 @@ export const usePersonalMatchAnalysisStore = defineStore('personalMatchAnalysis'
   const diagnostics = computed(() => result.value?.diagnostics ?? [])
   const policy = computed(() => result.value?.policy ?? null)
   const aiInsight = computed(() => result.value?.aiInsight ?? null)
+  const evidence = computed(() => result.value?.evidence ?? null)
+
+  const getMatchEvidence = (gameId: number): MatchEvidence | null => {
+    const matches = result.value?.evidence?.matches
+    if (!matches?.length) return null
+    return matches.find((m) => m.gameId === gameId) ?? null
+  }
 
   const multiPositionView = computed<MultiPositionAnalysis | null>(() => {
     if (!result.value) return null
@@ -70,7 +77,9 @@ export const usePersonalMatchAnalysisStore = defineStore('personalMatchAnalysis'
     diagnostics,
     policy,
     aiInsight,
+    evidence,
     multiPositionView,
+    getMatchEvidence,
     setResult,
     setLoading,
     setError,
