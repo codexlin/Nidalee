@@ -23,6 +23,7 @@
 import { shallowRef, ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { useSettingsStore } from '@/shared/stores/ui/settingsStore'
+import { themeColors } from '@/lib/themeColor'
 import type { Chart, ChartConfiguration, ChartData, ChartOptions } from 'chart.js'
 
 type SupportedChartType = 'radar' | 'line' | 'bar' | 'pie'
@@ -45,25 +46,7 @@ const chartContainer = ref<HTMLCanvasElement>()
 const error = ref<string | null>(null)
 const chartInstance = shallowRef<Chart | null>(null)
 
-// 获取当前主题颜色
-const themeColors = computed(() => {
-  const root = document.documentElement
-  const computedStyle = getComputedStyle(root)
-
-  return {
-    primary: computedStyle.getPropertyValue('--primary').trim() || '#3b82f6',
-    primaryForeground: computedStyle.getPropertyValue('--primary-foreground').trim() || '#ffffff',
-    background: computedStyle.getPropertyValue('--background').trim() || '#ffffff',
-    foreground: computedStyle.getPropertyValue('--foreground').trim() || '#0f172a',
-    muted: computedStyle.getPropertyValue('--muted').trim() || '#f1f5f9',
-    mutedForeground: computedStyle.getPropertyValue('--muted-foreground').trim() || '#64748b',
-    border: computedStyle.getPropertyValue('--border').trim() || '#e2e8f0',
-    card: computedStyle.getPropertyValue('--card').trim() || '#ffffff',
-    cardForeground: computedStyle.getPropertyValue('--card-foreground').trim() || '#0f172a',
-    destructive: computedStyle.getPropertyValue('--destructive').trim() || '#ef4444',
-    destructiveForeground: computedStyle.getPropertyValue('--destructive-foreground').trim() || '#ffffff'
-  }
-})
+const resolvedThemeColors = computed(() => themeColors())
 
 // 动态导入图表库
 const loadChartLibrary = async () => {
@@ -90,8 +73,7 @@ const createChart = async () => {
       chartInstance.value.destroy()
     }
 
-    // 获取主题颜色
-    const colors = themeColors.value
+    const colors = resolvedThemeColors.value
 
     // 创建新图表
     chartInstance.value = new ChartCtor(chartContainer.value, {
@@ -106,7 +88,7 @@ const createChart = async () => {
             labels: {
               color: colors.foreground,
               font: {
-                family: 'Satoshi, "Noto Sans SC", "Microsoft YaHei", sans-serif'
+                family: '"HarmonyOS Sans SC", "Microsoft YaHei", sans-serif'
               }
             }
           },
@@ -120,11 +102,11 @@ const createChart = async () => {
             cornerRadius: 6,
             displayColors: true,
             titleFont: {
-              family: 'Satoshi, "Noto Sans SC", "Microsoft YaHei", sans-serif',
+              family: '"HarmonyOS Sans SC", "Microsoft YaHei", sans-serif',
               weight: 'bold'
             },
             bodyFont: {
-              family: 'Satoshi, "Noto Sans SC", "Microsoft YaHei", sans-serif'
+              family: '"HarmonyOS Sans SC", "Microsoft YaHei", sans-serif'
             }
           }
         },
@@ -139,7 +121,7 @@ const createChart = async () => {
                   ticks: {
                     color: colors.mutedForeground,
                     font: {
-                      family: 'Satoshi, "Noto Sans SC", "Microsoft YaHei", sans-serif'
+                      family: '"HarmonyOS Sans SC", "Microsoft YaHei", sans-serif'
                     }
                   }
                 },
@@ -151,7 +133,7 @@ const createChart = async () => {
                   ticks: {
                     color: colors.mutedForeground,
                     font: {
-                      family: 'Satoshi, "Noto Sans SC", "Microsoft YaHei", sans-serif'
+                      family: '"HarmonyOS Sans SC", "Microsoft YaHei", sans-serif'
                     }
                   }
                 }

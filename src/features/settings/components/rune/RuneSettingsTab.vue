@@ -1,9 +1,7 @@
 <template>
   <div class="space-y-6">
     <!-- 简单模式 -->
-    <Card
-      class="p-8 rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border"
-    >
+    <Card class="p-8">
       <div class="space-y-6">
         <div>
           <h2 class="text-xl font-bold text-primary flex items-center gap-2">
@@ -104,9 +102,7 @@
     </Card>
 
     <!-- 复杂模式 -->
-    <Card
-      class="p-8 rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border"
-    >
+    <Card class="p-8">
       <div class="space-y-6">
         <div class="flex items-center justify-between">
           <div>

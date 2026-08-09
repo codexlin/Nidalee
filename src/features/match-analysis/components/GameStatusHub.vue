@@ -81,7 +81,7 @@ const { handleMatchmaking } = useMatchmaking()
 // --- Matchmaking Timer Logic ---
 const matchmakingStartTime = ref<Date | null>(null)
 const now = ref(new Date())
-let timer: NodeJS.Timeout | null = null
+let timer: ReturnType<typeof setInterval> | null = null
 
 watch(
   () => matchmakingState.value?.searchState,

@@ -20,6 +20,7 @@
 import ThemedChart from '@/shared/components/charts/ThemedChart.vue'
 import { validateRadarData, generateChartErrorMessage } from '@/shared/utils/chartValidation'
 import { getPositionLabel } from '@/common/positionLabels'
+import { themeColor, themeColors } from '@/lib/themeColor'
 import type { TooltipItem } from 'chart.js'
 
 interface Props {
@@ -66,19 +67,20 @@ const chartData = computed(() => {
     calculateScore(props.positionData.winRate / 100, 0.6, 0.4)
   ]
 
+  const c = themeColors()
   return {
     labels: [...RADAR_LABELS],
     datasets: [
       {
         label: getPositionLabel(props.positionData.position),
         data: radarData,
-        backgroundColor: 'hsl(var(--primary) / 0.2)',
-        borderColor: 'hsl(var(--primary))',
+        backgroundColor: themeColor('--primary', 0.2),
+        borderColor: c.primary,
         borderWidth: 3,
-        pointBackgroundColor: 'hsl(var(--primary))',
-        pointBorderColor: 'hsl(var(--background))',
-        pointHoverBackgroundColor: 'hsl(var(--background))',
-        pointHoverBorderColor: 'hsl(var(--primary))',
+        pointBackgroundColor: c.primary,
+        pointBorderColor: c.background,
+        pointHoverBackgroundColor: c.background,
+        pointHoverBorderColor: c.primary,
         pointRadius: 6,
         pointHoverRadius: 8
       }
@@ -86,55 +88,58 @@ const chartData = computed(() => {
   }
 })
 
-const chartOptions = computed(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: false
-    },
-    tooltip: {
-      callbacks: {
-        label: (context: TooltipItem<'radar'>) => {
-          return `${RADAR_LABELS[context.dataIndex]}: ${context.parsed.r.toFixed(1)}/10`
+const chartOptions = computed(() => {
+  const c = themeColors()
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: TooltipItem<'radar'>) => {
+            return `${RADAR_LABELS[context.dataIndex]}: ${context.parsed.r.toFixed(1)}/10`
+          }
         }
       }
-    }
-  },
-  scales: {
-    r: {
-      beginAtZero: true,
-      min: 0,
-      max: 10,
-      stepSize: 2,
-      grid: {
-        color: 'hsl(var(--border))'
-      },
-      pointLabels: {
-        font: {
-          size: 12,
-          weight: 'bold' as const,
-          family: 'Satoshi, "Noto Sans SC", "Microsoft YaHei", sans-serif'
+    },
+    scales: {
+      r: {
+        beginAtZero: true,
+        min: 0,
+        max: 10,
+        stepSize: 2,
+        grid: {
+          color: c.border
         },
-        color: 'hsl(var(--foreground))'
-      },
-      ticks: {
-        font: {
-          size: 10,
-          family: 'Satoshi, "Noto Sans SC", "Microsoft YaHei", sans-serif'
+        pointLabels: {
+          font: {
+            size: 12,
+            weight: 'bold' as const,
+            family: '"HarmonyOS Sans SC", "Microsoft YaHei", sans-serif'
+          },
+          color: c.foreground
         },
-        color: 'hsl(var(--muted-foreground))'
+        ticks: {
+          font: {
+            size: 10,
+            family: '"HarmonyOS Sans SC", "Microsoft YaHei", sans-serif'
+          },
+          color: c.mutedForeground
+        }
+      }
+    },
+    elements: {
+      line: {
+        borderWidth: 3
+      },
+      point: {
+        radius: 6,
+        hoverRadius: 8
       }
     }
-  },
-  elements: {
-    line: {
-      borderWidth: 3
-    },
-    point: {
-      radius: 6,
-      hoverRadius: 8
-    }
   }
-}))
+})
 </script>

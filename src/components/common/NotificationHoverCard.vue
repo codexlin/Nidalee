@@ -1,29 +1,18 @@
 <template>
   <Popover>
     <PopoverTrigger as-child>
-      <button
-        class="cursor-pointer relative p-3 rounded-2xl bg-gradient-to-br from-background/80 to-muted/60 backdrop-blur-sm border border-border/50 hover:border-border transition-all duration-200 focus:outline-none shadow-lg hover:shadow-xl group"
-        aria-label="查看活动通知"
-      >
-        <Bell :size="17" class="text-muted-foreground group-hover:text-foreground transition-colors" />
+      <FloatIconButton aria-label="查看活动通知" title="查看活动通知">
+        <Bell :size="17" />
         <span
           v-if="unreadCount > 0"
-          class="absolute -top-1 -right-2 h-6 w-6 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center animate-bounce shadow-lg border-2 border-background"
+          class="absolute -top-1 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-destructive px-1 text-[10px] font-bold text-white shadow-md"
         >
           {{ unreadCount > 9 ? '9+' : unreadCount }}
         </span>
-        <div
-          v-if="unreadCount > 0"
-          class="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-ping opacity-20"
-        ></div>
-      </button>
+      </FloatIconButton>
     </PopoverTrigger>
 
-    <PopoverContent
-      :side="side"
-      :align="align"
-      class="!border-none w-[320px] p-0 shadow-2xl bg-background/95 backdrop-blur-lg rounded-2xl"
-    >
+    <PopoverContent :side="side" :align="align" class="surface-overlay w-[320px] !border-none p-0">
       <div class="px-4 py-3 border-b border-border/30 bg-gradient-to-r from-primary/5 to-primary/10 rounded-t-2xl">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-2">
@@ -111,6 +100,7 @@
 
 <script setup lang="ts">
 import { ArrowRight, Bell, CheckCheck } from 'lucide-vue-next'
+import FloatIconButton from '@/components/common/FloatIconButton.vue'
 
 withDefaults(
   defineProps<{

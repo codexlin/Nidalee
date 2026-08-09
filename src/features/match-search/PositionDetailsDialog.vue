@@ -4,9 +4,15 @@
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
           <div
-            class="h-10 w-10 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-lg font-bold"
+            class="h-10 w-10 rounded-md bg-primary/15 text-primary flex items-center justify-center text-lg font-bold overflow-hidden"
           >
-            {{ getPositionIcon(positionData.position) }}
+            <img
+              v-if="getRoleIconUrl(positionData.position)"
+              :src="getRoleIconUrl(positionData.position)"
+              :alt="getPositionLabel(positionData.position)"
+              class="h-6 w-6 object-contain"
+            />
+            <template v-else>{{ getPositionLabel(positionData.position).slice(0, 1) }}</template>
           </div>
           <div>
             <div>{{ getPositionLabel(positionData.position) }} 位置详情</div>
@@ -53,7 +59,7 @@
                     </div>
                     <div class="rounded-lg bg-muted/40 px-2 py-2">
                       <div class="text-lg font-semibold">{{ insight.deathBreakdown.gankOrMulti }}</div>
-                      <div class="text-xs text-muted-foreground">被抓/多人</div>
+                      <div class="text-xs text-muted-foreground">多人集火</div>
                     </div>
                     <div class="rounded-lg bg-muted/40 px-2 py-2">
                       <div class="text-lg font-semibold">{{ insight.deathBreakdown.towerOrMinion }}</div>
@@ -89,35 +95,26 @@
                     <div class="rounded-lg border px-2 py-2">
                       <div class="text-muted-foreground">小龙</div>
                       <div class="font-medium">
-                        到场 {{ insight.objectiveProcess.dragonsTaken }}/{{
-                          insight.objectiveProcess.dragonsSeen
-                        }}
+                        到场 {{ insight.objectiveProcess.dragonsTaken }}/{{ insight.objectiveProcess.dragonsSeen }}
                       </div>
                       <div class="text-muted-foreground">错过 {{ insight.objectiveProcess.dragonsMissed }}</div>
                     </div>
                     <div class="rounded-lg border px-2 py-2">
                       <div class="text-muted-foreground">先锋</div>
                       <div class="font-medium">
-                        到场 {{ insight.objectiveProcess.heraldsTaken }}/{{
-                          insight.objectiveProcess.heraldsSeen
-                        }}
+                        到场 {{ insight.objectiveProcess.heraldsTaken }}/{{ insight.objectiveProcess.heraldsSeen }}
                       </div>
                       <div class="text-muted-foreground">错过 {{ insight.objectiveProcess.heraldsMissed }}</div>
                     </div>
                     <div class="rounded-lg border px-2 py-2">
                       <div class="text-muted-foreground">大龙</div>
                       <div class="font-medium">
-                        到场 {{ insight.objectiveProcess.baronsTaken }}/{{
-                          insight.objectiveProcess.baronsSeen
-                        }}
+                        到场 {{ insight.objectiveProcess.baronsTaken }}/{{ insight.objectiveProcess.baronsSeen }}
                       </div>
                       <div class="text-muted-foreground">错过 {{ insight.objectiveProcess.baronsMissed }}</div>
                     </div>
                   </div>
-                  <div
-                    v-if="insight.objectiveProcess.missedActivity?.length"
-                    class="flex flex-wrap gap-1.5"
-                  >
+                  <div v-if="insight.objectiveProcess.missedActivity?.length" class="flex flex-wrap gap-1.5">
                     <Badge
                       v-for="bucket in insight.objectiveProcess.missedActivity"
                       :key="bucket.activity"
@@ -263,14 +260,8 @@
               </CardContent>
             </Card>
 
-            <PositionChampionPool
-              v-if="analysisSettings.displayFeatures.championPool"
-              :position-data="positionData"
-            />
-            <PositionTrendChart
-              v-if="analysisSettings.displayFeatures.trendCharts"
-              :position-data="positionData"
-            />
+            <PositionChampionPool v-if="analysisSettings.displayFeatures.championPool" :position-data="positionData" />
+            <PositionTrendChart v-if="analysisSettings.displayFeatures.trendCharts" :position-data="positionData" />
             <PositionComparisonChart
               v-if="analysisSettings.displayFeatures.positionComparison"
               :position-data="positionData"
@@ -351,6 +342,7 @@ import PositionComparisonChart from './PositionComparisonChart.vue'
 import PositionTrendChart from './PositionTrendChart.vue'
 import PositionChampionPool from './PositionChampionPool.vue'
 import { getPositionLabel } from '@/common/positionLabels'
+import { getRoleIconUrl } from '@/lib'
 import { useAnalysisSettingsStore } from '@/shared/stores/features/analysisSettingsStore'
 
 interface Props {
@@ -369,18 +361,4 @@ const insight = computed(() => props.positionData.processInsight ?? null)
 const processActions = computed(() => insight.value?.actions ?? [])
 
 const formatSigned = (value: number) => (value > 0 ? `+${value.toFixed(1)}` : value.toFixed(1))
-
-const getPositionIcon = (position: string): string => {
-  const icons: Record<string, string> = {
-    TOP: '上',
-    JUNGLE: '野',
-    MID: '中',
-    ADC: '下',
-    SUPPORT: '辅',
-    ARAM: '乱',
-    FLEX: '灵',
-    UNKNOWN: '?'
-  }
-  return icons[position] || getPositionLabel(position).slice(0, 1)
-}
 </script>

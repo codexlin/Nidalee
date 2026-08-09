@@ -1,21 +1,18 @@
 <template>
   <div class="px-4">
-    <div class="flex items-center space-x-2">
+    <div class="flex items-center gap-2">
       <NotificationHoverCard title="系统活动" side="bottom" align="end" />
 
-      <button
-        class="cursor-pointer p-3 rounded-xl bg-gradient-to-br from-background/80 to-muted/60 backdrop-blur-sm border border-border/50 hover:border-border transition-all duration-200 focus:outline-none shadow-lg hover:shadow-xl group"
-        @click="refreshData"
-        title="刷新数据"
-      >
-        <RefreshCw :size="17" class="text-muted-foreground group-hover:text-foreground transition-colors" />
-      </button>
+      <FloatIconButton title="刷新数据" @click="refreshData">
+        <RefreshCw :size="17" />
+      </FloatIconButton>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { RefreshCw } from 'lucide-vue-next'
+import FloatIconButton from '@/components/common/FloatIconButton.vue'
 
 const activityLogger = useActivityLogger()
 const connectionStore = useConnectionStore()

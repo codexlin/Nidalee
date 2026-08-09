@@ -25,11 +25,17 @@
           <div class="flex items-center gap-2">
             <div
               :class="[
-                'h-8 w-8 rounded-md flex items-center justify-center text-xs font-bold',
-                pos.position === mainPosition ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                'h-8 w-8 rounded-md flex items-center justify-center text-xs font-bold overflow-hidden',
+                pos.position === mainPosition ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
               ]"
             >
-              {{ getPositionIcon(pos.position) }}
+              <img
+                v-if="getRoleIconUrl(pos.position)"
+                :src="getRoleIconUrl(pos.position)"
+                :alt="getPositionLabel(pos.position)"
+                class="h-5 w-5 object-contain"
+              />
+              <template v-else>{{ getPositionLabel(pos.position).slice(0, 1) }}</template>
             </div>
             <div class="flex flex-col">
               <span class="text-sm font-medium">{{ getPositionLabel(pos.position) }}</span>
@@ -83,6 +89,7 @@
 <script setup lang="ts">
 import { Trophy, TrendingUp } from 'lucide-vue-next'
 import { getPositionLabel } from '@/common/positionLabels'
+import { getRoleIconUrl } from '@/lib'
 
 interface Props {
   positionStats: PositionStats[]
@@ -93,20 +100,6 @@ defineProps<Props>()
 const emit = defineEmits<{
   'view-details': [pos: PositionStats]
 }>()
-
-const getPositionIcon = (position: string): string => {
-  const icons: Record<string, string> = {
-    TOP: '上',
-    JUNGLE: '野',
-    MID: '中',
-    ADC: '下',
-    SUPPORT: '辅',
-    ARAM: '乱',
-    FLEX: '灵',
-    UNKNOWN: '?'
-  }
-  return icons[position] || getPositionLabel(position).slice(0, 1)
-}
 
 /** 第三列按位置换口径：辅助看视野，其余看总补刀（含野刀） */
 const tertiaryMetricLabel = (position: string): string => {

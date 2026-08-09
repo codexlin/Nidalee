@@ -82,8 +82,14 @@
               </span>
               <span
                 v-if="player.assignedPosition"
-                class="text-[8px] px-0.5 py-0 bg-muted/50 rounded text-muted-foreground flex-shrink-0"
+                class="inline-flex items-center gap-0.5 text-[8px] px-0.5 py-0 bg-muted/50 rounded text-muted-foreground flex-shrink-0"
               >
+                <img
+                  v-if="getRoleIconUrl(player.assignedPosition)"
+                  :src="getRoleIconUrl(player.assignedPosition)"
+                  alt=""
+                  class="h-2.5 w-2.5 object-contain opacity-80"
+                />
                 {{ getPositionLabel(player.assignedPosition) }}
               </span>
             </div>
@@ -262,7 +268,7 @@ import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { Badge } from '@/components/ui/badge'
 import { Lightbulb } from 'lucide-vue-next'
-import { getChampionIconUrl, getChampionName, getSpellMeta, getQueueName } from '@/lib'
+import { getChampionIconUrl, getChampionName, getRoleIconUrl, getSpellMeta, getQueueName } from '@/lib'
 import type { UIPlayerData } from '@/types/match-analysis'
 
 /** 对局分析玩家展示：基于 UIPlayerData，兼容选人阶段的 assignedPosition */
