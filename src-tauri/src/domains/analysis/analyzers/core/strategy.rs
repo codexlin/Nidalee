@@ -28,8 +28,10 @@ pub enum AnalysisMode {
     FlexRanked,
     /// 混合排位分析 - 分析单排+灵活组排对局（420+440）
     MixedRanked,
-    /// 大乱斗分析 - 只分析大乱斗对局（450）
+    /// 大乱斗分析 - 只分析大乱斗对局（450）；保留兼容，新产品用 Normals
     Aram,
+    /// 普通模式 - 排除排位（420/440），含匹配 / 大乱斗 / 娱乐局等
+    Normals,
     /// 全部模式分析 - 分析所有对局
     AllModes,
 }
@@ -42,8 +44,14 @@ impl AnalysisMode {
             AnalysisMode::FlexRanked => "灵活组排分析",
             AnalysisMode::MixedRanked => "混合排位分析",
             AnalysisMode::Aram => "大乱斗分析",
+            AnalysisMode::Normals => "普通模式分析",
             AnalysisMode::AllModes => "全部模式分析",
         }
+    }
+
+    /// 是否排除排位队列（普通模式）
+    pub fn excludes_ranked(&self) -> bool {
+        matches!(self, AnalysisMode::Normals)
     }
 
     /// 获取对应的分析策略（基于深度设置）
@@ -59,6 +67,7 @@ impl AnalysisMode {
             (AnalysisMode::FlexRanked, AnalysisDepth::Simple) => AnalysisStrategy::Other,
             (AnalysisMode::MixedRanked, AnalysisDepth::Simple) => AnalysisStrategy::Other,
             (AnalysisMode::Aram, _) => AnalysisStrategy::Other,
+            (AnalysisMode::Normals, _) => AnalysisStrategy::Other,
             (AnalysisMode::AllModes, _) => AnalysisStrategy::Other,
         }
     }
@@ -68,13 +77,14 @@ impl AnalysisMode {
         self.to_analysis_strategy(AnalysisDepth::Deep)
     }
 
-    /// 获取需要过滤的队列ID列表
+    /// 获取需要过滤的队列ID列表（允许列表）；空 = 不过滤或由 excludes_ranked 决定
     pub fn queue_ids(&self) -> Vec<i64> {
         match self {
             AnalysisMode::SoloRanked => vec![420],
             AnalysisMode::FlexRanked => vec![440],
             AnalysisMode::MixedRanked => vec![420, 440],
             AnalysisMode::Aram => vec![450],
+            AnalysisMode::Normals => vec![], // 语义为排除排位，见 AnalysisPolicy::exclude_ranked
             AnalysisMode::AllModes => vec![], // 空列表表示不过滤
         }
     }

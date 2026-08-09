@@ -340,9 +340,13 @@ pub struct AnalysisPolicy {
     /// 实际生效的深度（可能因娱乐模式/开关而降级）
     pub effective_depth: AnalysisDepth,
 
-    /// 最终选中的队列集合；空表示不过滤
+    /// 最终选中的队列集合；空表示不过滤（除非 `exclude_ranked`）
     #[ts(type = "number[]")]
     pub selected_queue_ids: Vec<i64>,
+
+    /// 普通模式：排除排位队列（420/440），与 allowlist 互斥使用
+    #[serde(default)]
+    pub exclude_ranked: bool,
 
     /// 队列范围
     pub queue_scope: AnalysisQueueScope,
@@ -377,8 +381,16 @@ impl AnalysisPolicy {
         self.diagnostics.iter().any(|d| d.code == code)
     }
 
+    /// 是否启用了队列过滤（allowlist 或排除排位）
+    pub fn has_queue_filter(&self) -> bool {
+        self.exclude_ranked || !self.selected_queue_ids.is_empty()
+    }
+
     /// 该队列是否参与分析
     pub fn includes_queue(&self, queue_id: i64) -> bool {
+        if self.exclude_ranked {
+            return !is_ranked_queue(queue_id);
+        }
         self.selected_queue_ids.is_empty() || self.selected_queue_ids.contains(&queue_id)
     }
 

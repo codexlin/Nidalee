@@ -191,7 +191,7 @@ impl<S: MatchDataSource> MatchFetcher<S> {
 
         // 仅在有队列过滤时报告「范围内不足」；无过滤时场数不够只是历史本身偏少
         let insufficient_matches_in_scope =
-            !policy.selected_queue_ids.is_empty() && display_games.len() < display_target;
+            policy.has_queue_filter() && display_games.len() < display_target;
         if insufficient_matches_in_scope {
             diagnostics.push(FetchDiagnostic::new(
                 FetchStage::List,
@@ -297,10 +297,10 @@ fn count_to_lcu_end_index(count: usize) -> usize {
 
 /// 有队列过滤时 over-fetch 到 LCU 上限，尽量在本地凑满展示场数；无过滤则按目标场数请求。
 fn resolve_list_fetch_count(policy: &AnalysisPolicy, display_target: usize) -> usize {
-    if policy.selected_queue_ids.is_empty() {
-        display_target
-    } else {
+    if policy.has_queue_filter() {
         LCU_MATCH_LIST_MAX_COUNT
+    } else {
+        display_target
     }
 }
 
