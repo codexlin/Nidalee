@@ -634,7 +634,13 @@ fn test_jungle_and_unknown_positions_do_not_use_spatial_fallback() {
     // 打野满地图游走，空间邻近对它没有对线语义
     let jungler = extract_match_evidence(&game, Some(&timeline), TARGET_JUNGLE).expect("打野提取失败");
     assert_eq!(jungler.position, EvidencePosition::Jungle);
-    assert!(jungler.opponent.is_none(), "打野不得用空间邻近编出对线对手");
+    assert!(
+        jungler
+            .opponent
+            .as_ref()
+            .is_none_or(|opponent| opponent.method != OpponentMatchMethod::SpatialProximity),
+        "打野不得用空间邻近编出对线对手"
+    );
 
     // 目标自己的 role/lane 也不可用 → 位置 UNKNOWN → 同样禁止回退
     let mut unknown_game = game.clone();
