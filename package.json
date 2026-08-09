@@ -1,6 +1,6 @@
 {
   "name": "nidalee",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.5",
@@ -10,15 +10,17 @@
   "scripts": {
     "dev": "vite",
     "dev:app": "tauri dev",
-    "build": "pnpm lint && pnpm build-only",
+    "build": "pnpm run lint && pnpm run format:check && pnpm run type-check && pnpm run build-only",
     "build:analyze": "cross-env ANALYZE=true pnpm build-only",
-    "build:prod": "NODE_ENV=production pnpm build",
+    "build:prod": "cross-env NODE_ENV=production pnpm run build",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "types": "cd src-tauri && cargo test -- --nocapture && cd .. && node scripts/sync-types.mjs",
-    "lint": "oxlint src/ --fix",
-    "format": "oxfmt src/"
+    "lint": "oxlint src/",
+    "lint:fix": "oxlint src/ --fix",
+    "format": "oxfmt src/",
+    "format:check": "oxfmt src/ --check"
   },
   "dependencies": {
     "@tanstack/vue-query": "^5.83.0",
