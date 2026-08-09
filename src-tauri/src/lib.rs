@@ -129,11 +129,17 @@ pub fn run() {
             common::commands::game::save_game_path,
             common::commands::game::get_saved_game_path,
             // 数据收集测试命令
+            #[cfg(debug_assertions)]
             common::commands::data_collection::generate_test_data_file,
+            #[cfg(debug_assertions)]
             common::commands::data_collection::analyze_data_file,
+            #[cfg(debug_assertions)]
             common::commands::threshold_analyzer::analyze_thresholds_from_raw_data,
+            #[cfg(debug_assertions)]
             common::commands::data_collection::collect_raw_match_data,
+            #[cfg(debug_assertions)]
             common::commands::data_collection::analyze_raw_match_timeline,
+            #[cfg(debug_assertions)]
             common::commands::data_collection::show_raw_json_structure,
             // 分页探针仅用于调试验证 begIndex；生产构建不注册
             #[cfg(debug_assertions)]
