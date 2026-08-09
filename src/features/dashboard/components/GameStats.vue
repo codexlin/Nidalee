@@ -1,7 +1,5 @@
 <template>
-  <Card
-    class="p-8 rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border"
-  >
+  <Card class="p-8">
     <div class="space-y-6">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -10,18 +8,12 @@
               <BarChart class="h-5 w-5 mr-2 text-muted-foreground" />
               游戏统计
             </span>
-            <Badge v-if="showAiBadge" variant="outline" class="h-5 px-1.5 text-[11px] font-normal">
-              AI 已就绪
-            </Badge>
+            <Badge v-if="showAiBadge" variant="outline" class="h-5 px-1.5 text-xs font-normal"> AI 已就绪 </Badge>
           </h3>
           <p class="text-sm text-muted-foreground">近期游戏数据概览</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <Select
-            v-if="selectedMatchMode"
-            :model-value="selectedMatchMode"
-            @update:model-value="handleModeSelect"
-          >
+          <Select v-if="selectedMatchMode" :model-value="selectedMatchMode" @update:model-value="handleModeSelect">
             <SelectTrigger class="w-[180px] h-9">
               <SelectValue placeholder="选择模式" />
             </SelectTrigger>
@@ -32,7 +24,11 @@
             </SelectContent>
           </Select>
 
-          <Select v-if="matchCount != null" :model-value="String(matchCount)" @update:model-value="handleCountSelect">
+          <Select
+            v-if="matchCount !== null && matchCount !== undefined"
+            :model-value="String(matchCount)"
+            @update:model-value="handleCountSelect"
+          >
             <SelectTrigger class="w-[100px] h-9">
               <SelectValue placeholder="场数" />
             </SelectTrigger>
@@ -67,6 +63,16 @@
             <RefreshCw :class="['h-4 w-4 mr-2', { 'animate-spin': matchHistoryLoading }]" />
             {{ matchHistoryLoading ? '加载中...' : '刷新' }}
           </Button>
+
+          <FloatIconButton
+            v-if="canExportPoster"
+            :title="posterExporting ? '生成中…' : '导出海报'"
+            :disabled="posterExporting || !isConnected || matchHistoryLoading"
+            @click="$emit('export-poster')"
+          >
+            <Loader2 v-if="posterExporting" class="h-4 w-4 animate-spin" />
+            <ImageDown v-else class="h-4 w-4" />
+          </FloatIconButton>
         </div>
       </div>
 
@@ -105,11 +111,7 @@
           {{ emptyDetail }}
         </p>
         <div class="mt-5 flex flex-wrap items-center justify-center gap-2">
-          <Button
-            v-if="selectedMatchMode && selectedMatchMode !== 'all'"
-            size="sm"
-            @click="emit('mode-change', 'all')"
-          >
+          <Button v-if="selectedMatchMode && selectedMatchMode !== 'all'" size="sm" @click="emit('mode-change', 'all')">
             切换到全部模式
           </Button>
           <Button
@@ -125,7 +127,7 @@
 
       <!-- 有数据时展示 -->
       <div v-else class="space-y-6">
-        <div class="rounded-xl border border-border/70 bg-card/70 px-4 py-3.5">
+        <div class="surface-inset px-4 py-3.5">
           <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
             <div>
               <p class="text-xs text-muted-foreground mb-1">胜率</p>
@@ -189,15 +191,18 @@
           </div>
 
           <div v-if="hasFavoriteChampions" class="space-y-3">
-            <h4 class="font-semibold flex items-center">
-              <Star class="h-5 w-5 mr-2 text-muted-foreground" />
-              常用英雄
-            </h4>
+            <div class="space-y-1">
+              <h4 class="text-base font-semibold flex items-center">
+                <Star class="h-5 w-5 mr-2 text-muted-foreground" />
+                常用英雄
+              </h4>
+              <p class="text-xs text-muted-foreground">按最近游玩场次排序</p>
+            </div>
             <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
               <div
                 v-for="champion in favoriteChampions"
                 :key="champion.championId"
-                class="flex flex-col items-center px-2 py-2.5 rounded-lg border border-border/80 hover:bg-muted/40 transition-colors"
+                class="surface-inset flex flex-col items-center px-2 py-2.5 transition-colors hover:bg-muted/40"
               >
                 <img
                   v-if="champion.championId"
@@ -221,87 +226,82 @@
                 >
                   {{ champion.winRate.toFixed(0) }}%
                 </p>
-                <p class="text-[10px] text-muted-foreground tabular-nums">{{ champion.games }}场</p>
+                <p class="text-xs text-muted-foreground tabular-nums">{{ champion.games }}场</p>
               </div>
             </div>
           </div>
         </div>
 
         <div v-if="matchStatistics?.recentPerformance?.length" class="space-y-4">
-          <h4 class="font-semibold flex items-center">
-            <Calendar class="h-5 w-5 mr-2 text-muted-foreground" />
-            最近对局
-          </h4>
+          <div class="space-y-1">
+            <h4 class="text-base font-semibold flex items-center">
+              <Calendar class="h-5 w-5 mr-2 text-muted-foreground" />
+              最近对局
+            </h4>
+            <p class="text-xs text-muted-foreground">右下角为自研评级（S+～D）。点击查看详情。</p>
+          </div>
           <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))">
             <div
               v-for="game in (matchStatistics?.recentPerformance || []).slice(0, showCount)"
               :key="game.gameCreation"
-              class="group relative flex bg-gradient-to-br from-card/80 to-muted/60 border rounded-lg cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md backdrop-blur-sm"
+              class="surface-inset-interactive group relative flex cursor-pointer overflow-hidden"
               @click="openGameDetail(game)"
             >
-              <div :class="game.win ? 'bg-green-500' : 'bg-red-500'" class="w-1 rounded-l-lg"></div>
-              <div class="flex-1 p-3">
+              <div :class="game.win ? 'bg-emerald-600' : 'bg-rose-600'" class="w-1 shrink-0"></div>
+              <!-- 大号衬底评级字 -->
+              <span
+                class="pointer-events-none absolute -right-1 -bottom-2 z-0 select-none font-black leading-none tabular-nums -rotate-12 origin-bottom-right"
+                :class="[gradeWatermarkSizeClass(displayGrade(game)), gradeWatermarkClass(displayGrade(game))]"
+                aria-hidden="true"
+              >
+                {{ displayGrade(game) }}
+              </span>
+              <div class="relative z-10 flex-1 p-3">
                 <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
                     <img
                       v-if="game.championId"
                       :src="getChampionIconUrl(game.championId)"
                       alt=""
-                      class="h-9 w-9 rounded-full border-2 border-primary/20"
+                      class="h-9 w-9 shrink-0 rounded-full border-2 border-primary/20"
                     />
-                    <span class="font-semibold text-base">{{ getChampionName(game.championId) }}</span>
+                    <span class="font-semibold text-sm truncate">{{ getChampionName(game.championId) }}</span>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs text-muted-foreground tabular-nums">{{
-                      formatGameTime(game.gameDuration ?? 0)
-                    }}</span>
-                    <Badge :variant="game.win ? 'default' : 'destructive'" class="text-xs px-1.5 py-0 h-5">
+                  <div class="flex items-center gap-2 shrink-0">
+                    <span class="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+                      <Timer class="w-3 h-3 shrink-0" />
+                      {{ formatGameTime(game.gameDuration ?? 0) }}
+                    </span>
+                    <span
+                      class="h-5 px-1.5 inline-flex items-center rounded-md text-xs font-medium text-white"
+                      :class="game.win ? 'bg-emerald-600' : 'bg-rose-600'"
+                    >
                       {{ game.win ? '胜' : '负' }}
-                    </Badge>
+                    </span>
                   </div>
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="font-mono font-bold text-base tabular-nums">
+                <div class="pr-6">
+                  <span class="font-mono font-bold text-base tabular-nums leading-none">
                     <span class="text-red-500">{{ game.kills }}</span>
-                    <span class="text-gray-500">/</span>
-                    <span class="text-gray-500">{{ game.deaths }}</span>
-                    <span class="text-gray-500">/</span>
+                    <span class="text-muted-foreground/50">/</span>
+                    <span class="text-muted-foreground">{{ game.deaths }}</span>
+                    <span class="text-muted-foreground/50">/</span>
                     <span class="text-blue-500">{{ game.assists }}</span>
                   </span>
-                  <div
-                    v-if="getPerformanceRating(game)"
-                    class="px-2 py-0.5 rounded text-xs font-medium"
-                    :class="[
-                      getPerformanceRating(game).includes('超神') || getPerformanceRating(game).includes('亮眼')
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : '',
-                      getPerformanceRating(game).includes('不错')
-                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        : '',
-                      getPerformanceRating(game).includes('需要加油')
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        : '',
-                      getPerformanceRating(game).includes('五杀') || getPerformanceRating(game).includes('四杀')
-                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                        : ''
-                    ]"
-                  >
-                    {{ getPerformanceRating(game) }}
+                  <div class="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                    <span class="flex items-center gap-1">
+                      <Clock class="w-3 h-3 shrink-0" />
+                      {{ formatRelativeTime(game.gameCreation ?? 0) }}
+                    </span>
+                    <span class="text-border">·</span>
+                    <span class="truncate">{{ getQueueName(game.queueId ?? 0) }}</span>
                   </div>
-                </div>
-                <div class="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                  <span class="flex items-center gap-1">
-                    <Clock class="w-3 h-3" />
-                    {{ formatRelativeTime(game.gameCreation ?? 0) }}
-                  </span>
-                  <span>·</span>
-                  <span>{{ getQueueName(game.queueId ?? 0) }}</span>
                 </div>
               </div>
             </div>
           </div>
           <div v-if="(matchStatistics?.recentPerformance?.length || 0) > showCount" class="flex justify-center mt-4">
-            <Button @click="loadMore" variant="outline" size="sm"> 加载更多 </Button>
+            <FloatIconButton variant="pill" title="加载更多" @click="loadMore"> 加载更多 </FloatIconButton>
           </div>
         </div>
       </div>
@@ -313,16 +313,13 @@
 
 <script setup lang="ts">
 import { getChampionIconUrl, getChampionName, getQueueName } from '@/lib'
-import { BarChart, Calendar, Clock, Gamepad2, Loader2, RefreshCw, Star, Wifi } from 'lucide-vue-next'
+import { BarChart, Calendar, Clock, Gamepad2, ImageDown, Loader2, RefreshCw, Star, Timer, Wifi } from 'lucide-vue-next'
+import FloatIconButton from '@/components/common/FloatIconButton.vue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { AcceptableValue } from 'reka-ui'
-import {
-  MATCH_MODE_OPTIONS,
-  getMatchModeLabel,
-  isMatchModeKey,
-  type MatchModeKey
-} from '@/common/queueCatalog'
+import { MATCH_MODE_OPTIONS, getMatchModeLabel, isMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
+import { displayGrade, gradeWatermarkClass, gradeWatermarkSizeClass } from '../utils/matchGrade'
 
 const dialogOpen = ref(false)
 const selectedGame = ref<MatchPerformance | null>(null)
@@ -351,17 +348,19 @@ const props = defineProps<{
   aiReady?: boolean
   /** 近况/展示场数（本页统计覆盖，含分路与常用英雄） */
   displayGames?: number | null
+  canExportPoster?: boolean
+  posterExporting?: boolean
 }>()
 
 const showRememberOption = computed(() => props.selectedMatchMode !== undefined && props.matchCount !== undefined)
 
-const isFilterEmpty = computed(
-  () => !!props.matchStatistics && (props.matchStatistics.totalGames || 0) === 0
-)
+const isFilterEmpty = computed(() => !!props.matchStatistics && (props.matchStatistics.totalGames || 0) === 0)
 
 const hasGames = computed(() => (props.matchStatistics?.totalGames || 0) > 0)
 const resolvedDisplayGames = computed(() => {
-  if (props.displayGames != null && props.displayGames > 0) return props.displayGames
+  if (props.displayGames !== null && props.displayGames !== undefined && props.displayGames > 0) {
+    return props.displayGames
+  }
   return props.matchStatistics?.totalGames || 0
 })
 const showAiBadge = computed(() => hasGames.value && !!props.aiReady)
@@ -371,7 +370,7 @@ const sampleShortfallTip = computed(() => {
   if (!hasGames.value) return ''
   const n = resolvedDisplayGames.value
   const requested = props.matchCount
-  if (requested == null || n <= 0 || n >= requested) return ''
+  if (requested === null || requested === undefined || n <= 0 || n >= requested) return ''
   const mode =
     props.selectedMatchMode && props.selectedMatchMode !== 'all'
       ? `「${getMatchModeLabel(props.selectedMatchMode)}」`
@@ -412,9 +411,7 @@ const emptyDetail = computed(() => {
 })
 
 /** Dashboard 常用英雄：最多 Top 5（含 1 场） */
-const favoriteChampions = computed(() =>
-  (props.matchStatistics?.favoriteChampions || []).slice(0, 5)
-)
+const favoriteChampions = computed(() => (props.matchStatistics?.favoriteChampions || []).slice(0, 5))
 const hasFavoriteChampions = computed(() => favoriteChampions.value.length > 0)
 const isRankedFilterMode = computed(() => {
   const mode = props.selectedMatchMode
@@ -427,21 +424,10 @@ const hasIdentitySection = computed(() => {
   }
   return (
     props.analysisTraits?.some(
-      (t) =>
-        t.supportsConclusion &&
-        t.key.startsWith('mode_affinity') &&
-        t.key !== 'mode_affinity_ranked'
+      (t) => t.supportsConclusion && t.key.startsWith('mode_affinity') && t.key !== 'mode_affinity_ranked'
     ) ?? false
   )
 })
-
-/** MatchPerformance 运行时可能附带表现评级字段 */
-const getPerformanceRating = (game: MatchPerformance): string => {
-  if ('performanceRating' in game && typeof game.performanceRating === 'string') {
-    return game.performanceRating
-  }
-  return ''
-}
 
 const openGameDetail = (game: MatchPerformance) => {
   selectedGame.value = game
@@ -453,6 +439,7 @@ const emit = defineEmits<{
   (e: 'mode-change', mode: MatchModeKey): void
   (e: 'count-change', count: number): void
   (e: 'remember-change', enabled: boolean): void
+  (e: 'export-poster'): void
 }>()
 
 const handleModeSelect = (value: AcceptableValue) => {

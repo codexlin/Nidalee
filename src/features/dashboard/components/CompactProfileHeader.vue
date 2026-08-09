@@ -1,15 +1,7 @@
 <template>
-  <Card
-    class="relative overflow-hidden rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border"
-  >
-    <!-- 装饰性光晕 (右下角) -->
-    <div class="absolute -bottom-20 -right-20 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
-    <!-- 装饰性光晕 (左上角，更淡) -->
-    <div class="absolute -top-16 -left-16 w-48 h-48 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
-
+  <Card class="relative overflow-hidden px-5">
     <!-- 主内容：左中右三栏布局 -->
-    <div class="relative px-5">
+    <div class="relative">
       <div class="flex items-center justify-between gap-6">
         <!-- 左栏：头像 + 基本信息 -->
         <div class="flex items-center gap-4 shrink-0">
@@ -55,16 +47,11 @@
                 {{ isConnected ? '已连接' : '未连接' }}
               </Badge>
             </div>
-            <div class="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+            <div class="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap">
+              <img v-if="challengeCrystalIconUrl" :src="challengeCrystalIconUrl" alt="" class="h-4 w-4 shrink-0" />
               <span>
                 挑战积分:
                 <span class="text-foreground font-medium tabular-nums">{{ challengePointsLabel }}</span>
-              </span>
-              <span
-                v-if="challengeCrystalLabel"
-                class="text-xs px-1.5 py-0.5 rounded bg-muted text-foreground/80 font-medium"
-              >
-                {{ challengeCrystalLabel }}
               </span>
             </div>
             <div v-if="hasXpProgress" class="mt-2 w-44 max-w-full">
@@ -78,7 +65,7 @@
                   :style="{ width: `${xpPercent}%` }"
                 />
               </div>
-              <div class="flex items-center justify-between text-[11px] text-muted-foreground/80 mt-1 tabular-nums">
+              <div class="flex items-center justify-between text-xs text-muted-foreground/80 mt-1 tabular-nums">
                 <span>{{ xpSinceLabel }}</span>
                 <span>还需 {{ xpRemainingLabel }}</span>
               </div>
@@ -90,16 +77,18 @@
         <div class="flex-1 flex items-center justify-center gap-4">
           <!-- 单双排位（左侧） -->
           <div class="flex items-center gap-3 px-4 rounded-xl">
-            <div class="relative shrink-0 p-1.5">
-              <img
-                v-if="soloRank.tier !== 'UNRANKED'"
-                :src="getTierIconUrl(soloRank.tier)"
-                class="h-14 w-14 breath-glow"
-                :style="getRankGlowStyle(soloRank.tier)"
-              />
+            <div class="relative shrink-0">
+              <template v-if="soloRank.tier !== 'UNRANKED'">
+                <span
+                  class="rank-glow-aura absolute left-1/2 top-1/2 size-16"
+                  :style="getRankGlowStyle(soloRank.tier)"
+                  aria-hidden="true"
+                />
+                <img :src="getTierIconUrl(soloRank.tier)" class="relative z-10 h-20 w-20" alt="" />
+              </template>
               <div
                 v-else
-                class="h-14 w-14 rounded-full bg-muted/40 flex items-center justify-center border border-border/30"
+                class="h-20 w-20 rounded-full bg-muted/40 flex items-center justify-center border border-border/30"
               >
                 <Shield class="h-6 w-6 text-muted-foreground" />
               </div>
@@ -167,16 +156,18 @@
                 >
               </span>
             </div>
-            <div class="relative shrink-0 p-1.5">
-              <img
-                v-if="flexRank.tier !== 'UNRANKED'"
-                :src="getTierIconUrl(flexRank.tier)"
-                class="h-14 w-14 breath-glow"
-                :style="getRankGlowStyle(flexRank.tier)"
-              />
+            <div class="relative shrink-0">
+              <template v-if="flexRank.tier !== 'UNRANKED'">
+                <span
+                  class="rank-glow-aura absolute left-1/2 top-1/2 size-16"
+                  :style="getRankGlowStyle(flexRank.tier)"
+                  aria-hidden="true"
+                />
+                <img :src="getTierIconUrl(flexRank.tier)" class="relative z-10 h-20 w-20" alt="" />
+              </template>
               <div
                 v-else
-                class="h-14 w-14 rounded-full bg-muted/40 flex items-center justify-center border border-border/30"
+                class="h-20 w-20 rounded-full bg-muted/40 flex items-center justify-center border border-border/30"
               >
                 <Shield class="h-6 w-6 text-muted-foreground" />
               </div>
@@ -184,24 +175,24 @@
           </div>
         </div>
 
-        <!-- 右栏：今日统计（严格对齐，Grid 布局） -->
-        <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm items-center">
-          <span class="text-muted-foreground">今日对局</span>
-          <span class="font-semibold text-foreground text-right tabular-nums">{{ todayMatches?.total || 0 }}</span>
+        <!-- 右栏：今日统计（标签 xs，数值 lg） -->
+        <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 items-center">
+          <span class="text-xs text-muted-foreground">今日对局</span>
+          <span class="text-lg font-semibold text-foreground text-right tabular-nums leading-none">{{
+            todayMatches?.total || 0
+          }}</span>
 
-          <span class="text-muted-foreground">今日战绩</span>
-          <div class="flex items-center justify-end gap-1 tabular-nums">
-            <span class="font-semibold text-green-600 dark:text-green-400">{{ todayMatches?.wins || 0 }}</span>
-            <span class="text-muted-foreground">/</span>
-            <span class="font-semibold text-red-600 dark:text-red-400">{{ todayMatches?.losses || 0 }}</span>
+          <span class="text-xs text-muted-foreground">今日战绩</span>
+          <div class="flex items-center justify-end gap-1 text-lg font-semibold tabular-nums leading-none">
+            <span class="text-green-600 dark:text-green-400">{{ todayMatches?.wins || 0 }}</span>
+            <span class="text-sm font-normal text-muted-foreground">/</span>
+            <span class="text-red-600 dark:text-red-400">{{ todayMatches?.losses || 0 }}</span>
           </div>
 
-          <span class="text-muted-foreground">今日胜率</span>
-          <span
-            class="font-semibold text-right tabular-nums"
-            :class="todayWinRateClass"
-            >{{ todayWinRateLabel }}</span
-          >
+          <span class="text-xs text-muted-foreground">今日胜率</span>
+          <span class="text-lg font-semibold text-right tabular-nums leading-none" :class="todayWinRateClass">{{
+            todayWinRateLabel
+          }}</span>
         </div>
       </div>
     </div>
@@ -210,7 +201,7 @@
 
 <script setup lang="ts">
 import type { StyleValue } from 'vue'
-import { getProfileIconUrl, getTierIconUrl } from '@/lib'
+import { getChallengeCrystalIconUrl, getProfileIconUrl, getTierIconUrl } from '@/lib'
 import { Shield, User, Users } from 'lucide-vue-next'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -262,9 +253,7 @@ const todayWinRate = computed(() => {
   return Math.round((wins / total) * 100)
 })
 
-const todayWinRateLabel = computed(() =>
-  todayWinRate.value === null ? '—' : `${todayWinRate.value}%`
-)
+const todayWinRateLabel = computed(() => (todayWinRate.value === null ? '—' : `${todayWinRate.value}%`))
 
 const todayWinRateClass = computed(() => {
   if (todayWinRate.value === null) return 'text-muted-foreground'
@@ -275,18 +264,14 @@ const todayWinRateClass = computed(() => {
 
 const challengePointsLabel = computed(() => {
   const raw = props.summonerInfo?.challengePoints
-  if (raw == null || raw === '') return '—'
+  if (raw === null || raw === undefined || raw === '') return '—'
   const num = Number(raw)
   if (!Number.isFinite(num)) return formatChallengePoints(String(raw))
   if (num <= 0) return '—'
   return num >= 1000 ? formatChallengePoints(String(Math.trunc(num))) : num.toLocaleString()
 })
 
-const challengeCrystalLabel = computed(() => {
-  const level = props.summonerInfo?.challengeCrystalLevel
-  if (!level) return ''
-  return formatRankTierShort(level)
-})
+const challengeCrystalIconUrl = computed(() => getChallengeCrystalIconUrl(props.summonerInfo?.challengeCrystalLevel))
 
 const xpSince = computed(() => props.summonerInfo?.xpSinceLastLevel ?? 0)
 const xpRemaining = computed(() => props.summonerInfo?.xpUntilNextLevel ?? 0)
@@ -335,29 +320,29 @@ const getRankGlowStyle = (tier: string): StyleValue => {
 </script>
 
 <style scoped>
-@keyframes breath-glow {
-  0% {
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.1),
-      0 0 8px 1px var(--glow-color),
-      0 0 16px 2px var(--glow-color-a);
+@keyframes rank-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: translate(-50%, -50%) scale(0.96);
   }
   50% {
-    box-shadow:
-      0 0 0 2px rgba(255, 255, 255, 0.2),
-      0 0 14px 3px var(--glow-color),
-      0 0 28px 4px var(--glow-color-a);
-  }
-  100% {
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.1),
-      0 0 8px 1px var(--glow-color),
-      0 0 16px 2px var(--glow-color-a);
+    opacity: 0.42;
+    transform: translate(-50%, -50%) scale(1.04);
   }
 }
 
-.breath-glow {
-  animation: breath-glow 2.4s ease-in-out infinite;
-  border-radius: 50%;
+.rank-glow-aura {
+  z-index: 0;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--glow-color) 55%, transparent) 0%,
+    color-mix(in oklab, var(--glow-color) 22%, transparent) 48%,
+    transparent 74%
+  );
+  filter: blur(8px);
+  animation: rank-glow-pulse 2.4s ease-in-out infinite;
+  pointer-events: none;
 }
 </style>
