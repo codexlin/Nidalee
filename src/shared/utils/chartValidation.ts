@@ -103,9 +103,7 @@ export function validateRadarData(stats: PlayerMatchStats | null | undefined): C
 /**
  * 验证趋势图数据
  */
-export function validateTrendData(
-  trendData: WinRateTrendPoint[] | null | undefined
-): ChartDataValidation {
+export function validateTrendData(trendData: WinRateTrendPoint[] | null | undefined): ChartDataValidation {
   const errors: string[] = []
   const warnings: string[] = []
 

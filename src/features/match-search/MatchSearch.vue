@@ -8,11 +8,7 @@
         <TabsTrigger value="basic">基础统计</TabsTrigger>
         <TabsTrigger value="positions">
           位置分组
-          <Badge
-            v-if="searchPositionAnalysis?.positionStats.length"
-            variant="secondary"
-            class="ml-2"
-          >
+          <Badge v-if="searchPositionAnalysis?.positionStats.length" variant="secondary" class="ml-2">
             {{ searchPositionAnalysis.positionStats.length }}
           </Badge>
         </TabsTrigger>

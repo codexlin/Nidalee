@@ -59,9 +59,7 @@ export function useChampionSummaryQuery(): QueryResult<ChampionInfo[]> {
  * 从 Community Dragon API 获取
  * 使用静态缓存（英雄详情很少变化）
  */
-export function useChampionDetailsQuery(
-  championId: Ref<number | null>
-): QueryResult<CommunityDragonChampion | null> {
+export function useChampionDetailsQuery(championId: Ref<number | null>): QueryResult<CommunityDragonChampion | null> {
   const query = useQuery({
     queryKey: computed(() => ['championDetails', championId.value] as const),
     queryFn: async (): Promise<CommunityDragonChampion | null> => {

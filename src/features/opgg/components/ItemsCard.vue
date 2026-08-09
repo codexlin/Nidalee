@@ -37,10 +37,7 @@
                   <div class="font-bold text-base mb-1 text-primary dark:text-blue-300">
                     {{ allItems[itemId].name }}
                   </div>
-                  <div
-                    class="mb-2 text-neutral-700 dark:text-neutral-200"
-                    v-html="safeItemDescriptions[itemId]"
-                  ></div>
+                  <div class="mb-2 text-neutral-700 dark:text-neutral-200" v-html="safeItemDescriptions[itemId]"></div>
                   <div class="text-xs text-muted-foreground mt-1">
                     <span>售价：{{ allItems[itemId].gold?.total }}</span>
                     <span class="ml-2">合成价：{{ allItems[itemId].gold?.base }}</span>
@@ -96,10 +93,7 @@
                   <div class="font-bold text-base mb-1 text-primary dark:text-blue-300">
                     {{ allItems[itemId].name }}
                   </div>
-                  <div
-                    class="mb-2 text-neutral-700 dark:text-neutral-200"
-                    v-html="safeItemDescriptions[itemId]"
-                  ></div>
+                  <div class="mb-2 text-neutral-700 dark:text-neutral-200" v-html="safeItemDescriptions[itemId]"></div>
                   <div class="text-xs text-muted-foreground mt-1">
                     <span>售价：{{ allItems[itemId].gold?.total }}</span>
                     <span class="ml-2">合成价：{{ allItems[itemId].gold?.base }}</span>
@@ -150,10 +144,7 @@
                   <div class="font-bold text-base mb-1 text-primary dark:text-blue-300">
                     {{ allItems[itemId].name }}
                   </div>
-                  <div
-                    class="mb-2 text-neutral-700 dark:text-neutral-200"
-                    v-html="safeItemDescriptions[itemId]"
-                  ></div>
+                  <div class="mb-2 text-neutral-700 dark:text-neutral-200" v-html="safeItemDescriptions[itemId]"></div>
                   <div class="text-xs text-muted-foreground mt-1">
                     <span>售价：{{ allItems[itemId].gold?.total }}</span>
                     <span class="ml-2">合成价：{{ allItems[itemId].gold?.base }}</span>
@@ -195,10 +186,7 @@
                   <div class="font-bold text-base mb-1 text-primary dark:text-blue-300">
                     {{ allItems[itemId].name }}
                   </div>
-                  <div
-                    class="mb-2 text-neutral-700 dark:text-neutral-200"
-                    v-html="safeItemDescriptions[itemId]"
-                  ></div>
+                  <div class="mb-2 text-neutral-700 dark:text-neutral-200" v-html="safeItemDescriptions[itemId]"></div>
                   <div class="text-xs text-muted-foreground mt-1">
                     <span>售价：{{ allItems[itemId].gold?.total }}</span>
                     <span class="ml-2">合成价：{{ allItems[itemId].gold?.base }}</span>

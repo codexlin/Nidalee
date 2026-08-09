@@ -262,10 +262,7 @@ const handleChampionSearch = () => {
   // 根据输入过滤英雄
   const query = championSearch.value.toLowerCase()
   championSearchResults.value = allChampions
-    .filter(
-      (champ) =>
-        champ.name.toLowerCase().includes(query) || champ.alias.toLowerCase().includes(query)
-    )
+    .filter((champ) => champ.name.toLowerCase().includes(query) || champ.alias.toLowerCase().includes(query))
     .slice(0, 10) // 最多显示10个结果
 }
 

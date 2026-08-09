@@ -130,8 +130,7 @@ const filteredChampions = computed(() => {
 
   const search = searchText.value.toLowerCase()
   return champions.value.filter(
-    (champion) =>
-      champion.name.toLowerCase().includes(search) || champion.alias.toLowerCase().includes(search)
+    (champion) => champion.name.toLowerCase().includes(search) || champion.alias.toLowerCase().includes(search)
   )
 })
 

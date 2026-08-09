@@ -234,9 +234,7 @@ watch(searchText, (newValue) => {
 const filteredChampions = computed(() => {
   if (!debouncedSearchText.value.trim()) return champions.value
   const search = debouncedSearchText.value.toLowerCase()
-  return champions.value.filter(
-    (c) => c.name.toLowerCase().includes(search) || c.alias.toLowerCase().includes(search)
-  )
+  return champions.value.filter((c) => c.name.toLowerCase().includes(search) || c.alias.toLowerCase().includes(search))
 })
 
 const handleChampionSelect = (champion: ChampionInfo) => {
