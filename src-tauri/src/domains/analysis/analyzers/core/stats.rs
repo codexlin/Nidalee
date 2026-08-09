@@ -151,6 +151,7 @@ pub fn analyze_player_stats_with_resolver(
             deaths: deaths as i32,
             assists: assists as i32,
             kda: player.kda,
+            grade: crate::domains::analysis::thresholds::kda::grade_from_kda(player.kda).to_string(),
             game_duration: Some(game_duration as i32),
             game_creation: Some(game.game_creation),
             queue_id: Some(game.queue_id),

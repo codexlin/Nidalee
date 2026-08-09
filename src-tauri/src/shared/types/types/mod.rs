@@ -1477,6 +1477,8 @@ pub struct MatchPerformance {
     pub deaths: i32,
     pub assists: i32,
     pub kda: f64,
+    /// 自研单场评级：S+ / S / A / B / C / D（由 KDA 阈值映射，非官方）
+    pub grade: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub game_duration: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]

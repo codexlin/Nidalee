@@ -20,15 +20,50 @@ pub mod kda {
     pub const GOOD: f64 = 2.5;
     pub const POOR: f64 = 1.5;
 
-    // 单场表现等级
-    pub const S_GRADE: f64 = 6.0; // S级：超神表现
-    pub const A_GRADE: f64 = 4.0; // A级：优秀表现
-    pub const B_GRADE: f64 = 2.5; // B级：良好表现
-    pub const D_GRADE: f64 = 1.5; // D级：崩盘表现
+    // 单场表现等级（Nidalee 自研 SABCD，含 S+；非国服官方）
+    pub const S_PLUS_GRADE: f64 = 8.0; // S+
+    pub const S_GRADE: f64 = 6.0; // S
+    pub const A_GRADE: f64 = 4.0; // A
+    pub const B_GRADE: f64 = 2.5; // B
+    pub const C_GRADE: f64 = 1.5; // C（≥1.5）；低于此为 D
+    pub const D_GRADE: f64 = 1.5; // 与 C 下沿相同，兼容旧特征统计
 
     // 死亡阈值
     pub const DEATH_TOO_MANY: f64 = 6.0; // 场均死亡超过6次
     pub const DEATH_EXCELLENT: f64 = 3.0; // 场均死亡低于3次
+
+    /// 由单场 KDA 映射字母等级：S+ / S / A / B / C / D
+    pub fn grade_from_kda(kda: f64) -> &'static str {
+        if kda >= S_PLUS_GRADE {
+            "S+"
+        } else if kda >= S_GRADE {
+            "S"
+        } else if kda >= A_GRADE {
+            "A"
+        } else if kda >= B_GRADE {
+            "B"
+        } else if kda >= C_GRADE {
+            "C"
+        } else {
+            "D"
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn grade_from_kda_boundaries() {
+            assert_eq!(grade_from_kda(8.0), "S+");
+            assert_eq!(grade_from_kda(6.0), "S");
+            assert_eq!(grade_from_kda(4.0), "A");
+            assert_eq!(grade_from_kda(2.5), "B");
+            assert_eq!(grade_from_kda(1.5), "C");
+            assert_eq!(grade_from_kda(1.49), "D");
+            assert_eq!(grade_from_kda(0.0), "D");
+        }
+    }
 }
 
 /// 参团率阈值 (KP%)
