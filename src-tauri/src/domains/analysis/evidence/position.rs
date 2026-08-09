@@ -114,8 +114,16 @@ pub fn position_from_role_lane(role: &str, lane: &str, queue_id: i64) -> Evidenc
     position_from_lane(&role, &lane).unwrap_or(EvidencePosition::Unknown)
 }
 
+/// 对位匹配用位置（仅排位 420/440）
+///
+/// 与 [`position_from_role_lane`] 相同：非排位塌成 `FLEX` / 大乱斗 `ARAM`，不对位。
+/// 过程复盘与对位卡只服务排位；匹配/娱乐局不解析五分路对位。
+pub fn matchup_position_from_role_lane(role: &str, lane: &str, queue_id: i64) -> EvidencePosition {
+    position_from_role_lane(role, lane, queue_id)
+}
+
 /// 纯 role/lane 推导（不掺入队列语义）
-fn position_from_lane(role: &str, lane: &str) -> Option<EvidencePosition> {
+pub fn position_from_lane(role: &str, lane: &str) -> Option<EvidencePosition> {
     if role == "JUNGLE" || lane == "JUNGLE" {
         return Some(EvidencePosition::Jungle);
     }

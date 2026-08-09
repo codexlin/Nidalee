@@ -1,8 +1,9 @@
 use super::analysis_service;
 use super::service;
 use crate::domains::analysis::pipeline::{MatchAnalysisRequest, MatchAnalysisResult};
+use crate::domains::analysis::MatchEvidence;
 use crate::http_client;
-use crate::shared::types::{AdvicePerspective, GameAdvice, GameDetail};
+use crate::shared::types::{AdvicePerspective, GameAdvice, GameDetail, GameProcessReview};
 
 /// 唯一的对局分析命令
 ///
@@ -53,4 +54,23 @@ pub async fn get_game_detail(game_id: u64) -> Result<GameDetail, String> {
     log::info!("🔍 获取游戏详细信息: gameId={}", game_id);
     let client = http_client::get_lcu_client();
     service::get_game_detail_logic(&client, game_id).await
+}
+
+/// 单局过程复盘（详情弹窗）
+///
+/// - 若传入 `cachedEvidence` 且 gameId 匹配，则零额外 LCU 请求
+/// - 否则拉详情 + 时间线并抽取 Evidence
+#[tauri::command]
+pub async fn get_game_process_review(
+    puuid: String,
+    game_id: u64,
+    cached_evidence: Option<MatchEvidence>,
+) -> Result<GameProcessReview, String> {
+    log::info!(
+        "[过程复盘] gameId={} cached={}",
+        game_id,
+        cached_evidence.is_some()
+    );
+    let client = http_client::get_lcu_client();
+    service::get_game_process_review_logic(&client, &puuid, game_id, cached_evidence).await
 }

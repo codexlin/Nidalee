@@ -38,7 +38,9 @@ pub use extract::extract_match_evidence;
 #[allow(unused_imports)]
 pub use opponent::resolve_lane_opponent;
 #[allow(unused_imports)]
-pub use position::{is_aram_queue, position_from_role_lane, EvidencePosition};
+pub use position::{
+    is_aram_queue, matchup_position_from_role_lane, position_from_lane, position_from_role_lane, EvidencePosition,
+};
 #[allow(unused_imports)]
 pub use timeline::{
     compute_phase_evidence, frame_snapshot, laning_opponent_diff, timeline_frames, FrameSnapshot, PhaseComputationFlags,

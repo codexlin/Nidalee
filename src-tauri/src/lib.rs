@@ -68,6 +68,7 @@ pub fn run() {
             // 比赛记录（个人战绩主路径仅 analyze_matches）
             infrastructure::match_management::matches::commands::analyze_matches,
             infrastructure::match_management::matches::commands::get_game_detail,
+            infrastructure::match_management::matches::commands::get_game_process_review,
             infrastructure::match_management::matches::commands::get_player_tactical_advice,
             // 召唤师
             infrastructure::data_services::summoner::commands::get_current_summoner,

@@ -1,14 +1,17 @@
 use crate::domains::analysis::analyzers::core::strategy::AnalysisMode;
+use crate::domains::analysis::pipeline::{
+    build_key_moments, build_opponent_compare, build_single_match_process_insight,
+};
 use crate::domains::analysis::{
     analyze_advanced_traits, analyze_distribution_traits, analyze_player_stats, analyze_role_based_traits,
-    analyze_timeline_traits, analyze_traits, analyze_win_loss_pattern, identify_main_role, identify_player_roles,
-    identify_position_from_game, optimize_traits, parse_games, parse_timeline_data, resolve_lane_opponent,
-    AnalysisContext, AnalysisStrategy, TimelineAnalysis,
+    analyze_timeline_traits, analyze_traits, analyze_win_loss_pattern, extract_match_evidence, identify_main_role,
+    identify_player_roles, identify_position_from_game, optimize_traits, parse_games, parse_timeline_data,
+    resolve_lane_opponent, AnalysisContext, AnalysisStrategy, MatchEvidence, TimelineAnalysis,
 };
 use crate::domains::tactical_advice::generate_advice;
 use crate::shared::types::{
-    AdvicePerspective, GameAdvice, GameDetail, MultiPositionAnalysis, ParticipantInfo, ParticipantStats,
-    PlayerMatchStats, PositionStats, TeamInfo, TeamStats,
+    AdvicePerspective, GameAdvice, GameDetail, GameProcessReview, ParticipantInfo, ParticipantStats,
+    PlayerMatchStats, TeamInfo, TeamStats,
 };
 use crate::shared::utils::{lcu_get, lcu_request_json};
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
@@ -54,6 +57,10 @@ struct ApiParticipant {
     team_id: Option<i32>,
     #[serde(default)]
     champion_id: Option<i32>,
+    #[serde(default)]
+    spell1_id: Option<i32>,
+    #[serde(default)]
+    spell2_id: Option<i32>,
     stats: ApiParticipantStats,
 }
 
@@ -76,6 +83,9 @@ struct ApiParticipantStats {
     total_damage_taken: Option<i32>,
     #[serde(default)]
     vision_score: Option<i32>,
+    /// 本场最大连杀（双杀=2 … 五杀=5）；LCU 战绩详情常见字段
+    #[serde(default)]
+    largest_multi_kill: Option<i32>,
     #[serde(default)]
     item0: Option<i32>,
     #[serde(default)]
@@ -90,6 +100,10 @@ struct ApiParticipantStats {
     item5: Option<i32>,
     #[serde(default)]
     item6: Option<i32>,
+    #[serde(default)]
+    perk0: Option<i32>,
+    #[serde(default)]
+    perk_primary_style: Option<i32>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -135,6 +149,66 @@ pub(crate) async fn get_match_history(
     Ok(super::analysis_service::to_player_match_stats(&result))
 }
 
+/// 单局过程复盘：优先使用前端已有的 Evidence，否则按需拉详情 + 时间线
+///
+/// 仅排位（420/440）。匹配/娱乐局不应请求本接口。
+pub async fn get_game_process_review_logic(
+    client: &Client,
+    puuid: &str,
+    game_id: u64,
+    cached_evidence: Option<MatchEvidence>,
+) -> Result<GameProcessReview, String> {
+    // 优先现拉（时间线会话缓存通常已命中），才能带上「对位在干嘛」；失败再回退分析缓存
+    let (evidence, from_cache) = match fetch_match_evidence(client, puuid, game_id).await {
+        Ok(evidence) => (evidence, false),
+        Err(err) => {
+            if let Some(cached) = cached_evidence.filter(|e| e.game_id == game_id) {
+                log::warn!("[过程复盘] 现拉失败，回退分析缓存 gameId={game_id}: {err}");
+                (cached, true)
+            } else {
+                return Err(err);
+            }
+        }
+    };
+
+    if !crate::domains::analysis::queue_config::QueueType::from_queue_id(evidence.queue_id as i32)
+        .is_ranked()
+    {
+        return Err("过程复盘仅支持排位对局（单双/灵活）".into());
+    }
+
+    let quality = match evidence.quality {
+        crate::domains::analysis::EvidenceQuality::Full => "full",
+        crate::domains::analysis::EvidenceQuality::TimelineMissing => "timelineMissing",
+        crate::domains::analysis::EvidenceQuality::TimelinePartial => "timelinePartial",
+    };
+
+    Ok(GameProcessReview {
+        insight: build_single_match_process_insight(&evidence),
+        key_moments: build_key_moments(&evidence),
+        opponent_compare: build_opponent_compare(&evidence),
+        quality: quality.into(),
+        from_cache,
+    })
+}
+
+async fn fetch_match_evidence(client: &Client, puuid: &str, game_id: u64) -> Result<MatchEvidence, String> {
+    let fetcher = super::fetcher::lcu_fetcher(client);
+    let game = fetcher
+        .fetch_game_detail(game_id)
+        .await
+        .map_err(|e| format!("获取对局详情失败: {e}"))?;
+    let timeline = match fetcher.fetch_game_timeline(game_id).await {
+        Ok(timeline) => Some(timeline),
+        Err(error) => {
+            log::warn!("[过程复盘] 时间线不可用 gameId={game_id}: {error}");
+            None
+        }
+    };
+
+    extract_match_evidence(&game, timeline.as_ref(), puuid).map_err(|e| e.to_string())
+}
+
 pub async fn get_game_detail_logic(client: &Client, game_id: u64) -> Result<GameDetail, String> {
     let path = format!("/lol-match-history/v1/games/{}", game_id);
     let api_game_data: ApiGameData = lcu_request_json(client, Method::GET, &path, None)
@@ -147,8 +221,8 @@ pub async fn get_game_detail_logic(client: &Client, game_id: u64) -> Result<Game
     let mut best_player_champion_id = 0;
     let mut max_tank = 0;
     let mut max_tank_champion_id = 0;
-    let max_streak = 0;
-    let max_streak_champion_id = 0;
+    let mut max_streak = 0;
+    let mut max_streak_champion_id = 0;
 
     let player_map: HashMap<i32, ApiPlayer> = api_game_data
         .participant_identities
@@ -156,8 +230,12 @@ pub async fn get_game_detail_logic(client: &Client, game_id: u64) -> Result<Game
         .map(|p| (p.participant_id, p.player))
         .collect();
 
-    let mut participants: Vec<ParticipantInfo> = Vec::with_capacity(api_game_data.participants.len());
-    for p in api_game_data.participants {
+    let api_participants = api_game_data.participants;
+
+    let mut participants: Vec<ParticipantInfo> = Vec::with_capacity(api_participants.len());
+    for p in api_participants {
+        // 详情列表不展示分路；对位由过程复盘 / evidence 层单独解析
+        let position = None;
         let stats = p.stats; // No need to clone anymore
         let kills = stats.kills.unwrap_or(0);
         let deaths = stats.deaths.unwrap_or(0);
@@ -192,6 +270,12 @@ pub async fn get_game_detail_logic(client: &Client, game_id: u64) -> Result<Game
             max_tank_champion_id = champion_id;
         }
 
+        let multi_kill = stats.largest_multi_kill.unwrap_or(0);
+        if multi_kill > max_streak {
+            max_streak = multi_kill;
+            max_streak_champion_id = champion_id;
+        }
+
         let player_identity = player_map.get(&p.participant_id);
         let summoner_name = player_identity.map_or_else(String::new, |pi| {
             if let (Some(name), Some(tag)) = (&pi.game_name, &pi.tag_line) {
@@ -213,6 +297,11 @@ pub async fn get_game_detail_logic(client: &Client, game_id: u64) -> Result<Game
             profile_icon_id,
             team_id,
             rank_tier: None,
+            spell1_id: p.spell1_id.filter(|&id| id > 0),
+            spell2_id: p.spell2_id.filter(|&id| id > 0),
+            perk_primary_style: stats.perk_primary_style.filter(|&id| id > 0),
+            perk0: stats.perk0.filter(|&id| id > 0),
+            position,
             score: None,
             stats: ParticipantStats {
                 kills,

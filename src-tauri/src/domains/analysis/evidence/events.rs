@@ -37,7 +37,23 @@ pub fn extract_event_evidence(frames: &[Value], ctx: EventExtractContext) -> Eve
         })
         .collect();
 
+    let opponent_frames: Vec<(i64, FrameSnapshot)> = ctx
+        .opponent_participant_id
+        .map(|opp_id| {
+            ordered
+                .iter()
+                .filter_map(|frame| frame_snapshot(frame, opp_id).map(|snap| (snap.timestamp_ms, snap)))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let opponent_team_id = ctx
+        .opponent_participant_id
+        .and_then(team_of_participant)
+        .unwrap_or(if ctx.target_team_id == 100 { 200 } else { 100 });
+
     let mut last_death_ms: Option<i64> = None;
+    let mut last_opponent_death_ms: Option<i64> = None;
 
     for frame in &ordered {
         let Some(events) = frame.get("events").and_then(Value::as_array) else {
@@ -50,7 +66,10 @@ pub fn extract_event_evidence(frames: &[Value], ctx: EventExtractContext) -> Eve
                 event,
                 ctx,
                 &target_frames,
+                &opponent_frames,
+                opponent_team_id,
                 &mut last_death_ms,
+                &mut last_opponent_death_ms,
             );
         }
     }
@@ -77,7 +96,10 @@ fn accumulate_event(
     event: &Value,
     ctx: EventExtractContext,
     target_frames: &[(i64, FrameSnapshot)],
+    opponent_frames: &[(i64, FrameSnapshot)],
+    opponent_team_id: i32,
     last_death_ms: &mut Option<i64>,
+    last_opponent_death_ms: &mut Option<i64>,
 ) {
     let Some(event_type) = event.get("type").and_then(Value::as_str) else {
         return;
@@ -106,11 +128,18 @@ fn accumulate_event(
                 ke.bounty = read_i32(event, "bounty");
                 ke.kill_streak_length = read_i32(event, "killStreakLength");
                 ke.victim_damage_received_count = damage_count(event, "victimDamageReceived");
+                if ctx.opponent_participant_id.is_some_and(|opp| victim_id == opp) {
+                    ke.opponent_activity_context = Some(activity_at(
+                        opponent_frames,
+                        opponent_team_id,
+                        *last_opponent_death_ms,
+                        timestamp_ms,
+                    ));
+                }
                 evidence.key_events.push(ke);
             }
             if victim_id == ctx.target_participant_id {
                 evidence.deaths += 1;
-                *last_death_ms = Some(timestamp_ms);
                 let cause = death_cause(killer_id, assistants.len());
                 match cause {
                     DeathCause::Solo => evidence.deaths_solo += 1,
@@ -133,7 +162,23 @@ fn accumulate_event(
                 ke.position_y = pos_y;
                 ke.bounty = read_i32(event, "bounty");
                 ke.victim_damage_received_count = damage_count(event, "victimDamageReceived");
+                // 阵亡点看邻近帧位置；不吃「近期死亡态」（否则永远显示死亡状态）
+                ke.activity_context = Some(activity_at(
+                    target_frames,
+                    ctx.target_team_id,
+                    None,
+                    timestamp_ms,
+                ));
+                if ctx.opponent_participant_id.is_some() {
+                    ke.opponent_activity_context = Some(activity_at(
+                        opponent_frames,
+                        opponent_team_id,
+                        *last_opponent_death_ms,
+                        timestamp_ms,
+                    ));
+                }
                 evidence.key_events.push(ke);
+                *last_death_ms = Some(timestamp_ms);
             }
             if assisted {
                 evidence.assists += 1;
@@ -146,6 +191,12 @@ fn accumulate_event(
                 ke.killer_participant_id = if killer_id != 0 { Some(killer_id) } else { None };
                 ke.assistant_count = assistants.len() as u32;
                 evidence.key_events.push(ke);
+            }
+            if ctx
+                .opponent_participant_id
+                .is_some_and(|opp| victim_id == opp)
+            {
+                *last_opponent_death_ms = Some(timestamp_ms);
             }
         }
         "CHAMPION_SPECIAL_KILL" => {
@@ -239,6 +290,16 @@ fn accumulate_event(
             } else {
                 None
             };
+            let opponent_activity = if !involved && ctx.opponent_participant_id.is_some() {
+                Some(activity_at(
+                    opponent_frames,
+                    opponent_team_id,
+                    *last_opponent_death_ms,
+                    timestamp_ms,
+                ))
+            } else {
+                None
+            };
 
             let mut ke = KeyEventEvidence::basic(
                 kind,
@@ -255,6 +316,7 @@ fn accumulate_event(
             ke.killer_team_id = killer_team_id;
             ke.allied_side = allied;
             ke.activity_context = activity;
+            ke.opponent_activity_context = opponent_activity;
             ke.position_x = pos_x;
             ke.position_y = pos_y;
             evidence.key_events.push(ke);
@@ -282,6 +344,16 @@ fn accumulate_event(
             } else {
                 None
             };
+            let opponent_activity = if !involved && ctx.opponent_participant_id.is_some() {
+                Some(activity_at(
+                    opponent_frames,
+                    opponent_team_id,
+                    *last_opponent_death_ms,
+                    timestamp_ms,
+                ))
+            } else {
+                None
+            };
             let mut ke = KeyEventEvidence::basic(
                 EvidenceEventKind::Building,
                 timestamp_ms,
@@ -293,6 +365,7 @@ fn accumulate_event(
                     .map(str::to_string),
             );
             ke.activity_context = activity;
+            ke.opponent_activity_context = opponent_activity;
             ke.killer_team_id = event
                 .get("teamId")
                 .and_then(Value::as_i64)

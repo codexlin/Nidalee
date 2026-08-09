@@ -56,9 +56,9 @@ pub use analyzers::traits::timeline::{analyze_timeline_traits, generate_timeline
 
 // 重新导出证据层 / 统一契约（编排器已接入）
 pub use evidence::{
-    aggregate_match_evidence, build_evidence_bundle, extract_match_evidence, position_from_role_lane,
-    resolve_lane_opponent, EvidenceBundle, EvidencePosition, EvidenceQuality, MatchEvidence, MatchEvidenceInput,
-    OpponentEvidence,
+    aggregate_match_evidence, build_evidence_bundle, extract_match_evidence, position_from_lane,
+    position_from_role_lane, resolve_lane_opponent, EvidenceBundle, EvidencePosition, EvidenceQuality, MatchEvidence,
+    MatchEvidenceInput, OpponentEvidence,
 };
 
 pub use pipeline::{
