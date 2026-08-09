@@ -196,7 +196,7 @@
                 <Label>Base URL</Label>
                 <Input v-model="draftBaseUrl" placeholder="https://api.openai.com/v1" />
                 <p class="text-xs text-muted-foreground">
-                  须为 https:// 或 http:// 完整地址（含主机名）。请勿填写内网/元数据地址，以免误请求本地服务。
+                  公网端点必须使用 HTTPS；仅 localhost 或 127.0.0.1 本机开发端点可使用 HTTP。
                 </p>
               </div>
               <div class="space-y-2">

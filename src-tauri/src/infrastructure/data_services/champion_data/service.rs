@@ -3,6 +3,8 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::http_client;
+
 // 🔥 全局静态变量：英雄别名（英文名） -> ID 映射
 static CHAMPION_ALIAS_TO_ID: OnceCell<HashMap<String, i32>> = OnceCell::new();
 
@@ -54,12 +56,11 @@ pub async fn load_champion_data() -> Result<(), Box<dyn std::error::Error + Send
     let url =
         "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/zh_cn/v1/champion-summary.json";
 
-    let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .timeout(std::time::Duration::from_secs(10))
-        .build()?;
-
-    let response = client.get(url).send().await?.error_for_status()?;
+    let response = http_client::get_public_client()
+        .get(url)
+        .send()
+        .await?
+        .error_for_status()?;
     let champions: Vec<ChampionInfo> = response.json().await?;
 
     // 构建三个映射表

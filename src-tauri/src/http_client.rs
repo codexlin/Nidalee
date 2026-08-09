@@ -20,6 +20,7 @@ pub fn get_lcu_client() -> &'static Client {
 pub fn get_public_client() -> &'static Client {
     static PUBLIC_CLIENT: Lazy<Client> = Lazy::new(|| {
         Client::builder()
+            .https_only(true)
             .timeout(std::time::Duration::from_secs(10))
             .user_agent("Nidalee/1.0")
             .build()

@@ -18,6 +18,33 @@ const defaults: Omit<AiSettingsPublic, 'hasApiKey'> = {
   model: 'gpt-4o-mini'
 }
 
+const normalizeAiBaseUrl = (value: string) => {
+  const normalized = value.trim().replace(/\/+$/, '')
+  let parsed: URL
+
+  try {
+    parsed = new URL(normalized)
+  } catch {
+    throw new Error('Base URL 无法解析，请使用 https://api.example.com/v1 形式')
+  }
+
+  const isLocalDevelopmentHost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1'
+  const isSecure = parsed.protocol === 'https:'
+  const isLocalHttp = parsed.protocol === 'http:' && isLocalDevelopmentHost
+
+  if (!isSecure && !isLocalHttp) {
+    throw new Error('公网 Base URL 必须使用 HTTPS；仅 localhost 或 127.0.0.1 可使用 HTTP')
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error('Base URL 不得包含用户名或密码')
+  }
+  if (parsed.search || parsed.hash) {
+    throw new Error('Base URL 不得包含查询参数或片段')
+  }
+
+  return normalized
+}
+
 export const useAiSettingsStore = defineStore(
   'aiSettings',
   () => {
@@ -86,10 +113,7 @@ export const useAiSettingsStore = defineStore(
     }
 
     const setEndpoint = async (nextBaseUrl: string, nextModel: string) => {
-      const normalized = nextBaseUrl.trim().replace(/\/+$/, '')
-      if (!/^https?:\/\/[^/\s]+/i.test(normalized)) {
-        throw new Error('Base URL 须以 http:// 或 https:// 开头，并包含有效主机名')
-      }
+      const normalized = normalizeAiBaseUrl(nextBaseUrl)
       baseUrl.value = normalized
       model.value = nextModel.trim()
       await syncToBackend()

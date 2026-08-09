@@ -3,6 +3,8 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::http_client;
+
 // 🔥 全局静态变量：召唤师技能 ID -> 完整信息映射
 static SUMMONER_SPELL_DATA: OnceCell<HashMap<i64, SummonerSpellInfo>> = OnceCell::new();
 
@@ -50,12 +52,11 @@ pub async fn load_summoner_spell_data() -> Result<(), Box<dyn std::error::Error 
     let url =
         "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/zh_cn/v1/summoner-spells.json";
 
-    let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .timeout(std::time::Duration::from_secs(10))
-        .build()?;
-
-    let response = client.get(url).send().await?.error_for_status()?;
+    let response = http_client::get_public_client()
+        .get(url)
+        .send()
+        .await?
+        .error_for_status()?;
     let spells: Vec<SummonerSpellInfo> = response.json().await?;
 
     // 构建两个映射表
