@@ -70,6 +70,8 @@ declare global {
   const unref: typeof import('vue')['unref']
   const useActivityLogger: typeof import('../src/shared/composables/utils/useActivityLogger')['useActivityLogger']
   const useActivityStore: typeof import('../src/shared/stores/core/activityStore')['useActivityStore']
+  const useAiAnalysis: typeof import('../src/shared/composables/game/useAiAnalysis')['useAiAnalysis']
+  const useAiSettingsStore: typeof import('../src/shared/stores/features/aiSettingsStore')['useAiSettingsStore']
   const useAllRunesQuery: typeof import('../src/shared/composables/useLolApiQuery')['useAllRunesQuery']
   const useAnalysisCacheStore: typeof import('../src/shared/stores/features/analysisCacheStore')['useAnalysisCacheStore']
   const useAnalysisSettingsStore: typeof import('../src/shared/stores/features/analysisSettingsStore')['useAnalysisSettingsStore']
@@ -92,7 +94,7 @@ declare global {
   const useChampionSummaryQuery: typeof import('../src/shared/composables/game/useChampionQuery')['useChampionSummaryQuery']
   const useChampions: typeof import('../src/shared/composables/data/useVersionedData')['useChampions']
   const useChampionsQuery: typeof import('../src/shared/composables/useLolApiQuery')['useChampionsQuery']
-  const useCommunityDragonPerksQuery: typeof import('../src/shared/composables/useLolApiQuery')['useCommunityDragonPerksQuery']
+  const useCommunityDragonPerksQuery: typeof import('../src/shared/composables/data/useVersionedData')['useCommunityDragonPerksQuery']
   const useConnection: typeof import('../src/shared/composables/connection/useConnection')['useConnection']
   const useConnectionStore: typeof import('../src/shared/stores/core/connectionStore')['useConnectionStore']
   const useCssModule: typeof import('vue')['useCssModule']
@@ -120,6 +122,7 @@ declare global {
   const useLobbyManager: typeof import('../src/shared/composables/game/useChampSelectManager')['useLobbyManager']
   const useManualVersionCheck: typeof import('../src/shared/composables/data/useAutoVersionCheck')['useManualVersionCheck']
   const useMapsQuery: typeof import('../src/shared/composables/useLolApiQuery')['useMapsQuery']
+  const useMatchAnalysis: typeof import('../src/shared/composables/game/useMatchAnalysis')['useMatchAnalysis']
   const useMatchFilter: typeof import('../src/shared/composables/game/useMatchFilter')['useMatchFilter']
   const useMatchHistoryFetcher: typeof import('../src/shared/composables/game/useMatchHistoryFetcher')['useMatchHistoryFetcher']
   const useMatchmaking: typeof import('../src/shared/composables/game/useMatchmaking')['useMatchmaking']
@@ -130,8 +133,10 @@ declare global {
   const usePerformanceMonitor: typeof import('../src/shared/composables/utils/usePerformanceMonitor')['usePerformanceMonitor']
   const usePerkIcons: typeof import('../src/shared/composables/data/useVersionedData')['usePerkIcons']
   const usePerks: typeof import('../src/shared/composables/data/useVersionedData')['usePerks']
+  const usePersonalMatchAnalysisStore: typeof import('../src/shared/stores/features/personalMatchAnalysisStore')['usePersonalMatchAnalysisStore']
   const usePlayerListQuery: typeof import('../src/shared/composables/useLolApiQuery')['usePlayerListQuery']
   const usePositionAnalysis: typeof import('../src/shared/composables/game/usePositionAnalysis')['usePositionAnalysis']
+  const useQueues: typeof import('../src/shared/composables/data/useVersionedData')['useQueues']
   const useQueuesQuery: typeof import('../src/shared/composables/useLolApiQuery')['useQueuesQuery']
   const useReactiveEvent: typeof import('../src/shared/composables/utils/useEventBus')['useReactiveEvent']
   const useRefreshStaticData: typeof import('../src/shared/composables/data/useVersionedData')['useRefreshStaticData']
@@ -170,6 +175,9 @@ declare global {
   // @ts-ignore
   export type { ErrorInfo, RetryConfig } from '../src/shared/composables/utils/useErrorHandler'
   import('../src/shared/composables/utils/useErrorHandler')
+  // @ts-ignore
+  export type { AiSettingsPublic } from '../src/shared/stores/features/aiSettingsStore'
+  import('../src/shared/stores/features/aiSettingsStore')
   // @ts-ignore
   export type { AnalysisDepth, AnalysisMode, AnalysisConfig } from '../src/shared/stores/features/analysisSettingsStore'
   import('../src/shared/stores/features/analysisSettingsStore')

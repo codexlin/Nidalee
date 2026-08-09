@@ -3,13 +3,17 @@
     <SummonerSearchBox v-model:summoner-name="searchText" @on-search="onSearch" />
 
     <!-- Tab切换：基础统计 vs 位置分组 -->
-    <Tabs v-if="currentRestult" default-value="basic" class="w-full">
+    <Tabs v-if="currentResult" default-value="basic" class="w-full">
       <TabsList class="grid w-full grid-cols-2">
         <TabsTrigger value="basic">基础统计</TabsTrigger>
-        <TabsTrigger value="positions" @click="loadPositionAnalysis">
+        <TabsTrigger value="positions">
           位置分组
-          <Badge v-if="positionAnalysis" variant="secondary" class="ml-2">
-            {{ positionAnalysis.positionStats.length }}
+          <Badge
+            v-if="searchPositionAnalysis?.positionStats.length"
+            variant="secondary"
+            class="ml-2"
+          >
+            {{ searchPositionAnalysis.positionStats.length }}
           </Badge>
         </TabsTrigger>
       </TabsList>
@@ -28,61 +32,49 @@
             {{ name }}
           </Badge>
         </div>
-        <SummonerCard :summoner-info="currentRestult?.summonerInfo" />
+        <SummonerCard :summoner-info="currentResult?.summonerInfo" />
         <GameStats
           :is-connected="isConnected"
           :match-history-loading="loading"
-          :match-statistics="filteredCurrentMatches || currentRestult?.matches"
+          :match-statistics="filteredCurrentMatches || currentResult?.matches"
         />
       </TabsContent>
 
       <TabsContent value="positions" class="space-y-4">
-        <div v-if="positionLoading" class="flex items-center justify-center py-8">
-          <div class="text-center space-y-2">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p class="text-sm text-muted-foreground">加载位置分析中...</p>
-          </div>
-        </div>
-
-        <Alert v-else-if="positionError" variant="destructive">
+        <Alert v-if="!searchPositionAnalysis" variant="destructive">
           <AlertCircle class="h-4 w-4" />
-          <AlertTitle>加载失败</AlertTitle>
-          <AlertDescription>{{ positionError }}</AlertDescription>
+          <AlertTitle>暂无位置数据</AlertTitle>
+          <AlertDescription>本次搜索未附带位置分析，请重新查询召唤师。</AlertDescription>
         </Alert>
 
-        <div v-else-if="positionAnalysis" class="space-y-4">
-          <SummonerCard :summoner-info="currentRestult?.summonerInfo" />
+        <div v-else class="space-y-4">
+          <SummonerCard :summoner-info="currentResult?.summonerInfo" />
 
-          <!-- 位置统计卡片 -->
           <PositionStatsCard
-            :position-stats="positionAnalysis.positionStats"
-            :main-position="positionAnalysis.mainPosition"
+            :position-stats="searchPositionAnalysis.positionStats"
+            :main-position="searchPositionAnalysis.mainPosition"
             @view-details="handlePositionDetails"
           />
 
-          <!-- 总览数据 -->
           <Card>
             <CardHeader>
               <CardTitle class="text-base">总览数据</CardTitle>
-              <CardDescription>所有位置合计 · {{ positionAnalysis.overallStats.totalGames }} 场对局</CardDescription>
+              <CardDescription>
+                所有位置合计 · {{ searchPositionAnalysis.overallStats.totalGames }} 场对局
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <GameStats
                 :is-connected="isConnected"
                 :match-history-loading="false"
-                :match-statistics="positionAnalysis.overallStats"
+                :match-statistics="searchPositionAnalysis.overallStats"
               />
             </CardContent>
           </Card>
         </div>
-
-        <div v-else class="text-center py-8 text-muted-foreground">
-          <p>暂无位置分析数据</p>
-        </div>
       </TabsContent>
     </Tabs>
 
-    <!-- 位置详情对话框 -->
     <PositionDetailsDialog
       v-if="selectedPosition"
       :open="showPositionDetails"
@@ -100,41 +92,22 @@ import PositionDetailsDialog from './PositionDetailsDialog.vue'
 
 const { isConnected } = inject(appContextKey) as AppContext
 
-const { onSearch, cunrrentIndex, names, searchText, loading, currentRestult, filteredCurrentMatches } =
+const { onSearch, cunrrentIndex, names, searchText, loading, currentResult, filteredCurrentMatches } =
   useSearchMatches()
 
-// 位置分析相关
-const {
-  loading: positionLoading,
-  error: positionError,
-  positionAnalysis,
-  selectedPosition,
-  fetchPositionAnalysis,
-  selectPosition,
-  clearSelectedPosition
-} = usePositionAnalysis()
-
+const searchPositionAnalysis = computed(() => currentResult.value?.positionAnalysis ?? null)
+const selectedPosition = ref<PositionStats | null>(null)
 const showPositionDetails = ref(false)
 
-// 加载位置分析数据
-const loadPositionAnalysis = async () => {
-  if (!positionAnalysis.value && !positionLoading.value) {
-    // 默认加载所有排位赛数据（包括单排420和灵活组排440）
-    await fetchPositionAnalysis(30, null)
-  }
-}
-
-// 查看位置详情
 const handlePositionDetails = (pos: PositionStats) => {
-  selectPosition(pos)
+  selectedPosition.value = pos
   showPositionDetails.value = true
 }
 
-// 关闭位置详情
 const closePositionDetails = () => {
   showPositionDetails.value = false
   setTimeout(() => {
-    clearSelectedPosition()
+    selectedPosition.value = null
   }, 300)
 }
 </script>

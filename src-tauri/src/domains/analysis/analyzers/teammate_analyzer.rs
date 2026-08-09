@@ -4,9 +4,7 @@
 /// - 分析队友的优缺点和配合能力
 /// - 识别队友的打法风格和习惯
 /// - 生成团队配合建议
-use crate::domains::analysis::analyzers::core::timeline_analyzer::{
-    TimelineAnalysis
-};
+use crate::domains::analysis::analyzers::core::timeline_analyzer::TimelineAnalysis;
 use crate::shared::types::PlayerMatchStats;
 use serde_json::Value;
 
@@ -23,7 +21,7 @@ pub struct TeammateAnalysis {
 
     // 配合能力
     pub cooperation_style: CooperationStyle,
-    pub synergy_score: f64,  // 配合度评分 0-100
+    pub synergy_score: f64, // 配合度评分 0-100
 
     // 配合建议
     pub cooperation_advice: Vec<CooperationAdvice>,
@@ -32,30 +30,30 @@ pub struct TeammateAnalysis {
 /// 队友优势
 #[derive(Debug, Clone)]
 pub struct TeammateStrength {
-    pub category: String,      // 对线、团战、发育、视野等
-    pub description: String,   // 具体描述
-    pub evidence: String,      // 数据支撑
-    pub reliability: u8,      // 可靠性 1-5
+    pub category: String,    // 对线、团战、发育、视野等
+    pub description: String, // 具体描述
+    pub evidence: String,    // 数据支撑
+    pub reliability: u8,     // 可靠性 1-5
 }
 
 /// 队友劣势
 #[derive(Debug, Clone)]
 pub struct TeammateWeakness {
-    pub category: String,      // 对线、团战、发育、视野等
-    pub description: String,   // 具体描述
-    pub evidence: String,      // 数据支撑
-    pub support_needed: u8,   // 需要支持程度 1-5
+    pub category: String,    // 对线、团战、发育、视野等
+    pub description: String, // 具体描述
+    pub evidence: String,    // 数据支撑
+    pub support_needed: u8,  // 需要支持程度 1-5
 }
 
 /// 配合风格
 #[derive(Debug, Clone)]
 pub enum CooperationStyle {
-    Proactive,     // 主动配合型
-    Reactive,      // 被动配合型
-    Independent,   // 独立型
-    Supportive,    // 支援型
-    Carry,         // 核心型
-    Unknown,       // 未知
+    Proactive,   // 主动配合型
+    Reactive,    // 被动配合型
+    Independent, // 独立型
+    Supportive,  // 支援型
+    Carry,       // 核心型
+    Unknown,     // 未知
 }
 
 /// 配合建议
@@ -87,12 +85,7 @@ pub fn analyze_teammate(
     let synergy_score = calculate_synergy_score(&strengths, &weaknesses, &cooperation_style);
 
     // 生成配合建议
-    let cooperation_advice = generate_cooperation_advice(
-        &strengths,
-        &weaknesses,
-        &cooperation_style,
-        &lane_position
-    );
+    let cooperation_advice = generate_cooperation_advice(&strengths, &weaknesses, &cooperation_style, &lane_position);
 
     TeammateAnalysis {
         participant_id,
@@ -107,10 +100,7 @@ pub fn analyze_teammate(
 }
 
 /// 分析队友优势
-fn analyze_teammate_strengths(
-    timeline: &TimelineAnalysis,
-    stats: &PlayerMatchStats,
-) -> Vec<TeammateStrength> {
+fn analyze_teammate_strengths(timeline: &TimelineAnalysis, stats: &PlayerMatchStats) -> Vec<TeammateStrength> {
     let mut strengths = Vec::new();
 
     // 1. 对线期优势
@@ -185,10 +175,7 @@ fn analyze_teammate_strengths(
 }
 
 /// 分析队友劣势
-fn analyze_teammate_weaknesses(
-    timeline: &TimelineAnalysis,
-    stats: &PlayerMatchStats,
-) -> Vec<TeammateWeakness> {
+fn analyze_teammate_weaknesses(timeline: &TimelineAnalysis, stats: &PlayerMatchStats) -> Vec<TeammateWeakness> {
     let mut weaknesses = Vec::new();
 
     // 1. 对线期劣势
@@ -253,10 +240,7 @@ fn analyze_teammate_weaknesses(
 }
 
 /// 识别配合风格
-fn identify_cooperation_style(
-    timeline: &TimelineAnalysis,
-    stats: &PlayerMatchStats,
-) -> CooperationStyle {
+fn identify_cooperation_style(timeline: &TimelineAnalysis, stats: &PlayerMatchStats) -> CooperationStyle {
     // 基于多个指标综合判断
 
     // 1. 主动配合型 - 高助攻，积极参与团战
@@ -357,7 +341,7 @@ fn generate_cooperation_advice(
                         "在其优势时控制地图资源".to_string(),
                     ],
                 });
-            },
+            }
             "团战期" => {
                 advice.push(CooperationAdvice {
                     priority: 5,
@@ -370,7 +354,7 @@ fn generate_cooperation_advice(
                         "为其创造击杀机会".to_string(),
                     ],
                 });
-            },
+            }
             "视野控制" => {
                 advice.push(CooperationAdvice {
                     priority: 3,
@@ -383,7 +367,7 @@ fn generate_cooperation_advice(
                         "协助其排眼和反眼".to_string(),
                     ],
                 });
-            },
+            }
             _ => {}
         }
     }
@@ -404,7 +388,7 @@ fn generate_cooperation_advice(
                         "选择支援型英雄".to_string(),
                     ],
                 });
-            },
+            }
             "团战期" => {
                 advice.push(CooperationAdvice {
                     priority: 4,
@@ -417,7 +401,7 @@ fn generate_cooperation_advice(
                         "避免其被集火".to_string(),
                     ],
                 });
-            },
+            }
             "视野控制" => {
                 advice.push(CooperationAdvice {
                     priority: 3,
@@ -430,7 +414,7 @@ fn generate_cooperation_advice(
                         "提醒其注意视野".to_string(),
                     ],
                 });
-            },
+            }
             _ => {}
         }
     }
@@ -449,7 +433,7 @@ fn generate_cooperation_advice(
                     "及时跟上其节奏".to_string(),
                 ],
             });
-        },
+        }
         CooperationStyle::Supportive => {
             advice.push(CooperationAdvice {
                 priority: 3,
@@ -462,7 +446,7 @@ fn generate_cooperation_advice(
                     "利用其团队意识".to_string(),
                 ],
             });
-        },
+        }
         CooperationStyle::Carry => {
             advice.push(CooperationAdvice {
                 priority: 5,
@@ -475,7 +459,7 @@ fn generate_cooperation_advice(
                     "为其创造输出空间".to_string(),
                 ],
             });
-        },
+        }
         CooperationStyle::Independent => {
             advice.push(CooperationAdvice {
                 priority: 2,
@@ -488,7 +472,7 @@ fn generate_cooperation_advice(
                     "利用其发育能力".to_string(),
                 ],
             });
-        },
+        }
         _ => {}
     }
 
@@ -506,7 +490,7 @@ fn generate_cooperation_advice(
                     "为其提供线上信息".to_string(),
                 ],
             });
-        },
+        }
         "辅助" => {
             advice.push(CooperationAdvice {
                 priority: 3,
@@ -519,7 +503,7 @@ fn generate_cooperation_advice(
                     "保护其安全".to_string(),
                 ],
             });
-        },
+        }
         _ => {}
     }
 
@@ -571,23 +555,19 @@ mod tests {
 
     #[test]
     fn test_calculate_synergy_score() {
-        let strengths = vec![
-            TeammateStrength {
-                category: "团战期".to_string(),
-                description: "团战表现优秀".to_string(),
-                evidence: "KDA 3.5".to_string(),
-                reliability: 4,
-            }
-        ];
+        let strengths = vec![TeammateStrength {
+            category: "团战期".to_string(),
+            description: "团战表现优秀".to_string(),
+            evidence: "KDA 3.5".to_string(),
+            reliability: 4,
+        }];
 
-        let weaknesses = vec![
-            TeammateWeakness {
-                category: "对线期".to_string(),
-                description: "对线能力一般".to_string(),
-                evidence: "CS落后".to_string(),
-                support_needed: 3,
-            }
-        ];
+        let weaknesses = vec![TeammateWeakness {
+            category: "对线期".to_string(),
+            description: "对线能力一般".to_string(),
+            evidence: "CS落后".to_string(),
+            support_needed: 3,
+        }];
 
         let score = calculate_synergy_score(&strengths, &weaknesses, &CooperationStyle::Proactive);
         assert!(score > 50.0); // 应该高于基础分

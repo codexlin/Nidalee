@@ -45,7 +45,7 @@ export interface AnalysisConfig {
 const defaultAnalysisConfig: AnalysisConfig = {
   enabled: true,
   depth: AnalysisDepth.Deep,
-  defaultMode: AnalysisMode.MixedRanked,
+  defaultMode: AnalysisMode.AllModes,
 
   enableTimelineAnalysis: true,
   enableOpponentAnalysis: true,
@@ -224,6 +224,17 @@ export const useAnalysisSettingsStore = defineStore(
       return descriptions[depth]
     }
 
+    /**
+     * 分析功能开关 → 后端 AnalysisFeatureFlags（进入 request.features）
+     */
+    const toFeatureFlags = (): AnalysisFeatureFlags => ({
+      enabled: config.value.enabled,
+      timeline: config.value.enableTimelineAnalysis,
+      opponent: config.value.enableOpponentAnalysis,
+      teammate: config.value.enableTeammateAnalysis,
+      selfImprovement: config.value.enableSelfImprovement
+    })
+
     return {
       // 状态
       config,
@@ -247,7 +258,8 @@ export const useAnalysisSettingsStore = defineStore(
       exportConfig,
       importConfig,
       getModeDescription,
-      getDepthDescription
+      getDepthDescription,
+      toFeatureFlags
     }
   },
   {

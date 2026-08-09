@@ -4,6 +4,7 @@
 //! - OP.GG 数据
 //! - 其他第三方API
 
+pub mod ai;
 pub mod opgg;
 
 // Re-export services

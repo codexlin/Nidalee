@@ -9,7 +9,9 @@ export function useSearchMatches() {
   const loading = ref(true)
   const error = ref('')
   const result = ref<SummonerWithMatches[] | null>(null)
+  /** @deprecated 拼写错误保留；请优先用 currentResult */
   const currentRestult = ref<SummonerWithMatches | null>(null)
+  const currentResult = currentRestult
   const summonerStats = ref<PlayerMatchStats[] | null>(null)
   const searchText = ref('')
   const cunrrentIndex = ref(-1)
@@ -142,6 +144,7 @@ export function useSearchMatches() {
   return {
     getRencentMatchesByPuuid,
     currentRestult,
+    currentResult,
     filteredCurrentMatches,
     summonerStats,
     names,

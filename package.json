@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:app": "tauri dev",
     "build": "pnpm lint && pnpm build-only",
     "build:analyze": "cross-env ANALYZE=true pnpm build-only",
     "build:prod": "NODE_ENV=production pnpm build",
@@ -21,8 +22,8 @@
   "dependencies": {
     "@tanstack/vue-query": "^5.83.0",
     "@tanstack/vue-table": "^8.21.3",
-    "@tauri-apps/api": "^2.5.0",
-    "@tauri-apps/plugin-log": "^2.6.0",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-log": "^2.9.0",
     "@tauri-apps/plugin-store": "^2.4.0",
     "@tauri-apps/plugin-websocket": "~2",
     "@types/uuid": "^10.0.0",
@@ -48,7 +49,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.8",
-    "@tauri-apps/cli": "^2.5.0",
+    "@tauri-apps/cli": "^2.11.1",
     "@tsconfig/node22": "^22.0.1",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-vue": "^6.0.8",

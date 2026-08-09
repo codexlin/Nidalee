@@ -54,38 +54,21 @@
           >
             <div class="space-y-6">
               <div>
-                <h2 class="text-xl font-bold text-primary">默认战绩过滤</h2>
-                <p class="text-sm text-muted-foreground">设置默认的游戏类型过滤，查询战绩时自动应用</p>
+                <h2 class="text-xl font-bold text-primary">战绩搜索</h2>
+                <p class="text-sm text-muted-foreground">
+                  模式与场数在仪表盘选择并自动记住；此处仅控制搜索页是否跟随后台模式过滤
+                </p>
               </div>
               <div class="border-t border-dashed border-border pt-6 space-y-4">
                 <div class="flex items-center justify-between gap-4">
                   <div class="space-y-1">
-                    <div class="text-sm font-medium text-foreground">查询后自动应用默认过滤</div>
-                    <div class="text-xs text-muted-foreground">关闭后仅保留自定义手动过滤</div>
+                    <div class="text-sm font-medium text-foreground">查询后自动应用模式过滤</div>
+                    <div class="text-xs text-muted-foreground">开启后按仪表盘上次模式过滤搜索结果</div>
                   </div>
                   <Switch
                     :model-value="applyDefaultFilterOnSearch"
                     @update:model-value="(v: boolean) => (applyDefaultFilterOnSearch = v)"
                   />
-                </div>
-                <div class="space-y-2">
-                  <div class="text-sm font-medium text-foreground">默认游戏类型</div>
-                  <GameTypeSelector v-model:selectedTypes="defaultQueueTypes" />
-                </div>
-                <div class="space-y-2">
-                  <div class="text-sm font-medium text-foreground">默认对局数量</div>
-                  <Select v-model:model-value="defaultMatchCount">
-                    <SelectTrigger class="w-[120px]">
-                      <SelectValue placeholder="选择数量" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem :value="20">20 场</SelectItem>
-                      <SelectItem :value="25">25 场</SelectItem>
-                      <SelectItem :value="30">30 场</SelectItem>
-                      <SelectItem :value="35">35 场</SelectItem>
-                      <SelectItem :value="40">40 场</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             </div>
@@ -251,7 +234,7 @@ import AnalysisSettingsTab from './components/analysis/AnalysisSettingsTab.vue'
 import { Palette, Gamepad2, Zap, Keyboard, X, Sparkles, BarChart3 } from 'lucide-vue-next'
 
 const settingsStore = useSettingsStore()
-const { defaultQueueTypes, applyDefaultFilterOnSearch, defaultMatchCount } = storeToRefs(settingsStore)
+const { applyDefaultFilterOnSearch } = storeToRefs(settingsStore)
 
 // 自动化功能相关
 const autoFunctionStore = useAutoFunctionStore()

@@ -73,7 +73,9 @@ cd Nidalee
 pnpm install
 
 # 开发模式
-pnpm tauri dev
+# 两个终端（beforeDevCommand 已清空，避免改 Rust 时把 Vite 一起崩掉）
+pnpm dev          # 终端 A：Vite http://localhost:1422
+pnpm dev:app      # 终端 B：Tauri（或 pnpm tauri dev）
 
 # 构建生产版本
 pnpm tauri build

@@ -2,14 +2,11 @@
  * 图表数据验证和错误处理工具
  */
 
-export interface WinRateTrendPoint {
-  cumulativeWinRate: number
-  movingAvgWinRate: number
-}
+/** 与后端 TrendPoint 对齐；PositionStats.winRateTrend 已是该类型 */
+export type WinRateTrendPoint = TrendPoint
 
-export type PositionStatsWithTrend = PositionStats & {
-  winRateTrend?: WinRateTrendPoint[]
-}
+/** PositionStats 已包含 winRateTrend，不再交叉扩展造成冲突 */
+export type PositionStatsWithTrend = PositionStats
 
 export interface ChartDataValidation {
   isValid: boolean
@@ -34,7 +31,6 @@ export function validatePositionStats(
   const errors: string[] = []
   const gamesCount = positionData?.games || 0
 
-  // 基础数据验证
   if (!positionData) {
     errors.push('位置数据为空')
     return {
@@ -54,13 +50,11 @@ export function validatePositionStats(
     errors.push('该位置没有对局数据')
   }
 
-  // 检查英雄池数据
-  const hasChampionPool = !!positionData.stats?.favoriteChampions?.length
+  const hasChampionPool = !!(positionData.championPool?.length || positionData.stats?.favoriteChampions?.length)
   if (!hasChampionPool && gamesCount > 0) {
     errors.push('英雄池数据缺失')
   }
 
-  // 检查趋势数据
   const hasTrendData = !!positionData.winRateTrend?.length
   if (!hasTrendData && gamesCount > 0) {
     errors.push('胜率趋势数据缺失')
@@ -87,7 +81,6 @@ export function validateRadarData(stats: PlayerMatchStats | null | undefined): C
     return { isValid: false, errors, warnings }
   }
 
-  // 检查必要字段
   const requiredFields = ['avgKda', 'cspm', 'vspm', 'avgKills', 'avgDeaths', 'avgAssists', 'dpm'] as const
   for (const field of requiredFields) {
     if (stats[field] === undefined || stats[field] === null) {
@@ -95,7 +88,6 @@ export function validateRadarData(stats: PlayerMatchStats | null | undefined): C
     }
   }
 
-  // 数据合理性检查
   if (stats.avgKda < 0) warnings.push('KDA值异常')
   if (stats.cspm < 0) warnings.push('补刀数据异常')
   if (stats.vspm < 0) warnings.push('视野数据异常')
@@ -122,7 +114,6 @@ export function validateTrendData(
     return { isValid: false, errors, warnings }
   }
 
-  // 检查数据点结构
   for (let i = 0; i < trendData.length; i++) {
     const point = trendData[i]
     if (!point) {
@@ -154,7 +145,7 @@ export function validateTrendData(
  * 验证英雄池数据
  */
 export function validateChampionPool(
-  championPool: AnalysisChampionStats[] | null | undefined
+  championPool: Array<ChampionStat | AnalysisChampionStats> | null | undefined
 ): ChartDataValidation {
   const errors: string[] = []
   const warnings: string[] = []
@@ -175,12 +166,8 @@ export function validateChampionPool(
       errors.push(`第${i + 1}个英雄缺少ID`)
     }
 
-    if (typeof champ.games !== 'number' || champ.games < 0) {
-      errors.push(`第${i + 1}个英雄的场次数据异常`)
-    }
-
-    if (typeof champ.winRate !== 'number' || champ.winRate < 0 || champ.winRate > 100) {
-      warnings.push(`第${i + 1}个英雄的胜率数据异常`)
+    if (champ.games <= 0) {
+      warnings.push(`第${i + 1}个英雄场次异常`)
     }
   }
 
@@ -196,26 +183,9 @@ export function validateChampionPool(
  */
 export function generateChartErrorMessage(validation: ChartDataValidation): string {
   if (validation.isValid) return ''
-
-  const errorCount = validation.errors.length
-  const warningCount = validation.warnings.length
-
-  let message = `数据验证失败 (${errorCount}个错误`
-  if (warningCount > 0) {
-    message += `, ${warningCount}个警告`
+  const parts = [...validation.errors]
+  if (validation.warnings.length) {
+    parts.push(...validation.warnings.map((w) => `警告: ${w}`))
   }
-  message += '):\n'
-
-  validation.errors.forEach((error) => {
-    message += `• ${error}\n`
-  })
-
-  if (validation.warnings.length > 0) {
-    message += '\n警告:\n'
-    validation.warnings.forEach((warning) => {
-      message += `• ${warning}\n`
-    })
-  }
-
-  return message.trim()
+  return parts.join('\n')
 }

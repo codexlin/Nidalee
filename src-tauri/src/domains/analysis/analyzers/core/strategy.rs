@@ -1,5 +1,10 @@
 /// 分析深度枚举
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, ts_rs::TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/AnalysisDepth.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub enum AnalysisDepth {
     /// 简单分析 - 2层分析（基础 + 简单胜负）
@@ -9,7 +14,12 @@ pub enum AnalysisDepth {
 }
 
 /// 分析模式（由前端用户选择）
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, ts_rs::TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/AnalysisMode.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub enum AnalysisMode {
     /// 单排分析 - 只分析单排对局（420）
@@ -110,9 +120,9 @@ impl AnalysisStrategy {
     /// 根据队列ID自动选择策略
     pub fn from_queue_id(queue_id: i64) -> Self {
         match queue_id {
-            420 => AnalysisStrategy::SoloRanked,    // 单排 - 核心模式
-            440 => AnalysisStrategy::FlexRanked,    // 灵活组排 - 核心模式
-            _ => AnalysisStrategy::Other,           // 其他所有模式 - 简化分析
+            420 => AnalysisStrategy::SoloRanked, // 单排 - 核心模式
+            440 => AnalysisStrategy::FlexRanked, // 灵活组排 - 核心模式
+            _ => AnalysisStrategy::Other,        // 其他所有模式 - 简化分析
         }
     }
 
@@ -156,24 +166,33 @@ impl AnalysisStrategy {
 
     /// 是否启用深度分析（参团率、伤害占比、稳定性、趋势）
     pub fn enable_advanced_analysis(&self) -> bool {
-        matches!(self, AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked)
+        matches!(
+            self,
+            AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked
+        )
     }
 
     /// 是否启用位置分析（位置识别、位置专项评价）
     pub fn enable_role_analysis(&self) -> bool {
-        matches!(self, AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked)
+        matches!(
+            self,
+            AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked
+        )
     }
 
     /// 是否启用分布分析（高光时刻、崩盘场次、稳定性分布）
     pub fn enable_distribution_analysis(&self) -> bool {
-        matches!(self, AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked)
+        matches!(
+            self,
+            AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked
+        )
     }
 
     /// 获取特征数量限制
     pub fn max_traits(&self) -> usize {
         match self {
             AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked => 12, // 排位模式：展示更多特征
-            AnalysisStrategy::Other => 6,   // 其他模式：精简特征
+            AnalysisStrategy::Other => 6, // 其他模式：精简特征
         }
     }
 
@@ -201,6 +220,53 @@ impl AnalysisStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domains::analysis::analyzers::core::parser::{ParsedPlayerData, ParsedTeamData};
+
+    /// 只关心 `queue_id` 的最小 `ParsedGame`
+    ///
+    /// 刻意不给 `ParsedPlayerData` / `ParsedTeamData` 加 `derive(Default)`：
+    /// 「一场全零的对局」在生产语义里没有意义，能被 `Default` 造出来只会让
+    /// 忘记赋值的 bug 变成静默的错误统计。测试需要占位值就在测试里显式写。
+    fn game_with_queue(game_id: u64, queue_id: i64) -> ParsedGame {
+        ParsedGame {
+            game_id,
+            queue_id,
+            game_duration: 1800,
+            game_creation: 1234567890,
+            player_data: ParsedPlayerData {
+                participant_id: 1,
+                champion_id: 0,
+                team_id: 100,
+                win: true,
+                kills: 0,
+                deaths: 0,
+                assists: 0,
+                kda: 0.0,
+                damage_to_champions: 0,
+                damage_taken: 0,
+                gold_earned: 0,
+                vision_score: 0,
+                wards_placed: 0,
+                wards_killed: 0,
+                cs: 0,
+                jungle_cs: 0,
+                role: "SOLO".to_string(),
+                lane: "TOP".to_string(),
+                timeline_data: None,
+            },
+            team_data: ParsedTeamData {
+                team_id: 100,
+                total_kills: 0,
+                total_deaths: 0,
+                total_assists: 0,
+                total_damage_to_champions: 0,
+                total_damage_taken: 0,
+                total_gold_earned: 0,
+                total_vision_score: 0,
+                total_cs: 0,
+            },
+        }
+    }
 
     #[test]
     fn test_solo_ranked_strategy() {
@@ -225,24 +291,7 @@ mod tests {
     #[test]
     fn test_mixed_ranked_strategy() {
         // 创建包含单排和灵活组排的游戏数据
-        let games = vec![
-            ParsedGame {
-                game_id: 1,
-                queue_id: 420,
-                game_duration: 1800,
-                game_creation: 1234567890,
-                player_data: crate::domains::analysis::analyzers::core::parser::ParsedPlayerData::default(),
-                team_data: crate::domains::analysis::analyzers::core::parser::ParsedTeamData::default(),
-            },
-            ParsedGame {
-                game_id: 2,
-                queue_id: 440,
-                game_duration: 2000,
-                game_creation: 1234567891,
-                player_data: crate::domains::analysis::analyzers::core::parser::ParsedPlayerData::default(),
-                team_data: crate::domains::analysis::analyzers::core::parser::ParsedTeamData::default(),
-            },
-        ];
+        let games = vec![game_with_queue(1, 420), game_with_queue(2, 440)];
         let strategy = AnalysisStrategy::from_games(&games);
         assert_eq!(strategy, AnalysisStrategy::MixedRanked);
         assert!(strategy.enable_advanced_analysis());

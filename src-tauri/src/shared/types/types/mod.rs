@@ -392,42 +392,64 @@ pub struct SummonerInfo {
     #[serde(deserialize_with = "crate::shared::types::string_or_number")]
     pub summoner_id: String,
 
-    // 经验信息
+    // 经验信息（来自 /lol-summoner/v1/current-summoner）
+    #[serde(default)]
     #[ts(type = "number")]
     pub xp_since_last_level: i64,
+    #[serde(default)]
     #[ts(type = "number")]
     pub xp_until_next_level: i64,
+    #[serde(default)]
     pub percent_complete_for_next_level: Option<f64>,
 
     // 游戏状态
+    #[serde(default)]
     pub game_status: Option<String>,
+    #[serde(default)]
     pub availability: Option<String>,
 
-    // 挑战系统
+    // 挑战系统（current-summoner 无此字段，由 fill_challenge_info 补全）
+    #[serde(default)]
     pub challenge_points: Option<String>,
+    #[serde(default)]
     pub challenge_crystal_level: Option<String>,
 
     // 排位信息 - 单人排位
+    #[serde(default)]
     pub solo_rank_tier: Option<String>,
+    #[serde(default)]
     pub solo_rank_division: Option<String>,
+    #[serde(default)]
     pub solo_rank_wins: Option<i32>,
+    #[serde(default)]
     pub solo_rank_losses: Option<i32>,
+    #[serde(default)]
     pub solo_rank_lp: Option<i32>,
 
     // 排位信息 - 灵活排位
+    #[serde(default)]
     pub flex_rank_tier: Option<String>,
+    #[serde(default)]
     pub flex_rank_division: Option<String>,
+    #[serde(default)]
     pub flex_rank_wins: Option<i32>,
+    #[serde(default)]
     pub flex_rank_losses: Option<i32>,
+    #[serde(default)]
     pub flex_rank_lp: Option<i32>,
 
     // 历史最高排位
+    #[serde(default)]
     pub highest_rank_this_season: Option<String>,
 
     // 天赋信息
+    #[serde(default)]
     pub current_perk_page: Option<String>,
+    #[serde(default)]
     pub primary_style_id: Option<i32>,
+    #[serde(default)]
     pub sub_style_id: Option<i32>,
+    #[serde(default)]
     pub selected_perk_ids: Option<Vec<i32>>,
 }
 
@@ -610,7 +632,12 @@ pub struct RankInfo {
     pub flex_losses: Option<i32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/MatchmakingState.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchmakingState {
     pub errors: Vec<MatchmakingError>,
@@ -619,20 +646,33 @@ pub struct MatchmakingState {
     pub estimated_queue_time: Option<f64>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/MatchmakingError.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchmakingError {
     pub error_type: String,
     pub id: i32,
     pub message: String,
+    #[ts(type = "number")]
     pub penalized_summoner_id: i64,
+    #[ts(type = "number")]
     pub penalty_time_remaining: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/LowPriorityData.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct LowPriorityData {
     pub busted_leaver_access_token: String,
+    #[ts(type = "number[]")]
     pub penalized_summoner_ids: Vec<i64>,
     pub penalty_time: f64,
     pub penalty_time_remaining: f64,
@@ -675,7 +715,12 @@ pub struct CurrentChampion {
 }
 
 /// 符文页面数据结构
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/RunePage.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct RunePage {
     pub id: i64,
@@ -826,6 +871,10 @@ pub struct SummonerWithMatches {
     pub display_name: String,
     pub summoner_info: SummonerInfo,
     pub matches: PlayerMatchStats,
+    /// 与 `matches` 同源的一次 analyze 结果投影，避免搜索页再打第二轮 LCU
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub position_analysis: Option<MultiPositionAnalysis>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, TS)]
@@ -947,7 +996,8 @@ pub struct RuneOption {
 pub type AllRunesResponse = Vec<RuneSystem>;
 
 // 保留原有的 DataDragonRune 和 RunePages 类型作为兼容
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/types/generated/DataDragonRune.ts")]
 pub struct DataDragonRune {
     pub id: i64,
     pub name: String,
@@ -956,7 +1006,8 @@ pub struct DataDragonRune {
     pub long_desc: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/types/generated/RunePages.ts")]
 pub struct RunePages {
     pub pages: Vec<DataDragonRune>,
 }
@@ -1081,10 +1132,10 @@ pub struct SummonerTrait {
 }
 
 /// 建议分类
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(
     export,
-    export_to = "../../../src-tauri/bindings/AdviceCategory.ts",
+    export_to = "../../src/types/generated/AdviceCategory.ts",
     rename_all = "PascalCase"
 )]
 #[serde(rename_all = "PascalCase")]
@@ -1102,7 +1153,7 @@ pub enum AdviceCategory {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(
     export,
-    export_to = "../../../src-tauri/bindings/AdvicePerspective.ts",
+    export_to = "../../src/types/generated/AdvicePerspective.ts",
     rename_all = "PascalCase"
 )]
 #[serde(rename_all = "PascalCase")]
@@ -1208,7 +1259,7 @@ pub struct MultiPositionAnalysis {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct PositionStats {
-    /// 位置名称（打野、上单、中单、ADC、辅助、灵活）
+    /// ASCII 位置码：TOP / JUNGLE / MID / ADC / SUPPORT / ARAM / FLEX / UNKNOWN
     pub position: String,
 
     /// 该位置的场次
@@ -1230,6 +1281,130 @@ pub struct PositionStats {
     /// 胜率趋势（最近的对局）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub win_rate_trend: Option<Vec<TrendPoint>>,
+
+    /// 过程复盘洞察（深度时间线）；无时间线时带降级说明
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub process_insight: Option<ProcessInsight>,
+}
+
+/// 过程复盘洞察（不以胜率为主结论）
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/ProcessInsight.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessInsight {
+    pub sample_size: u32,
+    pub timeline_games: u32,
+    pub has_timeline: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub degradation_message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub death_breakdown: Option<DeathBreakdownCard>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub laning_process: Option<LaningProcessCard>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub objective_process: Option<ObjectiveProcessCard>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vision_process: Option<VisionProcessCard>,
+    pub actions: Vec<ProcessAction>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/DeathBreakdownCard.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct DeathBreakdownCard {
+    pub total_deaths: u32,
+    pub solo: u32,
+    pub gank_or_multi: u32,
+    pub tower_or_minion: u32,
+    pub solo_rate: f64,
+    pub gank_rate: f64,
+    pub summary: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/LaningProcessCard.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct LaningProcessCard {
+    pub sample_size: u32,
+    pub avg_cs_diff: f64,
+    pub avg_gold_diff: f64,
+    pub avg_overall_advantage_pct: f64,
+    pub summary: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/ObjectiveProcessCard.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ObjectiveProcessCard {
+    pub dragons_seen: u32,
+    pub dragons_taken: u32,
+    pub dragons_missed: u32,
+    pub heralds_seen: u32,
+    pub heralds_taken: u32,
+    pub heralds_missed: u32,
+    pub barons_seen: u32,
+    pub barons_taken: u32,
+    pub barons_missed: u32,
+    pub missed_activity: Vec<ActivityBucketCount>,
+    pub summary: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/ActivityBucketCount.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityBucketCount {
+    /// dead / base / ownJungle / enemyJungle / riverOrObjective / lane / unknown
+    pub activity: String,
+    pub label: String,
+    pub count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/VisionProcessCard.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct VisionProcessCard {
+    pub wards_placed: u32,
+    pub wards_killed: u32,
+    pub games_with_wards: u32,
+    pub summary: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/ProcessAction.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessAction {
+    pub key: String,
+    pub title: String,
+    pub detail: String,
+    pub priority: u8,
 }
 
 /// 英雄统计数据
@@ -1315,7 +1490,8 @@ pub struct MatchPerformance {
     // ⭐ v3.1: 位置信息（用于前端展示和分析）
     pub role: String,     // 原始 role：DUO_CARRY, DUO_SUPPORT, SOLO, JUNGLE
     pub lane: String,     // 原始 lane：TOP, MIDDLE, BOTTOM, JUNGLE
-    pub position: String, // 中文位置：上单, 中单, 打野, ADC, 辅助
+    /// ASCII 位置码：TOP / JUNGLE / MID / ADC / SUPPORT / ARAM / FLEX / UNKNOWN
+    pub position: String,
 }
 
 /// 队伍分析数据

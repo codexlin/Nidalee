@@ -1,179 +1,243 @@
 <template>
-  <div class="space-y-4">
-    <h4 class="font-semibold flex items-center">
-      <UserCheck class="h-4 w-4 mr-2 text-purple-500" />
-      召唤师特征
-    </h4>
-
-    <!-- 无数据提示 -->
-    <div
-      v-if="!matchStatistics || !matchStatistics.traits || matchStatistics.traits.length === 0"
-      class="text-center py-6 text-sm text-muted-foreground"
-    >
-      <p>暂无特征数据</p>
-      <p class="text-xs mt-1">需要更多对局数据来分析召唤师特征</p>
+  <div v-if="featuredCards.length || minorCards.length" class="space-y-3">
+    <div class="flex items-center justify-between gap-2">
+      <h4 class="font-semibold flex items-center">
+        <UserCheck class="h-4 w-4 mr-2 text-muted-foreground" />
+        召唤师特征
+      </h4>
+      <span class="text-xs text-muted-foreground">{{ sectionHint }}</span>
     </div>
-    <div v-else class="flex flex-wrap gap-1">
-      <template v-for="trait in traits" :key="trait.name">
-        <button
-          class="flex items-center gap-1 px-2 h-8 rounded-full border text-xs font-medium transition-all duration-150 focus:outline-none cursor-pointer select-none min-w-[96px] max-w-[30%] mb-[2px] whitespace-nowrap"
-          :class="[
-            selectedTrait?.name === trait.name
-              ? trait.type === 'bad'
-                ? 'border-red-500 bg-red-50 text-red-600 ring-1 ring-red-400'
-                : 'border-primary bg-primary/10 text-primary ring-1 ring-primary'
-              : trait.type === 'bad'
-                ? 'border-red-200 bg-red-50 text-red-500 hover:border-red-400 hover:text-red-600'
-                : 'border-border bg-muted text-muted-foreground hover:border-primary/40 hover:text-primary'
-          ]"
-          @click="selectTrait(trait)"
+
+    <div class="space-y-2">
+      <div
+        v-for="card in featuredCards"
+        :key="card.key"
+        class="flex items-center gap-3 rounded-xl border px-3 py-2.5"
+        :class="
+          card.key === primaryKey
+            ? 'border-primary/45 bg-primary/5'
+            : 'border-border/70 bg-muted/10'
+        "
+      >
+        <div
+          class="h-10 w-10 shrink-0 rounded-lg flex items-center justify-center text-sm font-bold"
+          :class="
+            card.key === primaryKey
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
+          "
         >
-          <component v-if="trait.icon" :is="trait.icon" class="h-4 w-4" />
-          <span v-else class="h-4 w-4 inline-block"></span>
-          <span>{{ trait.name }}</span>
-          <span
-            class="ml-1 flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold transition-colors"
-            :class="
-              selectedTrait?.name === trait.name
-                ? trait.type === 'bad'
-                  ? 'bg-red-500/95 text-white/95 dark:bg-red-500/85 dark:text-white/85'
-                  : 'bg-primary/90 text-primary-foreground/95 dark:bg-primary/70 dark:text-primary-foreground/85'
-                : trait.type === 'bad'
-                  ? 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300'
-                  : 'bg-muted text-muted-foreground/90 dark:bg-muted dark:text-muted-foreground/80'
-            "
-          >
-            {{ trait.score }}
-          </span>
-        </button>
-      </template>
-    </div>
-
-    <div v-if="selectedTrait" class="bg-card border rounded-lg p-4 transition-all duration-200 hover:shadow-sm">
-      <div class="flex items-start gap-3">
-        <div class="p-2 bg-muted rounded-lg">
-          <component :is="selectedTrait.icon" class="h-5 w-5" />
+          {{ card.iconText }}
         </div>
-        <div class="flex-1">
-          <div class="flex items-center gap-2 mb-1">
-            <h5 class="font-semibold">
-              {{ selectedTrait.name }}
-            </h5>
-            <Badge
-              :variant="selectedTrait.name === primaryTrait?.name ? 'default' : 'outline'"
-              class="text-xs px-2 py-0.5 font-medium border"
-              :class="
-                selectedTrait.name === primaryTrait?.name
-                  ? 'bg-primary/85 dark:bg-primary/70 text-primary-foreground/95 dark:text-primary-foreground/85 border-primary/30 dark:border-primary/25'
-                  : 'bg-primary/10 dark:bg-primary/15 text-primary/90 dark:text-primary/85 border-border dark:border-border/60'
-              "
+
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span
+              class="truncate"
+              :class="card.key === primaryKey ? 'text-sm font-semibold' : 'text-sm font-medium'"
             >
-              {{ selectedTrait.name === primaryTrait?.name ? '主要特征' : '特征详情' }}
+              {{ card.name }}
+            </span>
+            <Badge
+              v-if="card.key === primaryKey"
+              variant="secondary"
+              class="text-[10px] px-1.5 py-0 h-4 shrink-0"
+            >
+              主要
             </Badge>
           </div>
-          <p class="text-sm text-muted-foreground mb-2">
-            {{ selectedTrait.description }}
+          <p class="mt-0.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 text-xs tabular-nums">
+            <span class="text-muted-foreground">
+              {{ card.games }}场 ·
+              <span class="text-green-600 dark:text-green-400">{{ card.wins }}胜</span>
+              <span class="text-red-600 dark:text-red-400">{{ card.losses }}负</span>
+            </span>
+            <span class="text-muted-foreground">
+              KDA
+              <span class="ml-1 font-medium text-foreground">{{ card.kdaText }}</span>
+            </span>
+            <span v-if="card.focusLabel" class="text-muted-foreground">
+              {{ card.focusLabel }}
+              <span class="ml-1 font-medium text-foreground">{{ card.focusValue }}</span>
+            </span>
           </p>
-          <p class="text-xs text-muted-foreground">
-            {{ selectedTrait.detail }}
-          </p>
+        </div>
+
+        <div class="shrink-0 text-right pl-1 min-w-[3.25rem]">
+          <div
+            class="text-xl font-semibold tabular-nums leading-none tracking-tight"
+            :class="winRateClass(card.winRate)"
+          >
+            {{ card.winRate.toFixed(0) }}%
+          </div>
+          <div class="text-[10px] text-muted-foreground mt-1">胜率</div>
         </div>
       </div>
     </div>
 
-    <div v-if="traits.length > 1" class="text-xs text-muted-foreground text-center">
-      共识别出 {{ traits.length }} 个特征，点击标签查看详情
-    </div>
+    <p v-if="minorCards.length" class="text-xs text-muted-foreground px-0.5">
+      <span class="text-foreground/70">也打过</span>
+      <span v-for="(card, idx) in minorCards" :key="card.key">
+        <span v-if="idx > 0"> · </span>
+        {{ card.name }} {{ card.games }}场
+        <span class="tabular-nums" :class="winRateClass(card.winRate)">
+          ({{ card.winRate.toFixed(0) }}%)
+        </span>
+      </span>
+    </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Component } from 'vue'
-import {
-  AlertTriangle,
-  Award,
-  Coffee,
-  Crown,
-  Eye,
-  Flame,
-  Heart,
-  Meh,
-  Star,
-  Swords,
-  TrendingUp,
-  UserCheck,
-  Zap
-} from 'lucide-vue-next'
+import { UserCheck } from 'lucide-vue-next'
+import { getPositionLabel } from '@/common/positionLabels'
+import { isMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
 
-interface UITrait {
+/** 少于该场数不当完整身份卡（1–2 场波动太大） */
+const MIN_FEATURED_GAMES = 3
+
+interface IdentityCard {
+  key: string
   name: string
-  description: string
-  detail: string
-  score: number
-  variant: 'default' | 'secondary' | 'destructive' | 'outline'
-  icon: Component
-  type: 'good' | 'bad'
+  iconText: string
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  kdaText: string
+  focusLabel: string
+  focusValue: string
 }
 
 const props = defineProps<{
-  matchStatistics: PlayerMatchStats | null
+  analysisTraits?: DeterministicTrait[] | null
+  matchStatistics?: PlayerMatchStats | null
+  positionStats?: PositionStats[] | null
+  mainPosition?: string | null
+  filterMode?: string | null
 }>()
 
-// 选中的特征
-const selectedTrait = ref<UITrait | null>(null)
+/** 排位筛选才用分路身份；娱乐 / 全部 / 未知分路走模式身份 */
+const usePositionIdentity = computed(() => {
+  const mode = props.filterMode
+  if (!mode || !isMatchModeKey(mode)) return false
+  const key = mode as MatchModeKey
+  return key === 'mixedRanked' || key === '420' || key === '440'
+})
 
-// 选择特征
-const selectTrait = (trait: UITrait) => {
-  selectedTrait.value = trait
+const sectionHint = computed(() => (usePositionIdentity.value ? '分路近况' : '模式近况'))
+
+/** 胜率以 50% 为界：正绿负红，刚好 50 用正文色 */
+const winRateClass = (rate: number): string => {
+  if (rate > 50) return 'text-emerald-600 dark:text-emerald-400'
+  if (rate < 50) return 'text-rose-600 dark:text-rose-400'
+  return 'text-foreground'
 }
 
-// ✨ 图标映射（根据特征名称）
-const iconMap: Record<string, Component> = {
-  大神: Crown,
-  稳定: Award,
-  坑货: Meh,
-  大爹: Flame,
-  输出: Zap,
-  送分: AlertTriangle,
-  人头狗: Swords,
-  辅助王: Heart,
-  连胜王: TrendingUp,
-  连败: Coffee,
-  全能王: Crown,
-  视野王: Eye,
-  // 默认图标
-  _default: Star
+const positionIcon = (code: string): string => {
+  const icons: Record<string, string> = {
+    TOP: '上',
+    JUNGLE: '野',
+    MID: '中',
+    ADC: '下',
+    SUPPORT: '辅',
+    UNKNOWN: '?'
+  }
+  return icons[code] || getPositionLabel(code).slice(0, 1)
 }
 
-// ✨ 直接使用后端计算的 traits，只做UI适配
-const convertBackendTraits = (): UITrait[] => {
-  const backendTraits = props.matchStatistics?.traits || []
-
-  return backendTraits.map((trait) => ({
-    name: trait.name,
-    description: trait.description,
-    detail: `${trait.description}（评分：${trait.score}）`,
-    score: trait.score,
-    variant: trait.type === 'good' ? 'default' : 'destructive',
-    icon: iconMap[trait.name] || iconMap['_default'],
-    type: trait.type as 'good' | 'bad'
-  }))
+const modeIcon = (key: string, name: string): string => {
+  if (key.includes('hextech') || key.includes('2400')) return '海'
+  if (key.includes('aram') || key.includes('450')) return '乱'
+  if (key.includes('fun')) return '娱'
+  return name.slice(0, 1)
 }
 
-// ✅ 使用后端计算好的特征
-const traits = computed(() => convertBackendTraits())
+const focusForPosition = (pos: PositionStats): { label: string; value: string } => {
+  if (pos.position === 'SUPPORT') {
+    return { label: '视野/分', value: pos.stats.vspm.toFixed(2) }
+  }
+  if (pos.position === 'JUNGLE') {
+    return { label: '补刀/分', value: pos.stats.cspm.toFixed(1) }
+  }
+  return { label: 'CS/min', value: pos.stats.cspm.toFixed(1) }
+}
 
-// 主要特征（得分最高的）
-const primaryTrait = computed(() => traits.value[0])
-
-// 初始化选中主要特征
-watch(
-  traits,
-  (newTraits) => {
-    if (newTraits.length > 0 && !selectedTrait.value) {
-      selectedTrait.value = newTraits[0]
+const positionCards = computed((): IdentityCard[] => {
+  if (!usePositionIdentity.value) return []
+  const list = (props.positionStats || []).filter((p) => p.position !== 'UNKNOWN')
+  return list.map((pos) => {
+    const focus = focusForPosition(pos)
+    return {
+      key: `pos_${pos.position}`,
+      name: getPositionLabel(pos.position),
+      iconText: positionIcon(pos.position),
+      games: pos.games,
+      wins: pos.wins,
+      losses: pos.games - pos.wins,
+      winRate: pos.winRate,
+      kdaText: pos.stats.avgKda.toFixed(2),
+      focusLabel: focus.label,
+      focusValue: focus.value
     }
-  },
-  { immediate: true }
+  })
+})
+
+/**
+ * 娱乐 / 全部：模式亲和当身份（海克斯/乱斗/娱乐）
+ * 不展示「排位为主」，也不展示过程向娱乐标签
+ */
+const modeIdentityCards = computed((): IdentityCard[] => {
+  if (positionCards.value.length) return []
+  const traits = (props.analysisTraits || []).filter(
+    (t) =>
+      t.supportsConclusion &&
+      t.key.startsWith('mode_affinity') &&
+      t.key !== 'mode_affinity_ranked'
+  )
+  const stats = props.matchStatistics
+  const total = stats?.totalGames || 0
+  const wins = stats?.wins || 0
+  const losses = stats?.losses ?? Math.max(0, total - wins)
+  const winRate = stats?.winRate ?? 0
+
+  return traits.map((t) => {
+    const sample = t.sampleCount || total
+    const sharePct = Math.round((t.frequency || 0) * 100)
+    return {
+      key: t.key,
+      name: t.name,
+      iconText: modeIcon(t.key, t.name),
+      games: sample,
+      wins,
+      losses,
+      winRate,
+      kdaText: (stats?.avgKda ?? 0).toFixed(2),
+      focusLabel: total ? '占比' : '',
+      focusValue: total ? `${sharePct}%` : ''
+    }
+  })
+})
+
+const identityCards = computed(() =>
+  positionCards.value.length ? positionCards.value : modeIdentityCards.value
 )
+
+const primaryKey = computed(() => {
+  if (usePositionIdentity.value && props.mainPosition && props.mainPosition !== 'UNKNOWN') {
+    return `pos_${props.mainPosition}`
+  }
+  return identityCards.value[0]?.key ?? ''
+})
+
+const featuredCards = computed(() => {
+  const cards = identityCards.value
+  if (!positionCards.value.length) return cards
+  return cards.filter((c) => c.key === primaryKey.value || c.games >= MIN_FEATURED_GAMES)
+})
+
+const minorCards = computed(() => {
+  if (!positionCards.value.length) return []
+  return identityCards.value.filter((c) => c.key !== primaryKey.value && c.games < MIN_FEATURED_GAMES)
+})
 </script>

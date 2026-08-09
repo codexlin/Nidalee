@@ -1,18 +1,30 @@
-/// 时间线分析器 - 基于frames数据的深度分析
-///
-/// 职责：
-/// - 解析match_timeline_json中的frames数据
-/// - 计算分阶段效率指标
-/// - 分析对手差距
-/// - 提取关键事件
-/// - 生成时间线特征
+//! 时间线分析器（兼容映射层）
+//!
+//! ⚠️ 这里**不再**实现任何速率 / 差值 / 优势公式。
+//! 所有计算都委托给 `domains::analysis::evidence`，本文件只负责把
+//! `PhaseEvidence` / `EventEvidence` 映射回旧的 `TimelineAnalysis` 形状，
+//! 让 crate 内既有消费者（traits / advice / service）不受影响。
+//!
+//! 相对旧实现的修正：
+//! - 速率分母是真实经过时间 `(last.timestamp - first.timestamp)/60000`，不再是帧数量
+//! - CS 含线上 + 野怪，打野数据不再丢失
+//! - 短局 / remake 不再整体返回 `None`，缺失阶段通过 `has_phase()` 显式表达
+//! - 事件统计包含助攻，`killerId == 0` 不归给任何玩家
+//! - `overall_advantage` 基于归一化份额差，不再直接加权 raw XP/Gold
+//! - 「对线比较」固定取 Early 阶段，不再退化成最后一个有差值的阶段
+
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// 时间线帧数据结构
+use crate::domains::analysis::evidence::{
+    advantage_to_percent, compute_phase_evidence, extract_event_evidence, laning_opponent_diff, timeline_frames,
+    EventEvidence, EvidenceEventKind, GamePhase, PhaseEvidence,
+};
+
+/// 时间线帧数据结构（旧分析器仍在使用）
 #[derive(Debug, Clone)]
 pub struct TimelineFrame {
-    pub timestamp: i64,  // 时间戳（毫秒）
+    pub timestamp: i64, // 时间戳（毫秒）
     pub events: Vec<GameEvent>,
     pub participant_frames: HashMap<String, ParticipantFrame>,
 }
@@ -43,7 +55,7 @@ pub struct ParticipantFrame {
     pub position: Position,
 }
 
-/// 位置信息
+/// 位置信息（地图坐标）
 #[derive(Debug, Clone)]
 pub struct Position {
     pub x: f64,
@@ -51,7 +63,10 @@ pub struct Position {
 }
 
 /// 阶段分析结果
-#[derive(Debug, Clone)]
+///
+/// `cs_per_minute` 是 **total CS**（线上 + 野怪）/ 真实分钟；
+/// `*_difference` 是阶段末的累计绝对差，不是 per-minute delta。
+#[derive(Debug, Clone, Default)]
 pub struct PhaseAnalysis {
     pub cs_per_minute: f64,
     pub gold_per_minute: f64,
@@ -72,8 +87,15 @@ pub struct KeyEvent {
     pub description: String,
 }
 
-/// 对手比较
-#[derive(Debug, Clone)]
+/// 对线期对手比较
+///
+/// 只描述**对线期**（0-10 分钟）的对位差距：中后期差值反映的是团队节奏与带线收益，
+/// 拿它当对线结论会把「对线被打崩但中期滚起来」说成对线优势。
+///
+/// `overall_advantage` 是归一化份额差组合后的**百分比**（-100 ~ 100），
+/// 由 `evidence::advantage_to_percent` 统一换算；
+/// `*_advantage` 则仍是各自单位的阶段末绝对差，两者量纲不同，不可互相比较。
+#[derive(Debug, Clone, Default)]
 pub struct OpponentComparison {
     pub opponent_id: i32,
     pub cs_advantage: f64,
@@ -86,297 +108,149 @@ pub struct OpponentComparison {
 /// 时间线分析结果
 #[derive(Debug, Clone)]
 pub struct TimelineAnalysis {
-    // 对线期数据 (0-10分钟)
+    /// 对线期 (0-10 分钟)；阶段不存在时为零值，请配合 `has_phase` 判断
     pub early_game: PhaseAnalysis,
 
-    // 中期数据 (10-20分钟)
+    /// 中期 (10-20 分钟)
     pub mid_game: PhaseAnalysis,
 
-    // 后期数据 (20分钟+)
+    /// 后期 (20 分钟+)
     pub late_game: PhaseAnalysis,
 
-    // 关键事件
+    /// 关键事件（按时间升序）
     pub key_events: Vec<KeyEvent>,
 
-    // 对手分析
+    /// 对手比较
     pub opponent_comparison: OpponentComparison,
+
+    /// 权威证据：只包含真实存在的阶段（短局 / remake 会缺 mid/late）
+    pub phases: Vec<PhaseEvidence>,
+}
+
+impl TimelineAnalysis {
+    /// 该阶段是否真实存在（而不是被补出来的零值）
+    pub fn has_phase(&self, phase: GamePhase) -> bool {
+        self.phases.iter().any(|p| p.phase == phase)
+    }
+
+    pub fn phase_evidence(&self, phase: GamePhase) -> Option<&PhaseEvidence> {
+        self.phases.iter().find(|p| p.phase == phase)
+    }
 }
 
 /// 解析时间线数据
+///
+/// 只有在时间线里根本没有 `frames`（或为空）时才返回 `None`；
+/// 短局、remake、缺帧都会返回部分阶段的分析结果。
 pub fn parse_timeline_data(
     timeline_json: &Value,
     target_participant_id: i32,
     opponent_id: Option<i32>,
 ) -> Option<TimelineAnalysis> {
-    let frames = timeline_json.get("frames")?.as_array()?;
-
+    let frames = timeline_frames(timeline_json)?;
     if frames.is_empty() {
         return None;
     }
 
-    // 按时间分组
-    let (early_frames, mid_frames, late_frames) = group_frames_by_time(frames);
-
-    // 分析各个阶段
-    let early_game = analyze_phase(&early_frames, target_participant_id, opponent_id)?;
-    let mid_game = analyze_phase(&mid_frames, target_participant_id, opponent_id)?;
-    let late_game = analyze_phase(&late_frames, target_participant_id, opponent_id)?;
-
-    // 提取关键事件
-    let key_events = extract_key_events(frames, target_participant_id);
-
-    // 分析对手比较
-    let opponent_comparison = analyze_opponent_comparison(
+    let (phases, _flags) = compute_phase_evidence(frames, target_participant_id, opponent_id);
+    let events = extract_event_evidence(
         frames,
-        target_participant_id,
-        opponent_id.unwrap_or(0),
+        crate::domains::analysis::evidence::events::EventExtractContext {
+            target_participant_id,
+            target_team_id: 100,
+            opponent_participant_id: opponent_id,
+        },
     );
 
     Some(TimelineAnalysis {
-        early_game,
-        mid_game,
-        late_game,
-        key_events,
-        opponent_comparison,
+        early_game: to_phase_analysis(&phases, GamePhase::Early),
+        mid_game: to_phase_analysis(&phases, GamePhase::Mid),
+        late_game: to_phase_analysis(&phases, GamePhase::Late),
+        key_events: to_key_events(&events, target_participant_id),
+        opponent_comparison: to_opponent_comparison(&phases),
+        phases,
     })
 }
 
-/// 按时间分组frames
-fn group_frames_by_time(frames: &[Value]) -> (Vec<&Value>, Vec<&Value>, Vec<&Value>) {
-    let mut early_frames = Vec::new();
-    let mut mid_frames = Vec::new();
-    let mut late_frames = Vec::new();
+/// 阶段证据 → 旧的 `PhaseAnalysis`（阶段缺失时为零值）
+fn to_phase_analysis(phases: &[PhaseEvidence], phase: GamePhase) -> PhaseAnalysis {
+    let Some(evidence) = phases.iter().find(|p| p.phase == phase) else {
+        return PhaseAnalysis::default();
+    };
 
-    for frame in frames {
-        let timestamp = frame["timestamp"].as_i64().unwrap_or(0);
-        let minutes = timestamp / 60000; // 转换为分钟
+    let diff = evidence.opponent_diff.as_ref();
 
-        if minutes < 10 {
-            early_frames.push(frame);
-        } else if minutes < 20 {
-            mid_frames.push(frame);
-        } else {
-            late_frames.push(frame);
-        }
-    }
-
-    (early_frames, mid_frames, late_frames)
-}
-
-/// 分析单个阶段
-fn analyze_phase(
-    frames: &[&Value],
-    target_participant_id: i32,
-    opponent_id: Option<i32>,
-) -> Option<PhaseAnalysis> {
-    if frames.is_empty() {
-        return None;
-    }
-
-    let first_frame = frames.first()?;
-    let last_frame = frames.last()?;
-
-    // 获取目标玩家的数据
-    let target_key = format!("{}", target_participant_id);
-    let first_target = first_frame["participantFrames"][&target_key].as_object()?;
-    let last_target = last_frame["participantFrames"][&target_key].as_object()?;
-
-    // 计算效率指标
-    let cs_per_minute = calculate_average_cs_per_minute(&Value::Object(first_target.clone()), &Value::Object(last_target.clone()), frames.len());
-    let gold_per_minute = calculate_average_gold_per_minute(&Value::Object(first_target.clone()), &Value::Object(last_target.clone()), frames.len());
-    let xp_per_minute = calculate_average_xp_per_minute(&Value::Object(first_target.clone()), &Value::Object(last_target.clone()), frames.len());
-
-    // 计算对手差距
-    let (cs_difference, xp_difference, gold_difference, level_difference) =
-        if let Some(opp_id) = opponent_id {
-            calculate_opponent_differences(&Value::Object(last_target.clone()), &format!("{}", opp_id), last_frame)
-        } else {
-            (0.0, 0.0, 0.0, 0.0)
-        };
-
-    Some(PhaseAnalysis {
-        cs_per_minute,
-        gold_per_minute,
-        xp_per_minute,
-        cs_difference,
-        xp_difference,
-        gold_difference,
-        level_difference,
-    })
-}
-
-/// 计算平均每分钟补刀
-fn calculate_average_cs_per_minute(first: &Value, last: &Value, frame_count: usize) -> f64 {
-    let first_cs = first["minionsKilled"].as_i64().unwrap_or(0);
-    let last_cs = last["minionsKilled"].as_i64().unwrap_or(0);
-
-    if frame_count > 0 {
-        (last_cs - first_cs) as f64 / frame_count as f64
-    } else {
-        0.0
+    PhaseAnalysis {
+        cs_per_minute: evidence.cs_per_min.unwrap_or(0.0),
+        gold_per_minute: evidence.gold_per_min.unwrap_or(0.0),
+        xp_per_minute: evidence.xp_per_min.unwrap_or(0.0),
+        cs_difference: diff.map(|d| d.cs_diff as f64).unwrap_or(0.0),
+        xp_difference: diff.map(|d| d.xp_diff as f64).unwrap_or(0.0),
+        gold_difference: diff.map(|d| d.gold_diff as f64).unwrap_or(0.0),
+        level_difference: diff.map(|d| d.level_diff as f64).unwrap_or(0.0),
     }
 }
 
-/// 计算平均每分钟金币
-fn calculate_average_gold_per_minute(first: &Value, last: &Value, frame_count: usize) -> f64 {
-    let first_gold = first["totalGold"].as_i64().unwrap_or(0);
-    let last_gold = last["totalGold"].as_i64().unwrap_or(0);
-
-    if frame_count > 0 {
-        (last_gold - first_gold) as f64 / frame_count as f64
-    } else {
-        0.0
-    }
-}
-
-/// 计算平均每分钟经验
-fn calculate_average_xp_per_minute(first: &Value, last: &Value, frame_count: usize) -> f64 {
-    let first_xp = first["xp"].as_i64().unwrap_or(0);
-    let last_xp = last["xp"].as_i64().unwrap_or(0);
-
-    if frame_count > 0 {
-        (last_xp - first_xp) as f64 / frame_count as f64
-    } else {
-        0.0
-    }
-}
-
-/// 计算对手差距
-fn calculate_opponent_differences(
-    target: &Value,
-    opponent_key: &str,
-    frame: &Value,
-) -> (f64, f64, f64, f64) {
-    let opponent = frame["participantFrames"][opponent_key].as_object();
-
-    if let Some(opp) = opponent {
-        let cs_diff = target["minionsKilled"].as_i64().unwrap_or(0) -
-                     opp["minionsKilled"].as_i64().unwrap_or(0);
-        let xp_diff = target["xp"].as_i64().unwrap_or(0) -
-                     opp["xp"].as_i64().unwrap_or(0);
-        let gold_diff = target["totalGold"].as_i64().unwrap_or(0) -
-                       opp["totalGold"].as_i64().unwrap_or(0);
-        let level_diff = target["level"].as_i64().unwrap_or(0) -
-                        opp["level"].as_i64().unwrap_or(0);
-
-        (cs_diff as f64, xp_diff as f64, gold_diff as f64, level_diff as f64)
-    } else {
-        (0.0, 0.0, 0.0, 0.0)
-    }
-}
-
-/// 提取关键事件
-fn extract_key_events(frames: &[Value], target_participant_id: i32) -> Vec<KeyEvent> {
-    let mut events = Vec::new();
-
-    for frame in frames {
-        if let Some(frame_events) = frame.get("events").and_then(|e| e.as_array()) {
-            for event in frame_events {
-                if let Some(key_event) = analyze_event(event, target_participant_id) {
-                    events.push(key_event);
-                }
-            }
-        }
-    }
-
-    events
-}
-
-/// 分析单个事件
-fn analyze_event(event: &Value, target_participant_id: i32) -> Option<KeyEvent> {
-    let event_type = event["type"].as_str()?.to_string();
-    let timestamp = event["timestamp"].as_i64().unwrap_or(0);
-
-    let mut importance_score = 0.0;
-    let mut description = String::new();
-    let mut participant_id = target_participant_id;
-
-    match event_type.as_str() {
-        "CHAMPION_KILL" => {
-            if event["killerId"].as_i64().unwrap_or(0) as i32 == target_participant_id {
-                importance_score = 10.0;
-                description = "击杀敌方英雄".to_string();
-                participant_id = event["killerId"].as_i64().unwrap_or(0) as i32;
-            } else if event["victimId"].as_i64().unwrap_or(0) as i32 == target_participant_id {
-                importance_score = -8.0;
-                description = "被敌方击杀".to_string();
-                participant_id = event["victimId"].as_i64().unwrap_or(0) as i32;
-            }
-        },
-        "ELITE_MONSTER_KILL" => {
-            if event["killerId"].as_i64().unwrap_or(0) as i32 == target_participant_id {
-                importance_score = 7.0;
-                description = "击杀大型野怪".to_string();
-                participant_id = event["killerId"].as_i64().unwrap_or(0) as i32;
-            }
-        },
-        "BUILDING_KILL" => {
-            if event["killerId"].as_i64().unwrap_or(0) as i32 == target_participant_id {
-                importance_score = 5.0;
-                description = "摧毁建筑".to_string();
-                participant_id = event["killerId"].as_i64().unwrap_or(0) as i32;
-            }
-        },
-        _ => return None,
-    }
-
-    if importance_score != 0.0 {
-        Some(KeyEvent {
-            event_type,
-            timestamp,
-            participant_id,
-            importance_score,
-            description,
-        })
-    } else {
-        None
-    }
-}
-
-/// 分析对手比较
-fn analyze_opponent_comparison(
-    frames: &[Value],
-    target_participant_id: i32,
-    opponent_id: i32,
-) -> OpponentComparison {
-    if frames.is_empty() || opponent_id == 0 {
-        return OpponentComparison {
-            opponent_id: 0,
-            cs_advantage: 0.0,
-            xp_advantage: 0.0,
-            gold_advantage: 0.0,
-            level_advantage: 0.0,
-            overall_advantage: 0.0,
-        };
-    }
-
-    let last_frame = frames.last().unwrap();
-    let target_key = format!("{}", target_participant_id);
-    let opponent_key = format!("{}", opponent_id);
-
-    let target = &last_frame["participantFrames"][&target_key];
-    let opponent = &last_frame["participantFrames"][&opponent_key];
-
-    let cs_advantage = target["minionsKilled"].as_i64().unwrap_or(0) -
-                      opponent["minionsKilled"].as_i64().unwrap_or(0);
-    let xp_advantage = target["xp"].as_i64().unwrap_or(0) -
-                      opponent["xp"].as_i64().unwrap_or(0);
-    let gold_advantage = target["totalGold"].as_i64().unwrap_or(0) -
-                       opponent["totalGold"].as_i64().unwrap_or(0);
-    let level_advantage = target["level"].as_i64().unwrap_or(0) -
-                         opponent["level"].as_i64().unwrap_or(0);
-
-    let overall_advantage = (cs_advantage as f64 * 0.3) +
-                          (xp_advantage as f64 * 0.3) +
-                          (gold_advantage as f64 * 0.2) +
-                          (level_advantage as f64 * 0.2);
+/// 取**对线期**的对手差作为对位比较
+///
+/// 阶段选择委托给 `evidence::laning_opponent_diff`，与证据层共用同一条规则；
+/// 没有对线期差值（缺帧 / 未识别到对手）时返回零值，由调用方结合
+/// `has_phase(GamePhase::Early)` 判断是「真的持平」还是「根本没数据」。
+fn to_opponent_comparison(phases: &[PhaseEvidence]) -> OpponentComparison {
+    let Some(diff) = laning_opponent_diff(phases) else {
+        return OpponentComparison::default();
+    };
 
     OpponentComparison {
-        opponent_id,
-        cs_advantage: cs_advantage as f64,
-        xp_advantage: xp_advantage as f64,
-        gold_advantage: gold_advantage as f64,
-        level_advantage: level_advantage as f64,
-        overall_advantage,
+        opponent_id: diff.opponent_participant_id,
+        cs_advantage: diff.cs_diff as f64,
+        xp_advantage: diff.xp_diff as f64,
+        gold_advantage: diff.gold_diff as f64,
+        level_advantage: diff.level_diff as f64,
+        // 归一化之后才组合，再统一换算成百分比供旧阈值使用
+        overall_advantage: advantage_to_percent(diff.overall_advantage),
     }
+}
+
+/// 事件证据 → 旧的 `KeyEvent`
+fn to_key_events(events: &EventEvidence, target_participant_id: i32) -> Vec<KeyEvent> {
+    events
+        .key_events
+        .iter()
+        .map(|event| {
+            let (event_type, importance_score, description) = match event.kind {
+                EvidenceEventKind::ChampionKill => ("CHAMPION_KILL", 10.0, "击杀敌方英雄"),
+                EvidenceEventKind::ChampionDeath => ("CHAMPION_KILL", -8.0, "被敌方击杀"),
+                EvidenceEventKind::ChampionAssist => ("CHAMPION_KILL", 6.0, "参与击杀"),
+                EvidenceEventKind::ChampionSpecialKill => ("CHAMPION_SPECIAL_KILL", 8.0, "特殊击杀"),
+                EvidenceEventKind::Dragon => ("ELITE_MONSTER_KILL", 7.0, "参与击杀小龙"),
+                EvidenceEventKind::Herald => ("ELITE_MONSTER_KILL", 6.0, "参与击杀峡谷先锋"),
+                EvidenceEventKind::Baron => ("ELITE_MONSTER_KILL", 10.0, "参与击杀纳什男爵"),
+                EvidenceEventKind::Horde => ("ELITE_MONSTER_KILL", 4.0, "参与击杀虚空幼虫"),
+                EvidenceEventKind::EliteMonster => ("ELITE_MONSTER_KILL", 5.0, "参与击杀史诗野怪"),
+                EvidenceEventKind::Building => ("BUILDING_KILL", 5.0, "参与摧毁建筑"),
+                EvidenceEventKind::TurretPlate => ("TURRET_PLATE_DESTROYED", 3.0, "镀层"),
+                EvidenceEventKind::WardPlaced => ("WARD_PLACED", 2.0, "插眼"),
+                EvidenceEventKind::WardKill => ("WARD_KILL", 2.0, "排眼"),
+                EvidenceEventKind::ItemPurchased
+                | EvidenceEventKind::ItemSold
+                | EvidenceEventKind::ItemDestroyed
+                | EvidenceEventKind::ItemUndo => ("ITEM", 1.0, "出装相关"),
+                EvidenceEventKind::SkillLevelUp => ("SKILL_LEVEL_UP", 1.0, "技能加点"),
+                EvidenceEventKind::LevelUp => ("LEVEL_UP", 1.0, "升级"),
+                EvidenceEventKind::DragonSoul => ("DRAGON_SOUL_GIVEN", 6.0, "龙魂"),
+                EvidenceEventKind::GameEnd => ("GAME_END", 0.0, "对局结束"),
+                EvidenceEventKind::PauseEnd => ("PAUSE_END", 0.0, "暂停结束"),
+                EvidenceEventKind::Unknown => ("UNKNOWN", 0.0, "未知时间线事件"),
+            };
+
+            KeyEvent {
+                event_type: event_type.to_string(),
+                timestamp: event.timestamp_ms,
+                participant_id: target_participant_id,
+                importance_score,
+                description: description.to_string(),
+            }
+        })
+        .collect()
 }

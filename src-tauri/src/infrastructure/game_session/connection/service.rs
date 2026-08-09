@@ -217,9 +217,9 @@ impl ConnectionManager {
     /// 检测 LoL 进程是否存在（优化版：记录进程名快速查找）
     async fn has_lol_process(&self) -> bool {
         use once_cell::sync::Lazy;
-        use std::sync::{Mutex, RwLock};
-        use sysinfo::{ProcessRefreshKind, Pid, RefreshKind, System};
         use std::collections::HashMap;
+        use std::sync::{Mutex, RwLock};
+        use sysinfo::{Pid, ProcessRefreshKind, RefreshKind, System};
 
         // 缓存：上次找到的 LoL 进程名 -> PID
         struct CachedProcess {
@@ -331,15 +331,15 @@ impl ConnectionManager {
                 if ws_running {
                     Duration::from_secs(120) // 2 分钟（从 60s 增加）
                 } else {
-                    Duration::from_secs(30)  // WS 未运行时的回退检查
+                    Duration::from_secs(30) // WS 未运行时的回退检查
                 }
             }
             ConnectionState::Disconnected => {
                 // WebSocket 未运行时需要更频繁的检查来发现连接
                 if !ws_running && self.consecutive_failures() <= 10 {
-                    Duration::from_secs(5)   // 初期：5 秒
+                    Duration::from_secs(5) // 初期：5 秒
                 } else {
-                    Duration::from_secs(30)  // 长期断开：30 秒
+                    Duration::from_secs(30) // 长期断开：30 秒
                 }
             }
             ConnectionState::ProcessFound => Duration::from_secs(2), // 进程启动，等待认证就绪

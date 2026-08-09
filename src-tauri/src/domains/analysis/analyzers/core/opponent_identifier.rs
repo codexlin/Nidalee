@@ -1,9 +1,16 @@
-/// 对手识别器
-///
-/// 职责：
-/// - 基于位置信息识别对线对手
-/// - 计算对手相对优势
-use crate::domains::analysis::analyzers::core::timeline_analyzer::{TimelineFrame, ParticipantFrame};
+//! 对手识别器（已废弃）
+//!
+//! **不要在新代码里使用本模块**，唯一入口是
+//! [`crate::domains::analysis::evidence::resolve_lane_opponent`]。
+//!
+//! 这里的实现有两个无法就地修复的缺陷：
+//! - 队伍靠 `participantId <= 5` 猜，自定义房间 / 非标准 ID 时会把队友当成对手
+//! - 只会挑「对线期平均距离最近的人」，既不剔除泉水与死亡帧，也不区分位置，
+//!   打野必然被配到被 gank 的那条线上
+//!
+//! 保留模块只是为了不删除历史单元测试；它已从 `core` 的公开重导出中移除。
+
+use crate::domains::analysis::analyzers::core::timeline_analyzer::TimelineFrame;
 use std::collections::HashMap;
 
 /// 对手识别结果
@@ -11,8 +18,8 @@ use std::collections::HashMap;
 pub struct OpponentMatch {
     pub player_id: i32,
     pub opponent_id: i32,
-    pub confidence: f64,  // 置信度 0-1
-    pub lane: String,     // 对线路
+    pub confidence: f64, // 置信度 0-1
+    pub lane: String,    // 对线路
 }
 
 /// 位置信息
@@ -24,17 +31,23 @@ struct PositionInfo {
 }
 
 /// 对手识别器
+#[deprecated(
+    since = "0.3.0",
+    note = "会把队友/被 gank 的人当成对线对手；请改用 domains::analysis::evidence::resolve_lane_opponent"
+)]
 pub struct OpponentIdentifier;
 
+#[allow(deprecated)]
 impl OpponentIdentifier {
     /// 识别对线对手
-    pub fn identify_opponent(
-        &self,
-        player_id: i32,
-        frames: &[TimelineFrame],
-    ) -> Option<OpponentMatch> {
+    #[deprecated(
+        since = "0.3.0",
+        note = "请改用 domains::analysis::evidence::resolve_lane_opponent（含 lane-role 优先、泉水剔除与置信度）"
+    )]
+    pub fn identify_opponent(&self, player_id: i32, frames: &[TimelineFrame]) -> Option<OpponentMatch> {
         // 1. 提取对线期（前10分钟）的位置数据
-        let laning_frames: Vec<_> = frames.iter()
+        let laning_frames: Vec<_> = frames
+            .iter()
             .filter(|f| f.timestamp < 600000) // 10分钟
             .collect();
 
@@ -66,7 +79,8 @@ impl OpponentIdentifier {
         }
 
         // 5. 找到最接近的对手（距离最小）
-        proximity_scores.iter()
+        proximity_scores
+            .iter()
             .min_by(|a, b| a.1.partial_cmp(b.1).unwrap())
             .map(|(&opponent_id, &distance)| {
                 // 计算置信度（距离越小，置信度越高）
@@ -83,12 +97,9 @@ impl OpponentIdentifier {
     }
 
     /// 提取位置信息
-    fn extract_positions(
-        &self,
-        participant_id: i32,
-        frames: &[&TimelineFrame],
-    ) -> Vec<PositionInfo> {
-        frames.iter()
+    fn extract_positions(&self, participant_id: i32, frames: &[&TimelineFrame]) -> Vec<PositionInfo> {
+        frames
+            .iter()
             .filter_map(|frame| {
                 let participant_frame = frame.participant_frames.get(&participant_id.to_string())?;
                 Some(PositionInfo {
@@ -121,10 +132,7 @@ impl OpponentIdentifier {
         for player_pos in player_positions {
             // 找到时间最接近的对手位置
             if let Some(opponent_pos) = self.find_nearest_time_position(player_pos.timestamp, opponent_positions) {
-                let distance = self.calculate_distance(
-                    player_pos.x, player_pos.y,
-                    opponent_pos.x, opponent_pos.y
-                );
+                let distance = self.calculate_distance(player_pos.x, player_pos.y, opponent_pos.x, opponent_pos.y);
                 total_distance += distance;
                 count += 1;
             }
@@ -143,8 +151,7 @@ impl OpponentIdentifier {
         timestamp: i64,
         positions: &'a [PositionInfo],
     ) -> Option<&'a PositionInfo> {
-        positions.iter()
-            .min_by_key(|pos| (pos.timestamp - timestamp).abs())
+        positions.iter().min_by_key(|pos| (pos.timestamp - timestamp).abs())
     }
 
     /// 计算两点距离
@@ -196,9 +203,10 @@ impl OpponentIdentifier {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
+    // 这些用例只用到本模块的 `PositionInfo`，不需要 `timeline_analyzer::Position`
     use super::*;
-    use crate::domains::analysis::analyzers::core::timeline_parser::Position;
 
     #[test]
     fn test_calculate_distance() {
@@ -228,22 +236,33 @@ mod tests {
 
         // 下路
         let bot_positions = vec![
-            PositionInfo { x: 2000.0, y: 2000.0, timestamp: 0 },
-            PositionInfo { x: 2500.0, y: 2500.0, timestamp: 60000 },
+            PositionInfo {
+                x: 2000.0,
+                y: 2000.0,
+                timestamp: 0,
+            },
+            PositionInfo {
+                x: 2500.0,
+                y: 2500.0,
+                timestamp: 60000,
+            },
         ];
         assert_eq!(identifier.identify_lane(&bot_positions), "下路");
 
         // 上路
-        let top_positions = vec![
-            PositionInfo { x: 12000.0, y: 12000.0, timestamp: 0 },
-        ];
+        let top_positions = vec![PositionInfo {
+            x: 12000.0,
+            y: 12000.0,
+            timestamp: 0,
+        }];
         assert_eq!(identifier.identify_lane(&top_positions), "上路");
 
         // 中路
-        let mid_positions = vec![
-            PositionInfo { x: 7000.0, y: 7000.0, timestamp: 0 },
-        ];
+        let mid_positions = vec![PositionInfo {
+            x: 7000.0,
+            y: 7000.0,
+            timestamp: 0,
+        }];
         assert_eq!(identifier.identify_lane(&mid_positions), "中路");
     }
 }
-

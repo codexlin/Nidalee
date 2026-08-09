@@ -1,4 +1,11 @@
 import { colors, radiusOptions, styles } from '@/lib/theme'
+import {
+  isMatchModeKey,
+  matchModeToAnalysisMode,
+  matchModeToQueueIds,
+  type MatchModeKey
+} from '@/common/queueCatalog'
+import { useAnalysisSettingsStore } from '@/shared/stores/features/analysisSettingsStore'
 
 export const useSettingsStore = defineStore(
   'settings',
@@ -19,11 +26,15 @@ export const useSettingsStore = defineStore(
     const careerBackground = ref<string>('')
     const autoRefreshData = ref(true)
     const refreshInterval = ref(30000) // 30秒
-    // 战绩默认过滤设置
-    const defaultQueueTypes = ref<number[]>([420, 440])
+    // 是否记住仪表盘模式/场数（关闭则下次启动恢复全部/20）
+    const rememberMatchPreferences = ref(true)
+    // 当前拉取偏好（仪表盘改动始终写入，供自动刷新与两条战绩接口共用）
+    const lastMatchMode = ref<MatchModeKey>('all')
+    // 由 lastMatchMode 派生，供战绩搜索过滤复用
+    const defaultQueueTypes = ref<number[]>([])
     const applyDefaultFilterOnSearch = ref(true)
-    // 默认获取对局数量
-    const defaultMatchCount = ref<number>(20)
+    const lastMatchCount = ref<number>(20)
+    const allowedMatchCounts = [20, 25, 30] as const
 
     // 计算属性
     const themeConfig = computed(() => ({
@@ -101,6 +112,44 @@ export const useSettingsStore = defineStore(
       // 应用圆角设置
       document.documentElement.style.setProperty('--radius', `${selectedRadius.value}rem`)
 
+      // 兼容旧字段 defaultMatchMode → lastMatchMode
+      try {
+        const raw = localStorage.getItem('settings')
+        if (raw) {
+          const data = JSON.parse(raw) as Record<string, unknown>
+          if (
+            !data.lastMatchMode &&
+            typeof data.defaultMatchMode === 'string' &&
+            isMatchModeKey(data.defaultMatchMode)
+          ) {
+            lastMatchMode.value = data.defaultMatchMode
+          }
+          if (
+            data.lastMatchCount == null &&
+            typeof data.defaultMatchCount === 'number' &&
+            (allowedMatchCounts as readonly number[]).includes(data.defaultMatchCount)
+          ) {
+            lastMatchCount.value = data.defaultMatchCount
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      // 「记住」关闭时：启动恢复为全部 / 20，不沿用上次选择
+      if (!rememberMatchPreferences.value) {
+        lastMatchMode.value = 'all'
+        lastMatchCount.value = 20
+      }
+
+      // 当前拉取偏好与派生队列过滤 / 分析策略保持一致
+      defaultQueueTypes.value = matchModeToQueueIds(lastMatchMode.value)
+      try {
+        useAnalysisSettingsStore().setDefaultMode(matchModeToAnalysisMode(lastMatchMode.value))
+      } catch {
+        // ignore
+      }
+
       // 监听系统主题变化（仅作为参考，不强制覆盖用户设置）
       mediaQuery.addEventListener('change', (e) => {
         console.log('[SettingsStore] 系统主题偏好变化:', e.matches ? 'dark' : 'light')
@@ -138,9 +187,23 @@ export const useSettingsStore = defineStore(
       refreshInterval.value = Math.max(5000, interval) // 最小5秒
     }
 
-    // 战绩默认过滤方法
+    const setRememberMatchPreferences = (enabled: boolean) => {
+      rememberMatchPreferences.value = enabled
+    }
+
+    /** 写入上次战绩模式（供搜索过滤 / 分析策略同步） */
+    const setLastMatchMode = (mode: MatchModeKey) => {
+      lastMatchMode.value = mode
+      defaultQueueTypes.value = matchModeToQueueIds(mode)
+      try {
+        useAnalysisSettingsStore().setDefaultMode(matchModeToAnalysisMode(mode))
+      } catch {
+        // Pinia 尚未就绪时忽略
+      }
+    }
+
+    // 战绩默认过滤方法（兼容旧逻辑 / 搜索页）
     const setDefaultQueueTypes = (queues: number[]) => {
-      // 去重并排序，避免持久化存储抖动
       const unique = Array.from(new Set(queues))
       unique.sort((a, b) => a - b)
       defaultQueueTypes.value = unique
@@ -150,10 +213,8 @@ export const useSettingsStore = defineStore(
       applyDefaultFilterOnSearch.value = enabled
     }
 
-    // 设置默认获取对局数量（仅允许 20/25/30/35/40）
-    const allowedMatchCounts = [20, 25, 30, 35, 40]
-    const setDefaultMatchCount = (count: number) => {
-      defaultMatchCount.value = allowedMatchCounts.includes(count) ? count : 20
+    const setLastMatchCount = (count: number) => {
+      lastMatchCount.value = (allowedMatchCounts as readonly number[]).includes(count) ? count : 20
     }
 
     // 重置所有设置
@@ -166,6 +227,10 @@ export const useSettingsStore = defineStore(
       careerBackground.value = ''
       autoRefreshData.value = true
       refreshInterval.value = 30000
+      rememberMatchPreferences.value = true
+      setLastMatchMode('all')
+      applyDefaultFilterOnSearch.value = true
+      setLastMatchCount(20)
     }
 
     // 导出设置
@@ -182,9 +247,11 @@ export const useSettingsStore = defineStore(
           careerBackground: careerBackground.value,
           autoRefreshData: autoRefreshData.value,
           refreshInterval: refreshInterval.value,
+          rememberMatchPreferences: rememberMatchPreferences.value,
+          lastMatchMode: lastMatchMode.value,
+          lastMatchCount: lastMatchCount.value,
           defaultQueueTypes: defaultQueueTypes.value,
-          applyDefaultFilterOnSearch: applyDefaultFilterOnSearch.value,
-          defaultMatchCount: defaultMatchCount.value
+          applyDefaultFilterOnSearch: applyDefaultFilterOnSearch.value
         }
       }
     }
@@ -209,11 +276,26 @@ export const useSettingsStore = defineStore(
         careerBackground.value = settings.game.careerBackground || ''
         autoRefreshData.value = settings.game.autoRefreshData ?? true
         refreshInterval.value = settings.game.refreshInterval || 30000
-        if (Array.isArray(settings.game.defaultQueueTypes)) {
-          setDefaultQueueTypes(settings.game.defaultQueueTypes)
+        const mode =
+          (settings.game as { lastMatchMode?: string; defaultMatchMode?: string }).lastMatchMode ??
+          (settings.game as { defaultMatchMode?: string }).defaultMatchMode
+        if (typeof mode === 'string' && isMatchModeKey(mode)) {
+          setLastMatchMode(mode)
+        } else if (Array.isArray(settings.game.defaultQueueTypes)) {
+          const queues = settings.game.defaultQueueTypes
+          if (queues.length === 0) setLastMatchMode('all')
+          else if (queues.length === 2 && queues.includes(420) && queues.includes(440)) {
+            setLastMatchMode('mixedRanked')
+          } else if (queues.length === 1) setLastMatchMode(String(queues[0]) as MatchModeKey)
+          else setDefaultQueueTypes(queues)
         }
         applyDefaultFilterOnSearch.value = settings.game.applyDefaultFilterOnSearch ?? true
-        setDefaultMatchCount(settings.game.defaultMatchCount ?? 20)
+        rememberMatchPreferences.value =
+          (settings.game as { rememberMatchPreferences?: boolean }).rememberMatchPreferences ?? true
+        const count =
+          (settings.game as { lastMatchCount?: number; defaultMatchCount?: number }).lastMatchCount ??
+          (settings.game as { defaultMatchCount?: number }).defaultMatchCount
+        if (typeof count === 'number') setLastMatchCount(count)
       }
     }
 
@@ -239,9 +321,12 @@ export const useSettingsStore = defineStore(
       careerBackground,
       autoRefreshData,
       refreshInterval,
+      rememberMatchPreferences,
+      lastMatchMode,
+      lastMatchCount,
+      allowedMatchCounts,
       defaultQueueTypes,
       applyDefaultFilterOnSearch,
-      defaultMatchCount,
 
       // 计算属性
       themeConfig,
@@ -264,9 +349,11 @@ export const useSettingsStore = defineStore(
       setCareerBackground,
       setAutoRefreshData,
       setRefreshInterval,
+      setRememberMatchPreferences,
+      setLastMatchMode,
+      setLastMatchCount,
       setDefaultQueueTypes,
       setApplyDefaultFilterOnSearch,
-      setDefaultMatchCount,
       resetAllSettings,
       exportSettings,
       importSettings

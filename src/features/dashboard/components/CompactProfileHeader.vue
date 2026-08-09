@@ -55,13 +55,33 @@
                 {{ isConnected ? '已连接' : '未连接' }}
               </Badge>
             </div>
-            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+            <div class="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+              <span>
+                挑战积分:
+                <span class="text-foreground font-medium tabular-nums">{{ challengePointsLabel }}</span>
+              </span>
               <span
-                >挑战积分:
-                <span class="text-foreground font-medium">{{
-                  (summonerInfo?.challengePoints || 0).toLocaleString()
-                }}</span></span
+                v-if="challengeCrystalLabel"
+                class="text-xs px-1.5 py-0.5 rounded bg-muted text-foreground/80 font-medium"
               >
+                {{ challengeCrystalLabel }}
+              </span>
+            </div>
+            <div v-if="hasXpProgress" class="mt-2 w-44 max-w-full">
+              <div class="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                <span>升级进度</span>
+                <span class="tabular-nums">{{ xpPercentLabel }}</span>
+              </div>
+              <div class="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  class="h-full rounded-full bg-primary transition-[width] duration-300"
+                  :style="{ width: `${xpPercent}%` }"
+                />
+              </div>
+              <div class="flex items-center justify-between text-[11px] text-muted-foreground/80 mt-1 tabular-nums">
+                <span>{{ xpSinceLabel }}</span>
+                <span>还需 {{ xpRemainingLabel }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -179,8 +199,8 @@
           <span class="text-muted-foreground">今日胜率</span>
           <span
             class="font-semibold text-right tabular-nums"
-            :class="winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
-            >{{ winRate.toFixed(0) }}%</span
+            :class="todayWinRateClass"
+            >{{ todayWinRateLabel }}</span
           >
         </div>
       </div>
@@ -212,10 +232,11 @@ const props = defineProps<{
   isConnected: boolean
   summonerInfo: SummonerInfo | null
   todayMatches: TodayMatches
-  winRate: number
   soloRank: RankInfo
   flexRank: RankInfo
 }>()
+
+const { formatChallengePoints } = useFormatters()
 
 // 段位短名称映射
 const formatRankTierShort = (tier: string): string => {
@@ -233,6 +254,61 @@ const formatRankTierShort = (tier: string): string => {
   }
   return tierMap[tier] || tier
 }
+
+const todayWinRate = computed(() => {
+  const total = props.todayMatches?.total || 0
+  if (total <= 0) return null
+  const wins = props.todayMatches?.wins || 0
+  return Math.round((wins / total) * 100)
+})
+
+const todayWinRateLabel = computed(() =>
+  todayWinRate.value === null ? '—' : `${todayWinRate.value}%`
+)
+
+const todayWinRateClass = computed(() => {
+  if (todayWinRate.value === null) return 'text-muted-foreground'
+  if (todayWinRate.value > 50) return 'text-green-600 dark:text-green-400'
+  if (todayWinRate.value < 50) return 'text-red-600 dark:text-red-400'
+  return 'text-foreground'
+})
+
+const challengePointsLabel = computed(() => {
+  const raw = props.summonerInfo?.challengePoints
+  if (raw == null || raw === '') return '—'
+  const num = Number(raw)
+  if (!Number.isFinite(num)) return formatChallengePoints(String(raw))
+  if (num <= 0) return '—'
+  return num >= 1000 ? formatChallengePoints(String(Math.trunc(num))) : num.toLocaleString()
+})
+
+const challengeCrystalLabel = computed(() => {
+  const level = props.summonerInfo?.challengeCrystalLevel
+  if (!level) return ''
+  return formatRankTierShort(level)
+})
+
+const xpSince = computed(() => props.summonerInfo?.xpSinceLastLevel ?? 0)
+const xpRemaining = computed(() => props.summonerInfo?.xpUntilNextLevel ?? 0)
+
+const xpPercent = computed(() => {
+  const pct = props.summonerInfo?.percentCompleteForNextLevel
+  if (typeof pct === 'number' && Number.isFinite(pct)) {
+    return Math.min(100, Math.max(0, pct))
+  }
+  const total = xpSince.value + xpRemaining.value
+  if (total <= 0) return 0
+  return Math.min(100, Math.max(0, (xpSince.value / total) * 100))
+})
+
+const hasXpProgress = computed(() => {
+  if (!props.summonerInfo) return false
+  return xpSince.value > 0 || xpRemaining.value > 0 || xpPercent.value > 0
+})
+
+const xpPercentLabel = computed(() => `${Math.round(xpPercent.value)}%`)
+const xpSinceLabel = computed(() => `${xpSince.value.toLocaleString()} XP`)
+const xpRemainingLabel = computed(() => xpRemaining.value.toLocaleString())
 
 // 段位光晕颜色
 const rankGlowColorMap: Record<string, string> = {

@@ -4,7 +4,7 @@
       <img src="@/assets/logo.svg" alt="logo" class="logo" />
       <span class="title">Nidalee - Made by <span class="animate-pulse"> ❤️ </span> CodexLin </span>
     </div>
-    <div class="titlebar-right">
+    <div v-if="inTauri" class="titlebar-right">
       <div class="titlebar-button" id="titlebar-minimize" @click="minimizeWindow">
         <svg width="12" height="12" viewBox="0 0 12 12">
           <rect width="10" height="1" x="1" y="5.5" fill="currentColor" />
@@ -28,12 +28,21 @@
 </template>
 
 <script setup lang="ts">
-import { getCurrentWindow } from '@tauri-apps/api/window'
+import { isTauri } from '@tauri-apps/api/core'
+import { getCurrentWindow, type Window } from '@tauri-apps/api/window'
 
-const appWindow = getCurrentWindow()
-const minimizeWindow = () => appWindow.minimize()
-const toggleMaximize = () => appWindow.maximize()
-const hideWindow = () => appWindow.hide()
+const inTauri = isTauri()
+const appWindow: Window | null = inTauri ? getCurrentWindow() : null
+
+const minimizeWindow = () => {
+  void appWindow?.minimize()
+}
+const toggleMaximize = () => {
+  void appWindow?.maximize()
+}
+const hideWindow = () => {
+  void appWindow?.hide()
+}
 </script>
 
 <style scoped>

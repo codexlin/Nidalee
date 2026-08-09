@@ -22,6 +22,21 @@ pub struct SummonerSpellInfo {
     pub icon_path: String,
 }
 
+/// 写入技能名 -> ID 映射，冲突时保留 ID 最小的本体技能
+///
+/// 上游数据里同一个技能名会出现多份：除了通用的本体（如"引燃" id 14，覆盖
+/// CLASSIC/ARAM 等模式），还有只服务单一模式的变体（如 JADE 专用的 id 714）。
+/// 直接 insert 等于让上游数组顺序决定结果，取最小 ID 才能稳定命中本体。
+fn keep_canonical_spell_id(map: &mut HashMap<String, i64>, name: String, id: i64) {
+    map.entry(name)
+        .and_modify(|existing| {
+            if id < *existing {
+                *existing = id;
+            }
+        })
+        .or_insert(id);
+}
+
 /// 从 Community Dragon 获取召唤师技能数据并构建映射
 pub async fn load_summoner_spell_data() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 检查是否已加载
@@ -53,11 +68,11 @@ pub async fn load_summoner_spell_data() -> Result<(), Box<dyn std::error::Error 
             continue;
         }
 
-        // ID 映射
+        // ID 映射（保留全部条目，按 ID 直查模式变体仍然有效）
         data_map.insert(spell.id, spell.clone());
 
-        // 名称映射（用于反查 ID）
-        name_map.insert(spell.name.clone(), spell.id);
+        // 名称映射（用于反查 ID），冲突时保留本体
+        keep_canonical_spell_id(&mut name_map, spell.name.clone(), spell.id);
     }
 
     log::info!(
@@ -113,6 +128,54 @@ pub fn get_spell_by_name(name: &str) -> Option<SummonerSpellInfo> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---------------------------------------------------------------------
+    // `keep_canonical_spell_id` 的离线用例（不联网）
+    //
+    // 「同名冲突时取最小 ID」是**当前上游契约假设**：通用本体技能（"引燃" id 14，
+    // 覆盖 CLASSIC/ARAM 等模式）的 ID 恒小于只服务单一模式的变体（JADE 专用 id 714）。
+    // 上游若不再遵守这个假设，下面的用例会先红——那时应该改成按 `game_modes`
+    // 覆盖面来判定本体，而不是放宽断言。
+    //
+    // 两个方向都要覆盖：上游数组顺序不受我们控制，实现必须与插入顺序无关。
+    // ---------------------------------------------------------------------
+
+    /// 变体先、本体后：后写入的本体（更小 ID）必须覆盖掉变体
+    #[test]
+    fn canonical_spell_id_keeps_base_when_variant_comes_first() {
+        let mut map: HashMap<String, i64> = HashMap::new();
+
+        // JADE 模式专用的"引燃"
+        keep_canonical_spell_id(&mut map, "引燃".to_string(), 714);
+        // 通用本体"引燃"
+        keep_canonical_spell_id(&mut map, "引燃".to_string(), 14);
+
+        assert_eq!(map.get("引燃").copied(), Some(14));
+    }
+
+    /// 本体先、变体后：已经落地的本体不能被更大 ID 的变体挤掉
+    #[test]
+    fn canonical_spell_id_keeps_base_when_variant_comes_last() {
+        let mut map: HashMap<String, i64> = HashMap::new();
+
+        keep_canonical_spell_id(&mut map, "引燃".to_string(), 14);
+        keep_canonical_spell_id(&mut map, "引燃".to_string(), 714);
+
+        assert_eq!(map.get("引燃").copied(), Some(14));
+    }
+
+    /// 去重只发生在同名条目之间，不同名字互不干扰
+    #[test]
+    fn canonical_spell_id_keeps_distinct_names_independent() {
+        let mut map: HashMap<String, i64> = HashMap::new();
+
+        keep_canonical_spell_id(&mut map, "闪现".to_string(), 4);
+        keep_canonical_spell_id(&mut map, "惩戒".to_string(), 11);
+
+        assert_eq!(map.get("闪现").copied(), Some(4));
+        assert_eq!(map.get("惩戒").copied(), Some(11));
+        assert_eq!(map.len(), 2);
+    }
 
     #[tokio::test]
     async fn test_load_summoner_spell_data() {

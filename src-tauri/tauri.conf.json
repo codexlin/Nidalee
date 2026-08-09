@@ -7,7 +7,7 @@
     "removeUnusedCommands": true,
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1422",
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "",
     "beforeBuildCommand": "pnpm build"
   },
   "app": {

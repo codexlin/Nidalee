@@ -19,6 +19,7 @@
 <script setup lang="ts">
 import ThemedChart from '@/shared/components/charts/ThemedChart.vue'
 import { validateRadarData, generateChartErrorMessage } from '@/shared/utils/chartValidation'
+import { getPositionLabel } from '@/common/positionLabels'
 import type { TooltipItem } from 'chart.js'
 
 interface Props {
@@ -28,42 +29,48 @@ interface Props {
 const props = defineProps<Props>()
 const isLoading = ref(false)
 
-// 数据验证
+const RADAR_LABELS = ['KDA', '补刀', '视野', 'KP', 'DPM', '胜率'] as const
+
 const dataValidation = computed(() => {
   return validateRadarData(props.positionData.stats)
 })
 
-// 错误信息
 const errorMessage = computed(() => {
   return generateChartErrorMessage(dataValidation.value)
 })
 
-// 计算能力维度数据
 const calculateScore = (value: number, ideal: number, min: number = 0) => {
   if (value >= ideal) return 10
   if (value <= min) return 0
   return Math.min(10, Math.max(0, ((value - min) / (ideal - min)) * 10))
 }
 
-// Chart.js 雷达图数据
+/**
+ * KP（参团率代理）：(K+A)/(K+D+A)
+ * 战绩列表不含全队击杀，无法算真实 team KP；用战斗参与度作为可核对的 KP 维度。
+ * DPM：每分钟对英雄伤害，不再伪装成「伤害占比」。
+ */
 const chartData = computed(() => {
   const stats = props.positionData.stats
+  const involvement =
+    stats.avgKills + stats.avgDeaths + stats.avgAssists > 0
+      ? (stats.avgKills + stats.avgAssists) / (stats.avgKills + stats.avgDeaths + stats.avgAssists)
+      : 0
 
-  // 更精确的能力计算
   const radarData = [
-    calculateScore(stats.avgKda, 4.0, 0), // KDA
-    calculateScore(stats.cspm, 8.0, 2.0), // 补刀
-    calculateScore(stats.vspm, 2.0, 0.3), // 视野
-    calculateScore(stats.avgAssists / (stats.avgKills + stats.avgDeaths + stats.avgAssists) || 0, 0.7, 0.3), // 参团率
-    calculateScore(stats.dpm / 1000, 0.35, 0.15), // 输出占比
-    calculateScore(props.positionData.winRate / 100, 0.6, 0.4) // 胜率
+    calculateScore(stats.avgKda, 4.0, 0),
+    calculateScore(stats.cspm, 8.0, 2.0),
+    calculateScore(stats.vspm, 2.0, 0.3),
+    calculateScore(involvement, 0.7, 0.35),
+    calculateScore(stats.dpm, 700, 200),
+    calculateScore(props.positionData.winRate / 100, 0.6, 0.4)
   ]
 
   return {
-    labels: ['KDA', '补刀', '视野', '参团', '输出', '胜率'],
+    labels: [...RADAR_LABELS],
     datasets: [
       {
-        label: props.positionData.position,
+        label: getPositionLabel(props.positionData.position),
         data: radarData,
         backgroundColor: 'hsl(var(--primary) / 0.2)',
         borderColor: 'hsl(var(--primary))',
@@ -79,7 +86,6 @@ const chartData = computed(() => {
   }
 })
 
-// Chart.js 雷达图配置
 const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
@@ -90,8 +96,7 @@ const chartOptions = computed(() => ({
     tooltip: {
       callbacks: {
         label: (context: TooltipItem<'radar'>) => {
-          const labels = ['KDA', '补刀', '视野', '参团', '输出', '胜率']
-          return `${labels[context.dataIndex]}: ${context.parsed.r.toFixed(1)}/10`
+          return `${RADAR_LABELS[context.dataIndex]}: ${context.parsed.r.toFixed(1)}/10`
         }
       }
     }

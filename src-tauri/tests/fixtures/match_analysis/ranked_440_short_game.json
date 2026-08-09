@@ -1,0 +1,70 @@
+{
+  "gameId": 1000000002,
+  "queueId": 440,
+  "gameDuration": 912,
+  "gameCreation": 1700003600000,
+  "participantIdentities": [
+    { "participantId": 1, "player": { "puuid": "00000000-0000-4000-8000-000000000001" } },
+    { "participantId": 2, "player": { "puuid": "00000000-0000-4000-8000-000000000002" } }
+  ],
+  "participants": [
+    {
+      "participantId": 1,
+      "championId": 103,
+      "teamId": 100,
+      "stats": {
+        "win": false,
+        "kills": 1,
+        "deaths": 5,
+        "assists": 2,
+        "totalDamageDealtToChampions": 6200,
+        "totalDamageTaken": 9400,
+        "goldEarned": 5100,
+        "visionScore": 9,
+        "wardsPlaced": 3,
+        "wardsKilled": 0,
+        "totalMinionsKilled": 88,
+        "neutralMinionsKilled": 4
+      },
+      "timeline": {
+        "role": "SOLO",
+        "lane": "MIDDLE",
+        "creepsPerMinDeltas": { "0-10": 5.9 },
+        "goldPerMinDeltas": { "0-10": 305.0 },
+        "xpPerMinDeltas": { "0-10": 395.0 },
+        "csDiffPerMinDeltas": { "0-10": -1.8 },
+        "xpDiffPerMinDeltas": { "0-10": -64.0 },
+        "damageTakenPerMinDeltas": { "0-10": 540.0 }
+      }
+    },
+    {
+      "participantId": 2,
+      "championId": 238,
+      "teamId": 200,
+      "stats": {
+        "win": true,
+        "kills": 6,
+        "deaths": 1,
+        "assists": 3,
+        "totalDamageDealtToChampions": 11800,
+        "totalDamageTaken": 7200,
+        "goldEarned": 7400,
+        "visionScore": 11,
+        "wardsPlaced": 4,
+        "wardsKilled": 1,
+        "totalMinionsKilled": 106,
+        "neutralMinionsKilled": 6
+      },
+      "timeline": {
+        "role": "SOLO",
+        "lane": "MIDDLE",
+        "creepsPerMinDeltas": { "0-10": 7.7 },
+        "goldPerMinDeltas": { "0-10": 420.0 },
+        "xpPerMinDeltas": { "0-10": 459.0 },
+        "csDiffPerMinDeltas": { "0-10": 1.8 },
+        "xpDiffPerMinDeltas": { "0-10": 64.0 },
+        "damageTakenPerMinDeltas": { "0-10": 480.0 }
+      }
+    }
+  ]
+}

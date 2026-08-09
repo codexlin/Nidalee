@@ -6,6 +6,58 @@
         用于收集原始LCU数据和分析数据文件，帮助优化算法。支持时间线分析和队列差异化分析。
       </p>
 
+      <!-- LCU 请求认证参数 -->
+      <div class="mb-6 rounded-lg border p-4">
+        <h3 class="text-lg font-semibold mb-2">🔐 LCU 请求认证参数</h3>
+        <p class="text-sm text-muted-foreground mb-4">
+          原生 LCU 使用 HTTPS + Basic Auth，用户名固定为 <code>riot</code>，密码为 remoting token。
+        </p>
+        <Button @click="loadLcuAuthInfo" :disabled="isLoadingAuth" variant="outline">
+          <Loader2 v-if="isLoadingAuth" class="w-4 h-4 mr-2 animate-spin" />
+          {{ isLoadingAuth ? '读取中...' : '读取认证参数' }}
+        </Button>
+
+        <Alert v-if="lcuAuthInfo" class="mt-4">
+          <CheckCircle class="h-4 w-4" />
+          <AlertTitle>当前 LCU 认证参数</AlertTitle>
+          <AlertDescription>
+            <pre class="mt-2 text-sm whitespace-pre-wrap break-all">{{ formatLcuAuthInfo(lcuAuthInfo) }}</pre>
+          </AlertDescription>
+        </Alert>
+        <Alert v-if="lcuAuthError" variant="destructive" class="mt-4">
+          <AlertCircle class="h-4 w-4" />
+          <AlertTitle>读取认证参数失败</AlertTitle>
+          <AlertDescription>{{ lcuAuthError }}</AlertDescription>
+        </Alert>
+      </div>
+
+      <!-- 原生战绩分页验证 -->
+      <div class="mb-6 rounded-lg border p-4">
+        <h3 class="text-lg font-semibold mb-2">🧪 原生 LCU 分页验证</h3>
+        <p class="text-sm text-muted-foreground mb-4">
+          直接请求 <code>0–19</code> 与 <code>20–24</code>，按 gameId 检查第二段是否重复首页前 5 场。
+        </p>
+        <Button @click="probeMatchPages" :disabled="isProbingPages">
+          <Loader2 v-if="isProbingPages" class="w-4 h-4 mr-2 animate-spin" />
+          {{ isProbingPages ? '请求中...' : '请求原生接口并对比' }}
+        </Button>
+
+        <Alert v-if="pageProbeResult" class="mt-4">
+          <BarChart3 class="h-4 w-4" />
+          <AlertTitle>
+            {{ pageProbeResult.overlapIds.length === 0 ? '两段没有重复' : '检测到重复 gameId' }}
+          </AlertTitle>
+          <AlertDescription>
+            <pre class="mt-2 text-sm whitespace-pre-wrap break-all">{{ formatPageProbe(pageProbeResult) }}</pre>
+          </AlertDescription>
+        </Alert>
+        <Alert v-if="pageProbeError" variant="destructive" class="mt-4">
+          <AlertCircle class="h-4 w-4" />
+          <AlertTitle>原生分页请求失败</AlertTitle>
+          <AlertDescription>{{ pageProbeError }}</AlertDescription>
+        </Alert>
+      </div>
+
       <!-- 原始数据收集 -->
       <div class="mb-6">
         <h3 class="text-lg font-semibold mb-3">📊 原始LCU数据收集</h3>
@@ -290,6 +342,22 @@ import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { CheckCircle, AlertCircle, Loader2, BarChart3 } from 'lucide-vue-next'
 
+interface MatchPageProbeResult {
+  firstRange: string
+  secondRange: string
+  firstIds: number[]
+  secondIds: number[]
+  overlapIds: number[]
+  secondEqualsFirstPrefix: boolean
+}
+
+interface LcuAuthInfo {
+  app_port: number
+  remoting_auth_token: string
+  riotclient_app_port: number
+  riotclient_auth_token: string
+}
+
 // 响应式数据
 const gameCount = ref(20)
 const selectedQueue = ref('all')
@@ -322,6 +390,76 @@ const jsonStructureError = ref('')
 const isAnalyzingThresholds = ref(false)
 const thresholdAnalysisResult = ref('')
 const thresholdAnalysisError = ref('')
+
+// LCU 请求认证参数
+const isLoadingAuth = ref(false)
+const lcuAuthInfo = ref<LcuAuthInfo | null>(null)
+const lcuAuthError = ref('')
+
+const loadLcuAuthInfo = async () => {
+  isLoadingAuth.value = true
+  lcuAuthInfo.value = null
+  lcuAuthError.value = ''
+
+  try {
+    const result = await invoke<LcuAuthInfo | null>('get_auth_info')
+    if (!result) throw new Error('认证信息尚未初始化，请确认 League 客户端已连接')
+    lcuAuthInfo.value = result
+  } catch (error: unknown) {
+    lcuAuthError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    isLoadingAuth.value = false
+  }
+}
+
+const formatLcuAuthInfo = (auth: LcuAuthInfo) => {
+  const baseUrl = `https://127.0.0.1:${auth.app_port}`
+  const basic = btoa(`riot:${auth.remoting_auth_token}`)
+  return [
+    `LCU Base URL: ${baseUrl}`,
+    `用户名: riot`,
+    `remoting token: ${auth.remoting_auth_token}`,
+    `Authorization: Basic ${basic}`,
+    `Riot Client 端口: ${auth.riotclient_app_port}`,
+    `Riot Client token: ${auth.riotclient_auth_token}`,
+    '',
+    '示例请求：',
+    `curl.exe -k -u "riot:${auth.remoting_auth_token}" "${baseUrl}/lol-summoner/v1/current-summoner"`
+  ].join('\n')
+}
+
+// 原生 LCU 分页验证
+const isProbingPages = ref(false)
+const pageProbeResult = ref<MatchPageProbeResult | null>(null)
+const pageProbeError = ref('')
+
+const probeMatchPages = async () => {
+  isProbingPages.value = true
+  pageProbeResult.value = null
+  pageProbeError.value = ''
+
+  try {
+    pageProbeResult.value = await invoke<MatchPageProbeResult>('probe_match_history_pages', {
+      firstBegin: 0,
+      firstEnd: 19,
+      secondBegin: 20,
+      secondEnd: 24
+    })
+  } catch (error: unknown) {
+    pageProbeError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    isProbingPages.value = false
+  }
+}
+
+const formatPageProbe = (result: MatchPageProbeResult) =>
+  [
+    `${result.firstRange}（${result.firstIds.length} 场）: ${result.firstIds.join(', ')}`,
+    `${result.secondRange}（${result.secondIds.length} 场）: ${result.secondIds.join(', ')}`,
+    `重叠数量: ${result.overlapIds.length}`,
+    `重叠 gameId: ${result.overlapIds.join(', ') || '无'}`,
+    `第二段等于第一段前缀: ${result.secondEqualsFirstPrefix ? '是' : '否'}`
+  ].join('\n')
 
 // 生成数据文件
 const generateData = async () => {

@@ -1,4 +1,6 @@
-use crate::infrastructure::game_session::auth::service::{AUTH_INFO, verify_lockfile_vs_cmdline as do_verify_lockfile_vs_cmdline};
+use crate::infrastructure::game_session::auth::service::{
+    verify_lockfile_vs_cmdline as do_verify_lockfile_vs_cmdline, AUTH_INFO,
+};
 use crate::shared::types::LcuAuthInfo;
 
 #[tauri::command]

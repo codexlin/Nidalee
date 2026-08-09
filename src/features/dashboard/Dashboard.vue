@@ -4,55 +4,85 @@
       <Spinner class="size-6 text-primary" />
     </div>
     <template v-else>
-      <!-- 紧凑型 Profile Header -->
       <CompactProfileHeader
         :is-connected="isConnected"
         :summoner-info="summonerInfo"
         :today-matches="todayMatches"
-        :win-rate="winRate"
         :solo-rank="soloRank"
         :flex-rank="flexRank"
       />
+
+      <!-- Dashboard 不展示策略/降级诊断（开发向）；仅在 AI 可用或已有解读时出现 -->
+      <Card v-if="showAiPanel" class="border-dashed">
+        <CardContent class="py-3 space-y-2 text-sm">
+          <div v-if="showAiAction" class="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" :disabled="aiLoading || matchHistoryLoading" @click="runAiInsight">
+              {{ aiLoading ? 'AI 解读中…' : '生成 AI 解读' }}
+            </Button>
+            <span v-if="aiError" class="text-xs text-destructive">{{ aiError }}</span>
+          </div>
+          <div v-if="aiInsight" class="space-y-2" :class="showAiAction ? 'pt-1 border-t border-dashed border-border' : ''">
+            <p class="font-medium text-foreground">{{ aiInsight.summary }}</p>
+            <p class="text-xs text-muted-foreground">置信度 {{ Math.round(aiInsight.confidence * 100) }}%</p>
+            <ul v-if="aiInsight.findings?.length" class="list-disc pl-4 space-y-1 text-muted-foreground">
+              <li v-for="(f, i) in aiInsight.findings" :key="i">
+                <span class="text-foreground">{{ f.title }}</span> — {{ f.detail }}
+              </li>
+            </ul>
+            <ul v-if="aiInsight.suggestions?.length" class="list-disc pl-4 space-y-1 text-muted-foreground">
+              <li v-for="(s, i) in aiInsight.suggestions" :key="`s-${i}`">
+                <span class="text-foreground">{{ s.title }}</span>
+                <span v-if="s.actions?.length">：{{ s.actions.join('；') }}</span>
+              </li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
 
       <GameStats
         :is-connected="isConnected"
         :match-history-loading="matchHistoryLoading"
         :match-statistics="matchStatistics"
-        :selected-queue-id="selectedQueueId"
+        :analysis-traits="personalAnalysis.traits"
+        :position-stats="positionAnalysis?.positionStats"
+        :main-position="positionAnalysis?.mainPosition"
+        :selected-match-mode="selectedMatchMode"
+        :match-count="selectedMatchCount"
+        :remember-preferences="settingsStore.rememberMatchPreferences"
+        :scanned-games="selectedMatchCount"
+        :ai-ready="aiReady"
+        :display-games="displayGames"
         @fetch-match-history="handleFetchMatchHistory"
-        @queue-change="handleQueueChange"
-      />
-
-      <!-- ⭐ v3.4: 位置分组统计 -->
-      <PositionStatsCard
-        v-if="positionAnalysis && !matchHistoryLoading"
-        :position-stats="positionAnalysis.positionStats"
-        :main-position="positionAnalysis.mainPosition"
-        @view-details="handlePositionDetails"
-      />
-
-      <!-- 建议现在集成在位置详情中 -->
-
-      <!-- 位置详情对话框 -->
-      <PositionDetailsDialog
-        v-if="selectedPosition"
-        :open="showPositionDetails"
-        :position-data="selectedPosition"
-        @close="closePositionDetails"
+        @mode-change="handleModeChange"
+        @count-change="handleCountChange"
+        @remember-change="handleRememberChange"
       />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import PositionStatsCard from '@/features/match-search/PositionStatsCard.vue'
-import PositionDetailsDialog from '@/features/match-search/PositionDetailsDialog.vue'
 import CompactProfileHeader from './components/CompactProfileHeader.vue'
-import { AnalysisMode } from '@/shared/stores/features/analysisSettingsStore'
+import type { MatchModeKey } from '@/common/queueCatalog'
+import { useMatchAnalysis } from '@/shared/composables/game/useMatchAnalysis'
+import { useAiAnalysis } from '@/shared/composables/game/useAiAnalysis'
+import { usePersonalMatchAnalysisStore } from '@/shared/stores/features/personalMatchAnalysisStore'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 const { loading, toggle } = useLoading()
+const settingsStore = useSettingsStore()
+const personalAnalysis = usePersonalMatchAnalysisStore()
+const { analyzeMatches } = useMatchAnalysis()
+const {
+  loading: aiLoading,
+  error: aiError,
+  analyzeWithAi,
+  ensureSynced: ensureAiSynced,
+  aiSettings,
+  aiInsight
+} = useAiAnalysis()
 
-// 单双排位信息
 const soloRank = computed(() => {
   const tier = summonerInfo.value?.soloRankTier
   const wins = summonerInfo.value?.soloRankWins || 0
@@ -67,7 +97,6 @@ const soloRank = computed(() => {
   }
 })
 
-// 灵活组排信息
 const flexRank = computed(() => {
   const tier = summonerInfo.value?.flexRankTier
   const wins = summonerInfo.value?.flexRankWins || 0
@@ -82,8 +111,6 @@ const flexRank = computed(() => {
   }
 })
 
-const { updateMatchHistory } = useSummonerAndMatchUpdater()
-
 const dataStore = useDataStore()
 const connectionStore = useConnectionStore()
 const activityLogger = useActivityLogger()
@@ -91,96 +118,101 @@ const activityLogger = useActivityLogger()
 const { summonerInfo, matchStatistics, isDataLoading } = storeToRefs(dataStore)
 const { isConnected } = storeToRefs(connectionStore)
 
-// 当前选中的队列ID（null = 全部模式）
-const selectedQueueId = ref<number | null>(null)
+const resolveInitialMode = (): MatchModeKey =>
+  settingsStore.rememberMatchPreferences ? settingsStore.lastMatchMode : 'all'
 
-// ⭐ v3.4: 位置分析
-const { positionAnalysis, selectedPosition, fetchPositionAnalysis, selectPosition, clearSelectedPosition } =
-  usePositionAnalysis()
+const resolveInitialCount = (): number => {
+  const raw = settingsStore.rememberMatchPreferences ? settingsStore.lastMatchCount : 20
+  return (settingsStore.allowedMatchCounts as readonly number[]).includes(raw) ? raw : 20
+}
 
-const showPositionDetails = ref(false)
+const selectedMatchMode = ref<MatchModeKey>(resolveInitialMode())
+const selectedMatchCount = ref<number>(resolveInitialCount())
+settingsStore.setLastMatchMode(selectedMatchMode.value)
+settingsStore.setLastMatchCount(selectedMatchCount.value)
 
-// 当前选中的分析模式
-const selectedAnalysisMode = ref<AnalysisMode>(AnalysisMode.MixedRanked)
+const positionAnalysis = computed(() => personalAnalysis.multiPositionView)
+const capabilities = computed(() => personalAnalysis.capabilities)
+const displayGames = computed(() => personalAnalysis.result?.displayGames ?? 0)
 
-// ✅ 直接从后端获取已计算好的数据
-const todayMatches = computed(() => ({
-  total: matchStatistics.value?.todayGames || 0,
-  wins: matchStatistics.value?.todayWins || 0,
-  losses: (matchStatistics.value?.todayGames || 0) - (matchStatistics.value?.todayWins || 0)
-}))
+/** 后端可跑 AI + 用户已开启并填过 Key，才算真正就绪 */
+const aiReady = computed(
+  () => !!capabilities.value?.localAi && aiSettings.enabled && aiSettings.hasApiKey
+)
 
-const winRate = computed(() => matchStatistics.value?.winRate || 0)
+const showAiAction = computed(() => displayGames.value > 0 && aiReady.value)
+
+const showAiPanel = computed(
+  () => displayGames.value > 0 && (showAiAction.value || !!aiInsight.value)
+)
+
+const todayMatches = computed(() => {
+  const total = matchStatistics.value?.todayGames || 0
+  const wins = matchStatistics.value?.todayWins || 0
+  return {
+    total,
+    wins,
+    losses: Math.max(0, total - wins)
+  }
+})
+
+/** 始终同步到 store；刷新只走一次 analyze_matches */
+const syncFetchPreferences = () => {
+  settingsStore.setLastMatchMode(selectedMatchMode.value)
+  settingsStore.setLastMatchCount(selectedMatchCount.value)
+}
+
+const refreshAnalysis = async () => {
+  syncFetchPreferences()
+  await analyzeMatches(selectedMatchMode.value, selectedMatchCount.value)
+}
 
 const handleFetchMatchHistory = async () => {
   toggle()
   activityLogger.log.info('手动刷新对局历史', 'data')
-  await updateMatchHistory(selectedQueueId.value)
-  // 同时刷新位置分析（使用用户选择的模式）
-  await fetchPositionAnalysis(30, selectedAnalysisMode.value)
+  await refreshAnalysis()
   toggle()
 }
 
-const handleQueueChange = async (queueId: number | null) => {
+const handleModeChange = async (mode: MatchModeKey) => {
   toggle()
-  selectedQueueId.value = queueId
-
-  let nextMode: AnalysisMode
-  if (queueId === null) {
-    nextMode = AnalysisMode.MixedRanked
-  } else {
-    switch (queueId) {
-      case 420:
-        nextMode = AnalysisMode.SoloRanked
-        break
-      case 440:
-        nextMode = AnalysisMode.FlexRanked
-        break
-      case 450:
-        nextMode = AnalysisMode.Aram
-        break
-      default:
-        nextMode = AnalysisMode.AllModes
-        break
-    }
-  }
-
-  selectedAnalysisMode.value = nextMode
-  activityLogger.log.info(`切换队列类型: ${queueId || '全部'}`, 'data')
-  await updateMatchHistory(queueId)
-  await fetchPositionAnalysis(30, nextMode)
+  selectedMatchMode.value = mode
+  activityLogger.log.info(`切换战绩模式: ${mode}`, 'data')
+  await refreshAnalysis()
   toggle()
 }
 
-// 处理分析模式切换（暂时保留，可能后续需要）
-// const handleAnalysisModeChange = async (mode: AnalysisMode) => {
-//   selectedAnalysisMode.value = mode
-//   activityLogger.log.info(`切换分析模式: ${mode}`, 'data')
-//   await fetchPositionAnalysis(30, mode)
-// }
-
-// 查看位置详情
-const handlePositionDetails = (pos: PositionStats) => {
-  selectPosition(pos)
-  showPositionDetails.value = true
+const handleCountChange = async (count: number) => {
+  toggle()
+  selectedMatchCount.value = count
+  activityLogger.log.info(`切换对局数量: ${count}`, 'data')
+  await refreshAnalysis()
+  toggle()
 }
 
-// 关闭位置详情
-const closePositionDetails = () => {
-  showPositionDetails.value = false
-  setTimeout(() => {
-    clearSelectedPosition()
-  }, 300)
+const handleRememberChange = (enabled: boolean) => {
+  settingsStore.setRememberMatchPreferences(enabled)
+  syncFetchPreferences()
+  activityLogger.log.info(enabled ? '已开启记住战绩选择' : '已关闭记住战绩选择（下次启动恢复默认）', 'data')
 }
 
-const matchHistoryLoading = computed(() => isDataLoading.value)
+const matchHistoryLoading = computed(() => isDataLoading.value || personalAnalysis.loading)
 
-// 初始加载位置分析
+const runAiInsight = async () => {
+  await analyzeWithAi()
+}
+
+onMounted(() => {
+  void ensureAiSynced()
+})
+
 watch(
   () => isConnected.value,
   async (connected) => {
-    if (connected && !positionAnalysis.value) {
-      await fetchPositionAnalysis(30, selectedAnalysisMode.value)
+    if (connected && !personalAnalysis.result) {
+      selectedMatchMode.value = resolveInitialMode()
+      selectedMatchCount.value = resolveInitialCount()
+      await refreshAnalysis()
     }
   },
   { immediate: true }

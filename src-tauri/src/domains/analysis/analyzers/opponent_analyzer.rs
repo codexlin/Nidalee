@@ -4,9 +4,7 @@
 /// - 分析对手的优缺点
 /// - 识别对手的打法风格
 /// - 生成针对性的战术建议
-use crate::domains::analysis::analyzers::core::timeline_analyzer::{
-    TimelineAnalysis
-};
+use crate::domains::analysis::analyzers::core::timeline_analyzer::TimelineAnalysis;
 use crate::shared::types::PlayerMatchStats;
 use serde_json::Value;
 
@@ -31,40 +29,40 @@ pub struct OpponentAnalysis {
 /// 对手优势
 #[derive(Debug, Clone)]
 pub struct OpponentStrength {
-    pub category: String,      // 对线、团战、发育等
-    pub description: String,   // 具体描述
-    pub evidence: String,      // 数据支撑
-    pub threat_level: u8,     // 威胁等级 1-5
+    pub category: String,    // 对线、团战、发育等
+    pub description: String, // 具体描述
+    pub evidence: String,    // 数据支撑
+    pub threat_level: u8,    // 威胁等级 1-5
 }
 
 /// 对手劣势
 #[derive(Debug, Clone)]
 pub struct OpponentWeakness {
-    pub category: String,      // 对线、团战、发育等
-    pub description: String,   // 具体描述
-    pub evidence: String,      // 数据支撑
-    pub exploit_level: u8,    // 可利用程度 1-5
+    pub category: String,    // 对线、团战、发育等
+    pub description: String, // 具体描述
+    pub evidence: String,    // 数据支撑
+    pub exploit_level: u8,   // 可利用程度 1-5
 }
 
 /// 打法风格
 #[derive(Debug, Clone)]
 pub enum PlayStyle {
-    Aggressive,    // 激进型
-    Passive,       // 保守型
-    Roaming,       // 游走型
-    Farming,       // 发育型
-    Teamfight,     // 团战型
-    SplitPush,     // 分推型
-    Unknown,       // 未知
+    Aggressive, // 激进型
+    Passive,    // 保守型
+    Roaming,    // 游走型
+    Farming,    // 发育型
+    Teamfight,  // 团战型
+    SplitPush,  // 分推型
+    Unknown,    // 未知
 }
 
 /// 战术建议
 #[derive(Debug, Clone)]
 pub struct TacticalAdvice {
-    pub priority: u8,         // 优先级 1-5
-    pub category: String,     // 建议分类
-    pub title: String,        // 建议标题
-    pub description: String,  // 详细描述
+    pub priority: u8,                // 优先级 1-5
+    pub category: String,            // 建议分类
+    pub title: String,               // 建议标题
+    pub description: String,         // 详细描述
     pub implementation: Vec<String>, // 具体实施方法
 }
 
@@ -100,10 +98,7 @@ pub fn analyze_opponent(
 }
 
 /// 分析对手优势
-fn analyze_opponent_strengths(
-    timeline: &TimelineAnalysis,
-    stats: &PlayerMatchStats,
-) -> Vec<OpponentStrength> {
+fn analyze_opponent_strengths(timeline: &TimelineAnalysis, stats: &PlayerMatchStats) -> Vec<OpponentStrength> {
     let mut strengths = Vec::new();
 
     // 1. 对线期优势分析
@@ -168,10 +163,7 @@ fn analyze_opponent_strengths(
 }
 
 /// 分析对手劣势
-fn analyze_opponent_weaknesses(
-    timeline: &TimelineAnalysis,
-    stats: &PlayerMatchStats,
-) -> Vec<OpponentWeakness> {
+fn analyze_opponent_weaknesses(timeline: &TimelineAnalysis, stats: &PlayerMatchStats) -> Vec<OpponentWeakness> {
     let mut weaknesses = Vec::new();
 
     // 1. 对线期劣势分析
@@ -236,10 +228,7 @@ fn analyze_opponent_weaknesses(
 }
 
 /// 识别打法风格
-fn identify_playstyle(
-    timeline: &TimelineAnalysis,
-    stats: &PlayerMatchStats,
-) -> PlayStyle {
+fn identify_playstyle(timeline: &TimelineAnalysis, stats: &PlayerMatchStats) -> PlayStyle {
     // 基于多个指标综合判断
 
     // 1. 激进型判断
@@ -294,7 +283,7 @@ fn generate_tactical_advice(
                         "呼叫打野进行Gank".to_string(),
                     ],
                 });
-            },
+            }
             "团战期" => {
                 advice.push(TacticalAdvice {
                     priority: 4,
@@ -307,7 +296,7 @@ fn generate_tactical_advice(
                         "控制技能优先给该对手".to_string(),
                     ],
                 });
-            },
+            }
             "发育期" => {
                 advice.push(TacticalAdvice {
                     priority: 3,
@@ -320,7 +309,7 @@ fn generate_tactical_advice(
                         "限制其经济来源".to_string(),
                     ],
                 });
-            },
+            }
             "视野控制" => {
                 advice.push(TacticalAdvice {
                     priority: 2,
@@ -333,7 +322,7 @@ fn generate_tactical_advice(
                         "利用视野差进行偷袭".to_string(),
                     ],
                 });
-            },
+            }
             _ => {}
         }
     }
@@ -352,7 +341,7 @@ fn generate_tactical_advice(
                     "保持冷静，等待机会".to_string(),
                 ],
             });
-        },
+        }
         PlayStyle::Passive => {
             advice.push(TacticalAdvice {
                 priority: 3,
@@ -365,7 +354,7 @@ fn generate_tactical_advice(
                     "逼迫其参与团战".to_string(),
                 ],
             });
-        },
+        }
         PlayStyle::Roaming => {
             advice.push(TacticalAdvice {
                 priority: 4,
@@ -378,7 +367,7 @@ fn generate_tactical_advice(
                     "利用其游走时机推塔".to_string(),
                 ],
             });
-        },
+        }
         _ => {}
     }
 
@@ -427,58 +416,41 @@ fn extract_lane_position(match_data: &Value, participant_id: i32) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domains::analysis::analyzers::core::timeline_parser::{
-        TimelineAnalysis, PhaseAnalysis, OpponentComparison
+    use crate::domains::analysis::analyzers::core::timeline_analyzer::{
+        OpponentComparison, PhaseAnalysis, TimelineAnalysis,
     };
 
     #[test]
     fn test_identify_playstyle() {
         let timeline = TimelineAnalysis {
             early_game: PhaseAnalysis {
-                duration_minutes: 10.0,
                 cs_per_minute: 6.0,
                 gold_per_minute: 350.0,
                 xp_per_minute: 500.0,
-                cs_difference: 0.0,
-                xp_difference: 0.0,
-                gold_difference: 0.0,
-                level_difference: 0,
+                ..Default::default()
             },
             mid_game: PhaseAnalysis {
-                duration_minutes: 10.0,
                 cs_per_minute: 5.5,
                 gold_per_minute: 420.0, // 比早期高
                 xp_per_minute: 450.0,
-                cs_difference: 0.0,
-                xp_difference: 0.0,
-                gold_difference: 0.0,
-                level_difference: 0,
+                ..Default::default()
             },
             late_game: PhaseAnalysis {
-                duration_minutes: 10.0,
                 cs_per_minute: 5.0,
                 gold_per_minute: 400.0,
                 xp_per_minute: 400.0,
-                cs_difference: 0.0,
-                xp_difference: 0.0,
-                gold_difference: 0.0,
-                level_difference: 0,
+                ..Default::default()
             },
             key_events: vec![],
-            opponent_comparison: OpponentComparison {
-                lane_opponent_id: None,
-                cs_advantage: 0.0,
-                xp_advantage: 0.0,
-                gold_advantage: 0.0,
-                level_advantage: 0,
-                kill_death_ratio: 0.0,
-            },
+            opponent_comparison: OpponentComparison::default(),
+            // 三个阶段都是手工构造的零值证据：这里只测风格判定，不测阶段存在性
+            phases: vec![],
         };
 
         let stats = PlayerMatchStats {
             avg_kills: 3.0,
             avg_deaths: 2.0,
-            avg_assists: 12.0,  // 修改为12.0以满足团战型的条件 (> 10.0)
+            avg_assists: 12.0, // 修改为12.0以满足团战型的条件 (> 10.0)
             avg_kda: 5.5,
             cspm: 6.0,
             vspm: 1.2,

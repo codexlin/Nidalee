@@ -34,8 +34,64 @@ pub async fn fill_summoner_extra_info(client: &Client, summoner_info: &mut Summo
         summoner_info.flex_rank_losses = rank_info.flex_losses;
     }
 
+    fill_challenge_info(client, summoner_info).await;
+
     if let (Some(game_name), Some(tag_line)) = (summoner_info.game_name.clone(), summoner_info.tag_line.clone()) {
         summoner_info.display_name = format!("{}#{}", game_name, tag_line);
+    }
+}
+
+/// 挑战积分 / 水晶等级：current-summoner 不含这些字段，需另取。
+/// 优先 challenges summary，失败则回退 chat/me。
+async fn fill_challenge_info(client: &Client, summoner_info: &mut SummonerInfo) {
+    if let Ok(summary) = lcu_get::<Value>(client, "/lol-challenges/v1/summary-player-data/local-player").await {
+        if let Some(total) = summary.get("totalPoints") {
+            if let Some(current) = total.get("current").and_then(|v| v.as_i64().or_else(|| v.as_u64().map(|u| u as i64))) {
+                summoner_info.challenge_points = Some(current.to_string());
+            }
+            if let Some(level) = total.get("level").and_then(|v| v.as_str()) {
+                summoner_info.challenge_crystal_level = Some(level.to_string());
+            }
+        }
+        if summoner_info.challenge_crystal_level.is_none() {
+            if let Some(level) = summary.get("overallChallengeLevel").and_then(|v| v.as_str()) {
+                summoner_info.challenge_crystal_level = Some(level.to_string());
+            }
+        }
+        if summoner_info.challenge_points.is_some() {
+            return;
+        }
+    }
+
+    if let Ok(me) = lcu_get::<Value>(client, "/lol-chat/v1/me").await {
+        let lol = me.get("lol");
+        if summoner_info.challenge_points.is_none() {
+            if let Some(points) = lol
+                .and_then(|l| l.get("challengePoints"))
+                .and_then(|v| v.as_str().map(|s| s.to_string()).or_else(|| v.as_i64().map(|n| n.to_string())))
+            {
+                if !points.is_empty() {
+                    summoner_info.challenge_points = Some(points);
+                }
+            }
+        }
+        if summoner_info.challenge_crystal_level.is_none() {
+            if let Some(level) = lol.and_then(|l| l.get("challengeCrystalLevel")).and_then(|v| v.as_str()) {
+                if !level.is_empty() {
+                    summoner_info.challenge_crystal_level = Some(level.to_string());
+                }
+            }
+        }
+        if summoner_info.game_status.is_none() {
+            if let Some(status) = lol.and_then(|l| l.get("gameStatus")).and_then(|v| v.as_str()) {
+                summoner_info.game_status = Some(status.to_string());
+            }
+        }
+        if summoner_info.availability.is_none() {
+            if let Some(availability) = me.get("availability").and_then(|v| v.as_str()) {
+                summoner_info.availability = Some(availability.to_string());
+            }
+        }
     }
 }
 pub async fn get_rank_info(client: &Client, puuid: &str) -> Result<RankInfo, String> {

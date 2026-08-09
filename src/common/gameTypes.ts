@@ -131,6 +131,13 @@ export const gameTypes: GameType[] = [
     description: 'Arena 神木之门',
     icon: Shield,
     category: 'special'
+  },
+  {
+    id: 2400,
+    name: '海克斯大乱斗',
+    description: 'ARAM: Mayhem / KIWI',
+    icon: Target,
+    category: 'special'
   }
 ]
 
@@ -157,7 +164,7 @@ export const gameTypePresets: Omit<GameTypePreset, 'selected' | 'partial'>[] = [
   {
     key: 'special',
     label: '特殊模式',
-    types: [900, 1700, 700, 1200, 1400, 1900] // 无限乱斗 + 斗魂竞技场 + 冠军杯赛 + 极限闪击 + 终极魔典 + 无限火力
+    types: [900, 1700, 700, 1200, 1400, 1900, 2400] // 含海克斯大乱斗
   },
   {
     key: 'clone',

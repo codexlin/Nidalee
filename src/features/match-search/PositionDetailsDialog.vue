@@ -9,7 +9,7 @@
             {{ getPositionIcon(positionData.position) }}
           </div>
           <div>
-            <div>{{ positionData.position }} 位置详情</div>
+            <div>{{ getPositionLabel(positionData.position) }} 位置详情</div>
             <div id="position-details-description" class="text-sm text-muted-foreground font-normal">
               {{ positionData.games }} 场对局 · 胜率 {{ positionData.winRate.toFixed(1) }}%
             </div>
@@ -18,20 +18,149 @@
       </DialogHeader>
 
       <div class="space-y-4 mt-4">
-        <!-- Tabs切换 -->
-        <Tabs default-value="stats" class="w-full">
+        <Tabs default-value="analysis" class="w-full">
           <TabsList class="grid w-full grid-cols-3">
-            <TabsTrigger value="stats">数据统计</TabsTrigger>
             <TabsTrigger value="analysis">深度分析</TabsTrigger>
+            <TabsTrigger value="stats">数据统计</TabsTrigger>
             <TabsTrigger value="suggestions">改进建议</TabsTrigger>
           </TabsList>
 
-          <!-- 数据统计Tab -->
+          <!-- 过程复盘 -->
+          <TabsContent value="analysis" class="space-y-4">
+            <Card v-if="insight?.degradationMessage">
+              <CardContent class="py-4 text-sm text-muted-foreground">
+                {{ insight.degradationMessage }}
+              </CardContent>
+            </Card>
+
+            <Card v-if="!insight">
+              <CardContent class="py-8 text-center text-muted-foreground text-sm">
+                暂无过程复盘数据。请使用深度分析并打开时间线后刷新。
+              </CardContent>
+            </Card>
+
+            <template v-if="insight?.hasTimeline">
+              <Card v-if="insight.deathBreakdown">
+                <CardHeader class="pb-2">
+                  <CardTitle class="text-base">阵亡复盘</CardTitle>
+                  <CardDescription>看怎么死的，而不是死了几次</CardDescription>
+                </CardHeader>
+                <CardContent class="space-y-3">
+                  <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="rounded-lg bg-muted/40 px-2 py-2">
+                      <div class="text-lg font-semibold">{{ insight.deathBreakdown.solo }}</div>
+                      <div class="text-xs text-muted-foreground">被单杀</div>
+                    </div>
+                    <div class="rounded-lg bg-muted/40 px-2 py-2">
+                      <div class="text-lg font-semibold">{{ insight.deathBreakdown.gankOrMulti }}</div>
+                      <div class="text-xs text-muted-foreground">被抓/多人</div>
+                    </div>
+                    <div class="rounded-lg bg-muted/40 px-2 py-2">
+                      <div class="text-lg font-semibold">{{ insight.deathBreakdown.towerOrMinion }}</div>
+                      <div class="text-xs text-muted-foreground">塔刀/处决</div>
+                    </div>
+                  </div>
+                  <p class="text-sm leading-relaxed">{{ insight.deathBreakdown.summary }}</p>
+                </CardContent>
+              </Card>
+
+              <Card v-if="insight.laningProcess">
+                <CardHeader class="pb-2">
+                  <CardTitle class="text-base">对线过程</CardTitle>
+                  <CardDescription>前 10 分钟相对对位</CardDescription>
+                </CardHeader>
+                <CardContent class="space-y-2">
+                  <div class="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                    <span>补刀差 {{ formatSigned(insight.laningProcess.avgCsDiff) }}</span>
+                    <span>经济差 {{ formatSigned(insight.laningProcess.avgGoldDiff) }}</span>
+                    <span>综合 {{ formatSigned(insight.laningProcess.avgOverallAdvantagePct) }}%</span>
+                  </div>
+                  <p class="text-sm leading-relaxed">{{ insight.laningProcess.summary }}</p>
+                </CardContent>
+              </Card>
+
+              <Card v-if="insight.objectiveProcess">
+                <CardHeader class="pb-2">
+                  <CardTitle class="text-base">资源过程</CardTitle>
+                  <CardDescription>别人拿资源时你在干嘛</CardDescription>
+                </CardHeader>
+                <CardContent class="space-y-3">
+                  <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div class="rounded-lg border px-2 py-2">
+                      <div class="text-muted-foreground">小龙</div>
+                      <div class="font-medium">
+                        到场 {{ insight.objectiveProcess.dragonsTaken }}/{{
+                          insight.objectiveProcess.dragonsSeen
+                        }}
+                      </div>
+                      <div class="text-muted-foreground">错过 {{ insight.objectiveProcess.dragonsMissed }}</div>
+                    </div>
+                    <div class="rounded-lg border px-2 py-2">
+                      <div class="text-muted-foreground">先锋</div>
+                      <div class="font-medium">
+                        到场 {{ insight.objectiveProcess.heraldsTaken }}/{{
+                          insight.objectiveProcess.heraldsSeen
+                        }}
+                      </div>
+                      <div class="text-muted-foreground">错过 {{ insight.objectiveProcess.heraldsMissed }}</div>
+                    </div>
+                    <div class="rounded-lg border px-2 py-2">
+                      <div class="text-muted-foreground">大龙</div>
+                      <div class="font-medium">
+                        到场 {{ insight.objectiveProcess.baronsTaken }}/{{
+                          insight.objectiveProcess.baronsSeen
+                        }}
+                      </div>
+                      <div class="text-muted-foreground">错过 {{ insight.objectiveProcess.baronsMissed }}</div>
+                    </div>
+                  </div>
+                  <div
+                    v-if="insight.objectiveProcess.missedActivity?.length"
+                    class="flex flex-wrap gap-1.5"
+                  >
+                    <Badge
+                      v-for="bucket in insight.objectiveProcess.missedActivity"
+                      :key="bucket.activity"
+                      variant="outline"
+                      class="text-xs"
+                    >
+                      {{ bucket.label }} {{ bucket.count }}
+                    </Badge>
+                  </div>
+                  <p class="text-sm leading-relaxed">{{ insight.objectiveProcess.summary }}</p>
+                </CardContent>
+              </Card>
+
+              <Card v-if="insight.visionProcess">
+                <CardHeader class="pb-2">
+                  <CardTitle class="text-base">视野过程</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p class="text-sm leading-relaxed">{{ insight.visionProcess.summary }}</p>
+                </CardContent>
+              </Card>
+
+              <Card
+                v-if="
+                  !insight.deathBreakdown &&
+                  !insight.laningProcess &&
+                  !insight.objectiveProcess &&
+                  !insight.visionProcess
+                "
+              >
+                <CardContent class="py-8 text-center text-muted-foreground text-sm">
+                  有时间线，但还凑不出足够的过程事件。多打几场排位后再看。
+                </CardContent>
+              </Card>
+            </template>
+          </TabsContent>
+
+          <!-- 结果附录 -->
           <TabsContent value="stats" class="space-y-4">
-            <!-- 胜率统计 -->
             <Card>
               <CardHeader class="pb-3">
                 <CardTitle class="text-base">胜率统计</CardTitle>
+                <CardDescription>结果附录，不是过程结论</CardDescription>
               </CardHeader>
               <CardContent>
                 <div class="grid grid-cols-3 gap-4">
@@ -64,7 +193,6 @@
               </CardContent>
             </Card>
 
-            <!-- KDA统计 -->
             <Card>
               <CardHeader class="pb-3">
                 <CardTitle class="text-base">KDA 数据</CardTitle>
@@ -97,7 +225,6 @@
               </CardContent>
             </Card>
 
-            <!-- 游戏表现 -->
             <Card>
               <CardHeader class="pb-3">
                 <CardTitle class="text-base">游戏表现</CardTitle>
@@ -105,7 +232,9 @@
               <CardContent>
                 <div class="grid grid-cols-2 gap-3">
                   <div class="flex justify-between items-center py-2 px-3 bg-muted/30 rounded">
-                    <span class="text-sm text-muted-foreground">补刀/分钟</span>
+                    <span class="text-sm text-muted-foreground">
+                      {{ positionData.position === 'SUPPORT' ? '线刀+野刀/分钟' : '补刀/分钟（含野刀）' }}
+                    </span>
                     <span class="font-semibold">{{ positionData.stats.cspm.toFixed(1) }}</span>
                   </div>
                   <div class="flex justify-between items-center py-2 px-3 bg-muted/30 rounded">
@@ -133,26 +262,49 @@
                 </div>
               </CardContent>
             </Card>
+
+            <PositionChampionPool
+              v-if="analysisSettings.displayFeatures.championPool"
+              :position-data="positionData"
+            />
+            <PositionTrendChart
+              v-if="analysisSettings.displayFeatures.trendCharts"
+              :position-data="positionData"
+            />
+            <PositionComparisonChart
+              v-if="analysisSettings.displayFeatures.positionComparison"
+              :position-data="positionData"
+            />
           </TabsContent>
 
-          <!-- 深度分析Tab -->
-          <TabsContent value="analysis" class="space-y-4">
-            <!-- 能力雷达图 -->
-            <PositionComparisonChart :position-data="positionData" />
-
-            <!-- 英雄池分析 -->
-            <PositionChampionPool :position-data="positionData" />
-
-            <!-- 胜率趋势 -->
-            <PositionTrendChart :position-data="positionData" />
-          </TabsContent>
-
-          <!-- 改进建议Tab -->
           <TabsContent value="suggestions" class="space-y-4">
-            <Card v-if="positionData.stats.advice && positionData.stats.advice.length > 0">
+            <Card v-if="processActions.length">
+              <CardHeader class="pb-3">
+                <CardTitle class="text-base">过程建议</CardTitle>
+                <CardDescription>由阵亡 / 对线 / 资源过程推出来的练法</CardDescription>
+              </CardHeader>
+              <CardContent class="space-y-2">
+                <div v-for="action in processActions" :key="action.key" class="p-3 border rounded-lg space-y-1">
+                  <div class="flex items-start justify-between gap-2">
+                    <h4 class="font-semibold text-sm">{{ action.title }}</h4>
+                    <Badge :variant="action.priority >= 8 ? 'destructive' : 'secondary'" class="text-xs">
+                      优先 {{ action.priority }}
+                    </Badge>
+                  </div>
+                  <p class="text-xs text-muted-foreground leading-relaxed">{{ action.detail }}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              v-if="
+                analysisSettings.displayFeatures.detailedAdvice &&
+                positionData.stats.advice &&
+                positionData.stats.advice.length > 0
+              "
+            >
               <CardHeader class="pb-3">
                 <CardTitle class="text-base">位置建议</CardTitle>
-                <CardDescription>基于该位置的表现生成的针对性建议</CardDescription>
               </CardHeader>
               <CardContent class="space-y-2">
                 <div
@@ -180,10 +332,11 @@
                 </div>
               </CardContent>
             </Card>
-            <Card v-else>
+
+            <Card v-if="!processActions.length && !(positionData.stats.advice && positionData.stats.advice.length)">
               <CardContent class="py-8 text-center text-muted-foreground">
-                <p>暂无建议数据</p>
-                <p class="text-xs mt-1">非排位模式不生成详细建议</p>
+                <p v-if="!insight?.hasTimeline">深度样本不足或未拉到时间线，暂不做过程建议</p>
+                <p v-else>暂无足够的负向过程信号</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -197,6 +350,8 @@
 import PositionComparisonChart from './PositionComparisonChart.vue'
 import PositionTrendChart from './PositionTrendChart.vue'
 import PositionChampionPool from './PositionChampionPool.vue'
+import { getPositionLabel } from '@/common/positionLabels'
+import { useAnalysisSettingsStore } from '@/shared/stores/features/analysisSettingsStore'
 
 interface Props {
   open: boolean
@@ -208,15 +363,24 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const analysisSettings = useAnalysisSettingsStore()
+
+const insight = computed(() => props.positionData.processInsight ?? null)
+const processActions = computed(() => insight.value?.actions ?? [])
+
+const formatSigned = (value: number) => (value > 0 ? `+${value.toFixed(1)}` : value.toFixed(1))
+
 const getPositionIcon = (position: string): string => {
   const icons: Record<string, string> = {
-    上单: '上',
-    打野: '野',
-    中单: '中',
+    TOP: '上',
+    JUNGLE: '野',
+    MID: '中',
     ADC: '下',
-    辅助: '辅',
-    灵活: '灵'
+    SUPPORT: '辅',
+    ARAM: '乱',
+    FLEX: '灵',
+    UNKNOWN: '?'
   }
-  return icons[position] || '?'
+  return icons[position] || getPositionLabel(position).slice(0, 1)
 }
 </script>

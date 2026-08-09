@@ -1,0 +1,35 @@
+{
+  "frameInterval": 600000,
+  "frames": [
+    {
+      "timestamp": 0,
+      "events": [],
+      "participantFrames": {
+        "1": { "participantId": 1, "currentGold": 500, "totalGold": 500, "level": 1, "xp": 0, "minionsKilled": 0, "jungleMinionsKilled": 0, "position": { "x": 1000, "y": 1000 } },
+        "6": { "participantId": 6, "currentGold": 500, "totalGold": 500, "level": 1, "xp": 0, "minionsKilled": 0, "jungleMinionsKilled": 0, "position": { "x": 1100, "y": 1100 } }
+      }
+    },
+    {
+      "timestamp": 600000,
+      "events": [],
+      "participantFrames": {
+        "1": { "participantId": 1, "currentGold": 800, "totalGold": 5300, "level": 8, "xp": 6000, "minionsKilled": 80, "jungleMinionsKilled": 0, "position": { "x": 1500, "y": 1500 } },
+        "6": { "participantId": 6, "currentGold": 700, "totalGold": 4500, "level": 7, "xp": 5000, "minionsKilled": 60, "jungleMinionsKilled": 0, "position": { "x": 1600, "y": 1600 } }
+      }
+    },
+    {
+      "timestamp": 1200000,
+      "events": [],
+      "participantFrames": {
+        "6": { "participantId": 6, "currentGold": 800, "totalGold": 9500, "level": 12, "xp": 12000, "minionsKilled": 130, "jungleMinionsKilled": 0, "position": { "x": 5200, "y": 5200 } }
+      }
+    },
+    {
+      "timestamp": 1800000,
+      "events": [],
+      "participantFrames": {
+        "6": { "participantId": 6, "currentGold": 950, "totalGold": 15000, "level": 15, "xp": 20000, "minionsKilled": 190, "jungleMinionsKilled": 5, "position": { "x": 7500, "y": 7500 } }
+      }
+    }
+  ]
+}

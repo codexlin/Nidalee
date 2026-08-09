@@ -4,9 +4,7 @@
 /// - 基于时间线数据分析玩家自身表现
 /// - 识别个人优缺点和改进空间
 /// - 生成针对性的自我提升建议
-use crate::domains::analysis::analyzers::core::timeline_analyzer::{
-    TimelineAnalysis, PhaseAnalysis, KeyEvent
-};
+use crate::domains::analysis::analyzers::core::timeline_analyzer::{KeyEvent, PhaseAnalysis, TimelineAnalysis};
 use crate::shared::types::{PlayerMatchStats, SummonerTrait};
 use serde_json::Value;
 
@@ -30,31 +28,31 @@ pub struct SelfImprovementAnalysis {
 #[derive(Debug, Clone)]
 pub struct PerformanceAnalysis {
     // 各阶段表现评分
-    pub early_game_score: f64,    // 对线期评分 0-100
-    pub mid_game_score: f64,      // 中期评分 0-100
-    pub late_game_score: f64,     // 后期评分 0-100
+    pub early_game_score: f64, // 对线期评分 0-100
+    pub mid_game_score: f64,   // 中期评分 0-100
+    pub late_game_score: f64,  // 后期评分 0-100
 
     // 关键指标分析
-    pub cs_efficiency: f64,       // 补刀效率评分
-    pub gold_efficiency: f64,     // 金币效率评分
+    pub cs_efficiency: f64,           // 补刀效率评分
+    pub gold_efficiency: f64,         // 金币效率评分
     pub teamfight_participation: f64, // 团战参与度评分
-    pub vision_control: f64,      // 视野控制评分
+    pub vision_control: f64,          // 视野控制评分
 
     // 问题识别
-    pub major_issues: Vec<String>,    // 主要问题
-    pub minor_issues: Vec<String>,    // 次要问题
-    pub strengths: Vec<String>,       // 个人优势
+    pub major_issues: Vec<String>, // 主要问题
+    pub minor_issues: Vec<String>, // 次要问题
+    pub strengths: Vec<String>,    // 个人优势
 }
 
 /// 改进建议
 #[derive(Debug, Clone)]
 pub struct ImprovementSuggestion {
-    pub priority: u8,             // 优先级 1-5
-    pub category: String,         // 建议分类
-    pub title: String,            // 建议标题
-    pub description: String,      // 详细描述
-    pub current_performance: String, // 当前表现
-    pub target_performance: String,  // 目标表现
+    pub priority: u8,                  // 优先级 1-5
+    pub category: String,              // 建议分类
+    pub title: String,                 // 建议标题
+    pub description: String,           // 详细描述
+    pub current_performance: String,   // 当前表现
+    pub target_performance: String,    // 目标表现
     pub specific_actions: Vec<String>, // 具体行动
     pub practice_methods: Vec<String>, // 练习方法
     pub expected_improvement: String,  // 预期改进
@@ -63,23 +61,23 @@ pub struct ImprovementSuggestion {
 /// 技能评估
 #[derive(Debug, Clone)]
 pub struct SkillAssessment {
-    pub laning_skill: u8,         // 对线技能 1-10
-    pub farming_skill: u8,        // 发育技能 1-10
-    pub teamfight_skill: u8,      // 团战技能 1-10
-    pub vision_skill: u8,         // 视野技能 1-10
-    pub positioning_skill: u8,    // 站位技能 1-10
-    pub macro_skill: u8,          // 宏观技能 1-10
-    pub overall_skill: u8,        // 综合技能 1-10
+    pub laning_skill: u8,      // 对线技能 1-10
+    pub farming_skill: u8,     // 发育技能 1-10
+    pub teamfight_skill: u8,   // 团战技能 1-10
+    pub vision_skill: u8,      // 视野技能 1-10
+    pub positioning_skill: u8, // 站位技能 1-10
+    pub macro_skill: u8,       // 宏观技能 1-10
+    pub overall_skill: u8,     // 综合技能 1-10
 }
 
 /// 训练计划
 #[derive(Debug, Clone)]
 pub struct TrainingPlan {
-    pub daily_practice: Vec<String>,      // 每日练习
-    pub weekly_goals: Vec<String>,        // 每周目标
-    pub monthly_goals: Vec<String>,       // 每月目标
-    pub specific_drills: Vec<String>,     // 专项训练
-    pub review_points: Vec<String>,       // 复盘要点
+    pub daily_practice: Vec<String>,  // 每日练习
+    pub weekly_goals: Vec<String>,    // 每周目标
+    pub monthly_goals: Vec<String>,   // 每月目标
+    pub specific_drills: Vec<String>, // 专项训练
+    pub review_points: Vec<String>,   // 复盘要点
 }
 
 /// 分析自我提升
@@ -96,12 +94,8 @@ pub fn analyze_self_improvement(
     let performance_analysis = analyze_performance(timeline_analysis, basic_stats);
 
     // 生成改进建议（传入位置信息）
-    let improvement_suggestions = generate_improvement_suggestions(
-        &performance_analysis,
-        timeline_analysis,
-        basic_stats,
-        &lane_position
-    );
+    let improvement_suggestions =
+        generate_improvement_suggestions(&performance_analysis, timeline_analysis, basic_stats, &lane_position);
 
     // 评估技能水平
     let skill_assessment = assess_skills(&performance_analysis, basic_stats);
@@ -118,10 +112,7 @@ pub fn analyze_self_improvement(
 }
 
 /// 分析个人表现
-fn analyze_performance(
-    timeline: &TimelineAnalysis,
-    stats: &PlayerMatchStats,
-) -> PerformanceAnalysis {
+fn analyze_performance(timeline: &TimelineAnalysis, stats: &PlayerMatchStats) -> PerformanceAnalysis {
     // 计算各阶段评分
     let early_game_score = calculate_phase_score(&timeline.early_game, "对线期");
     let mid_game_score = calculate_phase_score(&timeline.mid_game, "中期");
@@ -134,9 +125,8 @@ fn analyze_performance(
     let vision_control = calculate_vision_score(stats);
 
     // 识别问题和优势
-    let (major_issues, minor_issues, strengths) = identify_performance_issues(
-        timeline, stats, early_game_score, mid_game_score, late_game_score
-    );
+    let (major_issues, minor_issues, strengths) =
+        identify_performance_issues(timeline, stats, early_game_score, mid_game_score, late_game_score);
 
     PerformanceAnalysis {
         early_game_score,
@@ -186,11 +176,8 @@ fn calculate_phase_score(phase: &PhaseAnalysis, _phase_name: &str) -> f64 {
 
 /// 计算补刀效率评分
 fn calculate_cs_efficiency_score(timeline: &TimelineAnalysis, _stats: &PlayerMatchStats) -> f64 {
-    let avg_cs_per_minute = (
-        timeline.early_game.cs_per_minute +
-        timeline.mid_game.cs_per_minute +
-        timeline.late_game.cs_per_minute
-    ) / 3.0;
+    let avg_cs_per_minute =
+        (timeline.early_game.cs_per_minute + timeline.mid_game.cs_per_minute + timeline.late_game.cs_per_minute) / 3.0;
 
     match avg_cs_per_minute {
         x if x >= 7.5 => 90.0,
@@ -205,11 +192,9 @@ fn calculate_cs_efficiency_score(timeline: &TimelineAnalysis, _stats: &PlayerMat
 
 /// 计算金币效率评分
 fn calculate_gold_efficiency_score(timeline: &TimelineAnalysis, _stats: &PlayerMatchStats) -> f64 {
-    let avg_gold_per_minute = (
-        timeline.early_game.gold_per_minute +
-        timeline.mid_game.gold_per_minute +
-        timeline.late_game.gold_per_minute
-    ) / 3.0;
+    let avg_gold_per_minute =
+        (timeline.early_game.gold_per_minute + timeline.mid_game.gold_per_minute + timeline.late_game.gold_per_minute)
+            / 3.0;
 
     match avg_gold_per_minute {
         x if x >= 450.0 => 90.0,
@@ -518,7 +503,13 @@ fn assess_skills(performance: &PerformanceAnalysis, stats: &PlayerMatchStats) ->
     let macro_skill = ((laning_skill + farming_skill + teamfight_skill + vision_skill) as f64 / 4.0) as u8;
 
     // 综合技能评估
-    let overall_skill = ((laning_skill + farming_skill + teamfight_skill + vision_skill + positioning_skill + macro_skill) as f64 / 6.0) as u8;
+    let overall_skill = ((laning_skill
+        + farming_skill
+        + teamfight_skill
+        + vision_skill
+        + positioning_skill
+        + macro_skill) as f64
+        / 6.0) as u8;
 
     SkillAssessment {
         laning_skill,
@@ -532,10 +523,7 @@ fn assess_skills(performance: &PerformanceAnalysis, stats: &PlayerMatchStats) ->
 }
 
 /// 制定训练计划
-fn create_training_plan(
-    suggestions: &[ImprovementSuggestion],
-    skills: &SkillAssessment,
-) -> TrainingPlan {
+fn create_training_plan(suggestions: &[ImprovementSuggestion], skills: &SkillAssessment) -> TrainingPlan {
     let mut daily_practice = Vec::new();
     let mut weekly_goals = Vec::new();
     let mut monthly_goals = Vec::new();
@@ -618,21 +606,20 @@ fn extract_lane_position(match_data: &Value, participant_id: i32) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domains::analysis::analyzers::core::timeline_parser::{
-        TimelineAnalysis, PhaseAnalysis, OpponentComparison
-    };
+    use crate::domains::analysis::analyzers::core::timeline_analyzer::PhaseAnalysis;
 
     #[test]
     fn test_calculate_phase_score() {
+        // 当前 `PhaseAnalysis` 不再带 `duration_minutes`（真实时长由 evidence 层的
+        // `PhaseEvidence.duration_minutes` 承载），`level_difference` 也统一为 f64
         let phase = PhaseAnalysis {
-            duration_minutes: 10.0,
             cs_per_minute: 7.5,
             gold_per_minute: 400.0,
             xp_per_minute: 500.0,
             cs_difference: 5.0,
             xp_difference: 100.0,
             gold_difference: 200.0,
-            level_difference: 1,
+            level_difference: 1.0,
         };
 
         let score = calculate_phase_score(&phase, "对线期");

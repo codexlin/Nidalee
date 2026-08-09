@@ -6,13 +6,20 @@
           <Trophy class="h-5 w-5 text-primary" />
           <CardTitle class="text-lg">位置统计</CardTitle>
         </div>
-        <Badge variant="outline">{{ positionStats.length }} 个位置</Badge>
+        <Badge variant="outline">
+          {{ positionStats.length ? `${positionStats.length} 个位置` : '仅排位' }}
+        </Badge>
       </div>
-      <CardDescription>
-        主要位置: <span class="font-semibold text-primary">{{ mainPosition }}</span>
+      <CardDescription v-if="positionStats.length">
+        主要位置:
+        <span class="font-semibold text-primary">{{ getPositionLabel(mainPosition) }}</span>
       </CardDescription>
+      <CardDescription v-else>位置统计仅统计排位对局（单双 / 灵活）</CardDescription>
     </CardHeader>
     <CardContent class="space-y-3">
+      <p v-if="!positionStats.length" class="text-sm text-muted-foreground py-2">
+        当前筛选结果里没有排位对局，因此不展示分路拆分。切换到排位模式或在「全部模式」中包含排位场次后再查看。
+      </p>
       <div v-for="pos in positionStats" :key="pos.position" class="space-y-2">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -25,7 +32,7 @@
               {{ getPositionIcon(pos.position) }}
             </div>
             <div class="flex flex-col">
-              <span class="text-sm font-medium">{{ pos.position }}</span>
+              <span class="text-sm font-medium">{{ getPositionLabel(pos.position) }}</span>
               <span class="text-xs text-muted-foreground">{{ pos.games }} 场对局</span>
             </div>
           </div>
@@ -64,8 +71,8 @@
             </div>
           </div>
           <div class="bg-muted/50 rounded px-2 py-1">
-            <div class="text-muted-foreground">CS/min</div>
-            <div class="font-semibold">{{ pos.stats.cspm.toFixed(1) }}</div>
+            <div class="text-muted-foreground">{{ tertiaryMetricLabel(pos.position) }}</div>
+            <div class="font-semibold">{{ tertiaryMetricValue(pos) }}</div>
           </div>
         </div>
       </div>
@@ -75,26 +82,43 @@
 
 <script setup lang="ts">
 import { Trophy, TrendingUp } from 'lucide-vue-next'
+import { getPositionLabel } from '@/common/positionLabels'
 
 interface Props {
   positionStats: PositionStats[]
   mainPosition: string
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<{
   'view-details': [pos: PositionStats]
 }>()
 
 const getPositionIcon = (position: string): string => {
   const icons: Record<string, string> = {
-    上单: '上',
-    打野: '野',
-    中单: '中',
+    TOP: '上',
+    JUNGLE: '野',
+    MID: '中',
     ADC: '下',
-    辅助: '辅',
-    灵活: '灵'
+    SUPPORT: '辅',
+    ARAM: '乱',
+    FLEX: '灵',
+    UNKNOWN: '?'
   }
-  return icons[position] || '?'
+  return icons[position] || getPositionLabel(position).slice(0, 1)
+}
+
+/** 第三列按位置换口径：辅助看视野，其余看总补刀（含野刀） */
+const tertiaryMetricLabel = (position: string): string => {
+  if (position === 'SUPPORT') return '视野/分'
+  if (position === 'JUNGLE') return '补刀/分'
+  return 'CS/min'
+}
+
+const tertiaryMetricValue = (pos: PositionStats): string => {
+  if (pos.position === 'SUPPORT') {
+    return pos.stats.vspm.toFixed(2)
+  }
+  return pos.stats.cspm.toFixed(1)
 }
 </script>

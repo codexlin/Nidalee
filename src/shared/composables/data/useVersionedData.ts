@@ -6,8 +6,15 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { computed, type Ref } from 'vue'
+import { computed, type Ref, watchEffect } from 'vue'
 import { useQuery, type UseQueryReturnType } from '@tanstack/vue-query'
+import {
+  fetchCommunityDragonPerks,
+  fetchQueues,
+  type CDragonQueue,
+  type CommunityDragonPerk
+} from '@/lib/dataApi'
+import { setCdragonQueueNames } from '@/common/queueCatalog'
 
 /**
  * 游戏版本查询
@@ -73,6 +80,26 @@ export function usePerks(): UseQueryReturnType<unknown, Error> {
 }
 
 /**
+ * Community Dragon 符文元数据（图标路径等）
+ * OP.GG RunesCard 用其解析 perk 图标 URL
+ */
+export function useCommunityDragonPerksQuery(): UseQueryReturnType<CommunityDragonPerk[], Error> {
+  return useQuery({
+    queryKey: ['static', 'communityDragonPerks'] as const,
+    queryFn: async () => {
+      const res = await fetchCommunityDragonPerks()
+      if (!res.success || !res.data) {
+        throw new Error(res.error || '获取 Community Dragon 符文数据失败')
+      }
+      return res.data
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false
+  })
+}
+
+/**
  * 符文图标查询（版本化）
  */
 export function usePerkIcons(): UseQueryReturnType<Record<number, string>, Error> {
@@ -114,6 +141,35 @@ export function useCurrentRunePage(): UseQueryReturnType<unknown, Error> {
     staleTime: 1000 * 60, // 1 分钟
     refetchOnWindowFocus: false
   })
+}
+
+/**
+ * 队列目录（Community Dragon zh_cn）
+ * 不依赖 LCU 连接，启动即可拉取并写入名称缓存
+ */
+export function useQueues(): UseQueryReturnType<CDragonQueue[], Error> {
+  const query = useQuery({
+    queryKey: ['static', 'queues', 'cdragon-zh_cn'] as const,
+    queryFn: async () => {
+      const result = await fetchQueues()
+      if (!result.success || !result.data) {
+        throw new Error(result.error || '获取队列数据失败')
+      }
+      return result.data
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: 2
+  })
+
+  watchEffect(() => {
+    const queues = query.data.value
+    if (!queues?.length) return
+    setCdragonQueueNames(queues.map((q) => ({ id: q.id, name: q.name })))
+  })
+
+  return query
 }
 
 /**

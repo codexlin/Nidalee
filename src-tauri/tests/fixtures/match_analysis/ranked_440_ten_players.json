@@ -1,0 +1,220 @@
+{
+  "gameId": 1000000010,
+  "queueId": 440,
+  "gameDuration": 1834,
+  "gameCreation": 1700000100000,
+  "participantIdentities": [
+    { "participantId": 1, "player": { "puuid": "00000000-0000-4000-8000-000000000001" } },
+    { "participantId": 2, "player": { "puuid": "00000000-0000-4000-8000-000000000002" } },
+    { "participantId": 3, "player": { "puuid": "00000000-0000-4000-8000-000000000003" } },
+    { "participantId": 4, "player": { "puuid": "00000000-0000-4000-8000-000000000004" } },
+    { "participantId": 5, "player": { "puuid": "00000000-0000-4000-8000-000000000005" } },
+    { "participantId": 6, "player": { "puuid": "00000000-0000-4000-8000-000000000006" } },
+    { "participantId": 7, "player": { "puuid": "00000000-0000-4000-8000-000000000007" } },
+    { "participantId": 8, "player": { "puuid": "00000000-0000-4000-8000-000000000008" } },
+    { "participantId": 9, "player": { "puuid": "00000000-0000-4000-8000-000000000009" } },
+    { "participantId": 10, "player": { "puuid": "00000000-0000-4000-8000-000000000010" } }
+  ],
+  "participants": [
+    {
+      "participantId": 1,
+      "championId": 86,
+      "teamId": 100,
+      "stats": {
+        "win": true,
+        "kills": 1,
+        "deaths": 2,
+        "assists": 1,
+        "totalDamageDealtToChampions": 18000,
+        "totalDamageTaken": 25000,
+        "goldEarned": 17300,
+        "visionScore": 22,
+        "wardsPlaced": 9,
+        "wardsKilled": 3,
+        "totalMinionsKilled": 230,
+        "neutralMinionsKilled": 20
+      },
+      "timeline": { "role": "SOLO", "lane": "TOP" }
+    },
+    {
+      "participantId": 2,
+      "championId": 64,
+      "teamId": 100,
+      "stats": {
+        "win": true,
+        "kills": 6,
+        "deaths": 4,
+        "assists": 9,
+        "totalDamageDealtToChampions": 16000,
+        "totalDamageTaken": 27000,
+        "goldEarned": 16500,
+        "visionScore": 30,
+        "wardsPlaced": 12,
+        "wardsKilled": 6,
+        "totalMinionsKilled": 40,
+        "neutralMinionsKilled": 200
+      },
+      "timeline": { "role": "NONE", "lane": "JUNGLE" }
+    },
+    {
+      "participantId": 3,
+      "championId": 103,
+      "teamId": 100,
+      "stats": {
+        "win": true,
+        "kills": 9,
+        "deaths": 3,
+        "assists": 7,
+        "totalDamageDealtToChampions": 26000,
+        "totalDamageTaken": 18000,
+        "goldEarned": 17000,
+        "visionScore": 25,
+        "wardsPlaced": 10,
+        "wardsKilled": 4,
+        "totalMinionsKilled": 225,
+        "neutralMinionsKilled": 10
+      },
+      "timeline": { "role": "SOLO", "lane": "MIDDLE" }
+    },
+    {
+      "participantId": 4,
+      "championId": 22,
+      "teamId": 100,
+      "stats": {
+        "win": true,
+        "kills": 11,
+        "deaths": 2,
+        "assists": 6,
+        "totalDamageDealtToChampions": 31000,
+        "totalDamageTaken": 14000,
+        "goldEarned": 17800,
+        "visionScore": 20,
+        "wardsPlaced": 8,
+        "wardsKilled": 2,
+        "totalMinionsKilled": 260,
+        "neutralMinionsKilled": 0
+      },
+      "timeline": { "role": "DUO_CARRY", "lane": "BOTTOM" }
+    },
+    {
+      "participantId": 5,
+      "championId": 412,
+      "teamId": 100,
+      "stats": {
+        "win": true,
+        "kills": 2,
+        "deaths": 6,
+        "assists": 18,
+        "totalDamageDealtToChampions": 9000,
+        "totalDamageTaken": 21000,
+        "goldEarned": 11500,
+        "visionScore": 62,
+        "wardsPlaced": 28,
+        "wardsKilled": 11,
+        "totalMinionsKilled": 35,
+        "neutralMinionsKilled": 0
+      },
+      "timeline": { "role": "DUO_SUPPORT", "lane": "BOTTOM" }
+    },
+    {
+      "participantId": 6,
+      "championId": 122,
+      "teamId": 200,
+      "stats": {
+        "win": false,
+        "kills": 3,
+        "deaths": 5,
+        "assists": 2,
+        "totalDamageDealtToChampions": 15000,
+        "totalDamageTaken": 28000,
+        "goldEarned": 15000,
+        "visionScore": 18,
+        "wardsPlaced": 7,
+        "wardsKilled": 2,
+        "totalMinionsKilled": 190,
+        "neutralMinionsKilled": 5
+      },
+      "timeline": { "role": "SOLO", "lane": "TOP" }
+    },
+    {
+      "participantId": 7,
+      "championId": 60,
+      "teamId": 200,
+      "stats": {
+        "win": false,
+        "kills": 4,
+        "deaths": 7,
+        "assists": 6,
+        "totalDamageDealtToChampions": 14000,
+        "totalDamageTaken": 26000,
+        "goldEarned": 15500,
+        "visionScore": 26,
+        "wardsPlaced": 10,
+        "wardsKilled": 5,
+        "totalMinionsKilled": 32,
+        "neutralMinionsKilled": 185
+      },
+      "timeline": { "role": "NONE", "lane": "JUNGLE" }
+    },
+    {
+      "participantId": 8,
+      "championId": 1,
+      "teamId": 200,
+      "stats": {
+        "win": false,
+        "kills": 7,
+        "deaths": 6,
+        "assists": 5,
+        "totalDamageDealtToChampions": 24000,
+        "totalDamageTaken": 19000,
+        "goldEarned": 16200,
+        "visionScore": 22,
+        "wardsPlaced": 9,
+        "wardsKilled": 3,
+        "totalMinionsKilled": 215,
+        "neutralMinionsKilled": 0
+      },
+      "timeline": { "role": "SOLO", "lane": "MIDDLE" }
+    },
+    {
+      "participantId": 9,
+      "championId": 21,
+      "teamId": 200,
+      "stats": {
+        "win": false,
+        "kills": 8,
+        "deaths": 5,
+        "assists": 4,
+        "totalDamageDealtToChampions": 28000,
+        "totalDamageTaken": 16000,
+        "goldEarned": 16800,
+        "visionScore": 19,
+        "wardsPlaced": 7,
+        "wardsKilled": 1,
+        "totalMinionsKilled": 245,
+        "neutralMinionsKilled": 0
+      },
+      "timeline": { "role": "DUO_CARRY", "lane": "BOTTOM" }
+    },
+    {
+      "participantId": 10,
+      "championId": 201,
+      "teamId": 200,
+      "stats": {
+        "win": false,
+        "kills": 1,
+        "deaths": 8,
+        "assists": 14,
+        "totalDamageDealtToChampions": 8000,
+        "totalDamageTaken": 23000,
+        "goldEarned": 10800,
+        "visionScore": 55,
+        "wardsPlaced": 25,
+        "wardsKilled": 9,
+        "totalMinionsKilled": 30,
+        "neutralMinionsKilled": 0
+      },
+      "timeline": { "role": "DUO_SUPPORT", "lane": "BOTTOM" }
+    }
+  ]
+}

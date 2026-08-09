@@ -2,7 +2,7 @@
   <Card>
     <CardHeader>
       <CardTitle class="text-base">胜率趋势</CardTitle>
-      <CardDescription>近期表现变化（模拟数据）</CardDescription>
+      <CardDescription>近期表现变化（累计胜率 / 移动平均）</CardDescription>
     </CardHeader>
     <CardContent>
       <ThemedChart type="line" :data="chartData" :options="chartOptions" height="220px" :loading="isLoading" />
@@ -16,7 +16,6 @@ import type { PositionStatsWithTrend, WinRateTrendPoint } from '@/shared/utils/c
 import type { TooltipItem } from 'chart.js'
 
 interface Props {
-  // 后端暂未提供 winRateTrend，预留字段供未来接入
   positionData: PositionStatsWithTrend
 }
 

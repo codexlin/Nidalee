@@ -1,0 +1,171 @@
+{
+  "frameInterval": 60000,
+  "frames": [
+    {
+      "timestamp": 0,
+      "events": [
+        { "type": "PAUSE_END", "timestamp": 0 },
+        { "type": "ITEM_PURCHASED", "timestamp": 5000, "participantId": 1, "itemId": 1055 },
+        { "type": "SKILL_LEVEL_UP", "timestamp": 8000, "participantId": 1, "skillSlot": 1, "levelUpType": "NORMAL" },
+        { "type": "WARD_PLACED", "timestamp": 90000, "creatorId": 1, "wardType": "YELLOW_TRINKET" },
+        { "type": "CUSTOM_UNKNOWN_EVENT", "timestamp": 95000, "foo": 1 }
+      ],
+      "participantFrames": {
+        "1": {
+          "participantId": 1,
+          "currentGold": 500,
+          "totalGold": 500,
+          "level": 1,
+          "xp": 0,
+          "minionsKilled": 0,
+          "jungleMinionsKilled": 0,
+          "goldPerSecond": 0,
+          "timeEnemySpentControlled": 0,
+          "position": { "x": 1000, "y": 1000 },
+          "damageStats": { "totalDamageDoneToChampions": 0 },
+          "championStats": { "health": 600, "healthMax": 600 }
+        },
+        "6": {
+          "participantId": 6,
+          "currentGold": 500,
+          "totalGold": 500,
+          "level": 1,
+          "xp": 0,
+          "minionsKilled": 0,
+          "jungleMinionsKilled": 0,
+          "position": { "x": 1100, "y": 1100 }
+        }
+      }
+    },
+    {
+      "timestamp": 300000,
+      "events": [
+        {
+          "type": "CHAMPION_KILL",
+          "timestamp": 240000,
+          "killerId": 6,
+          "victimId": 1,
+          "assistingParticipantIds": [],
+          "position": { "x": 2000, "y": 12000 },
+          "bounty": 300
+        },
+        {
+          "type": "CHAMPION_KILL",
+          "timestamp": 280000,
+          "killerId": 7,
+          "victimId": 1,
+          "assistingParticipantIds": [6, 8],
+          "position": { "x": 2500, "y": 11000 }
+        }
+      ],
+      "participantFrames": {
+        "1": {
+          "participantId": 1,
+          "currentGold": 400,
+          "totalGold": 2200,
+          "level": 4,
+          "xp": 1200,
+          "minionsKilled": 25,
+          "jungleMinionsKilled": 0,
+          "position": { "x": 400, "y": 400 },
+          "damageStats": { "totalDamageDoneToChampions": 800 },
+          "championStats": { "health": 0, "healthMax": 900 }
+        },
+        "6": {
+          "participantId": 6,
+          "currentGold": 700,
+          "totalGold": 2800,
+          "level": 5,
+          "xp": 1600,
+          "minionsKilled": 30,
+          "jungleMinionsKilled": 0,
+          "position": { "x": 2200, "y": 12000 }
+        }
+      }
+    },
+    {
+      "timestamp": 480000,
+      "events": [],
+      "participantFrames": {
+        "1": {
+          "participantId": 1,
+          "currentGold": 700,
+          "totalGold": 3800,
+          "level": 6,
+          "xp": 3200,
+          "minionsKilled": 40,
+          "jungleMinionsKilled": 2,
+          "position": { "x": 5200, "y": 9200 },
+          "damageStats": { "totalDamageDoneToChampions": 2000 },
+          "championStats": { "health": 1000, "healthMax": 1200 }
+        },
+        "6": {
+          "participantId": 6,
+          "currentGold": 750,
+          "totalGold": 4000,
+          "level": 6,
+          "xp": 3400,
+          "minionsKilled": 45,
+          "jungleMinionsKilled": 0,
+          "position": { "x": 9800, "y": 5200 }
+        }
+      }
+    },
+    {
+      "timestamp": 600000,
+      "events": [
+        {
+          "type": "ELITE_MONSTER_KILL",
+          "timestamp": 540000,
+          "killerId": 7,
+          "killerTeamId": 200,
+          "monsterType": "DRAGON",
+          "monsterSubType": "FIRE_DRAGON",
+          "assistingParticipantIds": [6]
+        },
+        {
+          "type": "ELITE_MONSTER_KILL",
+          "timestamp": 580000,
+          "killerId": 2,
+          "killerTeamId": 100,
+          "monsterType": "RIFTHERALD",
+          "assistingParticipantIds": [1]
+        },
+        { "type": "WARD_KILL", "timestamp": 590000, "killerId": 1, "wardType": "YELLOW_TRINKET" },
+        { "type": "LEVEL_UP", "timestamp": 595000, "participantId": 1 },
+        { "type": "CHAMPION_SPECIAL_KILL", "timestamp": 596000, "killerId": 1, "killType": "KILL_MULTI" },
+        { "type": "TURRET_PLATE_DESTROYED", "timestamp": 597000, "killerId": 1, "laneType": "TOP_LANE" },
+        { "type": "ITEM_SOLD", "timestamp": 598000, "participantId": 1, "itemId": 2003 },
+        { "type": "ITEM_DESTROYED", "timestamp": 598500, "participantId": 1, "itemId": 2003 },
+        { "type": "ITEM_UNDO", "timestamp": 599000, "participantId": 1, "itemId": 1055 },
+        { "type": "BUILDING_KILL", "timestamp": 599500, "killerId": 6, "buildingType": "TOWER_BUILDING", "assistingParticipantIds": [] },
+        { "type": "DRAGON_SOUL_GIVEN", "timestamp": 599800, "teamId": 200, "name": "Infernal" },
+        { "type": "GAME_END", "timestamp": 599900, "winningTeam": 200 }
+      ],
+      "participantFrames": {
+        "1": {
+          "participantId": 1,
+          "currentGold": 900,
+          "totalGold": 5300,
+          "level": 8,
+          "xp": 6000,
+          "minionsKilled": 80,
+          "jungleMinionsKilled": 4,
+          "position": { "x": 5200, "y": 9200 },
+          "damageStats": { "totalDamageDoneToChampions": 4200 },
+          "championStats": { "health": 1100, "healthMax": 1400 }
+        },
+        "6": {
+          "participantId": 6,
+          "currentGold": 800,
+          "totalGold": 5100,
+          "level": 8,
+          "xp": 5800,
+          "minionsKilled": 75,
+          "jungleMinionsKilled": 0,
+          "position": { "x": 9800, "y": 5200 }
+        }
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 /// - 分析游戏事件（击杀、推塔、打龙）
 /// - 统计玩家参与度
 /// - 识别关键事件
-use crate::domains::analysis::analyzers::core::timeline_analyzer::{TimelineFrame, GameEvent};
+use crate::domains::analysis::analyzers::core::timeline_analyzer::{GameEvent, TimelineFrame};
 use std::collections::HashMap;
 
 /// 事件统计
@@ -25,7 +25,7 @@ pub struct KeyMoment {
     pub timestamp: i64,
     pub event_type: String,
     pub description: String,
-    pub impact_score: f64,  // 影响分数 0-10
+    pub impact_score: f64, // 影响分数 0-10
 }
 
 /// 事件分析器
@@ -33,11 +33,7 @@ pub struct EventAnalyzer;
 
 impl EventAnalyzer {
     /// 分析玩家事件
-    pub fn analyze_player_events(
-        &self,
-        player_id: i32,
-        frames: &[TimelineFrame],
-    ) -> EventStatistics {
+    pub fn analyze_player_events(&self, player_id: i32, frames: &[TimelineFrame]) -> EventStatistics {
         let mut stats = EventStatistics::default();
 
         for frame in frames {
@@ -64,36 +60,40 @@ impl EventAnalyzer {
                         if event.timestamp < 120000 && stats.kills == 1 {
                             stats.first_blood = true;
                         }
-                    },
+                    }
                     "BUILDING_KILL" => {
                         if let Some(killer_id) = event.killer_id {
                             if killer_id == player_id || event.assisting_participant_ids.contains(&player_id) {
                                 stats.tower_kills += 1;
                             }
                         }
-                    },
+                    }
                     "ELITE_MONSTER_KILL" => {
                         if let Some(monster_type) = &event.monster_type {
                             match monster_type.as_str() {
                                 "DRAGON" => {
                                     if let Some(killer_id) = event.killer_id {
-                                        if killer_id == player_id || event.assisting_participant_ids.contains(&player_id) {
+                                        if killer_id == player_id
+                                            || event.assisting_participant_ids.contains(&player_id)
+                                        {
                                             stats.dragon_kills += 1;
                                         }
                                     }
-                                },
+                                }
                                 "BARON_NASHOR" | "RIFTHERALD" => {
                                     if let Some(killer_id) = event.killer_id {
-                                        if killer_id == player_id || event.assisting_participant_ids.contains(&player_id) {
+                                        if killer_id == player_id
+                                            || event.assisting_participant_ids.contains(&player_id)
+                                        {
                                             stats.baron_kills += 1;
                                         }
                                     }
-                                },
-                                _ => {},
+                                }
+                                _ => {}
                             }
                         }
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
         }
@@ -102,11 +102,7 @@ impl EventAnalyzer {
     }
 
     /// 识别关键时刻
-    pub fn identify_key_moments(
-        &self,
-        player_id: i32,
-        frames: &[TimelineFrame],
-    ) -> Vec<KeyMoment> {
+    pub fn identify_key_moments(&self, player_id: i32, frames: &[TimelineFrame]) -> Vec<KeyMoment> {
         let mut moments = Vec::new();
 
         for frame in frames {
@@ -127,12 +123,7 @@ impl EventAnalyzer {
     }
 
     /// 分析事件重要性
-    fn analyze_event_importance(
-        &self,
-        player_id: i32,
-        event: &GameEvent,
-        timestamp: i64,
-    ) -> Option<KeyMoment> {
+    fn analyze_event_importance(&self, player_id: i32, event: &GameEvent, timestamp: i64) -> Option<KeyMoment> {
         match event.event_type.as_str() {
             "CHAMPION_KILL" => {
                 if let (Some(killer_id), Some(victim_id)) = (event.killer_id, event.victim_id) {
@@ -160,21 +151,19 @@ impl EventAnalyzer {
                         });
                     }
                 }
-            },
+            }
             "ELITE_MONSTER_KILL" => {
                 if let Some(monster_type) = &event.monster_type {
-                    let is_involved = event.killer_id == Some(player_id)
-                        || event.assisting_participant_ids.contains(&player_id);
+                    let is_involved =
+                        event.killer_id == Some(player_id) || event.assisting_participant_ids.contains(&player_id);
 
                     if is_involved {
                         let (description, impact) = match monster_type.as_str() {
                             "BARON_NASHOR" => ("击杀大龙".to_string(), 10.0),
                             "DRAGON" => {
-                                let sub_type = event.monster_sub_type.as_ref()
-                                    .map(|s| s.as_str())
-                                    .unwrap_or("普通龙");
+                                let sub_type = event.monster_sub_type.as_ref().map(|s| s.as_str()).unwrap_or("普通龙");
                                 (format!("击杀{}", sub_type), 7.0)
-                            },
+                            }
                             "RIFTHERALD" => ("击杀峡谷先锋".to_string(), 6.0),
                             _ => return None,
                         };
@@ -187,7 +176,7 @@ impl EventAnalyzer {
                         });
                     }
                 }
-            },
+            }
             "BUILDING_KILL" => {
                 if event.killer_id == Some(player_id) || event.assisting_participant_ids.contains(&player_id) {
                     return Some(KeyMoment {
@@ -197,8 +186,8 @@ impl EventAnalyzer {
                         impact_score: 5.0,
                     });
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
 
         None
@@ -209,9 +198,11 @@ impl EventAnalyzer {
         let mut impact: f64 = 6.0; // 基础影响力
 
         // 游戏早期的击杀更重要
-        if timestamp < 180000 { // 3分钟内
+        if timestamp < 180000 {
+            // 3分钟内
             impact += 2.0;
-        } else if timestamp < 600000 { // 10分钟内
+        } else if timestamp < 600000 {
+            // 10分钟内
             impact += 1.0;
         }
 
@@ -224,11 +215,7 @@ impl EventAnalyzer {
     }
 
     /// 计算团队参与度
-    pub fn calculate_participation_rate(
-        &self,
-        player_stats: &EventStatistics,
-        team_total_kills: usize,
-    ) -> f64 {
+    pub fn calculate_participation_rate(&self, player_stats: &EventStatistics, team_total_kills: usize) -> f64 {
         if team_total_kills == 0 {
             return 0.0;
         }
@@ -240,8 +227,9 @@ impl EventAnalyzer {
 
 #[cfg(test)]
 mod tests {
+    // `GameEvent` / `Position` 现在由 `core::timeline_analyzer` 提供，
+    // 且这两个用例都不需要它们：只保留 `super::*`。
     use super::*;
-    use crate::domains::analysis::analyzers::core::timeline_parser::{GameEvent, Position};
 
     #[test]
     fn test_calculate_kill_impact() {
@@ -269,4 +257,3 @@ mod tests {
         assert!((participation - 75.0).abs() < 0.01);
     }
 }
-

@@ -1,13 +1,17 @@
 import { invoke } from '@tauri-apps/api/core'
+import type { MatchModeKey } from '@/common/queueCatalog'
+import { useMatchAnalysis } from '@/shared/composables/game/useMatchAnalysis'
 
 /**
  * 统一更新召唤师信息和战绩信息
+ *
+ * 战绩路径已收敛到 `analyze_matches`（单次查询）。
  */
 export function useSummonerAndMatchUpdater() {
   const dataStore = useDataStore()
   const activityStore = useActivityStore()
+  const { analyzeMatches } = useMatchAnalysis()
 
-  // 单独：更新召唤师信息
   const updateSummonerInfo = async () => {
     try {
       dataStore.startLoadingSummoner()
@@ -22,25 +26,14 @@ export function useSummonerAndMatchUpdater() {
     }
   }
 
-  // 单独：更新战绩信息
-  const updateMatchHistory = async (queueId?: number | null) => {
-    try {
-      dataStore.startLoadingMatchHistory()
-      const settingsStore = useSettingsStore()
-      const count = settingsStore.defaultMatchCount
-      const matchHistory = await invoke<PlayerMatchStats>('get_match_history', { count, queueId })
-      if (matchHistory) {
-        dataStore.setMatchStatistics(matchHistory)
-        activityStore.addActivity('success', '对局历史记录已更新', 'data')
-      }
-    } catch (error) {
-      console.error('[Updater] 获取对局历史失败:', error)
-      dataStore.clearMatchHistory()
-      activityStore.addActivity('error', '获取对局历史失败', 'error')
-    }
+  /**
+   * 更新战绩信息（单次 analyze_matches）
+   * 无参时与仪表盘共用 settingsStore.lastMatchMode / lastMatchCount
+   */
+  const updateMatchHistory = async (mode?: MatchModeKey, countOverride?: number) => {
+    await analyzeMatches(mode, countOverride)
   }
 
-  // 组合：同时更新
   const updateSummonerAndMatches = async () => {
     await Promise.all([updateSummonerInfo(), updateMatchHistory()])
   }

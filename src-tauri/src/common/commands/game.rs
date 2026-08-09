@@ -60,10 +60,7 @@ fn shell_execute_open(path: &Path) -> Result<(), String> {
 
     let file = to_wide(path.as_os_str());
     let operation = to_wide("open");
-    let directory = path
-        .parent()
-        .map(|p| to_wide(p.as_os_str()))
-        .unwrap_or_default();
+    let directory = path.parent().map(|p| to_wide(p.as_os_str())).unwrap_or_default();
 
     // SW_SHOWNORMAL = 1；返回值 > 32 表示成功
     let result = unsafe {
@@ -178,11 +175,7 @@ fn resolve_wegame_exe(game_root: &Path) -> Option<String> {
             return Some(candidate.to_string_lossy().to_string());
         }
     }
-    find_client_exe_limited(
-        game_root,
-        &["Client.exe", "LeagueClient.exe", "launcher.exe"],
-        2,
-    )
+    find_client_exe_limited(game_root, &["Client.exe", "LeagueClient.exe", "launcher.exe"], 2)
 }
 
 /// WeGameApps 模糊匹配：`{盘符}\WeGameApps\*英雄联盟*\...`，并辅以目录结构识别
@@ -202,11 +195,7 @@ fn detect_wegame_lol_path() -> Option<String> {
         let entries = match std::fs::read_dir(&wegame_root) {
             Ok(e) => e,
             Err(err) => {
-                log::warn!(
-                    "[GamePath] read_dir failed for {}: {}",
-                    wegame_root.display(),
-                    err
-                );
+                log::warn!("[GamePath] read_dir failed for {}: {}", wegame_root.display(), err);
                 continue;
             }
         };
@@ -224,10 +213,7 @@ fn detect_wegame_lol_path() -> Option<String> {
             if let Some(exe) = resolve_wegame_exe(&game_root) {
                 return Some(exe);
             }
-            log::warn!(
-                "[GamePath] matched dir but no launcher exe: {}",
-                game_root.display()
-            );
+            log::warn!("[GamePath] matched dir but no launcher exe: {}", game_root.display());
         }
     }
 
@@ -264,18 +250,12 @@ fn find_client_exe_limited(base: &Path, exe_names: &[&str], max_depth: usize) ->
                     continue;
                 }
                 let dir_name = entry.file_name().to_string_lossy().to_string();
-                if SKIP_DIRS
-                    .iter()
-                    .any(|&skip| dir_name.eq_ignore_ascii_case(skip))
-                {
+                if SKIP_DIRS.iter().any(|&skip| dir_name.eq_ignore_ascii_case(skip)) {
                     continue;
                 }
                 stack.push((path, depth + 1));
             } else if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if exe_names
-                    .iter()
-                    .any(|&exe| name.eq_ignore_ascii_case(exe))
-                {
+                if exe_names.iter().any(|&exe| name.eq_ignore_ascii_case(exe)) {
                     return Some(path.to_string_lossy().to_string());
                 }
             }
@@ -357,4 +337,3 @@ pub async fn get_saved_game_path() -> Result<String, String> {
     let config: Value = serde_json::from_str(&config_content).map_err(|e| format!("解析配置失败: {}", e))?;
     Ok(config["game_path"].as_str().unwrap_or("").to_string())
 }
-

@@ -1,14 +1,85 @@
+use crate::http_client;
+use crate::infrastructure::match_management::matches::service;
 /// 数据收集测试命令
 ///
 /// 用于生成分析数据文件，帮助优化算法
 use crate::shared::utils::lcu_get;
-use crate::infrastructure::match_management::matches::service;
-use crate::http_client;
 use reqwest::Client;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MatchPageProbeResult {
+    pub first_range: String,
+    pub second_range: String,
+    pub first_ids: Vec<u64>,
+    pub second_ids: Vec<u64>,
+    pub overlap_ids: Vec<u64>,
+    pub second_equals_first_prefix: bool,
+}
+
+/// 直接请求两段原生 LCU 战绩范围，用 gameId 验证 begIndex 是否生效。
+#[tauri::command]
+pub async fn probe_match_history_pages(
+    first_begin: u32,
+    first_end: u32,
+    second_begin: u32,
+    second_end: u32,
+) -> Result<MatchPageProbeResult, String> {
+    if first_begin > first_end || second_begin > second_end {
+        return Err("起始索引不能大于结束索引".to_string());
+    }
+    if first_end > 99 || second_end > 99 {
+        return Err("测试索引不能超过 99".to_string());
+    }
+
+    let client = http_client::get_lcu_client();
+    let summoner: Value = lcu_get(client, "/lol-summoner/v1/current-summoner").await?;
+    let puuid = summoner
+        .get("puuid")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "当前召唤师响应中没有 puuid".to_string())?;
+
+    let fetch_ids = |begin: u32, end: u32| async move {
+        let path = format!(
+            "/lol-match-history/v1/products/lol/{}/matches?begIndex={}&endIndex={}",
+            puuid, begin, end
+        );
+        let response: Value = lcu_get(client, &path).await?;
+        Ok::<Vec<u64>, String>(
+            response
+                .get("games")
+                .and_then(|games| games.get("games"))
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|game| game.get("gameId").and_then(Value::as_u64))
+                .collect(),
+        )
+    };
+
+    let first_ids = fetch_ids(first_begin, first_end).await?;
+    let second_ids = fetch_ids(second_begin, second_end).await?;
+    let first_set: HashSet<u64> = first_ids.iter().copied().collect();
+    let overlap_ids = second_ids
+        .iter()
+        .copied()
+        .filter(|id| first_set.contains(id))
+        .collect::<Vec<_>>();
+    let second_equals_first_prefix = second_ids == first_ids.iter().take(second_ids.len()).copied().collect::<Vec<_>>();
+
+    Ok(MatchPageProbeResult {
+        first_range: format!("{}-{}", first_begin, first_end),
+        second_range: format!("{}-{}", second_begin, second_end),
+        first_ids,
+        second_ids,
+        overlap_ids,
+        second_equals_first_prefix,
+    })
+}
 
 /// 分析数据点
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -182,7 +253,7 @@ pub async fn generate_test_data_file(
     for qid in queues_to_test {
         println!("📊 收集队列 {} 的数据...", qid);
 
-        match service::get_match_history(client, game_count as usize, Some(qid)).await {
+        match service::get_match_history(client, game_count as usize, Some(qid), None).await {
             Ok(stats) => {
                 let data_point = AnalysisDataPoint {
                     timestamp: chrono::Utc::now().timestamp(),
@@ -226,16 +297,31 @@ pub async fn generate_test_data_file(
     } else {
         DataSummary {
             win_rate_distribution: DistributionStats {
-                min: 0.0, max: 0.0, mean: 0.0, median: 0.0,
-                q25: 0.0, q75: 0.0, std_dev: 0.0,
+                min: 0.0,
+                max: 0.0,
+                mean: 0.0,
+                median: 0.0,
+                q25: 0.0,
+                q75: 0.0,
+                std_dev: 0.0,
             },
             kda_distribution: DistributionStats {
-                min: 0.0, max: 0.0, mean: 0.0, median: 0.0,
-                q25: 0.0, q75: 0.0, std_dev: 0.0,
+                min: 0.0,
+                max: 0.0,
+                mean: 0.0,
+                median: 0.0,
+                q25: 0.0,
+                q75: 0.0,
+                std_dev: 0.0,
             },
             games_distribution: DistributionStats {
-                min: 0.0, max: 0.0, mean: 0.0, median: 0.0,
-                q25: 0.0, q75: 0.0, std_dev: 0.0,
+                min: 0.0,
+                max: 0.0,
+                mean: 0.0,
+                median: 0.0,
+                q25: 0.0,
+                q75: 0.0,
+                std_dev: 0.0,
             },
             queue_stats: HashMap::new(),
         }
@@ -254,16 +340,17 @@ pub async fn generate_test_data_file(
     let filename = format!("analysis_data_{}.json", chrono::Utc::now().format("%Y%m%d_%H%M%S"));
     let filepath = format!("./{}", filename);
 
-    let json_content = serde_json::to_string_pretty(&result)
-        .map_err(|e| format!("JSON序列化失败: {}", e))?;
+    let json_content = serde_json::to_string_pretty(&result).map_err(|e| format!("JSON序列化失败: {}", e))?;
 
-    fs::write(&filepath, json_content)
-        .map_err(|e| format!("文件写入失败: {}", e))?;
+    fs::write(&filepath, json_content).map_err(|e| format!("文件写入失败: {}", e))?;
 
     println!("📁 数据文件已保存: {}", filepath);
     println!("📊 收集了 {} 个数据点", result.total_points);
 
-    Ok(format!("数据文件已生成: {} ({} 个数据点)", filename, result.total_points))
+    Ok(format!(
+        "数据文件已生成: {} ({} 个数据点)",
+        filename, result.total_points
+    ))
 }
 
 /// 生成数据统计摘要
@@ -305,13 +392,16 @@ fn generate_data_summary(data_points: &[AnalysisDataPoint]) -> DataSummary {
         let avg_kda = points.iter().map(|p| p.avg_kda).sum::<f64>() / points.len() as f64;
         let avg_games = points.iter().map(|p| p.total_games as f64).sum::<f64>() / points.len() as f64;
 
-        queue_stats.insert(qid.to_string(), QueueStats {
-            queue_name,
-            count: points.len(),
-            avg_win_rate,
-            avg_kda,
-            avg_games,
-        });
+        queue_stats.insert(
+            qid.to_string(),
+            QueueStats {
+                queue_name,
+                count: points.len(),
+                avg_win_rate,
+                avg_kda,
+                avg_games,
+            },
+        );
     }
 
     DataSummary {
@@ -326,8 +416,13 @@ fn generate_data_summary(data_points: &[AnalysisDataPoint]) -> DataSummary {
 fn calculate_distribution_stats(values: &[f64]) -> DistributionStats {
     if values.is_empty() {
         return DistributionStats {
-            min: 0.0, max: 0.0, mean: 0.0, median: 0.0,
-            q25: 0.0, q75: 0.0, std_dev: 0.0,
+            min: 0.0,
+            max: 0.0,
+            mean: 0.0,
+            median: 0.0,
+            q25: 0.0,
+            q75: 0.0,
+            std_dev: 0.0,
         };
     }
 
@@ -346,9 +441,7 @@ fn calculate_distribution_stats(values: &[f64]) -> DistributionStats {
     let q25 = values[q25_idx.min(values.len() - 1)];
     let q75 = values[q75_idx.min(values.len() - 1)];
 
-    let variance = values.iter()
-        .map(|v| (v - mean).powi(2))
-        .sum::<f64>() / values.len() as f64;
+    let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
     let std_dev = variance.sqrt();
 
     DistributionStats {
@@ -367,11 +460,9 @@ fn calculate_distribution_stats(values: &[f64]) -> DistributionStats {
 pub async fn analyze_data_file(file_path: String) -> Result<String, String> {
     println!("📊 分析数据文件: {}", file_path);
 
-    let content = fs::read_to_string(&file_path)
-        .map_err(|e| format!("读取文件失败: {}", e))?;
+    let content = fs::read_to_string(&file_path).map_err(|e| format!("读取文件失败: {}", e))?;
 
-    let result: DataCollectionResult = serde_json::from_str(&content)
-        .map_err(|e| format!("JSON解析失败: {}", e))?;
+    let result: DataCollectionResult = serde_json::from_str(&content).map_err(|e| format!("JSON解析失败: {}", e))?;
 
     // 生成分析报告
     let mut report = String::new();
@@ -424,7 +515,8 @@ pub async fn collect_raw_match_data(
 
     // 第1步：获取当前召唤师信息
     println!("📍 第1步：获取当前召唤师信息");
-    let summoner_data: Value = lcu_get(client, "/lol-summoner/v1/current-summoner").await
+    let summoner_data: Value = lcu_get(client, "/lol-summoner/v1/current-summoner")
+        .await
         .map_err(|e| format!("获取召唤师信息失败: {}", e))?;
 
     let puuid = summoner_data
@@ -432,21 +524,19 @@ pub async fn collect_raw_match_data(
         .and_then(|p| p.as_str())
         .ok_or_else(|| "未找到PUUID".to_string())?;
 
-    println!("🆔 提取到的PUUID: {}", puuid);
+    let redacted = if puuid.len() > 8 {
+        format!("{}…{}", &puuid[..4], &puuid[puuid.len() - 4..])
+    } else {
+        "***".to_string()
+    };
+    println!("🆔 提取到的PUUID: {}", redacted);
 
-    // 第2步：获取对局列表
+    // 第2步：单次获取指定数量的对局
     println!("📍 第2步：获取对局列表");
-    let safe_end = game_count.min(100);
-    let actual_end_index = if safe_end > 0 { safe_end - 1 } else { 0 };
-
-    let match_list_url = format!(
-        "/lol-match-history/v1/products/lol/{}/matches?begIndex=0&endIndex={}",
-        puuid, actual_end_index
-    );
-
-    println!("🌐 请求URL: {}", match_list_url);
-    let match_list_data: Value = lcu_get(client, &match_list_url).await
-        .map_err(|e| format!("获取对局列表失败: {}", e))?;
+    let match_list_data =
+        crate::infrastructure::match_management::matches::service::fetch_match_list(client, puuid, game_count as usize)
+            .await
+            .map_err(|e| format!("获取对局列表失败: {}", e))?;
 
     // 第3步：解析对局列表
     println!("📍 第3步：解析对局列表");
@@ -512,8 +602,8 @@ pub async fn collect_raw_match_data(
         };
 
         let raw_match = RawMatchData {
-            match_list_json: game.clone(), // 保存对局列表的原始JSON
-            match_detail_json: match_detail, // 保存对局详情的原始JSON
+            match_list_json: game.clone(),       // 保存对局列表的原始JSON
+            match_detail_json: match_detail,     // 保存对局详情的原始JSON
             match_timeline_json: match_timeline, // 🔥 保存对局时间线的原始JSON
             game_id,
             queue_id,
@@ -569,18 +659,19 @@ pub async fn collect_raw_match_data(
     let filename = format!("raw_match_data_{}.json", chrono::Utc::now().format("%Y%m%d_%H%M%S"));
     let filepath = format!("./{}", filename);
 
-    let json_content = serde_json::to_string_pretty(&result)
-        .map_err(|e| format!("JSON序列化失败: {}", e))?;
+    let json_content = serde_json::to_string_pretty(&result).map_err(|e| format!("JSON序列化失败: {}", e))?;
 
-    fs::write(&filepath, json_content)
-        .map_err(|e| format!("文件写入失败: {}", e))?;
+    fs::write(&filepath, json_content).map_err(|e| format!("文件写入失败: {}", e))?;
 
     println!("📁 原始数据文件已保存: {}", filepath);
     println!("📊 收集了 {} 场原始对局", result.total_matches);
     println!("⏰ 时间跨度: {:.1} 天", result.time_range.span_days);
     println!("🎮 队列分布: {:?}", result.queue_distribution);
 
-    Ok(format!("原始数据文件已生成: {} ({} 场对局)", filename, result.total_matches))
+    Ok(format!(
+        "原始数据文件已生成: {} ({} 场对局)",
+        filename, result.total_matches
+    ))
 }
 
 /// 获取单场对局的详细数据
@@ -588,7 +679,8 @@ async fn get_match_detail(client: &Client, game_id: u64) -> Result<Value, String
     let detail_url = format!("/lol-match-history/v1/games/{}", game_id);
     println!("🌐 请求对局详情URL: {}", detail_url);
 
-    lcu_get(client, &detail_url).await
+    lcu_get(client, &detail_url)
+        .await
         .map_err(|e| format!("获取对局详情失败: {}", e))
 }
 
@@ -597,7 +689,8 @@ async fn get_match_timeline(client: &Client, game_id: u64) -> Result<Value, Stri
     let timeline_url = format!("/lol-match-history/v1/game-timelines/{}", game_id);
     println!("🌐 请求对局时间线URL: {}", timeline_url);
 
-    lcu_get(client, &timeline_url).await
+    lcu_get(client, &timeline_url)
+        .await
         .map_err(|e| format!("获取对局时间线失败: {}", e))
 }
 
@@ -606,11 +699,9 @@ async fn get_match_timeline(client: &Client, game_id: u64) -> Result<Value, Stri
 pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, String> {
     println!("📊 分析原始对局数据的时间线特征: {}", file_path);
 
-    let content = fs::read_to_string(&file_path)
-        .map_err(|e| format!("读取文件失败: {}", e))?;
+    let content = fs::read_to_string(&file_path).map_err(|e| format!("读取文件失败: {}", e))?;
 
-    let result: RawDataCollectionResult = serde_json::from_str(&content)
-        .map_err(|e| format!("JSON解析失败: {}", e))?;
+    let result: RawDataCollectionResult = serde_json::from_str(&content).map_err(|e| format!("JSON解析失败: {}", e))?;
 
     // 生成时间线分析报告
     let mut report = String::new();
@@ -628,8 +719,15 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
     }
 
     // 游戏时长分析
-    let mut durations: Vec<i32> = result.raw_matches.iter()
-        .filter_map(|m| m.match_list_json.get("gameDuration").and_then(|d| d.as_i64()).map(|d| d as i32))
+    let mut durations: Vec<i32> = result
+        .raw_matches
+        .iter()
+        .filter_map(|m| {
+            m.match_list_json
+                .get("gameDuration")
+                .and_then(|d| d.as_i64())
+                .map(|d| d as i32)
+        })
         .collect();
     durations.sort();
 
@@ -644,10 +742,26 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
         };
 
         report.push_str("\n⏱️ 游戏时长分析:\n");
-        report.push_str(&format!("  最短: {} 秒 ({:.1} 分钟)\n", min_duration, min_duration as f64 / 60.0));
-        report.push_str(&format!("  最长: {} 秒 ({:.1} 分钟)\n", max_duration, max_duration as f64 / 60.0));
-        report.push_str(&format!("  平均: {:.1} 秒 ({:.1} 分钟)\n", avg_duration, avg_duration / 60.0));
-        report.push_str(&format!("  中位数: {:.1} 秒 ({:.1} 分钟)\n", median_duration, median_duration / 60.0));
+        report.push_str(&format!(
+            "  最短: {} 秒 ({:.1} 分钟)\n",
+            min_duration,
+            min_duration as f64 / 60.0
+        ));
+        report.push_str(&format!(
+            "  最长: {} 秒 ({:.1} 分钟)\n",
+            max_duration,
+            max_duration as f64 / 60.0
+        ));
+        report.push_str(&format!(
+            "  平均: {:.1} 秒 ({:.1} 分钟)\n",
+            avg_duration,
+            avg_duration / 60.0
+        ));
+        report.push_str(&format!(
+            "  中位数: {:.1} 秒 ({:.1} 分钟)\n",
+            median_duration,
+            median_duration / 60.0
+        ));
     }
 
     // 游戏模式分析
@@ -655,11 +769,15 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
     let mut game_types: HashMap<String, usize> = HashMap::new();
 
     for match_data in &result.raw_matches {
-        let game_mode = match_data.match_list_json.get("gameMode")
+        let game_mode = match_data
+            .match_list_json
+            .get("gameMode")
             .and_then(|m| m.as_str())
             .unwrap_or("未知")
             .to_string();
-        let game_type = match_data.match_list_json.get("gameType")
+        let game_type = match_data
+            .match_list_json
+            .get("gameType")
             .and_then(|t| t.as_str())
             .unwrap_or("未知")
             .to_string();
@@ -697,8 +815,10 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
         let count = hourly_distribution.get(&hour).unwrap_or(&0);
         let percentage = (*count as f64 / result.total_matches as f64) * 100.0;
         let bar = "█".repeat((percentage / 2.0) as usize);
-        report.push_str(&format!("  {:02}:00 - {:02}:59: {} ({:.1}%) {}\n",
-            hour, hour, count, percentage, bar));
+        report.push_str(&format!(
+            "  {:02}:00 - {:02}:59: {} ({:.1}%) {}\n",
+            hour, hour, count, percentage, bar
+        ));
     }
 
     // 时间线数据分析
@@ -858,11 +978,9 @@ fn analyze_timeline_data(raw_matches: &[RawMatchData], report: &mut String) {
 pub async fn show_raw_json_structure(file_path: String, match_index: Option<usize>) -> Result<String, String> {
     println!("📊 展示原始JSON数据结构: {}", file_path);
 
-    let content = fs::read_to_string(&file_path)
-        .map_err(|e| format!("读取文件失败: {}", e))?;
+    let content = fs::read_to_string(&file_path).map_err(|e| format!("读取文件失败: {}", e))?;
 
-    let result: RawDataCollectionResult = serde_json::from_str(&content)
-        .map_err(|e| format!("JSON解析失败: {}", e))?;
+    let result: RawDataCollectionResult = serde_json::from_str(&content).map_err(|e| format!("JSON解析失败: {}", e))?;
 
     if result.raw_matches.is_empty() {
         return Err("没有找到任何对局数据".to_string());
@@ -890,7 +1008,10 @@ pub async fn show_raw_json_structure(file_path: String, match_index: Option<usiz
                 Value::Array(arr) => &format!("array[{}]", arr.len()),
                 Value::Object(obj) => &format!("object[{}]", obj.len()),
             };
-            report.push_str(&format!("  {}: {} ({})\n", key, value_type,
+            report.push_str(&format!(
+                "  {}: {} ({})\n",
+                key,
+                value_type,
                 if value.is_string() {
                     value.as_str().unwrap_or("").chars().take(50).collect::<String>() + "..."
                 } else {
@@ -942,7 +1063,11 @@ pub async fn show_raw_json_structure(file_path: String, match_index: Option<usiz
     }
 
     // 展示对局列表中的participants数组
-    if let Some(participants) = match_data.match_list_json.get("participants").and_then(|p| p.as_array()) {
+    if let Some(participants) = match_data
+        .match_list_json
+        .get("participants")
+        .and_then(|p| p.as_array())
+    {
         report.push_str(&format!("\n👥 参与者数据 ({} 个):\n", participants.len()));
         if let Some(first_participant) = participants.first() {
             if let Some(participant_obj) = first_participant.as_object() {
@@ -985,23 +1110,23 @@ pub async fn show_raw_json_structure(file_path: String, match_index: Option<usiz
 
     // 展示完整的原始JSON（格式化）
     report.push_str("\n📄 完整对局列表JSON (格式化):\n");
-    let pretty_json = serde_json::to_string_pretty(&match_data.match_list_json)
-        .map_err(|e| format!("JSON格式化失败: {}", e))?;
+    let pretty_json =
+        serde_json::to_string_pretty(&match_data.match_list_json).map_err(|e| format!("JSON格式化失败: {}", e))?;
     report.push_str(&pretty_json);
 
     // 如果有对局详情数据，也展示
     if let Some(detail_json) = &match_data.match_detail_json {
         report.push_str("\n📄 完整对局详情JSON (格式化):\n");
-        let detail_pretty_json = serde_json::to_string_pretty(detail_json)
-            .map_err(|e| format!("详情JSON格式化失败: {}", e))?;
+        let detail_pretty_json =
+            serde_json::to_string_pretty(detail_json).map_err(|e| format!("详情JSON格式化失败: {}", e))?;
         report.push_str(&detail_pretty_json);
     }
 
     // 🔥 如果有对局时间线数据，也展示
     if let Some(timeline_json) = &match_data.match_timeline_json {
         report.push_str("\n\n🔥 完整对局时间线JSON (格式化):\n");
-        let timeline_pretty_json = serde_json::to_string_pretty(timeline_json)
-            .map_err(|e| format!("时间线JSON格式化失败: {}", e))?;
+        let timeline_pretty_json =
+            serde_json::to_string_pretty(timeline_json).map_err(|e| format!("时间线JSON格式化失败: {}", e))?;
         report.push_str(&timeline_pretty_json);
 
         // 分析时间线数据结构

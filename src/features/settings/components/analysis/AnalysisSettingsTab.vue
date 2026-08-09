@@ -74,23 +74,9 @@
             </div>
           </div>
 
-          <!-- 默认分析模式 -->
-          <div class="space-y-3">
-            <div class="font-medium text-foreground">默认分析模式</div>
-            <Select :value="analysisSettings.config.defaultMode" @update:value="analysisSettings.setDefaultMode">
-              <SelectTrigger class="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="mode in analysisModes" :key="mode.value" :value="mode.value">
-                  <div>
-                    <div class="font-medium">{{ mode.label }}</div>
-                    <div class="text-xs text-muted-foreground">{{ mode.description }}</div>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <p class="text-sm text-muted-foreground">
+            默认分析策略跟随「游戏设置 → 默认战绩模式」，无需在此单独配置。
+          </p>
         </div>
 
         <!-- 高级功能设置 -->
@@ -179,39 +165,69 @@
               <div class="text-xs text-muted-foreground">更多对局提供更准确的分析，但会增加处理时间</div>
             </div>
 
-            <!-- 启用缓存 -->
-            <div class="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
-              <div class="flex-1">
-                <div class="font-medium text-foreground">启用分析缓存</div>
-                <div class="text-sm text-muted-foreground">缓存分析结果以提高性能</div>
+            <!-- 会话缓存说明（无独立「分析结果缓存」开关；时间线固定 TTL） -->
+            <div class="p-4 bg-muted/30 rounded-lg border border-border space-y-1">
+              <div class="font-medium text-foreground">时间线会话缓存</div>
+              <div class="text-sm text-muted-foreground">
+                深度分析会在内存中缓存时间线约 10 分钟（进程内 LRU），无需手动开关。完整「分析结果缓存」尚未接入后端。
               </div>
-              <Switch
-                :checked="analysisSettings.config.enableCaching"
-                @update:checked="
-                  (enabled: boolean) => analysisSettings.setPerformanceSettings({ enableCaching: enabled })
-                "
-              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 本地 AI（BYOK，默认关闭，显式启用） -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold text-foreground">本地 AI 解读（BYOK）</h3>
+          <p class="text-sm text-muted-foreground">
+            使用你自己的 OpenAI-compatible API Key。密钥只存系统凭据库，不会进入前端缓存或日志。AI 默认关闭，需手动触发解读。
+          </p>
+
+          <div class="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
+            <div class="flex-1">
+              <div class="font-medium text-foreground">启用本地 AI</div>
+              <div class="text-sm text-muted-foreground">关闭时不会发起任何外部模型请求</div>
+            </div>
+            <Switch :checked="aiSettings.enabled" @update:checked="(v: boolean) => aiSettings.setEnabled(v)" />
+          </div>
+
+          <div v-if="aiSettings.enabled" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <Label>Base URL</Label>
+                <Input v-model="draftBaseUrl" placeholder="https://api.openai.com/v1" />
+                <p class="text-xs text-muted-foreground">
+                  须为 https:// 或 http:// 完整地址（含主机名）。请勿填写内网/元数据地址，以免误请求本地服务。
+                </p>
+              </div>
+              <div class="space-y-2">
+                <Label>Model</Label>
+                <Input v-model="draftModel" placeholder="gpt-4o-mini" />
+              </div>
             </div>
 
-            <!-- 缓存过期时间 -->
-            <div v-if="analysisSettings.config.enableCaching" class="space-y-3">
-              <div class="font-medium text-foreground">缓存过期时间</div>
-              <div class="flex items-center gap-4">
-                <Slider
-                  :value="[analysisSettings.config.cacheExpirationHours]"
-                  @update:value="
-                    (value: number[]) => analysisSettings.setPerformanceSettings({ cacheExpirationHours: value[0] })
-                  "
-                  :min="1"
-                  :max="168"
-                  :step="1"
+            <div class="space-y-2">
+              <Label>API Key</Label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <Input
+                  v-model="draftApiKey"
+                  type="password"
+                  autocomplete="off"
+                  :placeholder="aiSettings.hasApiKey ? '已配置（输入新 Key 可覆盖）' : 'sk-...'"
                   class="flex-1"
                 />
-                <div class="w-20 text-center font-medium text-foreground">
-                  {{ analysisSettings.config.cacheExpirationHours }}小时
-                </div>
+                <Button variant="outline" :disabled="!draftApiKey.trim() || aiBusy" @click="saveApiKey">保存 Key</Button>
+                <Button variant="ghost" :disabled="!aiSettings.hasApiKey || aiBusy" @click="clearApiKey">清除</Button>
               </div>
+              <p class="text-xs text-muted-foreground">
+                状态：{{ aiSettings.hasApiKey ? '已配置 Key' : '未配置 Key' }} · Provider：openai-compatible
+              </p>
             </div>
+
+            <div class="flex flex-wrap gap-2">
+              <Button variant="outline" :disabled="aiBusy" @click="saveEndpoint">保存端点</Button>
+              <Button variant="outline" :disabled="aiBusy || !aiSettings.hasApiKey" @click="testAi">测试连接</Button>
+            </div>
+            <p v-if="aiStatus" class="text-sm text-muted-foreground">{{ aiStatus }}</p>
           </div>
         </div>
 
@@ -239,47 +255,87 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useAnalysisSettingsStore, AnalysisDepth, AnalysisMode } from '@/shared/stores/features/analysisSettingsStore'
+import { computed, onMounted, ref } from 'vue'
+import { useAnalysisSettingsStore, AnalysisDepth } from '@/shared/stores/features/analysisSettingsStore'
+import { useAiSettingsStore } from '@/shared/stores/features/aiSettingsStore'
 import { RotateCcw, Download, Upload } from 'lucide-vue-next'
 
 // 组件导入
 import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 const analysisSettings = useAnalysisSettingsStore()
+const aiSettings = useAiSettingsStore()
 
-// 分析模式选项
-const analysisModes = computed(() => [
-  {
-    value: AnalysisMode.SoloRanked,
-    label: '单排分析',
-    description: '只分析单排对局 (420)'
-  },
-  {
-    value: AnalysisMode.FlexRanked,
-    label: '灵活组排分析',
-    description: '只分析灵活组排对局 (440)'
-  },
-  {
-    value: AnalysisMode.MixedRanked,
-    label: '混合排位分析',
-    description: '分析单排+灵活组排对局 (420+440)'
-  },
-  {
-    value: AnalysisMode.Aram,
-    label: '大乱斗分析',
-    description: '只分析大乱斗对局 (450)'
-  },
-  {
-    value: AnalysisMode.AllModes,
-    label: '全部模式分析',
-    description: '分析所有对局'
+const draftBaseUrl = ref(aiSettings.baseUrl)
+const draftModel = ref(aiSettings.model)
+const draftApiKey = ref('')
+const aiBusy = ref(false)
+const aiStatus = ref('')
+
+onMounted(async () => {
+  await aiSettings.hydrateFromBackend()
+  draftBaseUrl.value = aiSettings.baseUrl
+  draftModel.value = aiSettings.model
+})
+
+const saveEndpoint = async () => {
+  aiBusy.value = true
+  aiStatus.value = ''
+  try {
+    await aiSettings.setEndpoint(draftBaseUrl.value, draftModel.value)
+    aiStatus.value = '端点已保存'
+  } catch (e: unknown) {
+    aiStatus.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    aiBusy.value = false
   }
-])
+}
+
+const saveApiKey = async () => {
+  aiBusy.value = true
+  aiStatus.value = ''
+  try {
+    await aiSettings.saveApiKey(draftApiKey.value)
+    draftApiKey.value = ''
+    aiStatus.value = 'API Key 已写入系统凭据库'
+  } catch (e: unknown) {
+    aiStatus.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    aiBusy.value = false
+  }
+}
+
+const clearApiKey = async () => {
+  aiBusy.value = true
+  aiStatus.value = ''
+  try {
+    await aiSettings.clearApiKey()
+    draftApiKey.value = ''
+    aiStatus.value = 'API Key 已清除'
+  } catch (e: unknown) {
+    aiStatus.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    aiBusy.value = false
+  }
+}
+
+const testAi = async () => {
+  aiBusy.value = true
+  aiStatus.value = ''
+  try {
+    await aiSettings.setEndpoint(draftBaseUrl.value, draftModel.value)
+    aiStatus.value = await aiSettings.testConnection()
+  } catch (e: unknown) {
+    aiStatus.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    aiBusy.value = false
+  }
+}
 
 // 分析功能选项
 const analysisFeatures = computed(() => [
@@ -296,12 +352,12 @@ const analysisFeatures = computed(() => [
   {
     key: 'teammate',
     label: '队友分析',
-    description: '分析队友协同配合'
+    description: '预留开关（Evidence 尚未接入该维度，当前不会声明可用）'
   },
   {
     key: 'selfImprovement',
     label: '自我提升',
-    description: '提供个人改进建议'
+    description: '预留开关（Evidence 尚未接入该维度，当前不会声明可用）'
   }
 ])
 

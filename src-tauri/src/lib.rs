@@ -9,12 +9,39 @@ mod tray;
 mod domains;
 mod infrastructure;
 mod shared;
+
+/// 对局分析契约的最窄公共门面（供集成测试与 ts-rs 导出使用）
+#[doc(hidden)]
+pub mod analysis_contract;
+
+/// 确定性证据层的最窄公共门面（供集成测试与 ts-rs 导出使用）
+#[doc(hidden)]
+pub mod analysis_evidence;
+
+/// 对局数据获取层的最窄公共门面（供集成测试使用）
+#[doc(hidden)]
+pub mod match_fetching;
+
+/// 对局分析应用服务的最窄公共门面（供集成测试使用）
+#[doc(hidden)]
+pub mod match_analysis;
+
+/// AI 结构化解析的最窄公共门面（供集成测试使用）
+#[doc(hidden)]
+pub mod ai_contract {
+    pub use crate::domains::ai_analysis::{
+        build_ai_prompt, compact_evidence_for_ai, AiInsight, AiInsightFinding, AiInsightSuggestion, AiPromptBundle,
+    };
+    pub use crate::infrastructure::data_services::external::ai::parse_ai_insight_response;
+    pub use crate::infrastructure::data_services::external::ai::types::AiPublicSettings;
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_store::Builder::default().build())
+        .manage(infrastructure::data_services::external::ai::commands::AiSettingsState::default())
         .setup(app::setup_app)
         .invoke_handler(tauri::generate_handler![
             // 认证 / 连接
@@ -38,9 +65,8 @@ pub fn run() {
             infrastructure::match_management::matchmaking::commands::stop_matchmaking,
             infrastructure::match_management::matchmaking::commands::accept_match,
             infrastructure::match_management::matchmaking::commands::decline_match,
-            // 比赛记录
-            infrastructure::match_management::matches::commands::get_match_history,
-            infrastructure::match_management::matches::commands_v2::get_match_history_with_positions,
+            // 比赛记录（个人战绩主路径仅 analyze_matches）
+            infrastructure::match_management::matches::commands::analyze_matches,
             infrastructure::match_management::matches::commands::get_game_detail,
             infrastructure::match_management::matches::commands::get_player_tactical_advice,
             // 召唤师
@@ -62,6 +88,14 @@ pub fn run() {
             infrastructure::data_services::external::opgg::commands::get_opgg_tier_list,
             infrastructure::data_services::external::opgg::commands::get_opgg_champion_positions,
             infrastructure::data_services::external::opgg::commands::apply_opgg_runes,
+            // OpenAI-compatible BYOK
+            infrastructure::data_services::external::ai::commands::get_ai_settings,
+            infrastructure::data_services::external::ai::commands::set_ai_settings,
+            infrastructure::data_services::external::ai::commands::set_ai_api_key,
+            infrastructure::data_services::external::ai::commands::clear_ai_api_key,
+            infrastructure::data_services::external::ai::commands::test_ai_connection,
+            infrastructure::data_services::external::ai::commands::preview_ai_prompt,
+            infrastructure::data_services::external::ai::commands::analyze_with_ai,
             // LCU WS 测试命令
             infrastructure::real_time::websocket::commands::start_lcu_ws,
             infrastructure::real_time::websocket::commands::stop_lcu_ws,
@@ -101,6 +135,9 @@ pub fn run() {
             common::commands::data_collection::collect_raw_match_data,
             common::commands::data_collection::analyze_raw_match_timeline,
             common::commands::data_collection::show_raw_json_structure,
+            // 分页探针仅用于调试验证 begIndex；生产构建不注册
+            #[cfg(debug_assertions)]
+            common::commands::data_collection::probe_match_history_pages,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

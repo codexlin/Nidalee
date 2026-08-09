@@ -1,6 +1,10 @@
-/// 队列特定的配置和阈值
-///
-/// 根据不同的队列类型（排位、大乱斗等）提供不同的分析策略和阈值
+//! 队列特定的配置和阈值
+//!
+//! 根据不同的队列类型（排位、大乱斗等）提供不同的分析策略和阈值。
+//!
+//! 这里是**队列语义的唯一来源**：其他模块（含 `evidence`）不得自建队列白名单。
+//! 只有 catalog 里语义明确的队列才允许进入 [`QueueType`]，语义不明的一律落到
+//! [`QueueType::Other`]，宁可判成「未知」也不要猜错模式。
 
 use serde::{Deserialize, Serialize};
 
@@ -57,6 +61,15 @@ impl QueueType {
     pub fn is_fun_mode(&self) -> bool {
         matches!(self, QueueType::Aram | QueueType::Urf)
     }
+
+    /// 是否为「无分路」的大乱斗类地图
+    ///
+    /// 判定标准是**地图没有分路语义**，不是「娱乐模式」：极地大乱斗（URF）在
+    /// 召唤师峡谷进行，仍然有上中下野辅，因此不属于这一类。
+    /// 队列语义只在这里定义一次，`evidence` 层通过 `is_aram_queue` 复用。
+    pub fn is_aram(&self) -> bool {
+        matches!(self, QueueType::Aram)
+    }
 }
 
 /// 队列特定的KDA阈值
@@ -73,14 +86,14 @@ impl QueueKdaThresholds {
         match queue_type {
             // 排位赛：KDA要求较高
             QueueType::SoloRanked | QueueType::FlexRanked => Self {
-                excellent: 4.0,  // 优秀
-                good: 3.0,       // 良好
-                average: 2.0,    // 一般
-                poor: 1.5,       // 较差
+                excellent: 4.0, // 优秀
+                good: 3.0,      // 良好
+                average: 2.0,   // 一般
+                poor: 1.5,      // 较差
             },
             // 大乱斗：KDA普遍较高
             QueueType::Aram => Self {
-                excellent: 3.5,  // 大乱斗KDA普遍高一些
+                excellent: 3.5, // 大乱斗KDA普遍高一些
                 good: 2.8,
                 average: 2.0,
                 poor: 1.5,
@@ -355,4 +368,3 @@ impl QueueConfig {
         }
     }
 }
-

@@ -1,4 +1,5 @@
 import { getLatestVersion } from '@/lib'
+import { useQueues } from '@/shared/composables/data/useVersionedData'
 
 /**
  * 应用初始化组合式函数
@@ -9,8 +10,6 @@ export function useAppInitialization() {
   const dataStore = useDataStore()
   const settingsStore = useSettingsStore()
   const activityStore = useActivityStore()
-  // const { isConnected: _isConnected } = useConnection()
-  // const { updateSummonerAndMatches: _updateSummonerAndMatches } = useSummonerAndMatchUpdater()
   const connectionStore = useConnectionStore()
 
   const isInitialized = ref(false)
@@ -42,6 +41,9 @@ export function useAppInitialization() {
       console.error('[AppInit] 初始化连接状态失败:', error)
     }
   }
+
+  // 预加载 CDragon 队列中文名（不依赖 LCU）
+  useQueues()
 
   const initializeApp = async () => {
     try {

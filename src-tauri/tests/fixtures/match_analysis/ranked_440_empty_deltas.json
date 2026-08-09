@@ -1,0 +1,70 @@
+{
+  "gameId": 1000000004,
+  "queueId": 440,
+  "gameDuration": 1502,
+  "gameCreation": 1700010800000,
+  "participantIdentities": [
+    { "participantId": 1, "player": { "puuid": "00000000-0000-4000-8000-000000000001" } },
+    { "participantId": 2, "player": { "puuid": "00000000-0000-4000-8000-000000000002" } }
+  ],
+  "participants": [
+    {
+      "participantId": 1,
+      "championId": 412,
+      "teamId": 100,
+      "stats": {
+        "win": false,
+        "kills": 2,
+        "deaths": 8,
+        "assists": 14,
+        "totalDamageDealtToChampions": 8400,
+        "totalDamageTaken": 18900,
+        "goldEarned": 8600,
+        "visionScore": 48,
+        "wardsPlaced": 22,
+        "wardsKilled": 7,
+        "totalMinionsKilled": 22,
+        "neutralMinionsKilled": 0
+      },
+      "timeline": {
+        "role": "DUO_SUPPORT",
+        "lane": "BOTTOM",
+        "creepsPerMinDeltas": {},
+        "goldPerMinDeltas": {},
+        "xpPerMinDeltas": {},
+        "csDiffPerMinDeltas": {},
+        "xpDiffPerMinDeltas": {},
+        "damageTakenPerMinDeltas": {}
+      }
+    },
+    {
+      "participantId": 2,
+      "championId": 111,
+      "teamId": 200,
+      "stats": {
+        "win": true,
+        "kills": 3,
+        "deaths": 3,
+        "assists": 19,
+        "totalDamageDealtToChampions": 9100,
+        "totalDamageTaken": 16400,
+        "goldEarned": 9200,
+        "visionScore": 52,
+        "wardsPlaced": 24,
+        "wardsKilled": 9,
+        "totalMinionsKilled": 18,
+        "neutralMinionsKilled": 0
+      },
+      "timeline": {
+        "role": "DUO_SUPPORT",
+        "lane": "BOTTOM",
+        "creepsPerMinDeltas": {},
+        "goldPerMinDeltas": {},
+        "xpPerMinDeltas": {},
+        "csDiffPerMinDeltas": {},
+        "xpDiffPerMinDeltas": {},
+        "damageTakenPerMinDeltas": {}
+      }
+    }
+  ]
+}

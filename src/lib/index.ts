@@ -1,7 +1,7 @@
 // 数据API模块
 export * from './dataApi'
 import type { CommunityDragonPerk, DDragonChampionsResponse, DDragonItemsResponse } from './dataApi'
-import { getGameTypeById, getMapById } from '@/common'
+import { getMapById, getQueueDisplayName } from '@/common'
 
 // 主题配置模块
 export * from './theme'
@@ -38,9 +38,8 @@ export const formatDuration = (seconds: number): string => {
 }
 
 export const getQueueName = (queueId: number): string => {
-  // 优先使用游戏类型定义
-  const gameType = getGameTypeById(queueId)
-  return gameType ? gameType.name : '未知队列'
+  // CDragon 中文名优先，本地兜底表其次
+  return getQueueDisplayName(queueId)
 }
 
 export const getMapName = (mapId: number): string => {

@@ -1,8 +1,9 @@
+use crate::domains::analysis::analyzers::core::strategy::AnalysisMode;
 use crate::domains::analysis::{
     analyze_advanced_traits, analyze_distribution_traits, analyze_player_stats, analyze_role_based_traits,
     analyze_timeline_traits, analyze_traits, analyze_win_loss_pattern, identify_main_role, identify_player_roles,
-    identify_position_from_game, optimize_traits, parse_games, AnalysisContext, AnalysisStrategy,
-    parse_timeline_data, TimelineAnalysis,
+    identify_position_from_game, optimize_traits, parse_games, parse_timeline_data, resolve_lane_opponent,
+    AnalysisContext, AnalysisStrategy, TimelineAnalysis,
 };
 use crate::domains::tactical_advice::generate_advice;
 use crate::shared::types::{
@@ -18,6 +19,16 @@ use std::collections::HashMap;
 
 // 以下内容为原 match_history.rs 全部内容，粘贴至此
 // 其余内容保持不变，全部迁移
+
+/// 战术建议分析的对局数量
+const TACTICAL_ADVICE_GAME_COUNT: usize = 20;
+
+/// 单次请求指定数量的原生 LCU 战绩。
+///
+/// 实现已统一到 [`super::fetcher`]，这里只做转发，避免出现第二套列表获取逻辑。
+pub async fn fetch_match_list(client: &Client, puuid: &str, count: usize) -> Result<Value, String> {
+    super::fetcher::fetch_match_list(client, puuid, count).await
+}
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -101,60 +112,27 @@ struct ApiPlayer {
 }
 
 /// 获取当前玩家历史战绩统计（自动认证、统一请求、日志耗时）
+/// 内部兼容入口（数据采集等）；前端请使用 `analyze_matches`。
 ///
-/// # 参数
-/// - `client`: HTTP 客户端
-/// - `end_count`: 获取对局数量
-/// - `queue_id`: 可选的队列ID过滤（如 420=单排, 440=灵活排, 450=大乱斗）
-pub async fn get_match_history(
+/// 改为调用统一应用服务，不再自行请求战绩列表。
+pub(crate) async fn get_match_history(
     client: &Client,
     end_count: usize,
     queue_id: Option<i32>,
+    analysis_mode: Option<AnalysisMode>,
 ) -> Result<PlayerMatchStats, String> {
-    println!("\n🔍 ===== 开始获取我的战绩 =====");
-    if let Some(qid) = queue_id {
-        println!("🎯 队列过滤: queueId={}", qid);
-    }
+    let request =
+        super::analysis_service::legacy_analysis_request(end_count as u32, queue_id, analysis_mode, None, None);
+    let result = super::analysis_service::analyze_current_summoner(client, &request).await?;
 
-    // 第1步：获取当前召唤师信息来得到PUUID
-    println!("\n📍 第1步：获取当前召唤师信息");
-    let summoner_data: Value = lcu_get(client, "/lol-summoner/v1/current-summoner").await?;
-    let puuid = summoner_data
-        .get("puuid")
-        .and_then(|p| p.as_str())
-        .ok_or_else(|| "未找到PUUID".to_string())?;
-    println!("🆔 提取到的PUUID: {}", puuid);
-
-    // 第2步：使用PUUID获取对局列表
-    println!("\n📍 第2步：使用PUUID获取对局列表");
-    let safe_end = if end_count == 0 { 20 } else { end_count.min(100) };
-    // LCU API 的 endIndex 是包含的，所以需要减1
-    let actual_end_index = if safe_end > 0 { safe_end - 1 } else { 0 };
-    println!(
-        "🔢 请求的对局数量: end_count={}, safe_end={}, actual_end_index={}",
-        end_count, safe_end, actual_end_index
+    log::info!(
+        "[战绩] 展示 {} 场，胜率 {:.1}%，深度证据 {} 场",
+        result.overall_stats.total_games,
+        result.overall_stats.win_rate,
+        result.analyzed_games
     );
-    let match_list_url = format!(
-        "/lol-match-history/v1/products/lol/{}/matches?begIndex=0&endIndex={}",
-        puuid, actual_end_index
-    );
-    println!("🌐 请求URL: {}", match_list_url);
-    let match_list_data: Value = lcu_get(client, &match_list_url).await?;
 
-    // 第3步：直接分析对局列表数据
-    println!("\n📍 第3步：分析对局列表数据");
-    let statistics = analyze_match_list_data(match_list_data, puuid, queue_id)?;
-
-    println!("\n✅ ===== 我的战绩查询完成 =====");
-    println!("📊 最终统计结果:");
-    println!("   - 总对局: {}", statistics.total_games);
-    println!("   - 胜场: {}", statistics.wins);
-    println!("   - 负场: {}", statistics.losses);
-    println!("   - 胜率: {:.1}%", statistics.win_rate);
-    println!("   - 平均KDA: {:.2}", statistics.avg_kda);
-    println!("   - 最近对局数: {}", statistics.recent_performance.len());
-
-    Ok(statistics)
+    Ok(super::analysis_service::to_player_match_stats(&result))
 }
 
 pub async fn get_game_detail_logic(client: &Client, game_id: u64) -> Result<GameDetail, String> {
@@ -306,7 +284,8 @@ pub async fn get_recent_matches_by_puuid(
 
 /// 获取指定召唤师最近几场战绩（支持指定建议视角）
 ///
-/// 用于 TeamAnalysis 时可以指定不同的视角
+/// 兼容适配器：团队/选人概览路径，强制 Simple（零时间线），
+/// 避免 10 玩家 × N 时间线把客户端拖垮。个人深度分析走 `analyze_matches`。
 pub async fn get_recent_matches_by_puuid_with_perspective(
     client: &Client,
     puuid: &str,
@@ -315,38 +294,20 @@ pub async fn get_recent_matches_by_puuid_with_perspective(
     perspective: AdvicePerspective,
     target_name: Option<String>,
 ) -> Result<PlayerMatchStats, String> {
-    let url = format!(
-        "/lol-match-history/v1/products/lol/{}/matches?begIndex=0&endIndex={}",
-        puuid, count
-    );
-    let match_list_data: Value = lcu_get(client, &url).await?;
-    // 第3步：直接分析对局列表数据，传入视角参数
-    let statistics =
-        analyze_match_list_data_with_perspective(match_list_data, puuid, queue_id, perspective, target_name)?;
-    Ok(statistics)
+    let mut request = super::analysis_service::legacy_overview_request(count as u32, queue_id, None);
+    request.perspective = Some(perspective);
+    request.target_player = target_name;
+    let result = super::analysis_service::analyze_matches_for_puuid(client, puuid, &request).await?;
+    Ok(super::analysis_service::to_player_match_stats(&result))
 }
 
-fn analyze_match_list_data(
-    match_list_data: Value,
-    current_puuid: &str,
-    queue_id: Option<i32>,
-) -> Result<PlayerMatchStats, String> {
-    // ⭐ v3.4: 使用多位置分组分析，但只返回总览数据（保持向后兼容）
-    // TODO: 后续可以修改返回类型为 MultiPositionAnalysis
-    let multi_position_result = super::position_analysis::analyze_with_analysis_mode(
-        match_list_data.clone(),
-        current_puuid,
-        None, // 使用默认的MixedRanked模式
-        None, // 使用默认的Deep深度
-    )?;
-
-    // 目前只返回overall_stats，保持API兼容性
-    Ok(multi_position_result.overall_stats)
-}
-
-/// 分析对局列表数据（支持指定建议视角）⭐
-///
 /// 分析frames时间线数据
+///
+/// # Deprecated
+/// 已被 `domains::analysis::evidence` + `pipeline::orchestrator` 取代，
+/// 保留仅为不破坏存量引用；生产链路不再调用。
+#[deprecated(note = "改用 pipeline::orchestrate_analysis 产出的 EvidenceBundle")]
+#[allow(dead_code)]
 fn analyze_frames_timeline_data(games: &[Value], target_puuid: &str) -> Option<TimelineAnalysis> {
     // 查找包含match_timeline_json的游戏
     for game in games {
@@ -357,8 +318,11 @@ fn analyze_frames_timeline_data(games: &[Value], target_puuid: &str) -> Option<T
                     if identity["player"]["puuid"].as_str() == Some(target_puuid) {
                         let participant_id = identity["participantId"].as_i64().unwrap_or(0) as i32;
 
-                        // 识别对手（简化版，实际应该基于位置信息）
-                        let opponent_id = identify_lane_opponent_simple(game, participant_id);
+                        // 对手识别统一走证据层：lane-role 优先、空间邻近回退、识别不出就是 None。
+                        // 旧的「敌方第一个玩家」兜底已移除——它会让所有对线差值失真。
+                        let queue_id = game.get("queueId").and_then(Value::as_i64).unwrap_or(0);
+                        let opponent_id = resolve_lane_opponent(game, Some(timeline_json), participant_id, queue_id)
+                            .map(|opponent| opponent.participant_id);
 
                         return parse_timeline_data(timeline_json, participant_id, opponent_id);
                     }
@@ -369,32 +333,16 @@ fn analyze_frames_timeline_data(games: &[Value], target_puuid: &str) -> Option<T
     None
 }
 
-/// 简化的对手识别（基于队伍ID）
-fn identify_lane_opponent_simple(game: &Value, target_participant_id: i32) -> Option<i32> {
-    let participants = game.get("participants")?.as_array()?;
-
-    // 找到目标玩家
-    let target_participant = participants.iter().find(|p| {
-        p["participantId"].as_i64().unwrap_or(0) as i32 == target_participant_id
-    })?;
-
-    let target_team_id = target_participant["teamId"].as_i64().unwrap_or(0) as i32;
-
-    // 找到敌方队伍中的第一个玩家作为对手
-    for participant in participants {
-        let team_id = participant["teamId"].as_i64().unwrap_or(0) as i32;
-        let participant_id = participant["participantId"].as_i64().unwrap_or(0) as i32;
-
-        if team_id != target_team_id {
-            return Some(participant_id);
-        }
-    }
-
-    None
-}
-
 /// 基于frames分析生成特征
-fn generate_frames_based_traits(timeline_analysis: &TimelineAnalysis, main_role: &str) -> Vec<crate::shared::types::SummonerTrait> {
+///
+/// # Deprecated
+/// 特征只能来自 `EvidenceBundle`（带样本量与证据对局），这里保留仅为不破坏存量引用。
+#[deprecated(note = "改用 pipeline::insights::build_deterministic_traits")]
+#[allow(dead_code)]
+fn generate_frames_based_traits(
+    timeline_analysis: &TimelineAnalysis,
+    main_role: &str,
+) -> Vec<crate::shared::types::SummonerTrait> {
     let mut traits = Vec::new();
 
     // 对手分析特征
@@ -434,7 +382,9 @@ fn generate_frames_based_traits(timeline_analysis: &TimelineAnalysis, main_role:
     }
 
     // 关键事件特征
-    let kill_events = timeline_analysis.key_events.iter()
+    let kill_events = timeline_analysis
+        .key_events
+        .iter()
         .filter(|e| e.event_type == "CHAMPION_KILL" && e.importance_score > 0.0)
         .count();
 
@@ -451,7 +401,15 @@ fn generate_frames_based_traits(timeline_analysis: &TimelineAnalysis, main_role:
 }
 
 /// 生成基于时间线分析的增强建议
-fn generate_timeline_enhanced_advice(timeline_analysis: &TimelineAnalysis, main_role: &str) -> Vec<crate::shared::types::GameAdvice> {
+///
+/// # Deprecated
+/// 建议只能来自 `EvidenceBundle`（带样本量与证据对局），这里保留仅为不破坏存量引用。
+#[deprecated(note = "改用 pipeline::insights::build_deterministic_advice")]
+#[allow(dead_code)]
+fn generate_timeline_enhanced_advice(
+    timeline_analysis: &TimelineAnalysis,
+    main_role: &str,
+) -> Vec<crate::shared::types::GameAdvice> {
     let mut advice = Vec::new();
 
     // 对线期建议
@@ -513,7 +471,10 @@ fn generate_timeline_enhanced_advice(timeline_analysis: &TimelineAnalysis, main_
         advice.push(crate::shared::types::GameAdvice {
             title: "整体表现不如对手".to_string(),
             problem: "各项指标都不如对手".to_string(),
-            evidence: format!("综合优势: {:.1}", timeline_analysis.opponent_comparison.overall_advantage),
+            evidence: format!(
+                "综合优势: {:.1}",
+                timeline_analysis.opponent_comparison.overall_advantage
+            ),
             suggestions: vec![
                 "需要提升对线技巧".to_string(),
                 "加强基本功练习".to_string(),
@@ -530,7 +491,13 @@ fn generate_timeline_enhanced_advice(timeline_analysis: &TimelineAnalysis, main_
     advice
 }
 
-/// 用于 TeamAnalysis 时可以为敌方生成 Targeting，为队友生成 Collaboration
+/// 分析对局列表数据（支持指定建议视角）
+///
+/// # Deprecated
+/// 这是旧的「从原始 JSON 直接算特征/建议」路径，已被唯一编排器取代：
+/// 它会与 Evidence 链路给出两套互相矛盾的结论。保留仅为不破坏存量引用。
+#[deprecated(note = "改用 analysis_service::analyze_matches_for_puuid")]
+#[allow(dead_code)]
 fn analyze_match_list_data_with_perspective(
     match_list_data: Value,
     current_puuid: &str,
@@ -539,7 +506,12 @@ fn analyze_match_list_data_with_perspective(
     target_player_name: Option<String>,
 ) -> Result<PlayerMatchStats, String> {
     println!("📊 开始分析对局列表数据 (使用优化架构: Parser + Strategy)");
-    println!("👤 目标玩家PUUID: {}", current_puuid);
+    let redacted = if current_puuid.len() > 8 {
+        format!("{}…{}", &current_puuid[..4], &current_puuid[current_puuid.len() - 4..])
+    } else {
+        "***".to_string()
+    };
+    println!("👤 目标玩家PUUID: {}", redacted);
 
     let empty_games = vec![];
     let games = match_list_data
@@ -583,10 +555,9 @@ fn analyze_match_list_data_with_perspective(
     traits.extend(analyze_traits(&player_stats));
 
     // 第1.5层：队列感知特征（所有模式都执行，提供队列特定的评估）
-    traits.extend(crate::domains::analysis::analyzers::traits::queue_aware::analyze_queue_aware_traits(
-        &player_stats,
-        queue_id,
-    ));
+    traits.extend(
+        crate::domains::analysis::analyzers::traits::queue_aware::analyze_queue_aware_traits(&player_stats, queue_id),
+    );
 
     // 第2-5层：深度分析（仅排位模式）
     if strategy.enable_advanced_analysis() {
@@ -627,7 +598,10 @@ fn analyze_match_list_data_with_perspective(
     player_stats.traits = optimized_traits;
 
     // === 第6步: 生成智能建议（仅排位模式）⭐ v3.0 ===
-    if matches!(strategy, AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked) {
+    if matches!(
+        strategy,
+        AnalysisStrategy::SoloRanked | AnalysisStrategy::FlexRanked | AnalysisStrategy::MixedRanked
+    ) {
         let main_role = identify_main_role(&parsed_games);
         player_stats.advice = generate_advice(
             &player_stats,
@@ -663,71 +637,37 @@ fn analyze_match_list_data_with_perspective(
     Ok(player_stats)
 }
 
+/// 获取指定玩家的战术建议（兼容适配器）
+///
+/// 旧实现写死 `queue_id = 420` + `AnalysisStrategy::SoloRanked`，不管对方实际打的是
+/// 什么队列都按单排口径出结论。现在改为走统一应用服务：队列由策略按局判定，
+/// 建议来自 Evidence，样本不足时不会硬凑结论。
 pub async fn get_player_tactical_advice(
     client: &Client,
     summoner_name: String,
     perspective: AdvicePerspective,
     target_role: Option<String>,
 ) -> Result<Vec<GameAdvice>, String> {
-    println!("🎯 开始获取玩家战术建议");
-    println!("   召唤师: {}", summoner_name);
-    println!("   视角: {:?}", perspective);
-
     let summoner_url = format!(
         "/lol-summoner/v1/summoners?name={}",
         utf8_percent_encode(&summoner_name, NON_ALPHANUMERIC)
     );
 
-    let summoner_response: Value = lcu_request_json(&client, Method::GET, &summoner_url, None)
+    let summoner_response: Value = lcu_request_json(client, Method::GET, &summoner_url, None)
         .await
         .map_err(|e| format!("获取召唤师信息失败: {}", e))?;
 
     let puuid = summoner_response["puuid"]
         .as_str()
+        .filter(|puuid| !puuid.is_empty())
         .ok_or("无法获取玩家PUUID")?
         .to_string();
 
-    println!("✅ 获取到PUUID: {}", puuid);
+    let request = super::analysis_service::tactical_advice_request(perspective, Some(summoner_name));
+    let result = super::analysis_service::analyze_matches_for_puuid(client, &puuid, &request).await?;
 
-    let match_history_url = format!(
-        "/lol-match-history/v1/products/lol/{}/matches?begIndex=0&endIndex=20",
-        puuid
-    );
-
-    let match_list_response: Value = lcu_request_json(&client, Method::GET, &match_history_url, None)
-        .await
-        .map_err(|e| format!("获取战绩失败: {}", e))?;
-
-    let match_list_data = match_list_response["games"]["games"]
-        .as_array()
-        .ok_or("无法解析战绩数据")?;
-
-    println!("✅ 获取到{}场对局", match_list_data.len());
-
-    if match_list_data.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let parsed_games = parse_games(match_list_data, &puuid);
-    println!("✅ 解析完成：{} 场对局", parsed_games.len());
-
-    let strategy = AnalysisStrategy::SoloRanked;
-    let context = AnalysisContext::new().with_queue_id(420);
-    let player_stats = analyze_player_stats(&parsed_games, &puuid, context);
-
-    let main_role = target_role.unwrap_or_else(|| identify_main_role(&parsed_games));
-    println!("✅ 主要位置: {}", main_role);
-
-    let advice = generate_advice(
-        &player_stats,
-        &parsed_games,
-        &main_role,
-        perspective,
-        Some(summoner_name.clone()),
-        &strategy,
-    );
-
-    println!("💡 生成建议：共 {} 条", advice.len());
+    let advice = super::analysis_service::to_legacy_advice(&result, target_role.as_deref());
+    log::info!("💡 战术建议：共 {} 条（视角 {:?}）", advice.len(), perspective);
 
     Ok(advice)
 }

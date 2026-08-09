@@ -138,20 +138,14 @@ fn aggregate_timeline_traits(traits: &[SummonerTrait]) -> Vec<SummonerTrait> {
     }
 
     // 转换为Vec并按频率排序
-    let mut result: Vec<SummonerTrait> = trait_counts
-        .into_values()
-        .map(|(trait_item, _)| trait_item)
-        .collect();
+    let mut result: Vec<SummonerTrait> = trait_counts.into_values().map(|(trait_item, _)| trait_item).collect();
 
     result.sort_by(|a, b| b.score.cmp(&a.score));
     result
 }
 
 /// 基于时间线分析生成建议
-pub fn generate_timeline_advice(
-    timeline_analysis: &TimelineAnalysis,
-    _main_role: &str,
-) -> Vec<String> {
+pub fn generate_timeline_advice(timeline_analysis: &TimelineAnalysis, _main_role: &str) -> Vec<String> {
     let mut advice = Vec::new();
 
     // 对线期建议

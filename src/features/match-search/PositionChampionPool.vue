@@ -59,13 +59,15 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// 使用后端返回的英雄池数据
+// 优先读 PositionStats.championPool（编排器产出）；回退 favoriteChampions
 const championStats = computed<ChampionStat[]>(() => {
-  const championPool = props.positionData.stats.favoriteChampions || []
+  const pool = props.positionData.championPool?.length
+    ? props.positionData.championPool
+    : props.positionData.stats.favoriteChampions || []
 
-  return championPool.map((champ) => ({
+  return pool.map((champ) => ({
     championId: champ.championId,
-    championName: champ.championName,
+    championName: champ.championName ?? undefined,
     games: champ.games,
     wins: champ.wins,
     winRate: champ.winRate

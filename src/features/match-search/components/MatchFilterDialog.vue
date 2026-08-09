@@ -29,6 +29,8 @@
 </template>
 
 <script setup lang="ts">
+import { getQueueDisplayName } from '@/common/queueCatalog'
+
 interface Props {
   open: boolean
 }
@@ -41,19 +43,12 @@ const emit = defineEmits<{
 
 const { selectedQueueTypes, setFilterTypes } = useSearchMatches()
 
-// 定义可用的队列类型
-const availableQueueTypes = ref([
-  { id: 420, name: '单双排位' },
-  { id: 440, name: '灵活组排' },
-  { id: 450, name: '大乱斗' },
-  { id: 490, name: '快速游戏' },
-  { id: 400, name: '匹配模式' },
-  { id: 700, name: '冲突模式' },
-  { id: 1700, name: '斗魂竞技场' },
-  { id: 1400, name: '终极技能书' },
-  { id: 900, name: '无限火力' },
-  { id: 1020, name: '一血模式' }
-])
+const availableQueueTypes = computed(() =>
+  [420, 440, 450, 2400, 490, 400, 700, 1700, 1400, 900, 1020].map((id) => ({
+    id,
+    name: getQueueDisplayName(id)
+  }))
+)
 
 const open = computed({
   get: () => props.open,

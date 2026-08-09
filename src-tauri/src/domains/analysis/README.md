@@ -76,36 +76,56 @@ let config = AnalysisConfig {
 
 ## 🎯 **核心模块**
 
-### 1. 时间线解析器
+### 1. 时间线解析（唯一入口）
+
+时间线解析统一走 `analysis::evidence`。`extract_match_evidence` 吃 LCU 原始 JSON
+（对局详情 + 可选时间线），产出确定性的 `MatchEvidence`：缺帧、缺时间线这类问题
+落在 `quality`/`diagnostics` 上，而不是被静默填成 0。
 
 ```rust
-use crate::domains::analysis::analyzers::core::{
-    TimelineBridge,
-    timeline_parser::parse_timeline_data,
-};
+use crate::domains::analysis::evidence::{extract_match_evidence, laning_opponent_diff};
 
-// 解析时间线
-let bridge = TimelineBridge::new();
-let timeline = bridge.get_full_timeline_analysis(&match_data)?;
+// game / timeline 都是 LCU 原始 JSON，timeline 可为 None
+let evidence = extract_match_evidence(&game, timeline.as_ref(), target_puuid)?;
 
-// 访问阶段数据
-println!("对线期补刀/分钟: {:.1}", timeline.early_game.cs_per_minute);
-println!("对线期补刀差: {:.1}", timeline.early_game.cs_difference);
-println!("中期金币/分钟: {:.0}", timeline.mid_game.gold_per_minute);
+// 按阶段访问：phases 只包含真实存在的阶段，不会为缺失阶段补零
+for phase in &evidence.phases {
+    // 速率是 Option：阶段内只有一个锚点帧时为 None，不会除零编个数字出来
+    println!("{:?} 补刀/分钟: {:?}", phase.phase, phase.cs_per_min);
+}
+
+// 对线期与对手的差值（没识别出对手时为 None）
+if let Some(diff) = laning_opponent_diff(&evidence.phases) {
+    println!("对线期补刀差: {}", diff.cs_diff);
+}
 ```
 
-### 2. 对手识别器
+旧的 `TimelineBridge` / `TimelineAnalysis` 仍然存在，但只作为存量调用方的兼容层，
+内部已经委托给上面的 evidence 逻辑；新代码不要再从那里入口。
+
+### 2. 对手识别（唯一入口）
+
+对线对手只能通过 `analysis::evidence::resolve_lane_opponent` 获取。
+它按 lane+role → 统一位置 → 对线期空间邻近的顺序匹配，且**只在真实分路**
+（上/中/ADC/辅助）上开放空间回退，识别不出来时返回 `None` 而不是硬猜。
 
 ```rust
-use crate::domains::analysis::analyzers::core::OpponentIdentifier;
+use crate::domains::analysis::evidence::resolve_lane_opponent;
 
-let identifier = OpponentIdentifier;
-let opponent = identifier.identify_opponent(player_id, &frames)?;
+// game / timeline 都是 LCU 原始 JSON，timeline 可为 None
+let opponent = resolve_lane_opponent(&game, timeline.as_ref(), target_participant_id, queue_id);
 
-println!("对手ID: {}", opponent.opponent_id);
-println!("置信度: {:.2}", opponent.confidence);
-println!("对线路: {}", opponent.lane);
+if let Some(opponent) = opponent {
+    println!("对手ID: {}", opponent.participant_id);
+    println!("识别方式: {:?}", opponent.method); // LaneRole / PositionMatch / SpatialProximity
+    println!("置信度: {:.2}", opponent.confidence);
+    println!("对手位置: {}", opponent.position); // TOP / JUNGLE / MID / ADC / SUPPORT ...
+}
 ```
+
+> ⚠️ 旧的 `core::OpponentIdentifier` 已废弃并从公开重导出中移除：
+> 它靠 `participantId <= 5` 猜队伍，且只会挑「最近的人」，
+> 会把队友或被 gank 的对象当成对线对手。
 
 ### 3. 事件分析器
 

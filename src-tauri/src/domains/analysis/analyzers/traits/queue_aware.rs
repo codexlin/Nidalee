@@ -1,7 +1,6 @@
 /// 队列感知的特征分析
 ///
 /// 根据不同队列类型（排位、大乱斗等）提供不同的评估标准和建议
-
 use crate::domains::analysis::queue_config::{get_queue_config, QueueType};
 use crate::shared::types::{PlayerMatchStats, SummonerTrait};
 
@@ -48,10 +47,7 @@ fn analyze_queue_kda(
         "优秀" => {
             traits.push(SummonerTrait {
                 name: format!("{}高手", queue_name),
-                description: format!(
-                    "在{}中KDA优秀（{:.2}），表现出色",
-                    queue_name, stats.avg_kda
-                ),
+                description: format!("在{}中KDA优秀（{:.2}），表现出色", queue_name, stats.avg_kda),
                 score: (stats.avg_kda * 10.0) as i32,
                 trait_type: "good".to_string(),
             });
@@ -59,10 +55,7 @@ fn analyze_queue_kda(
         "良好" => {
             traits.push(SummonerTrait {
                 name: format!("{}熟手", queue_name),
-                description: format!(
-                    "在{}中KDA良好（{:.2}），稳定发挥",
-                    queue_name, stats.avg_kda
-                ),
+                description: format!("在{}中KDA良好（{:.2}），稳定发挥", queue_name, stats.avg_kda),
                 score: (stats.avg_kda * 8.0) as i32,
                 trait_type: "neutral".to_string(),
             });
@@ -71,10 +64,7 @@ fn analyze_queue_kda(
             if stats.avg_deaths >= 7.0 {
                 traits.push(SummonerTrait {
                     name: format!("{}磨练中", queue_name),
-                    description: format!(
-                        "在{}中KDA偏低（{:.2}），需要提升",
-                        queue_name, stats.avg_kda
-                    ),
+                    description: format!("在{}中KDA偏低（{:.2}），需要提升", queue_name, stats.avg_kda),
                     score: stats.avg_deaths as i32,
                     trait_type: "bad".to_string(),
                 });
@@ -97,10 +87,7 @@ fn analyze_queue_damage(
         "优秀" => {
             traits.push(SummonerTrait {
                 name: "高输出".to_string(),
-                description: format!(
-                    "在{}中输出优秀（{:.0} DPM），carry能力强",
-                    queue_name, stats.dpm
-                ),
+                description: format!("在{}中输出优秀（{:.0} DPM），carry能力强", queue_name, stats.dpm),
                 score: (stats.dpm / 10.0) as i32,
                 trait_type: "good".to_string(),
             });
@@ -108,10 +95,7 @@ fn analyze_queue_damage(
         "良好" => {
             traits.push(SummonerTrait {
                 name: "输出稳定".to_string(),
-                description: format!(
-                    "在{}中输出良好（{:.0} DPM）",
-                    queue_name, stats.dpm
-                ),
+                description: format!("在{}中输出良好（{:.0} DPM）", queue_name, stats.dpm),
                 score: (stats.dpm / 12.0) as i32,
                 trait_type: "neutral".to_string(),
             });
@@ -119,10 +103,7 @@ fn analyze_queue_damage(
         "较差" | "糟糕" => {
             traits.push(SummonerTrait {
                 name: "输出不足".to_string(),
-                description: format!(
-                    "在{}中输出偏低（{:.0} DPM），需要提升",
-                    queue_name, stats.dpm
-                ),
+                description: format!("在{}中输出偏低（{:.0} DPM），需要提升", queue_name, stats.dpm),
                 score: (stats.dpm / 10.0) as i32,
                 trait_type: "bad".to_string(),
             });
@@ -150,10 +131,7 @@ fn analyze_queue_cs(
         "优秀" => {
             traits.push(SummonerTrait {
                 name: "补刀大师".to_string(),
-                description: format!(
-                    "在{}中补刀优秀（{:.1} CSPM），发育能力强",
-                    queue_name, stats.cspm
-                ),
+                description: format!("在{}中补刀优秀（{:.1} CSPM），发育能力强", queue_name, stats.cspm),
                 score: (stats.cspm * 10.0) as i32,
                 trait_type: "good".to_string(),
             });
@@ -161,10 +139,7 @@ fn analyze_queue_cs(
         "较差" | "糟糕" => {
             traits.push(SummonerTrait {
                 name: "补刀不足".to_string(),
-                description: format!(
-                    "在{}中补刀偏低（{:.1} CSPM），影响发育",
-                    queue_name, stats.cspm
-                ),
+                description: format!("在{}中补刀偏低（{:.1} CSPM），影响发育", queue_name, stats.cspm),
                 score: (stats.cspm * 5.0) as i32,
                 trait_type: "bad".to_string(),
             });
@@ -192,10 +167,7 @@ fn analyze_queue_vision(
         "优秀" => {
             traits.push(SummonerTrait {
                 name: "视野大师".to_string(),
-                description: format!(
-                    "在{}中视野优秀（{:.2} VSPM），团队意识强",
-                    queue_name, stats.vspm
-                ),
+                description: format!("在{}中视野优秀（{:.2} VSPM），团队意识强", queue_name, stats.vspm),
                 score: (stats.vspm * 50.0) as i32,
                 trait_type: "good".to_string(),
             });
@@ -203,10 +175,7 @@ fn analyze_queue_vision(
         "较差" | "糟糕" => {
             traits.push(SummonerTrait {
                 name: "视野不足".to_string(),
-                description: format!(
-                    "在{}中视野偏低（{:.2} VSPM），容易被偷袭",
-                    queue_name, stats.vspm
-                ),
+                description: format!("在{}中视野偏低（{:.2} VSPM），容易被偷袭", queue_name, stats.vspm),
                 score: (stats.vspm * 30.0) as i32,
                 trait_type: "bad".to_string(),
             });
@@ -290,4 +259,3 @@ fn generate_queue_specific_advice(
         _ => {}
     }
 }
-

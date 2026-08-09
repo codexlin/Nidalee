@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async_tls_with_config, tungstenite::client::IntoClientRequest};
 
 static WS_RUNNING: AtomicBool = AtomicBool::new(false);
-static WS_CONNECTED: AtomicBool = AtomicBool::new(false);  // ← 新增：WebSocket 是否真正连接
+static WS_CONNECTED: AtomicBool = AtomicBool::new(false); // ← 新增：WebSocket 是否真正连接
 static WS_TASK: OnceCell<tokio::task::JoinHandle<()>> = OnceCell::new();
 static WS_SENDER: OnceCell<
     Arc<
@@ -178,7 +178,7 @@ async fn connect_and_run_ws(app: &tauri::AppHandle, auth: &crate::shared::types:
     };
 
     log::info!("[lcu-ws] WebSocket connection successful.");
-    WS_CONNECTED.store(true, Ordering::SeqCst);  // ← 标记连接已建立
+    WS_CONNECTED.store(true, Ordering::SeqCst); // ← 标记连接已建立
 
     // Dynamic subscription set: start with base subscriptions and add more as the game phase changes.
     let mut subscribed: HashSet<String> = HashSet::new();
@@ -273,7 +273,7 @@ async fn connect_and_run_ws(app: &tauri::AppHandle, auth: &crate::shared::types:
     }
 
     // WebSocket 正常退出或循环结束时
-    WS_CONNECTED.store(false, Ordering::SeqCst);  // ← 标记连接断开
+    WS_CONNECTED.store(false, Ordering::SeqCst); // ← 标记连接断开
     log::info!("[lcu-ws] WebSocket connection closed.");
     Ok(())
 }

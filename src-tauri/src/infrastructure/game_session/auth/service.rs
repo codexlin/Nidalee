@@ -332,17 +332,31 @@ pub fn verify_lockfile_vs_cmdline() {
 
             log::info!("┌─ 进程命令行 ──────────────────────┐");
             log::info!("│ 端口: {:>5}                     │", cmdline.0);
-            log::info!("│ Token: {}... ({} 字符) │", &cmdline.1[..8.min(cmdline.1.len())], cmdline.1.len());
+            log::info!(
+                "│ Token: {}... ({} 字符) │",
+                &cmdline.1[..8.min(cmdline.1.len())],
+                cmdline.1.len()
+            );
             log::info!("└────────────────────────────────┘");
 
             log::info!("┌─ Lockfile ────────────────────────┐");
             log::info!("│ 端口: {:>5}                     │", lockfile.0);
-            log::info!("│ Token: {}... ({} 字符) │", &lockfile.1[..8.min(lockfile.1.len())], lockfile.1.len());
+            log::info!(
+                "│ Token: {}... ({} 字符) │",
+                &lockfile.1[..8.min(lockfile.1.len())],
+                lockfile.1.len()
+            );
             log::info!("└────────────────────────────────┘");
 
             log::info!("┌─ 对比结果 ────────────────────────┐");
-            log::info!("│ 端口: {}                         │", if port_match { "✓ 一致" } else { "✗ 不一致" });
-            log::info!("│ Token: {}                        │", if token_match { "✓ 一致" } else { "✗ 不一致" });
+            log::info!(
+                "│ 端口: {}                         │",
+                if port_match { "✓ 一致" } else { "✗ 不一致" }
+            );
+            log::info!(
+                "│ Token: {}                        │",
+                if token_match { "✓ 一致" } else { "✗ 不一致" }
+            );
             log::info!("└────────────────────────────────┘");
 
             if port_match && token_match {
@@ -392,7 +406,11 @@ fn get_lcu_from_lockfile() -> Option<(u16, String)> {
                         let port: u16 = parts[2].parse().ok()?;
                         let token = parts[3].to_string();
 
-                        log::debug!("[LCU] 从 lockfile 读取: port={}, token={}...", port, &token[..8.min(token.len())]);
+                        log::debug!(
+                            "[LCU] 从 lockfile 读取: port={}, token={}...",
+                            port,
+                            &token[..8.min(token.len())]
+                        );
                         return Some((port, token));
                     }
                 }

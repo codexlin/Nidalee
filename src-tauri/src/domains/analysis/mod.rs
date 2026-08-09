@@ -26,18 +26,26 @@
 /// - analyzers/teammate_analyzer: 队友分析器
 /// - analyzers/self_improvement_analyzer: 自我提升分析器
 /// - services: 高级分析服务
+/// - pipeline: 统一分析契约（请求/策略/结果/能力/降级诊断）
 /// - thresholds: 阈值配置
+/// - evidence: 确定性证据层（时间线/位置/对手/事件/聚合）
 /// - queue_config: 队列特定配置
 pub mod analyzers;
+pub mod evidence;
+pub mod pipeline;
+pub mod queue_config;
 pub mod services;
 pub mod thresholds;
-pub mod queue_config;
 
 // 重新导出核心API（保持向后兼容）
-pub use analyzers::core::parser::{identify_main_role, identify_position_from_game, parse_games, ParsedGame, ParsedPlayerData, TimelineData};
-pub use analyzers::core::timeline_analyzer::{parse_timeline_data, TimelineAnalysis, PhaseAnalysis, KeyEvent, OpponentComparison};
-pub use analyzers::core::stats::{analyze_player_stats, AnalysisContext};
+pub use analyzers::core::parser::{
+    identify_main_role, identify_position_from_game, parse_games, ParsedGame, ParsedPlayerData, TimelineData,
+};
+pub use analyzers::core::stats::{analyze_player_stats, analyze_player_stats_with_resolver, AnalysisContext};
 pub use analyzers::core::strategy::AnalysisStrategy;
+pub use analyzers::core::timeline_analyzer::{
+    parse_timeline_data, KeyEvent, OpponentComparison, PhaseAnalysis, TimelineAnalysis,
+};
 
 pub use analyzers::traits::advanced::analyze_advanced_traits;
 pub use analyzers::traits::basic::analyze_traits;
@@ -46,12 +54,14 @@ pub use analyzers::traits::merger::optimize_traits;
 pub use analyzers::traits::role::{analyze_role_based_traits, identify_player_roles};
 pub use analyzers::traits::timeline::{analyze_timeline_traits, generate_timeline_advice};
 
-// 重新导出新的智能分析API
-pub use services::{
-    perform_intelligent_analysis,
-    IntelligentAnalysisResult,
-    ComprehensiveAdvice,
-    AdviceTarget,
-    TacticalSummary,
-    // 注意：EnhancedAnalysisService 已废弃，已集成到旧系统中
+// 重新导出证据层 / 统一契约（编排器已接入）
+pub use evidence::{
+    aggregate_match_evidence, build_evidence_bundle, extract_match_evidence, position_from_role_lane,
+    resolve_lane_opponent, EvidenceBundle, EvidencePosition, EvidenceQuality, MatchEvidence, MatchEvidenceInput,
+    OpponentEvidence,
+};
+
+pub use pipeline::{
+    resolve_analysis_policy, AnalysisCapabilities, AnalysisDegradationCode, AnalysisDiagnostic, AnalysisFeature,
+    AnalysisFeatureFlags, AnalysisPolicy, AnalysisQueueScope, MatchAnalysisRequest, MatchAnalysisResult,
 };

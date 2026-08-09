@@ -206,11 +206,23 @@ export interface CommunityDragonChampion {
   }>
 }
 
+/** Riot 官方 docs 队列结构（英文） */
 export interface QueueInfo {
   queueId: number
   map: string
   description: string
   notes?: string
+}
+
+/** Community Dragon 客户端队列结构（中文） */
+export interface CDragonQueue {
+  id: number
+  name: string
+  shortName?: string
+  description?: string
+  detailedDescription?: string
+  gameSelectModeGroup?: string
+  gameSelectCategory?: string
 }
 
 // =============================================================================
@@ -436,14 +448,14 @@ export async function fetchSkins(): Promise<ApiResponse<CommunityDragonSkin[]>> 
 }
 
 /**
- * 获取队列信息数据
+ * 获取队列信息（Community Dragon 中文，跟客户端一致）
  */
-export async function fetchQueues(): Promise<ApiResponse<QueueInfo[]>> {
+export async function fetchQueues(): Promise<ApiResponse<CDragonQueue[]>> {
   try {
-    // 优先使用官方的队列数据
-    const officialUrl = 'https://static.developer.riotgames.com/docs/lol/queues.json'
+    const url =
+      'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/zh_cn/v1/queues.json'
 
-    const { data, error, statusCode } = await useApiFetch(officialUrl).json<QueueInfo[]>()
+    const { data, error, statusCode } = await useApiFetch(url).json<CDragonQueue[]>()
 
     if (error.value) {
       throw new Error(error.value)
@@ -460,7 +472,7 @@ export async function fetchQueues(): Promise<ApiResponse<QueueInfo[]>> {
     return {
       success: true,
       data: data.value,
-      version: 'static'
+      version: 'cdragon-zh_cn'
     }
   } catch (error) {
     return {

@@ -1,5 +1,6 @@
 use super::service;
 use crate::http_client;
+use crate::infrastructure::match_management::matches::analysis_service;
 use crate::infrastructure::match_management::matches::service as matches_service;
 use crate::shared::types::{PlayerMatchStats, SummonerInfo, SummonerWithMatches};
 
@@ -46,13 +47,16 @@ pub async fn get_summoners_and_histories(
         let puuid = summoner.puuid.clone();
         if !puuid.is_empty() {
             service::fill_summoner_extra_info(client, summoner).await;
-            // 用户主动查询，不过滤队列类型
-            match matches_service::get_recent_matches_by_puuid(client, &puuid, count.unwrap_or(20), None).await {
-                Ok(matches) => {
+            // 一次 analyze：同时投影基础统计与位置分组，避免搜索页二次拉 LCU
+            let game_count = count.unwrap_or(20) as u32;
+            let request = analysis_service::legacy_overview_request(game_count, None, None);
+            match analysis_service::analyze_matches_for_puuid(client, &puuid, &request).await {
+                Ok(analysis) => {
                     result.push(SummonerWithMatches {
                         display_name: summoner.display_name.clone(),
                         summoner_info: summoner.clone(),
-                        matches,
+                        matches: analysis_service::to_player_match_stats(&analysis),
+                        position_analysis: Some(analysis_service::to_multi_position_analysis(&analysis)),
                     });
                 }
                 Err(e) => {
@@ -60,7 +64,8 @@ pub async fn get_summoners_and_histories(
                     result.push(SummonerWithMatches {
                         display_name: summoner.display_name.clone(),
                         summoner_info: summoner.clone(),
-                        matches: PlayerMatchStats::default(), // 使用 Default trait
+                        matches: PlayerMatchStats::default(),
+                        position_analysis: None,
                     });
                 }
             }

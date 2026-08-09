@@ -13,11 +13,11 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Default)]
 pub struct TimelineData {
     // 对线期 (0-10分钟)
-    pub cs_per_min_0_10: Option<f64>,        // 每分钟补刀
-    pub gold_per_min_0_10: Option<f64>,      // 每分钟金币
-    pub xp_per_min_0_10: Option<f64>,        // 每分钟经验
-    pub cs_diff_0_10: Option<f64>,           // ⭐ 补刀差（相对对手）
-    pub xp_diff_0_10: Option<f64>,           // ⭐ 经验差（相对对手）
+    pub cs_per_min_0_10: Option<f64>,           // 每分钟补刀
+    pub gold_per_min_0_10: Option<f64>,         // 每分钟金币
+    pub xp_per_min_0_10: Option<f64>,           // 每分钟经验
+    pub cs_diff_0_10: Option<f64>,              // ⭐ 补刀差（相对对手）
+    pub xp_diff_0_10: Option<f64>,              // ⭐ 经验差（相对对手）
     pub damage_taken_per_min_0_10: Option<f64>, // 每分钟承伤
 
     // 发育期 (10-20分钟)
@@ -108,16 +108,16 @@ fn parse_timeline_data(timeline: &Value) -> Option<TimelineData> {
     if let Some(cs_deltas) = timeline.get("creepsPerMinDeltas") {
         data.cs_per_min_0_10 = parse_delta_value(cs_deltas, "0-10");
         data.cs_per_min_10_20 = parse_delta_value(cs_deltas, "10-20");
-        data.cs_per_min_20_end = parse_delta_value(cs_deltas, "20-30")
-            .or_else(|| parse_delta_value(cs_deltas, "20-end"));
+        data.cs_per_min_20_end =
+            parse_delta_value(cs_deltas, "20-30").or_else(|| parse_delta_value(cs_deltas, "20-end"));
     }
 
     // 解析 goldPerMinDeltas
     if let Some(gold_deltas) = timeline.get("goldPerMinDeltas") {
         data.gold_per_min_0_10 = parse_delta_value(gold_deltas, "0-10");
         data.gold_per_min_10_20 = parse_delta_value(gold_deltas, "10-20");
-        data.gold_per_min_20_end = parse_delta_value(gold_deltas, "20-30")
-            .or_else(|| parse_delta_value(gold_deltas, "20-end"));
+        data.gold_per_min_20_end =
+            parse_delta_value(gold_deltas, "20-30").or_else(|| parse_delta_value(gold_deltas, "20-end"));
     }
 
     // 解析 xpPerMinDeltas
@@ -130,8 +130,7 @@ fn parse_timeline_data(timeline: &Value) -> Option<TimelineData> {
     if let Some(cs_diff) = timeline.get("csDiffPerMinDeltas") {
         data.cs_diff_0_10 = parse_delta_value(cs_diff, "0-10");
         data.cs_diff_10_20 = parse_delta_value(cs_diff, "10-20");
-        data.cs_diff_20_end = parse_delta_value(cs_diff, "20-30")
-            .or_else(|| parse_delta_value(cs_diff, "20-end"));
+        data.cs_diff_20_end = parse_delta_value(cs_diff, "20-30").or_else(|| parse_delta_value(cs_diff, "20-end"));
     }
 
     // 解析 xpDiffPerMinDeltas ⭐ 关键
@@ -262,8 +261,7 @@ fn parse_game(game: &Value, target_puuid: &str) -> Option<ParsedGame> {
     let participant_identities = game.get("participantIdentities")?.as_array()?;
     let target_participant_id = participant_identities
         .iter()
-        .find(|p| p["player"]["puuid"].as_str() == Some(target_puuid))?
-        ["participantId"]
+        .find(|p| p["player"]["puuid"].as_str() == Some(target_puuid))?["participantId"]
         .as_i64()
         .unwrap_or(0) as i32;
 
@@ -288,10 +286,7 @@ fn parse_game(game: &Value, target_puuid: &str) -> Option<ParsedGame> {
 
 /// 解析游戏列表
 pub fn parse_games(games: &[Value], target_puuid: &str) -> Vec<ParsedGame> {
-    games
-        .iter()
-        .filter_map(|game| parse_game(game, target_puuid))
-        .collect()
+    games.iter().filter_map(|game| parse_game(game, target_puuid)).collect()
 }
 
 /// 识别主要位置

@@ -2,7 +2,6 @@
 ///
 /// 基于真实对局数据统计KDA、DPM、CSPM等指标的分布，
 /// 帮助优化算法阈值参数
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -15,10 +14,10 @@ pub struct StatsSummary {
     pub max: f64,
     pub mean: f64,
     pub median: f64,
-    pub p25: f64,  // 25分位数
-    pub p75: f64,  // 75分位数
-    pub p90: f64,  // 90分位数
-    pub p95: f64,  // 95分位数
+    pub p25: f64, // 25分位数
+    pub p75: f64, // 75分位数
+    pub p90: f64, // 90分位数
+    pub p95: f64, // 95分位数
     pub std_dev: f64,
     pub count: usize,
 }
@@ -40,21 +39,15 @@ pub struct ThresholdAnalysisResult {
 
 /// 分析原始数据文件，生成阈值建议
 #[tauri::command]
-pub async fn analyze_thresholds_from_raw_data(
-    file_path: String,
-) -> Result<String, String> {
+pub async fn analyze_thresholds_from_raw_data(file_path: String) -> Result<String, String> {
     println!("📊 分析阈值参数: {}", file_path);
 
     // 读取原始数据文件
-    let file_content = fs::read_to_string(&file_path)
-        .map_err(|e| format!("读取文件失败: {}", e))?;
+    let file_content = fs::read_to_string(&file_path).map_err(|e| format!("读取文件失败: {}", e))?;
 
-    let data: Value = serde_json::from_str(&file_content)
-        .map_err(|e| format!("解析JSON失败: {}", e))?;
+    let data: Value = serde_json::from_str(&file_content).map_err(|e| format!("解析JSON失败: {}", e))?;
 
-    let raw_matches = data["raw_matches"]
-        .as_array()
-        .ok_or("找不到raw_matches字段")?;
+    let raw_matches = data["raw_matches"].as_array().ok_or("找不到raw_matches字段")?;
 
     println!("📊 找到 {} 场对局", raw_matches.len());
 
@@ -67,7 +60,8 @@ pub async fn analyze_thresholds_from_raw_data(
         // 获取对局详情数据
         if let Some(detail_json) = match_data.get("match_detail_json") {
             if let Some(participants) = detail_json.get("participants").and_then(|p| p.as_array()) {
-                let game_duration_secs = detail_json.get("gameDuration")
+                let game_duration_secs = detail_json
+                    .get("gameDuration")
                     .and_then(|d| d.as_f64())
                     .unwrap_or(1800.0); // 默认30分钟
                 let game_duration_mins = game_duration_secs / 60.0;
@@ -279,4 +273,3 @@ fn calculate_stats(values: &[f64]) -> StatsSummary {
         count,
     }
 }
-

@@ -1,6 +1,6 @@
 use super::parser::ParsedGame;
+use crate::domains::analysis::evidence::position_from_role_lane;
 use crate::shared::types::{AnalysisChampionStats, MatchPerformance, PlayerMatchStats};
-use crate::infrastructure::data_services::champion_data::service::get_champion_info;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -45,33 +45,42 @@ impl AnalysisContext {
     }
 }
 
-/// 通用玩家战绩分析器
+/// 英雄名解析端口（领域层不认识静态数据来源）
+pub type ChampionNameResolver<'a> = &'a dyn Fn(i32) -> Option<String>;
+
+/// 通用玩家战绩分析器（无英雄名解析器时用占位名）
+pub fn analyze_player_stats(games: &[ParsedGame], puuid: &str, context: AnalysisContext) -> PlayerMatchStats {
+    analyze_player_stats_with_resolver(games, puuid, context, None)
+}
+
+/// 通用玩家战绩分析器（可注入英雄名解析）
 ///
 /// 输入：解析后的对局数据 (ParsedGame)
 /// 输出：完整的 PlayerMatchStats（包含所有计算好的字段）
-pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: AnalysisContext) -> PlayerMatchStats {
-    // 获取今天零点的时间戳（毫秒）
+///
+/// `position` 字段统一为 ASCII 位置码（TOP/JUNGLE/MID/ADC/SUPPORT/ARAM/FLEX/UNKNOWN），
+/// 中文展示由前端负责。
+pub fn analyze_player_stats_with_resolver(
+    games: &[ParsedGame],
+    _puuid: &str,
+    context: AnalysisContext,
+    champion_name: Option<ChampionNameResolver<'_>>,
+) -> PlayerMatchStats {
     let now = SystemTime::now();
     let since_epoch = now.duration_since(UNIX_EPOCH).unwrap();
     let current_ms = since_epoch.as_millis() as i64;
-    // 计算今天零点（UTC时区）
     let today_start_ms = (current_ms / 86400000) * 86400000;
 
-    // 过滤相关对局
     let relevant_games: Vec<&ParsedGame> = games
         .iter()
         .filter(|game| {
             let queue_id = game.queue_id as i32;
-
-            // 根据上下文过滤
             if let Some(current_queue) = context.current_queue_id {
-                // 精确匹配队列ID
                 queue_id == current_queue
             } else if context.ranked_only {
-                // 只统计排位赛（无具体队列时使用）
                 queue_id == 420 || queue_id == 440
             } else {
-                true // 无限制，显示所有对局
+                true
             }
         })
         .collect();
@@ -81,7 +90,6 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
         return PlayerMatchStats::default();
     }
 
-    // 初始化统计变量
     let mut wins = 0u32;
     let mut today_games = 0u32;
     let mut today_wins = 0u32;
@@ -95,7 +103,6 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
     let mut favorite_champions_map: HashMap<i32, (u32, u32)> = HashMap::new();
     let mut recent_performance = Vec::new();
 
-    // 遍历所有对局 (ParsedGame 已经包含解析好的玩家数据)
     for game in &relevant_games {
         let player = &game.player_data;
         let win = player.win;
@@ -104,7 +111,6 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
         let assists = player.assists as f64;
         let game_duration = game.game_duration as f64;
 
-        // 基础统计
         if win {
             wins += 1;
         }
@@ -112,13 +118,11 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
         total_deaths += deaths;
         total_assists += assists;
         total_duration_secs += game_duration;
-
-        // 衍生指标数据
         total_damage_to_champs += player.damage_to_champions as f64;
         total_vision_score += player.vision_score as f64;
-        total_cs += player.cs as f64;
+        // 总补刀 = 线兵 + 野怪；打野若只算 totalMinionsKilled 会落到辅助同级假 CS
+        total_cs += (player.cs + player.jungle_cs) as f64;
 
-        // 今日统计
         if game.game_creation >= today_start_ms {
             today_games += 1;
             if win {
@@ -126,7 +130,6 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
             }
         }
 
-        // 常用英雄统计
         let champion_id = player.champion_id;
         let entry = favorite_champions_map.entry(champion_id).or_insert((0, 0));
         entry.0 += 1;
@@ -134,20 +137,16 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
             entry.1 += 1;
         }
 
-        // 最近战绩
-        // ⭐ v3.1: 添加位置信息（传入queue_id以区分排位/非排位）
-        let position = role_to_position(&player.role, &player.lane, game.queue_id);
-
-        // 获取英雄名称
-        let champion_name = get_champion_info(player.champion_id)
-            .map(|info| info.name)
-            .unwrap_or_else(|| format!("未知英雄({})", player.champion_id));
+        let position = position_from_role_lane(&player.role, &player.lane, game.queue_id)
+            .as_str()
+            .to_string();
+        let champion_name_resolved = resolve_champion_name(champion_name, player.champion_id);
 
         recent_performance.push(MatchPerformance {
             game_id: Some(game.game_id),
             win,
             champion_id: player.champion_id,
-            champion_name,
+            champion_name: champion_name_resolved,
             kills: kills as i32,
             deaths: deaths as i32,
             assists: assists as i32,
@@ -155,35 +154,22 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
             game_duration: Some(game_duration as i32),
             game_creation: Some(game.game_creation),
             queue_id: Some(game.queue_id),
-            game_mode: None, // ParsedGame 没有 game_mode，可以后续添加
+            game_mode: None,
             role: player.role.clone(),
             lane: player.lane.clone(),
             position,
         });
     }
 
-    // 计算平均值和衍生指标
     let total_duration_mins = if total_duration_secs > 0.0 {
         total_duration_secs / 60.0
     } else {
-        1.0 // 避免除零
+        1.0
     };
 
-    let avg_kills = if total_games > 0 {
-        total_kills / total_games as f64
-    } else {
-        0.0
-    };
-    let avg_deaths = if total_games > 0 {
-        total_deaths / total_games as f64
-    } else {
-        0.0
-    };
-    let avg_assists = if total_games > 0 {
-        total_assists / total_games as f64
-    } else {
-        0.0
-    };
+    let avg_kills = total_kills / total_games as f64;
+    let avg_deaths = total_deaths / total_games as f64;
+    let avg_assists = total_assists / total_games as f64;
     let avg_kda = if total_deaths > 0.0 {
         (total_kills + total_assists) / total_deaths
     } else {
@@ -194,42 +180,28 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
     let cspm = total_cs / total_duration_mins;
     let vspm = total_vision_score / total_duration_mins;
 
-    // 处理常用英雄
     let mut favorite_champions: Vec<AnalysisChampionStats> = favorite_champions_map
         .into_iter()
-        .map(|(champion_id, (games, wins))| {
-            // 获取英雄名称
-            let champion_name = get_champion_info(champion_id)
-                .map(|info| info.name)
-                .unwrap_or_else(|| format!("未知英雄({})", champion_id));
-
-            AnalysisChampionStats {
-                champion_id,
-                champion_name,
-                games,
-                wins,
-                win_rate: if games > 0 {
-                    format_precision((wins as f64 / games as f64) * 100.0, 1)
-                } else {
-                    0.0
-                },
-            }
+        .map(|(champion_id, (games, wins))| AnalysisChampionStats {
+            champion_id,
+            champion_name: resolve_champion_name(champion_name, champion_id),
+            games,
+            wins,
+            win_rate: if games > 0 {
+                format_precision((wins as f64 / games as f64) * 100.0, 1)
+            } else {
+                0.0
+            },
         })
         .collect();
 
-    // 按游戏场次排序
     favorite_champions.sort_by(|a, b| b.games.cmp(&a.games));
 
-    // 构建结果（注意：traits 将由 traits_analyzer 填充）
     PlayerMatchStats {
         total_games,
         wins,
         losses: total_games - wins,
-        win_rate: if total_games > 0 {
-            format_precision((wins as f64 / total_games as f64) * 100.0, 1)
-        } else {
-            0.0
-        },
+        win_rate: format_precision((wins as f64 / total_games as f64) * 100.0, 1),
         avg_kills: format_precision(avg_kills, 2),
         avg_deaths: format_precision(avg_deaths, 2),
         avg_assists: format_precision(avg_assists, 2),
@@ -239,52 +211,15 @@ pub fn analyze_player_stats(games: &[ParsedGame], _puuid: &str, context: Analysi
         dpm: format_precision(dpm, 1),
         cspm: format_precision(cspm, 2),
         vspm: format_precision(vspm, 2),
-        traits: Vec::new(), // 由 traits_analyzer 填充
+        traits: Vec::new(),
         favorite_champions,
         recent_performance,
-        advice: Vec::new(), // ⭐ v3.0: 由 advice 模块填充
+        advice: Vec::new(),
     }
 }
 
-/// ⭐ v3.2: 将 role/lane 转换为中文位置名称（基于真实数据优化）
-/// ⭐ v3.3: 增加 queue_id 参数，区分排位赛和非排位赛
-fn role_to_position(role: &str, lane: &str, queue_id: i64) -> String {
-    // ⭐ 非排位赛（大乱斗、无限火力等）直接返回"灵活"，不做位置识别
-    // 只有排位赛（420单排、440灵活排）才需要位置分析
-    if queue_id != 420 && queue_id != 440 {
-        return "灵活".to_string();
-    }
-
-    // ✅ 以下逻辑仅用于排位赛
-    let position = match (role, lane) {
-        // 标准位置匹配（优先匹配role）
-        ("DUO_CARRY", _) | ("CARRY", _) => "ADC",
-        ("DUO_SUPPORT", _) | ("SUPPORT", _) => "辅助",
-        ("SOLO", "TOP") => "上单",
-        ("SOLO", "MIDDLE") | ("SOLO", "MID") => "中单",
-        ("NONE", "JUNGLE") | ("JUNGLE", _) => "打野",
-        ("DUO", "BOTTOM") => "下路", // DUO可能是ADC或辅助，但无法精确区分
-
-        // 仅根据 lane 判断（当 role 是 NONE 但 lane 有值时）
-        ("NONE", "TOP") => "上单",
-        ("NONE", "MIDDLE") | ("NONE", "MID") => "中单",
-        ("NONE", "BOTTOM") => "下路", // 无法区分 ADC/辅助
-
-        // SOLO + BOTTOM 的特殊情况（可能是单人路或特殊玩法）
-        ("SOLO", "BOTTOM") => "下路",
-
-        // ⚠️ 排位赛中遇到位置数据缺失的情况（异常数据）
-        ("NONE", "NONE") | ("SOLO", "NONE") => {
-            println!("⚠️ 排位赛(queueId={})中位置数据缺失: role={}, lane={}", queue_id, role, lane);
-            "未知" // 标记为未知，便于追踪数据问题
-        }
-
-        // 其他未知情况，记录日志以便调试
-        _ => {
-            println!("⚠️ 未识别的位置组合: role={}, lane={}, queueId={}", role, lane, queue_id);
-            "未知"
-        }
-    };
-
-    position.to_string()
+fn resolve_champion_name(resolver: Option<ChampionNameResolver<'_>>, champion_id: i32) -> String {
+    resolver
+        .and_then(|resolve| resolve(champion_id))
+        .unwrap_or_else(|| format!("未知英雄({})", champion_id))
 }

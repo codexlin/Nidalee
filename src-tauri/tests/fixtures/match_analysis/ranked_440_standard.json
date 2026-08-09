@@ -1,0 +1,70 @@
+{
+  "gameId": 1000000001,
+  "queueId": 440,
+  "gameDuration": 1834,
+  "gameCreation": 1700000000000,
+  "participantIdentities": [
+    { "participantId": 1, "player": { "puuid": "00000000-0000-4000-8000-000000000001" } },
+    { "participantId": 2, "player": { "puuid": "00000000-0000-4000-8000-000000000002" } }
+  ],
+  "participants": [
+    {
+      "participantId": 1,
+      "championId": 64,
+      "teamId": 100,
+      "stats": {
+        "win": true,
+        "kills": 8,
+        "deaths": 4,
+        "assists": 10,
+        "totalDamageDealtToChampions": 21500,
+        "totalDamageTaken": 24800,
+        "goldEarned": 13200,
+        "visionScore": 32,
+        "wardsPlaced": 11,
+        "wardsKilled": 4,
+        "totalMinionsKilled": 42,
+        "neutralMinionsKilled": 118
+      },
+      "timeline": {
+        "role": "JUNGLE",
+        "lane": "NONE",
+        "creepsPerMinDeltas": { "0-10": 4.8, "10-20": 5.6, "20-30": 5.1 },
+        "goldPerMinDeltas": { "0-10": 320.0, "10-20": 430.0, "20-30": 470.0 },
+        "xpPerMinDeltas": { "0-10": 410.0, "10-20": 520.0 },
+        "csDiffPerMinDeltas": { "0-10": 0.6, "10-20": 1.1, "20-30": 0.4 },
+        "xpDiffPerMinDeltas": { "0-10": 25.0, "10-20": 48.0 },
+        "damageTakenPerMinDeltas": { "0-10": 620.0, "10-20": 780.0 }
+      }
+    },
+    {
+      "participantId": 2,
+      "championId": 60,
+      "teamId": 200,
+      "stats": {
+        "win": false,
+        "kills": 5,
+        "deaths": 9,
+        "assists": 6,
+        "totalDamageDealtToChampions": 16400,
+        "totalDamageTaken": 27100,
+        "goldEarned": 11100,
+        "visionScore": 24,
+        "wardsPlaced": 8,
+        "wardsKilled": 2,
+        "totalMinionsKilled": 30,
+        "neutralMinionsKilled": 96
+      },
+      "timeline": {
+        "role": "JUNGLE",
+        "lane": "NONE",
+        "creepsPerMinDeltas": { "0-10": 4.2, "10-20": 4.5, "20-30": 4.7 },
+        "goldPerMinDeltas": { "0-10": 290.0, "10-20": 360.0, "20-30": 400.0 },
+        "xpPerMinDeltas": { "0-10": 385.0, "10-20": 472.0 },
+        "csDiffPerMinDeltas": { "0-10": -0.6, "10-20": -1.1, "20-30": -0.4 },
+        "xpDiffPerMinDeltas": { "0-10": -25.0, "10-20": -48.0 },
+        "damageTakenPerMinDeltas": { "0-10": 700.0, "10-20": 860.0 }
+      }
+    }
+  ]
+}
