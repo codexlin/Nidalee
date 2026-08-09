@@ -39,6 +39,24 @@ fn keep_canonical_spell_id(map: &mut HashMap<String, i64>, name: String, id: i64
         .or_insert(id);
 }
 
+fn build_summoner_spell_maps(
+    spells: Vec<SummonerSpellInfo>,
+) -> (HashMap<i64, SummonerSpellInfo>, HashMap<String, i64>) {
+    let mut data_map = HashMap::new();
+    let mut name_map = HashMap::new();
+
+    for spell in spells {
+        if spell.id == -1 || spell.id == 4294967295 || spell.name.is_empty() {
+            continue;
+        }
+
+        data_map.insert(spell.id, spell.clone());
+        keep_canonical_spell_id(&mut name_map, spell.name.clone(), spell.id);
+    }
+
+    (data_map, name_map)
+}
+
 /// 从 Community Dragon 获取召唤师技能数据并构建映射
 pub async fn load_summoner_spell_data() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 检查是否已加载
@@ -59,22 +77,7 @@ pub async fn load_summoner_spell_data() -> Result<(), Box<dyn std::error::Error 
         .error_for_status()?;
     let spells: Vec<SummonerSpellInfo> = response.json().await?;
 
-    // 构建两个映射表
-    let mut data_map: HashMap<i64, SummonerSpellInfo> = HashMap::new();
-    let mut name_map: HashMap<String, i64> = HashMap::new();
-
-    for spell in spells {
-        // 过滤掉无效的技能（id 为 -1 或 4294967295 等无效值）
-        if spell.id == -1 || spell.id == 4294967295 || spell.name.is_empty() {
-            continue;
-        }
-
-        // ID 映射（保留全部条目，按 ID 直查模式变体仍然有效）
-        data_map.insert(spell.id, spell.clone());
-
-        // 名称映射（用于反查 ID），冲突时保留本体
-        keep_canonical_spell_id(&mut name_map, spell.name.clone(), spell.id);
-    }
+    let (data_map, name_map) = build_summoner_spell_maps(spells);
 
     log::info!(
         "[SummonerSpells] ✅ 召唤师技能数据加载完成，共 {} 个技能",
@@ -178,29 +181,20 @@ mod tests {
         assert_eq!(map.len(), 2);
     }
 
-    #[tokio::test]
-    async fn test_load_summoner_spell_data() {
-        let result = load_summoner_spell_data().await;
-        assert!(result.is_ok());
-        assert!(is_loaded());
+    #[test]
+    fn builds_spell_maps_without_network() {
+        let spells = serde_json::from_value(serde_json::json!([
+            { "id": 4, "name": "闪现", "description": "", "summonerLevel": 1, "cooldown": 300, "gameModes": ["CLASSIC"], "iconPath": "flash.png" },
+            { "id": 714, "name": "引燃", "description": "", "summonerLevel": 1, "cooldown": 1, "gameModes": ["JADE"], "iconPath": "jade-ignite.png" },
+            { "id": 14, "name": "引燃", "description": "", "summonerLevel": 1, "cooldown": 180, "gameModes": ["CLASSIC"], "iconPath": "ignite.png" },
+            { "id": -1, "name": "无效", "description": "", "summonerLevel": 0, "cooldown": 0, "gameModes": [], "iconPath": "" }
+        ]))
+        .expect("离线召唤师技能 fixture 应可解析");
 
-        // 测试常见技能
-        let flash = get_summoner_spell_info(4);
-        assert!(flash.is_some());
-        assert_eq!(flash.unwrap().name, "闪现");
-
-        let smite = get_summoner_spell_info(11);
-        assert!(smite.is_some());
-        assert_eq!(smite.unwrap().name, "惩戒");
-
-        // 测试名称查询
-        let ignite = get_spell_by_name("引燃");
-        assert!(ignite.is_some());
-        assert_eq!(ignite.unwrap().id, 14);
-
-        // 测试获取所有技能
-        let all_spells = get_all_summoner_spells();
-        assert!(all_spells.is_some());
-        assert!(all_spells.unwrap().len() > 10);
+        let (data, names) = build_summoner_spell_maps(spells);
+        assert_eq!(data.len(), 3);
+        assert_eq!(data.get(&4).map(|spell| spell.name.as_str()), Some("闪现"));
+        assert_eq!(names.get("引燃").copied(), Some(14));
+        assert!(!data.contains_key(&-1));
     }
 }

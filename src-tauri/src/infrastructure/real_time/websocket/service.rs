@@ -67,7 +67,7 @@ async fn ensure_subscribed(
 async fn fallback_fetch_and_emit(app: &tauri::AppHandle, phase_hint: Option<&str>) {
     // Construct an HTTP client with a short timeout.
     let client = match reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
+        .tls_danger_accept_invalid_certs(true)
         .timeout(Duration::from_secs(5))
         .build()
     {

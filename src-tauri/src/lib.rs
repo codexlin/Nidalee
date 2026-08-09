@@ -128,6 +128,8 @@ pub fn run() {
             common::commands::game::select_game_path,
             common::commands::game::save_game_path,
             common::commands::game::get_saved_game_path,
+            common::commands::export::save_png_file,
+            common::commands::export::copy_png_to_clipboard,
             // 数据收集测试命令
             #[cfg(debug_assertions)]
             common::commands::data_collection::generate_test_data_file,

@@ -5,7 +5,7 @@ use reqwest::Client;
 /// 全局的LCU HTTP客户端，单例模式
 static LCU_CLIENT: Lazy<Client> = Lazy::new(|| {
     Client::builder()
-        .danger_accept_invalid_certs(true)
+        .tls_danger_accept_invalid_certs(true)
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .expect("Failed to create LCU HTTP client")

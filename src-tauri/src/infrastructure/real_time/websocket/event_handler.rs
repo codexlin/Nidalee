@@ -48,7 +48,7 @@ pub struct WsEventHandler {
 impl WsEventHandler {
     pub fn new(app: AppHandle) -> Self {
         let client = Client::builder()
-            .danger_accept_invalid_certs(true)
+            .tls_danger_accept_invalid_certs(true)
             .timeout(std::time::Duration::from_secs(5))
             .build()
             .unwrap_or_else(|_| Client::new());

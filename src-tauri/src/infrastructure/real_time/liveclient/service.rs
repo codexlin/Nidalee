@@ -36,7 +36,7 @@ async fn detect_liveclient_port() -> Option<u16> {
 /// 测试指定端口是否可用
 async fn test_liveclient_port(port: u16) -> bool {
     let client = match reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
+        .tls_danger_accept_invalid_certs(true)
         .timeout(std::time::Duration::from_secs(2))
         .build()
     {
@@ -59,7 +59,7 @@ pub async fn get_live_player_list() -> Result<Vec<crate::shared::types::LiveClie
     let liveclient_port = detect_liveclient_port().await.unwrap_or(2999);
 
     let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
+        .tls_danger_accept_invalid_certs(true)
         .timeout(std::time::Duration::from_secs(5))
         .build()
         .map_err(|e| e.to_string())?;
@@ -102,7 +102,7 @@ pub async fn get_live_events() -> Result<Vec<Value>, String> {
     let liveclient_port = detect_liveclient_port().await.unwrap_or(2999);
 
     let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
+        .tls_danger_accept_invalid_certs(true)
         .timeout(std::time::Duration::from_secs(5))
         .build()
         .map_err(|e| e.to_string())?;
@@ -121,7 +121,7 @@ pub async fn get_game_stats() -> Result<Value, String> {
     let liveclient_port = detect_liveclient_port().await.unwrap_or(2999);
 
     let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
+        .tls_danger_accept_invalid_certs(true)
         .timeout(std::time::Duration::from_secs(5))
         .build()
         .map_err(|e| e.to_string())?;

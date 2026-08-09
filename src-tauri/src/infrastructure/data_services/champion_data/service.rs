@@ -43,6 +43,29 @@ fn keep_canonical_champion_id(map: &mut HashMap<String, i32>, name: String, id: 
         .or_insert(id);
 }
 
+type ChampionMaps = (HashMap<String, i32>, HashMap<String, i32>, HashMap<i32, ChampionInfo>);
+
+fn build_champion_maps(champions: Vec<ChampionInfo>) -> ChampionMaps {
+    let mut alias_map = HashMap::new();
+    let mut name_map = HashMap::new();
+    let mut data_map = HashMap::new();
+
+    for champ in champions {
+        if champ.id < 0 {
+            continue;
+        }
+
+        alias_map.insert(champ.alias.to_lowercase(), champ.id);
+        keep_canonical_champion_id(&mut name_map, champ.name.clone(), champ.id);
+        if !champ.description.is_empty() {
+            keep_canonical_champion_id(&mut name_map, champ.description.clone(), champ.id);
+        }
+        data_map.insert(champ.id, champ);
+    }
+
+    (alias_map, name_map, data_map)
+}
+
 /// 从 Community Dragon 获取英雄摘要数据并构建映射
 pub async fn load_champion_data() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 检查是否已加载
@@ -63,32 +86,7 @@ pub async fn load_champion_data() -> Result<(), Box<dyn std::error::Error + Send
         .error_for_status()?;
     let champions: Vec<ChampionInfo> = response.json().await?;
 
-    // 构建三个映射表
-    let mut alias_map: HashMap<String, i32> = HashMap::new();
-    let mut name_map: HashMap<String, i32> = HashMap::new();
-    let mut data_map: HashMap<i32, ChampionInfo> = HashMap::new();
-
-    for champ in champions {
-        // 过滤掉 id = -1 的"无"英雄
-        if champ.id < 0 {
-            continue;
-        }
-
-        // 别名映射（英文名，统一转小写）
-        // 变体的 alias 自带前缀（如 `Jade_Annie`），不会和本体冲突
-        alias_map.insert(champ.alias.to_lowercase(), champ.id);
-
-        // 名称映射（中文名，支持多种查找方式）
-        // 1. 完整名称，如 "黑暗之女"
-        keep_canonical_champion_id(&mut name_map, champ.name.clone(), champ.id);
-        // 2. 英雄称号，如 "安妮"（如果不为空）
-        if !champ.description.is_empty() {
-            keep_canonical_champion_id(&mut name_map, champ.description.clone(), champ.id);
-        }
-
-        // ID 映射（保留全部条目，按 ID 直查变体仍然有效）
-        data_map.insert(champ.id, champ);
-    }
+    let (alias_map, name_map, data_map) = build_champion_maps(champions);
 
     log::info!("[ChampionData] ✅ 英雄数据加载完成，共 {} 个英雄", alias_map.len());
 
@@ -208,35 +206,20 @@ mod tests {
         assert_eq!(map.len(), 2);
     }
 
-    #[tokio::test]
-    async fn test_load_champion_data() {
-        let result = load_champion_data().await;
-        assert!(result.is_ok());
-        assert!(is_loaded());
+    #[test]
+    fn builds_champion_maps_without_network() {
+        let champions = serde_json::from_value(serde_json::json!([
+            { "id": 60001, "name": "黑暗之女", "description": "安妮", "alias": "Jade_Annie", "contentId": "variant", "squarePortraitPath": "variant.png", "roles": ["mage"] },
+            { "id": 1, "name": "黑暗之女", "description": "安妮", "alias": "Annie", "contentId": "base", "squarePortraitPath": "annie.png", "roles": ["mage"] },
+            { "id": -1, "name": "无", "description": "", "alias": "None", "contentId": "", "squarePortraitPath": "", "roles": [] }
+        ]))
+        .expect("离线英雄 fixture 应可解析");
 
-        // 测试别名查询（英文名，不区分大小写）
-        let yasuo_id_lower = get_champion_id_by_alias("yasuo");
-        let yasuo_id_upper = get_champion_id_by_alias("Yasuo");
-        assert_eq!(yasuo_id_lower, Some(157));
-        assert_eq!(yasuo_id_upper, Some(157));
-
-        // 测试中文名称查询
-        let annie_id_by_name = get_champion_id_by_name("黑暗之女");
-        assert_eq!(annie_id_by_name, Some(1));
-
-        let annie_id_by_desc = get_champion_id_by_name("安妮");
-        assert_eq!(annie_id_by_desc, Some(1));
-
-        // 测试 ID 查询
-        let yasuo_info = get_champion_info(157);
-        assert!(yasuo_info.is_some());
-        if let Some(info) = yasuo_info {
-            assert_eq!(info.alias, "Yasuo");
-        }
-
-        // 测试获取所有英雄
-        let all_champions = get_all_champions();
-        assert!(all_champions.is_some());
-        assert!(all_champions.unwrap().len() > 100); // LOL 有超过 100 个英雄
+        let (aliases, names, data) = build_champion_maps(champions);
+        assert_eq!(aliases.get("annie").copied(), Some(1));
+        assert_eq!(aliases.get("jade_annie").copied(), Some(60001));
+        assert_eq!(names.get("黑暗之女").copied(), Some(1));
+        assert_eq!(names.get("安妮").copied(), Some(1));
+        assert!(!data.contains_key(&-1));
     }
 }

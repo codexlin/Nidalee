@@ -29,7 +29,7 @@ struct OptimizedPollingState {
 impl OptimizedPollingManager {
     pub fn new(app: AppHandle) -> Self {
         let client = reqwest::Client::builder()
-            .danger_accept_invalid_certs(true)
+            .tls_danger_accept_invalid_certs(true)
             .timeout(Duration::from_secs(8))
             .build()
             .expect("Failed to create HTTP client");

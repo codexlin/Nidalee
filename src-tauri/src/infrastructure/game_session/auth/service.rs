@@ -148,7 +148,7 @@ pub fn invalidate_auth_info() {
 /// 验证 AuthInfo 是否真正可用（通过简单的 API 测试）
 pub async fn validate_auth_connection(auth: &LcuAuthInfo) -> bool {
     let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
+        .tls_danger_accept_invalid_certs(true)
         .timeout(Duration::from_secs(5))
         .build();
 
