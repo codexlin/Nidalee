@@ -1,5 +1,9 @@
 # Local debug dumps
 tmp/
+raw_match_data_*.json
+
+# Root-level Rust tooling/build cache
+/target/
 
 # Logs
 logs
