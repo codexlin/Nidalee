@@ -43,6 +43,12 @@
               <div class="border-t border-dashed border-border pt-6">
                 <ThemeCustomizer />
               </div>
+              <div class="border-t border-dashed border-border pt-6 space-y-1">
+                <h3 class="text-sm font-medium text-foreground">字体声明</h3>
+                <p class="text-xs text-muted-foreground leading-relaxed">
+                  界面字体使用 HarmonyOS Sans Fonts。Copyright 2021 Huawei Device Co., Ltd.
+                </p>
+              </div>
             </div>
           </Card>
         </TabsContent>
