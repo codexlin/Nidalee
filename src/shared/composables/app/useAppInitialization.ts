@@ -1,5 +1,5 @@
 import { getLatestVersion } from '@/lib'
-import { useQueues } from '@/shared/composables/data/useVersionedData'
+import { useQueues, useSummonerSpells } from '@/shared/composables/data/useVersionedData'
 
 /**
  * 应用初始化组合式函数
@@ -42,8 +42,9 @@ export function useAppInitialization() {
     }
   }
 
-  // 预加载 CDragon 队列中文名（不依赖 LCU）
+  // 预加载 CDragon 静态目录（不依赖 LCU）
   useQueues()
+  useSummonerSpells()
 
   const initializeApp = async () => {
     try {

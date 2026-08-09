@@ -52,14 +52,16 @@ interface Props {
 
 defineProps<Props>()
 
+// 保证技能目录已加载（App 初始化也会拉；此处兜底）
+useSummonerSpells()
+
 // 格式化百分比
 const formatPercentage = (value: number): string => {
   return (value * 100).toFixed(1) + '%'
 }
 
-// 召唤师技能图标错误处理
 const onSpellImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
-  img.src = '/src/assets/SpellIconFiles/1.png'
+  img.style.visibility = 'hidden'
 }
 </script>

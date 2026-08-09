@@ -372,8 +372,19 @@ export async function fetchChampions(version?: string): Promise<ApiResponse<DDra
   }
 }
 
+/** Community Dragon 召唤师技能（含 iconPath） */
+export interface CommunityDragonSummonerSpell {
+  id: number
+  name: string
+  description: string
+  summonerLevel: number
+  cooldown: number
+  gameModes: string[]
+  iconPath: string
+}
+
 /**
- * 获取召唤师技能数据
+ * 获取召唤师技能数据（Data Dragon，旧格式）
  */
 export async function fetchSummonerSpells(version?: string): Promise<ApiResponse<unknown>> {
   try {
@@ -398,6 +409,41 @@ export async function fetchSummonerSpells(version?: string): Promise<ApiResponse
       success: true,
       data: data.value,
       version: gameVersion
+    }
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+/**
+ * Community Dragon 召唤师技能列表（id + iconPath，与后端 load_summoner_spell_data 同源）
+ */
+export async function fetchCommunityDragonSummonerSpells(): Promise<ApiResponse<CommunityDragonSummonerSpell[]>> {
+  try {
+    const url =
+      'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/zh_cn/v1/summoner-spells.json'
+
+    const { data, error, statusCode } = await useApiFetch(url).json<CommunityDragonSummonerSpell[]>()
+
+    if (error.value) {
+      throw new Error(error.value)
+    }
+
+    if (statusCode.value !== 200) {
+      throw new Error(`HTTP ${statusCode.value}`)
+    }
+
+    if (!data.value) {
+      throw new Error('No data received')
+    }
+
+    return {
+      success: true,
+      data: data.value
     }
   } catch (error) {
     return {
@@ -452,8 +498,7 @@ export async function fetchSkins(): Promise<ApiResponse<CommunityDragonSkin[]>> 
  */
 export async function fetchQueues(): Promise<ApiResponse<CDragonQueue[]>> {
   try {
-    const url =
-      'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/zh_cn/v1/queues.json'
+    const url = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/zh_cn/v1/queues.json'
 
     const { data, error, statusCode } = await useApiFetch(url).json<CDragonQueue[]>()
 

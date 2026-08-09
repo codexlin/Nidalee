@@ -5,6 +5,7 @@ import { getMapById, getQueueDisplayName } from '@/common'
 
 // 主题配置模块
 export * from './theme'
+export * from './themeColor'
 
 // 其他辅助函数
 export const getPlayerProfileIcon = (participantId: number, gameDetail: GameDetail): number => {
@@ -78,29 +79,67 @@ export const getCommunityDragonUrl = (path: string): string => {
   return `https://raw.communitydragon.org/latest/plugins/${cleanPath}`
 }
 
+/**
+ * LCU / CDragon `iconPath` → 可访问的 Community Dragon CDN URL
+ *
+ * `/lol-game-data/assets/DATA/Spells/Icons2D/Summoner_flash.png`
+ * → `.../rcp-be-lol-game-data/global/default/data/spells/icons2d/summoner_flash.png`
+ */
+export const getLolGameDataAssetUrl = (iconPath: string): string => {
+  if (!iconPath) return ''
+  if (iconPath.startsWith('http')) return iconPath
+
+  const marker = '/lol-game-data/assets/'
+  const idx = iconPath.indexOf(marker)
+  if (idx >= 0) {
+    const rest = iconPath.slice(idx + marker.length)
+    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/${rest.toLowerCase()}`
+  }
+
+  return ''
+}
+
+/** 符文 iconPath → CDN（复用通用资产路径转换） */
+export const getPerkImageUrlFromIconPath = (iconPath: string, fallbackId?: number): string => {
+  const fromPath = getLolGameDataAssetUrl(iconPath)
+  if (fromPath) return fromPath
+  if (fallbackId === null || fallbackId === undefined) return ''
+  return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/${fallbackId}.png`
+}
+
 // 根据符文ID获取符文图标URL（使用Community Dragon）
 export const getPerkIconUrlByCommunityDragon = (perkId: number, perks: CommunityDragonPerk[]): string => {
   const perk = perks.find((p) => p.id === perkId)
-
-  if (!perk || !perk.iconPath) {
-    // 如果找不到符文，返回默认图标
-    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/${perkId}.png`
-  }
-
-  // 处理iconPath，截取/lol-game-data/assets/v1/perk-images之后的部分
-  const iconPath = perk.iconPath
-  const basePath = '/lol-game-data/assets/v1/perk-images'
-
-  if (iconPath.includes(basePath)) {
-    const relativePath = iconPath.substring(iconPath.indexOf(basePath) + basePath.length)
-    // 移除开头的斜杠并转换为小写
-    const cleanPath = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath
-    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/${cleanPath.toLowerCase()}`
-  }
-
-  // 如果无法解析路径，返回默认路径
-  return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/${perkId}.png`
+  return getPerkImageUrlFromIconPath(perk?.iconPath ?? '', perkId)
 }
+
+/** 召唤师技能目录：id → { name, iconPath }（由 CDragon JSON 填充，勿手写死表） */
+export type SummonerSpellCatalogEntry = {
+  id: number
+  name: string
+  iconPath: string
+}
+
+let summonerSpellCatalog = new Map<number, SummonerSpellCatalogEntry>()
+
+export const setSummonerSpellCatalog = (spells: Array<{ id: number | string; name?: string; iconPath?: string }>) => {
+  const next = new Map<number, SummonerSpellCatalogEntry>()
+  for (const spell of spells) {
+    const id = Number(spell.id)
+    // 过滤无效 / 占位 ID（如 4294967295）
+    if (!Number.isFinite(id) || id <= 0 || id >= 0xffff_ffff) continue
+    if (!spell.iconPath) continue
+    next.set(id, {
+      id,
+      name: spell.name?.trim() || `技能${id}`,
+      iconPath: spell.iconPath
+    })
+  }
+  summonerSpellCatalog = next
+}
+
+export const getSummonerSpellCatalogEntry = (spellId: number): SummonerSpellCatalogEntry | undefined =>
+  summonerSpellCatalog.get(spellId)
 
 /**
  * 根据玩家头像ID获取头像URL
@@ -144,18 +183,54 @@ export const getItemIconByCdnUrl = (itemId: number): string => {
 }
 
 /**
- * 根据段位tier获取段位图标URL
- * @param tier 段位tier
- * @returns 段位图标URL
- * @example
- * import { getRankIconUrl } from '@/lib'
- * const url = getRankIconUrl('CHALLENGER')
- * // https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-leagues/global/default/images/challenger.png
+ * 段位小图标（Community Dragon ranked-mini-crests，TFT 套更完整，含 emerald）
+ *
+ * 注意：`ranked-emblem/emblem-*.png` 是带大片黑底的宽幅展示图，不适合 UI 图标。
+ * @example getRankIconUrl('GOLD')
+ * // .../images/ranked-mini-crests/gold_tft.svg
  */
 export const getRankIconUrl = (tier: string): string => {
   if (!tier) return ''
-  const tierLower = tier.toLowerCase()
-  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-leagues/global/default/images/${tierLower}.png`
+  const tierLower = tier.toLowerCase().trim()
+  if (tierLower === 'none') return ''
+  // unranked 文件名是连字符：unranked-tft.svg；其余为 {tier}_tft.svg
+  const file = tierLower === 'unranked' ? 'unranked-tft.svg' : `${tierLower}_tft.svg`
+  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${file}`
+}
+
+/**
+ * 挑战水晶小图标（Community Dragon challenge-mini-crystal）
+ * 资源无 emerald；遇到时回退到 platinum。
+ */
+export const getChallengeCrystalIconUrl = (level: string | null | undefined): string => {
+  if (!level) return ''
+  let tier = level.toLowerCase().trim()
+  if (!tier || tier === 'none' || tier === 'unranked') return ''
+  // challenge-mini-crystal 目录没有 emerald.svg
+  if (tier === 'emerald') tier = 'platinum'
+  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/challenge-mini-crystal/${tier}.svg`
+}
+
+/**
+ * 分路 / 位置图标（Community Dragon honor/roleicon_*）
+ * 兼容后端码（TOP/MID/ADC/SUPPORT）与 LCU 码（MIDDLE/BOTTOM/UTILITY）
+ */
+export const getRoleIconUrl = (position: string | null | undefined): string => {
+  if (!position) return ''
+  const key = position.toUpperCase().trim()
+  const roleMap: Record<string, string> = {
+    TOP: 'top',
+    JUNGLE: 'jungle',
+    MID: 'middle',
+    MIDDLE: 'middle',
+    ADC: 'bottom',
+    BOTTOM: 'bottom',
+    SUPPORT: 'utility',
+    UTILITY: 'utility'
+  }
+  const role = roleMap[key]
+  if (!role) return ''
+  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/honor/roleicon_${role}.png`
 }
 
 // 时间相关函数
@@ -547,46 +622,29 @@ export const getChampionName = (championId: number | string | null): string => {
   return championMap[championId] || `英雄${championId}`
 }
 
+/** 召唤师技能图标：目录里的 iconPath → CDN（需先 setSummonerSpellCatalog） */
 export const getSpellIconUrl = (spellId: number | null): string => {
   if (!spellId) return ''
-  return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${spellId}.png`
+  const entry = summonerSpellCatalog.get(Number(spellId))
+  return entry ? getLolGameDataAssetUrl(entry.iconPath) : ''
 }
-// 召唤师技能图标
+
+/** 召唤师技能名称 + 图标（数据来自 CDragon summoner-spells.json，非本地死表） */
 export const getSpellMeta = (spellId: number | bigint | null): { label: string; icon: string } => {
   if (spellId === null || spellId === undefined) return { label: '', icon: '' }
   const id = Number(spellId)
   if (!id) return { label: '', icon: '' }
-  const spellMap: Record<number, { label: string; icon: string }> = {
-    1: { label: '净化', icon: new URL('@/assets/SpellIconFiles/1.png', import.meta.url).href },
-    3: { label: '虚弱', icon: new URL('@/assets/SpellIconFiles/3.png', import.meta.url).href },
-    4: { label: '闪现', icon: new URL('@/assets/SpellIconFiles/4.png', import.meta.url).href },
-    6: { label: '幽灵疾步', icon: new URL('@/assets/SpellIconFiles/6.png', import.meta.url).href },
-    7: { label: '治疗术', icon: new URL('@/assets/SpellIconFiles/7.png', import.meta.url).href },
-    11: { label: '惩戒', icon: new URL('@/assets/SpellIconFiles/11.png', import.meta.url).href },
-    12: { label: '传送', icon: new URL('@/assets/SpellIconFiles/12.png', import.meta.url).href },
-    13: { label: '清晰术', icon: new URL('@/assets/SpellIconFiles/13.png', import.meta.url).href },
-    14: { label: '点燃', icon: new URL('@/assets/SpellIconFiles/14.png', import.meta.url).href },
-    21: { label: '屏障', icon: new URL('@/assets/SpellIconFiles/21.png', import.meta.url).href },
-    32: { label: '雪球', icon: new URL('@/assets/SpellIconFiles/32.png', import.meta.url).href }
+  const entry = summonerSpellCatalog.get(id)
+  if (!entry) return { label: `技能${id}`, icon: '' }
+  return {
+    label: entry.name,
+    icon: getLolGameDataAssetUrl(entry.iconPath)
   }
-  return spellMap[id] || { label: `技能${id}`, icon: '' }
 }
-// 段位图标
+/** 段位图标（Community Dragon，等同 getRankIconUrl） */
 export const getTierIconUrl = (tier: string | undefined): string => {
   if (!tier) return ''
-  const tierMap: Record<string, string> = {
-    IRON: new URL('@/assets/RankedIconFiles/IRON.png', import.meta.url).href,
-    BRONZE: new URL('@/assets/RankedIconFiles/BRONZE.png', import.meta.url).href,
-    SILVER: new URL('@/assets/RankedIconFiles/SILVER.png', import.meta.url).href,
-    GOLD: new URL('@/assets/RankedIconFiles/GOLD.png', import.meta.url).href,
-    PLATINUM: new URL('@/assets/RankedIconFiles/PLATINUM.png', import.meta.url).href,
-    EMERALD: new URL('@/assets/RankedIconFiles/EMERALD.png', import.meta.url).href,
-    DIAMOND: new URL('@/assets/RankedIconFiles/DIAMOND.png', import.meta.url).href,
-    MASTER: new URL('@/assets/RankedIconFiles/MASTER.png', import.meta.url).href,
-    GRANDMASTER: new URL('@/assets/RankedIconFiles/GRANDMASTER.png', import.meta.url).href,
-    CHALLENGER: new URL('@/assets/RankedIconFiles/CHALLENGER.png', import.meta.url).href
-  }
-  return tierMap[tier] || ''
+  return getRankIconUrl(tier)
 }
 // 获取最新版本号
 export const getLatestVersion = async () => {
@@ -638,10 +696,7 @@ export const getChampionInfoById = async (
   return await resp.json()
 }
 // 获取所有物品数据
-export const getAllItems = async (
-  gameVersion: string,
-  language: string = 'zh_CN'
-): Promise<DDragonItemsResponse> => {
+export const getAllItems = async (gameVersion: string, language: string = 'zh_CN'): Promise<DDragonItemsResponse> => {
   const resp = await fetch(`https://ddragon.leagueoflegends.com/cdn/${gameVersion}/data/${language}/item.json`)
   return await resp.json()
 }

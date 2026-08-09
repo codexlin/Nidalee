@@ -8,11 +8,14 @@
 import { invoke } from '@tauri-apps/api/core'
 import { computed, type Ref, watchEffect } from 'vue'
 import { useQuery, type UseQueryReturnType } from '@tanstack/vue-query'
+import { setSummonerSpellCatalog } from '@/lib'
 import {
   fetchCommunityDragonPerks,
+  fetchCommunityDragonSummonerSpells,
   fetchQueues,
   type CDragonQueue,
-  type CommunityDragonPerk
+  type CommunityDragonPerk,
+  type CommunityDragonSummonerSpell
 } from '@/lib/dataApi'
 import { setCdragonQueueNames } from '@/common/queueCatalog'
 
@@ -116,19 +119,33 @@ export function usePerkIcons(): UseQueryReturnType<Record<number, string>, Error
 }
 
 /**
- * 召唤师技能查询（版本化）
+ * 召唤师技能查询（Community Dragon，不依赖 LCU）
+ *
+ * 填充 `setSummonerSpellCatalog`，供 getSpellIconUrl / getSpellMeta 使用。
  */
-export function useSummonerSpells(): UseQueryReturnType<unknown[], Error> {
-  const { data: version } = useGameVersion()
-
-  return useQuery({
-    queryKey: computed(() => ['static', 'spells', version.value] as const),
-    queryFn: () => invoke<unknown[]>('get_all_summoner_spell_data'),
+export function useSummonerSpells(): UseQueryReturnType<CommunityDragonSummonerSpell[], Error> {
+  const query = useQuery({
+    queryKey: ['static', 'summonerSpells', 'cdragon'] as const,
+    queryFn: async () => {
+      const res = await fetchCommunityDragonSummonerSpells()
+      if (!res.success || !res.data) {
+        throw new Error(res.error || '获取 Community Dragon 召唤师技能失败')
+      }
+      setSummonerSpellCatalog(res.data)
+      return res.data
+    },
     staleTime: Infinity,
     gcTime: Infinity,
-    refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value)
+    refetchOnWindowFocus: false
   })
+
+  watchEffect(() => {
+    if (query.data.value?.length) {
+      setSummonerSpellCatalog(query.data.value)
+    }
+  })
+
+  return query
 }
 
 /**
