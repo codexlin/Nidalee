@@ -1,0 +1,12 @@
+---
+description: Git 分支命名与合入 release-v3-dev 的工作流（始终生效）
+alwaysApply: true
+---
+
+# Git 分支工作流
+
+- **基线分支**：`release-v3-dev`（功能合入目标，不是 `main`）
+- **新功能**：从 `release-v3-dev` 拉 `feature/<name>`，完成后 merge 回 `release-v3-dev`
+- **修 Bug**：从 `release-v3-dev` 拉 `fixbug/<name>`，完成后 merge 回 `release-v3-dev`
+- 未经用户明确要求，不要直接在 `release-v3-dev` 上开发新功能
+- 完整说明见仓库根目录 `AGENTS.md`
