@@ -37,7 +37,10 @@
                   <div class="font-bold text-base mb-1 text-primary dark:text-blue-300">
                     {{ allItems[itemId].name }}
                   </div>
-                  <div class="mb-2 text-neutral-700 dark:text-neutral-200" v-html="allItems[itemId].description"></div>
+                  <div
+                    class="mb-2 text-neutral-700 dark:text-neutral-200"
+                    v-html="safeItemDescriptions[itemId]"
+                  ></div>
                   <div class="text-xs text-muted-foreground mt-1">
                     <span>售价：{{ allItems[itemId].gold?.total }}</span>
                     <span class="ml-2">合成价：{{ allItems[itemId].gold?.base }}</span>
@@ -93,7 +96,10 @@
                   <div class="font-bold text-base mb-1 text-primary dark:text-blue-300">
                     {{ allItems[itemId].name }}
                   </div>
-                  <div class="mb-2 text-neutral-700 dark:text-neutral-200" v-html="allItems[itemId].description"></div>
+                  <div
+                    class="mb-2 text-neutral-700 dark:text-neutral-200"
+                    v-html="safeItemDescriptions[itemId]"
+                  ></div>
                   <div class="text-xs text-muted-foreground mt-1">
                     <span>售价：{{ allItems[itemId].gold?.total }}</span>
                     <span class="ml-2">合成价：{{ allItems[itemId].gold?.base }}</span>
@@ -144,7 +150,10 @@
                   <div class="font-bold text-base mb-1 text-primary dark:text-blue-300">
                     {{ allItems[itemId].name }}
                   </div>
-                  <div class="mb-2 text-neutral-700 dark:text-neutral-200" v-html="allItems[itemId].description"></div>
+                  <div
+                    class="mb-2 text-neutral-700 dark:text-neutral-200"
+                    v-html="safeItemDescriptions[itemId]"
+                  ></div>
                   <div class="text-xs text-muted-foreground mt-1">
                     <span>售价：{{ allItems[itemId].gold?.total }}</span>
                     <span class="ml-2">合成价：{{ allItems[itemId].gold?.base }}</span>
@@ -186,7 +195,10 @@
                   <div class="font-bold text-base mb-1 text-primary dark:text-blue-300">
                     {{ allItems[itemId].name }}
                   </div>
-                  <div class="mb-2 text-neutral-700 dark:text-neutral-200" v-html="allItems[itemId].description"></div>
+                  <div
+                    class="mb-2 text-neutral-700 dark:text-neutral-200"
+                    v-html="safeItemDescriptions[itemId]"
+                  ></div>
                   <div class="text-xs text-muted-foreground mt-1">
                     <span>售价：{{ allItems[itemId].gold?.total }}</span>
                     <span class="ml-2">合成价：{{ allItems[itemId].gold?.base }}</span>
@@ -219,6 +231,7 @@
 import { Sword, Package, Target, Footprints, Wand2 } from 'lucide-vue-next'
 import { getItemIconUrl, getAllItems } from '@/lib'
 import type { DDragonItem } from '@/lib/dataApi'
+import { sanitizeItemDescription } from '@/lib/sanitizeHtml'
 
 // 使用后端生成的类型
 interface Props {
@@ -233,6 +246,11 @@ const gameVersion = computed(() => dataStore.gameVersion)
 
 // 拉取所有物品详细信息
 const allItems = ref<Record<string, DDragonItem>>({})
+const safeItemDescriptions = computed<Record<string, string>>(() => {
+  return Object.fromEntries(
+    Object.entries(allItems.value).map(([itemId, item]) => [itemId, sanitizeItemDescription(item.description)])
+  )
+})
 
 onMounted(async () => {
   if (gameVersion.value) {

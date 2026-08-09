@@ -25,7 +25,26 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "ipc: http://ipc.localhost https://ddragon.leagueoflegends.com https://raw.communitydragon.org https://static.developer.riotgames.com wss:",
+        "font-src": "'self' data:",
+        "img-src": "'self' asset: http://asset.localhost blob: data: https:",
+        "style-src": "'unsafe-inline' 'self'",
+        "object-src": "'none'",
+        "base-uri": "'self'",
+        "frame-ancestors": "'none'"
+      },
+      "devCsp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "ipc: http://ipc.localhost http://localhost:1422 ws://localhost:1422 https://127.0.0.1:* https://ddragon.leagueoflegends.com https://raw.communitydragon.org https://static.developer.riotgames.com wss:",
+        "font-src": "'self' data:",
+        "img-src": "'self' asset: http://asset.localhost blob: data: https:",
+        "style-src": "'unsafe-inline' 'self'",
+        "object-src": "'none'",
+        "base-uri": "'self'",
+        "frame-ancestors": "'none'"
+      }
     }
   },
   "bundle": {
