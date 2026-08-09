@@ -3,6 +3,7 @@ import {
   isMatchModeKey,
   matchModeToAnalysisMode,
   matchModeToQueueIds,
+  normalizeMatchModeKey,
   type MatchModeKey
 } from '@/common/queueCatalog'
 import { useAnalysisSettingsStore } from '@/shared/stores/features/analysisSettingsStore'
@@ -125,7 +126,7 @@ export const useSettingsStore = defineStore(
             lastMatchMode.value = data.defaultMatchMode
           }
           if (
-            data.lastMatchCount == null &&
+            (data.lastMatchCount === null || data.lastMatchCount === undefined) &&
             typeof data.defaultMatchCount === 'number' &&
             (allowedMatchCounts as readonly number[]).includes(data.defaultMatchCount)
           ) {
@@ -140,6 +141,8 @@ export const useSettingsStore = defineStore(
       if (!rememberMatchPreferences.value) {
         lastMatchMode.value = 'all'
         lastMatchCount.value = 20
+      } else {
+        lastMatchMode.value = normalizeMatchModeKey(lastMatchMode.value)
       }
 
       // 当前拉取偏好与派生队列过滤 / 分析策略保持一致
@@ -193,10 +196,11 @@ export const useSettingsStore = defineStore(
 
     /** 写入上次战绩模式（供搜索过滤 / 分析策略同步） */
     const setLastMatchMode = (mode: MatchModeKey) => {
-      lastMatchMode.value = mode
-      defaultQueueTypes.value = matchModeToQueueIds(mode)
+      const normalized = normalizeMatchModeKey(mode)
+      lastMatchMode.value = normalized
+      defaultQueueTypes.value = matchModeToQueueIds(normalized)
       try {
-        useAnalysisSettingsStore().setDefaultMode(matchModeToAnalysisMode(mode))
+        useAnalysisSettingsStore().setDefaultMode(matchModeToAnalysisMode(normalized))
       } catch {
         // Pinia 尚未就绪时忽略
       }

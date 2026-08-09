@@ -13,6 +13,7 @@ export enum AnalysisMode {
   FlexRanked = 'flexRanked',
   MixedRanked = 'mixedRanked',
   Aram = 'aram',
+  Normals = 'normals',
   AllModes = 'allModes'
 }
 
@@ -42,15 +43,16 @@ export interface AnalysisConfig {
 }
 
 // 默认配置
+// Dashboard 列表刷新固定走 Simple（见 useMatchAnalysis）；时间线只在对局详情过程复盘按需拉取。
 const defaultAnalysisConfig: AnalysisConfig = {
   enabled: true,
-  depth: AnalysisDepth.Deep,
+  depth: AnalysisDepth.Simple,
   defaultMode: AnalysisMode.AllModes,
 
-  enableTimelineAnalysis: true,
-  enableOpponentAnalysis: true,
-  enableTeammateAnalysis: true,
-  enableSelfImprovement: true,
+  enableTimelineAnalysis: false,
+  enableOpponentAnalysis: false,
+  enableTeammateAnalysis: false,
+  enableSelfImprovement: false,
 
   maxAnalysisGames: 20,
   enableCaching: true,
@@ -203,11 +205,12 @@ export const useAnalysisSettingsStore = defineStore(
      * 获取分析模式描述
      */
     const getModeDescription = (mode: AnalysisMode): string => {
-      const descriptions = {
+      const descriptions: Record<AnalysisMode, string> = {
         [AnalysisMode.SoloRanked]: '单排分析 - 只分析单排对局',
         [AnalysisMode.FlexRanked]: '灵活组排分析 - 只分析灵活组排对局',
         [AnalysisMode.MixedRanked]: '混合排位分析 - 分析单排+灵活组排对局',
         [AnalysisMode.Aram]: '大乱斗分析 - 只分析大乱斗对局',
+        [AnalysisMode.Normals]: '普通模式 - 排除排位，含匹配/大乱斗/娱乐局',
         [AnalysisMode.AllModes]: '全部模式分析 - 分析所有对局'
       }
       return descriptions[mode]

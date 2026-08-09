@@ -1,11 +1,11 @@
 <template>
-  <Card
-    class="p-8 rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border"
-  >
+  <Card class="p-8">
     <div class="space-y-6">
       <div>
         <h2 class="text-xl font-bold text-primary">智能分析设置</h2>
-        <p class="text-sm text-muted-foreground">配置对局分析的深度和功能</p>
+        <p class="text-sm text-muted-foreground">
+          仪表盘战绩刷新只做基础统计；排位过程复盘（时间线/对位）在对局详情内按需加载。
+        </p>
       </div>
 
       <div class="border-t border-dashed border-border pt-6 space-y-6">
@@ -22,91 +22,15 @@
             <Switch :checked="analysisSettings.isEnabled" @update:checked="analysisSettings.toggleAnalysis" />
           </div>
 
-          <!-- 分析深度 -->
-          <div class="space-y-3">
-            <div class="font-medium text-foreground">分析深度</div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div
-                :class="[
-                  'p-4 rounded-lg border-2 cursor-pointer transition-all',
-                  analysisSettings.isSimpleAnalysis
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50'
-                ]"
-                @click="analysisSettings.setAnalysisDepth(AnalysisDepth.Simple)"
-              >
-                <div class="flex items-center gap-3">
-                  <div
-                    :class="[
-                      'w-4 h-4 rounded-full border-2',
-                      analysisSettings.isSimpleAnalysis ? 'border-primary bg-primary' : 'border-muted-foreground'
-                    ]"
-                  ></div>
-                  <div>
-                    <div class="font-medium text-foreground">简单分析</div>
-                    <div class="text-xs text-muted-foreground">基础统计和简单建议</div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                :class="[
-                  'p-4 rounded-lg border-2 cursor-pointer transition-all',
-                  analysisSettings.isDeepAnalysis
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50'
-                ]"
-                @click="analysisSettings.setAnalysisDepth(AnalysisDepth.Deep)"
-              >
-                <div class="flex items-center gap-3">
-                  <div
-                    :class="[
-                      'w-4 h-4 rounded-full border-2',
-                      analysisSettings.isDeepAnalysis ? 'border-primary bg-primary' : 'border-muted-foreground'
-                    ]"
-                  ></div>
-                  <div>
-                    <div class="font-medium text-foreground">深度分析</div>
-                    <div class="text-xs text-muted-foreground">完整的多层分析和智能建议</div>
-                  </div>
-                </div>
-              </div>
+          <div class="p-4 bg-muted/30 rounded-lg border border-border space-y-1">
+            <div class="font-medium text-foreground">分析范围</div>
+            <div class="text-sm text-muted-foreground">
+              仪表盘刷新：基础统计（胜率、KDA、英雄池、位置分布等），不批量请求时间线。
+              排位过程复盘：打开对局详情时按需拉取该局时间线与对位。
             </div>
           </div>
 
-          <p class="text-sm text-muted-foreground">
-            默认分析策略跟随「游戏设置 → 默认战绩模式」，无需在此单独配置。
-          </p>
-        </div>
-
-        <!-- 高级功能设置 -->
-        <div v-if="analysisSettings.isEnabled" class="space-y-4">
-          <h3 class="text-lg font-semibold text-foreground">高级功能</h3>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div
-              v-for="feature in analysisFeatures"
-              :key="feature.key"
-              class="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border"
-            >
-              <div class="flex-1">
-                <div class="font-medium text-foreground">{{ feature.label }}</div>
-                <div class="text-sm text-muted-foreground">{{ feature.description }}</div>
-              </div>
-              <Switch
-                :checked="
-                  analysisSettings.analysisFeatures[feature.key as keyof typeof analysisSettings.analysisFeatures]
-                "
-                @update:checked="
-                  (enabled: boolean) =>
-                    analysisSettings.toggleAnalysisFeature(
-                      feature.key as keyof typeof analysisSettings.analysisFeatures,
-                      enabled
-                    )
-                "
-              />
-            </div>
-          </div>
+          <p class="text-sm text-muted-foreground">战绩筛选模式跟随仪表盘上次选择，无需在此单独配置。</p>
         </div>
 
         <!-- 显示设置 -->
@@ -139,47 +63,12 @@
           </div>
         </div>
 
-        <!-- 性能设置 -->
-        <div v-if="analysisSettings.isEnabled" class="space-y-4">
-          <h3 class="text-lg font-semibold text-foreground">性能设置</h3>
-
-          <div class="space-y-4">
-            <!-- 最大分析对局数 -->
-            <div class="space-y-3">
-              <div class="font-medium text-foreground">最大分析对局数</div>
-              <div class="flex items-center gap-4">
-                <Slider
-                  :value="[analysisSettings.config.maxAnalysisGames]"
-                  @update:value="
-                    (value: number[]) => analysisSettings.setPerformanceSettings({ maxAnalysisGames: value[0] })
-                  "
-                  :min="5"
-                  :max="50"
-                  :step="5"
-                  class="flex-1"
-                />
-                <div class="w-16 text-center font-medium text-foreground">
-                  {{ analysisSettings.config.maxAnalysisGames }}
-                </div>
-              </div>
-              <div class="text-xs text-muted-foreground">更多对局提供更准确的分析，但会增加处理时间</div>
-            </div>
-
-            <!-- 会话缓存说明（无独立「分析结果缓存」开关；时间线固定 TTL） -->
-            <div class="p-4 bg-muted/30 rounded-lg border border-border space-y-1">
-              <div class="font-medium text-foreground">时间线会话缓存</div>
-              <div class="text-sm text-muted-foreground">
-                深度分析会在内存中缓存时间线约 10 分钟（进程内 LRU），无需手动开关。完整「分析结果缓存」尚未接入后端。
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- 本地 AI（BYOK，默认关闭，显式启用） -->
         <div class="space-y-4">
           <h3 class="text-lg font-semibold text-foreground">本地 AI 解读（BYOK）</h3>
           <p class="text-sm text-muted-foreground">
-            使用你自己的 OpenAI-compatible API Key。密钥只存系统凭据库，不会进入前端缓存或日志。AI 默认关闭，需手动触发解读。
+            使用你自己的 OpenAI-compatible API Key。密钥只存系统凭据库，不会进入前端缓存或日志。AI
+            默认关闭，需手动触发解读。
           </p>
 
           <div class="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
@@ -215,7 +104,9 @@
                   :placeholder="aiSettings.hasApiKey ? '已配置（输入新 Key 可覆盖）' : 'sk-...'"
                   class="flex-1"
                 />
-                <Button variant="outline" :disabled="!draftApiKey.trim() || aiBusy" @click="saveApiKey">保存 Key</Button>
+                <Button variant="outline" :disabled="!draftApiKey.trim() || aiBusy" @click="saveApiKey"
+                  >保存 Key</Button
+                >
                 <Button variant="ghost" :disabled="!aiSettings.hasApiKey || aiBusy" @click="clearApiKey">清除</Button>
               </div>
               <p class="text-xs text-muted-foreground">
@@ -256,14 +147,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useAnalysisSettingsStore, AnalysisDepth } from '@/shared/stores/features/analysisSettingsStore'
+import { useAnalysisSettingsStore } from '@/shared/stores/features/analysisSettingsStore'
 import { useAiSettingsStore } from '@/shared/stores/features/aiSettingsStore'
 import { RotateCcw, Download, Upload } from 'lucide-vue-next'
 
 // 组件导入
 import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -336,30 +226,6 @@ const testAi = async () => {
     aiBusy.value = false
   }
 }
-
-// 分析功能选项
-const analysisFeatures = computed(() => [
-  {
-    key: 'timeline',
-    label: '时间线分析',
-    description: '分析对线期和发育曲线'
-  },
-  {
-    key: 'opponent',
-    label: '对手分析',
-    description: '分析对线对手的表现'
-  },
-  {
-    key: 'teammate',
-    label: '队友分析',
-    description: '预留开关（Evidence 尚未接入该维度，当前不会声明可用）'
-  },
-  {
-    key: 'selfImprovement',
-    label: '自我提升',
-    description: '预留开关（Evidence 尚未接入该维度，当前不会声明可用）'
-  }
-])
 
 // 显示功能选项
 const displayFeatures = computed(() => [

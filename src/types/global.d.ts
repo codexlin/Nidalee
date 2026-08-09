@@ -204,7 +204,7 @@ selfImprovement: boolean, };
 /**
  * 分析模式（由前端用户选择）
  */
-type AnalysisMode = "soloRanked" | "flexRanked" | "mixedRanked" | "aram" | "allModes";
+type AnalysisMode = "soloRanked" | "flexRanked" | "mixedRanked" | "aram" | "normals" | "allModes";
 
 
 // --- 从 AnalysisPolicy.ts 同步 ---
@@ -230,9 +230,13 @@ requestedDepth: AnalysisDepth,
  */
 effectiveDepth: AnalysisDepth, 
 /**
- * 最终选中的队列集合；空表示不过滤
+ * 最终选中的队列集合；空表示不过滤（除非 excludeRanked）
  */
 selectedQueueIds: number[], 
+/**
+ * 普通模式：排除排位队列（420/440）
+ */
+excludeRanked: boolean,
 /**
  * 队列范围
  */

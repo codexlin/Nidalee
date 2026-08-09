@@ -8,6 +8,9 @@ let analyzeSeq = 0
 
 /**
  * 统一个人战绩分析：Dashboard / 自动刷新只调用一次 `analyze_matches`
+ *
+ * 列表刷新只做基础统计（胜率/KDA/英雄池等），**不**批量拉时间线做深度证据。
+ * 排位过程复盘在对局详情里按需 `get_game_process_review`。
  */
 export function useMatchAnalysis() {
   const analysisSettings = useAnalysisSettingsStore()
@@ -15,6 +18,15 @@ export function useMatchAnalysis() {
   const dataStore = useDataStore()
   const activityStore = useActivityStore()
   const settingsStore = useSettingsStore()
+
+  /** Dashboard 批量刷新：固定 Simple，零 timeline */
+  const dashboardOverviewFlags = (): AnalysisFeatureFlags => ({
+    enabled: analysisSettings.config.enabled,
+    timeline: false,
+    opponent: false,
+    teammate: false,
+    selfImprovement: false
+  })
 
   const buildRequest = (
     modeKey: MatchModeKey,
@@ -60,7 +72,10 @@ export function useMatchAnalysis() {
         throw new Error('当前召唤师 PUUID 不可用')
       }
 
-      const request = buildRequest(mode, count)
+      const request = buildRequest(mode, count, {
+        depth: 'simple',
+        features: dashboardOverviewFlags()
+      })
       const result = await invoke<MatchAnalysisResult>('analyze_matches', { puuid, request })
 
       // 期间又发起了新请求：丢弃本次结果，避免旧模式盖住新筛选
@@ -70,11 +85,7 @@ export function useMatchAnalysis() {
 
       analysisStore.setResult(result, puuid)
       dataStore.setMatchStatistics(result.overallStats)
-      activityStore.addActivity(
-        'success',
-        `战绩分析完成（${mode} / 展示 ${result.displayGames} 场 / 深度 ${result.analyzedGames} 场）`,
-        'data'
-      )
+      activityStore.addActivity('success', `战绩分析完成（${mode} / ${result.displayGames} 场基础统计）`, 'data')
       return result
     } catch (e: unknown) {
       if (seq !== analyzeSeq) {
@@ -104,7 +115,12 @@ export function useMatchAnalysis() {
     overrides?: Partial<MatchAnalysisRequest>
   ): Promise<MatchAnalysisResult | null> => {
     try {
-      const request = buildRequest(modeKey, count, overrides)
+      // 默认与仪表盘一致：基础统计；调用方可显式 overrides 打开深度
+      const request = buildRequest(modeKey, count, {
+        depth: 'simple',
+        features: dashboardOverviewFlags(),
+        ...overrides
+      })
       return await invoke<MatchAnalysisResult>('analyze_matches', { puuid, request })
     } catch (e: unknown) {
       console.error('[useMatchAnalysis] analyzeMatchesForPuuid 失败:', e)

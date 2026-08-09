@@ -3,10 +3,11 @@ import { AnalysisMode } from '@/shared/stores/features/analysisSettingsStore'
 /**
  * 统一战绩模式 key：
  * - all: 全部模式
- * - mixedRanked: 单双+灵活
- * - 数字字符串: 具体 queueId
+ * - normals: 普通模式（非排位）
+ * - mixedRanked: 排位（单双+灵活）
+ * - 数字字符串: 具体 queueId（单双/灵活）
  */
-export type MatchModeKey = 'all' | 'mixedRanked' | `${number}`
+export type MatchModeKey = 'all' | 'normals' | 'mixedRanked' | `${number}`
 
 export interface MatchModeOption {
   key: MatchModeKey
@@ -14,9 +15,17 @@ export interface MatchModeOption {
   fallbackLabel: string
   queueIds: number[]
   analysisMode: AnalysisMode
+  /** 排除排位（普通模式） */
+  excludeRanked?: boolean
 }
 
-/** 仪表盘 / 游戏设置共用的模式目录 */
+/** 排位队列 */
+export const RANKED_QUEUE_IDS = [420, 440] as const
+
+/**
+ * 仪表盘模式目录（5 项）：
+ * 全部 → 普通 → 排位混合 → 单双 → 灵活
+ */
 export const MATCH_MODE_OPTIONS: MatchModeOption[] = [
   {
     key: 'all',
@@ -25,8 +34,15 @@ export const MATCH_MODE_OPTIONS: MatchModeOption[] = [
     analysisMode: AnalysisMode.AllModes
   },
   {
+    key: 'normals',
+    fallbackLabel: '普通模式',
+    queueIds: [],
+    analysisMode: AnalysisMode.Normals,
+    excludeRanked: true
+  },
+  {
     key: 'mixedRanked',
-    fallbackLabel: '排位赛（单双+灵活）',
+    fallbackLabel: '排位模式',
     queueIds: [420, 440],
     analysisMode: AnalysisMode.MixedRanked
   },
@@ -41,32 +57,28 @@ export const MATCH_MODE_OPTIONS: MatchModeOption[] = [
     fallbackLabel: '灵活组排',
     queueIds: [440],
     analysisMode: AnalysisMode.FlexRanked
-  },
-  {
-    key: '450',
-    fallbackLabel: '极地大乱斗',
-    queueIds: [450],
-    analysisMode: AnalysisMode.Aram
-  },
-  {
-    key: '2400',
-    fallbackLabel: '海克斯大乱斗',
-    queueIds: [2400],
-    analysisMode: AnalysisMode.AllModes
-  },
-  {
-    key: '1700',
-    fallbackLabel: '斗魂竞技场',
-    queueIds: [1700],
-    analysisMode: AnalysisMode.AllModes
-  },
-  {
-    key: '900',
-    fallbackLabel: '无限火力',
-    queueIds: [900],
-    analysisMode: AnalysisMode.AllModes
   }
 ]
+
+const SELECTABLE_MATCH_MODE_KEYS = new Set<string>(MATCH_MODE_OPTIONS.map((o) => o.key))
+
+/** 是否仍在 Dashboard 下拉里可选 */
+export function isSelectableMatchMode(key: string): key is MatchModeKey {
+  return SELECTABLE_MATCH_MODE_KEYS.has(key)
+}
+
+/** 旧偏好迁移：大乱斗等娱乐单项 → 普通；未知 → 全部 */
+export function normalizeMatchModeKey(key: string): MatchModeKey {
+  if (isSelectableMatchMode(key)) return key
+  if (key === '450' || key === 'aram') return 'normals'
+  if (key === '900' || key === '1700' || key === '2400' || key === '1900') return 'normals'
+  if (/^\d+$/.test(key)) {
+    const id = Number(key)
+    if (id === 420 || id === 440) return String(id) as MatchModeKey
+    return 'normals'
+  }
+  return 'all'
+}
 
 const FALLBACK_QUEUE_NAMES: Record<number, string> = {
   0: '自定义',
@@ -102,7 +114,7 @@ export function getQueueDisplayName(queueId: number): string {
 }
 
 export function isMatchModeKey(value: string): value is MatchModeKey {
-  return value === 'all' || value === 'mixedRanked' || /^\d+$/.test(value)
+  return value === 'all' || value === 'normals' || value === 'mixedRanked' || /^\d+$/.test(value)
 }
 
 export function getMatchModeOption(key: MatchModeKey): MatchModeOption {
@@ -110,7 +122,7 @@ export function getMatchModeOption(key: MatchModeKey): MatchModeOption {
     MATCH_MODE_OPTIONS.find((option) => option.key === key) || {
       key,
       fallbackLabel: getQueueDisplayName(Number(key)),
-      queueIds: key === 'all' || key === 'mixedRanked' ? [] : [Number(key)],
+      queueIds: key === 'all' || key === 'normals' || key === 'mixedRanked' ? [] : [Number(key)],
       analysisMode: AnalysisMode.AllModes
     }
   )
@@ -132,13 +144,17 @@ export function matchModeToQueueIds(key: MatchModeKey): number[] {
   return [...getMatchModeOption(key).queueIds]
 }
 
+export function matchModeExcludesRanked(key: MatchModeKey): boolean {
+  return !!getMatchModeOption(key).excludeRanked
+}
+
 /** 传给 analyze_matches / MatchAnalysisRequest：单队列用 queueId，预设模式用 analysisMode */
 export function matchModeToInvokeArgs(key: MatchModeKey): {
   queueId: number | null
   analysisMode: AnalysisMode
 } {
   const option = getMatchModeOption(key)
-  if (key === 'all' || key === 'mixedRanked' || option.queueIds.length !== 1) {
+  if (key === 'all' || key === 'normals' || key === 'mixedRanked' || option.queueIds.length !== 1) {
     return { queueId: null, analysisMode: option.analysisMode }
   }
   return { queueId: option.queueIds[0], analysisMode: option.analysisMode }

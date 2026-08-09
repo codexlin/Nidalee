@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { RANKED_QUEUE_IDS, matchModeExcludesRanked, normalizeMatchModeKey } from '@/common/queueCatalog'
 
 // 专门处理战绩数据获取的 composable
 export function useSearchMatches() {
@@ -19,13 +20,17 @@ export function useSearchMatches() {
 
   // 类型过滤相关状态
   const selectedQueueTypes = ref<number[]>([])
+  /** 普通模式：排除排位队列 */
+  const excludeSelectedQueues = ref(false)
   const originalMatchData = ref<PlayerMatchStats[] | null>(null) // 保存原始数据
   // 基于当前结果的过滤后统计（适配直接使用 currentRestult.matches 的页面）
   const filteredCurrentMatches = computed<PlayerMatchStats | null>(() => {
     const base = currentRestult.value?.matches as unknown as PlayerMatchStats | undefined
     if (!base) return null
     if (!selectedQueueTypes.value.length) return base
-    return filterMatchesByQueueTypes(base, selectedQueueTypes.value)
+    return filterMatchesByQueueTypes(base, selectedQueueTypes.value, {
+      exclude: excludeSelectedQueues.value
+    })
   })
   async function fetchSummonerInfo(names: string[]): Promise<SummonerWithMatches[] | null> {
     try {
@@ -69,8 +74,15 @@ export function useSearchMatches() {
         .filter(Boolean)
       if (names.value.length === 0) return null
       // 若开启“查询后应用默认过滤”，先把默认队列写入本地过滤
-      if (settingsStore.applyDefaultFilterOnSearch && settingsStore.defaultQueueTypes?.length) {
-        selectedQueueTypes.value = [...settingsStore.defaultQueueTypes]
+      if (settingsStore.applyDefaultFilterOnSearch) {
+        const mode = normalizeMatchModeKey(settingsStore.lastMatchMode)
+        if (matchModeExcludesRanked(mode)) {
+          selectedQueueTypes.value = [...RANKED_QUEUE_IDS]
+          excludeSelectedQueues.value = true
+        } else if (settingsStore.defaultQueueTypes?.length) {
+          selectedQueueTypes.value = [...settingsStore.defaultQueueTypes]
+          excludeSelectedQueues.value = false
+        }
       }
       await fetchSummonerInfo(names.value)
     } catch (e: unknown) {
@@ -121,19 +133,23 @@ export function useSearchMatches() {
       summonerStats.value = originalMatchData.value
     } else {
       // 应用过滤
-      summonerStats.value = filterMultipleMatchesByQueueTypes(originalMatchData.value, selectedQueueTypes.value)
+      summonerStats.value = filterMultipleMatchesByQueueTypes(originalMatchData.value, selectedQueueTypes.value, {
+        exclude: excludeSelectedQueues.value
+      })
     }
   }
 
   // 设置过滤类型
   const setFilterTypes = (queueTypes: number[]) => {
     selectedQueueTypes.value = queueTypes
+    excludeSelectedQueues.value = false
     applyFilter()
   }
 
   // 清空过滤
   const clearFilter = () => {
     selectedQueueTypes.value = []
+    excludeSelectedQueues.value = false
     applyFilter()
   }
   watch(cunrrentIndex, (val) => {
