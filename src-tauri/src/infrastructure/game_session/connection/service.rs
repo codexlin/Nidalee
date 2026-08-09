@@ -85,21 +85,33 @@ impl ConnectionManager {
         let mut last_state = ConnectionState::Disconnected;
 
         loop {
-            // ⚡ 优化：如果 WebSocket 已连接，跳过轮询检查
-            // WebSocket 连接正常说明客户端肯定在运行，不需要额外验证
             use crate::infrastructure::real_time::websocket::service::is_ws_connected;
-            if is_ws_connected() {
+            let websocket_connected = is_ws_connected();
+
+            // A connected LCU WebSocket is already a successful authenticated connection. Keep
+            // ConnectionInfo and the frontend event stream in sync before reducing poll frequency.
+            let current_state = if websocket_connected {
+                let auth_info = ensure_valid_auth_info();
+                self.update_info(move |info| {
+                    info.state = ConnectionState::Connected;
+                    if auth_info.is_some() {
+                        info.auth_info = auth_info;
+                    }
+                    info.last_successful_connection = Some(Instant::now());
+                    info.consecutive_failures = 0;
+                    info.error_message = None;
+                })
+                .await;
+
                 log::debug!(
                     target: "connection::service",
-                    "WebSocket is connected, skipping connection check (redundant)"
+                    "WebSocket is connected; synchronized connection state without an HTTP check"
                 );
-                // WS 连接时，降低检查频率（30秒检查一次 WS 状态）
-                tokio::time::sleep(Duration::from_secs(30)).await;
-                continue;
-            }
-
-            // WebSocket 未连接，执行正常的轮询检查
-            let current_state = self.check_connection_state().await;
+                ConnectionState::Connected
+            } else {
+                // WebSocket 未连接，执行正常的轮询检查。
+                self.check_connection_state().await
+            };
 
             // 状态变化时通知前端
             if current_state != last_state {
@@ -107,8 +119,12 @@ impl ConnectionManager {
                 last_state = current_state.clone();
             }
 
-            // 根据当前状态决定下次检查间隔
-            let sleep_duration = self.get_check_interval(&current_state).await;
+            // WebSocket connected: only poll the atomic connection flag every 30 seconds.
+            let sleep_duration = if websocket_connected {
+                Duration::from_secs(30)
+            } else {
+                self.get_check_interval(&current_state).await
+            };
             tokio::time::sleep(sleep_duration).await;
         }
     }

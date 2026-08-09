@@ -23,6 +23,20 @@ struct EventCache {
     match_stats_cache: std::collections::HashMap<String, crate::shared::types::PlayerMatchStats>,
     // Cache for team analysis data.
     team_analysis_data: Option<crate::shared::types::TeamAnalysisData>,
+    champ_select_analysis_key: Option<String>,
+    // Only the newest champ-select session may publish enriched analysis.
+    champ_select_analysis_generation: u64,
+    champ_select_analysis_abort: Option<tokio::task::AbortHandle>,
+}
+
+impl EventCache {
+    fn cancel_champ_select_analysis(&mut self) {
+        self.champ_select_analysis_generation = self.champ_select_analysis_generation.wrapping_add(1);
+        if let Some(task) = self.champ_select_analysis_abort.take() {
+            task.abort();
+        }
+        self.champ_select_analysis_key = None;
+    }
 }
 
 pub struct WsEventHandler {
@@ -142,6 +156,7 @@ impl WsEventHandler {
                 if cache.gameflow_phase.as_ref() != Some(&phase.to_string()) {
                     // When entering 'InProgress', trigger backfill or build logic.
                     if phase == "InProgress" {
+                        cache.cancel_champ_select_analysis();
                         let has_cache = cache.team_analysis_data.is_some();
 
                         // Clone required fields to satisfy the 'static lifetime for the new task.
@@ -178,6 +193,7 @@ impl WsEventHandler {
                         || phase == "PreEndOfGame"
                         || phase == "Terminated"
                     {
+                        cache.cancel_champ_select_analysis();
                         // ✅ 优化：游戏结束或返回大厅时，立即清空缓存释放内存
                         // 每把游戏的缓存独立，防止长期运行导致内存累积
                         let cache_size = cache.match_stats_cache.len();
@@ -912,22 +928,61 @@ impl WsEventHandler {
             log::info!("[ws-event] Sending raw champ-select-session-changed event (immediate)");
             let _ = self.app.emit("champ-select-session-changed", data);
 
-            // Step 2: Asynchronously generate full analysis data with match stats.
+            // Step 2: Debounce the expensive enrichment work. Champ-select emits frequent
+            // timer/action updates, while the raw event above must remain immediate for auto-pick.
             let app = self.app.clone();
             let client = self.client.clone();
-            let cache_clone = self.cache.clone();
+            let cache_for_task = Arc::clone(&self.cache);
             let data_clone = data.clone();
+            let analysis_key = serde_json::to_string(&serde_json::json!({
+                "localPlayerCellId": data.get("localPlayerCellId"),
+                "queueId": data.get("queueId"),
+                "isCustomGame": data.get("isCustomGame"),
+                "myTeam": data.get("myTeam"),
+                "theirTeam": data.get("theirTeam"),
+            }))
+            .unwrap_or_default();
 
-            tokio::spawn(async move {
-                let mut cache = cache_clone.write().await;
-                match analysis_data::service::build_team_analysis_from_session(
+            let analysis_work = {
+                let mut cache = self.cache.write().await;
+                if cache.champ_select_analysis_key.as_ref() == Some(&analysis_key) {
+                    log::trace!("[ws-event] Champ-select analysis inputs unchanged; skipping enrichment");
+                    None
+                } else {
+                    cache.cancel_champ_select_analysis();
+                    cache.champ_select_analysis_key = Some(analysis_key);
+
+                    Some((cache.champ_select_analysis_generation, cache.match_stats_cache.clone()))
+                }
+            };
+
+            let Some((generation, mut match_stats_cache)) = analysis_work else {
+                return Ok(());
+            };
+
+            let task = tokio::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+
+                // Do not start remote enrichment if a newer session arrived during the debounce.
+                if cache_for_task.read().await.champ_select_analysis_generation != generation {
+                    return;
+                }
+
+                let result = analysis_data::service::build_team_analysis_from_session(
                     &data_clone,
                     &client,
-                    &mut cache.match_stats_cache,
+                    &mut match_stats_cache,
                 )
-                .await
-                {
+                .await;
+
+                match result {
                     Ok(enriched_data) => {
+                        let mut cache = cache_for_task.write().await;
+                        if cache.champ_select_analysis_generation != generation {
+                            log::debug!("[ws-event] Discarding stale team analysis generation {}", generation);
+                            return;
+                        }
+
                         log::info!("[ws-event] Successfully generated enriched team analysis data (with match stats).");
                         log::debug!(
                             "[ws-event] My team size: {}, Enemy team size: {}",
@@ -936,11 +991,14 @@ impl WsEventHandler {
                         );
                         log::info!(
                             "[ws-event] Current cached match stats count: {}",
-                            cache.match_stats_cache.len()
+                            match_stats_cache.len()
                         );
 
-                        // Cache the enriched analysis data.
+                        // Commit the local cache only after the latest generation wins. No global
+                        // write lock is held while network requests are in flight.
+                        cache.match_stats_cache = match_stats_cache;
                         cache.team_analysis_data = Some(enriched_data.clone());
+                        cache.champ_select_analysis_abort = None;
                         log::info!("[ws-event] Enriched TeamAnalysisData has been cached.");
 
                         // Drop the lock before emitting.
@@ -950,6 +1008,13 @@ impl WsEventHandler {
                         let _ = app.emit("team-analysis-data", &enriched_data);
                     }
                     Err(e) => {
+                        let mut cache = cache_for_task.write().await;
+                        if cache.champ_select_analysis_generation == generation {
+                            cache.champ_select_analysis_abort = None;
+                            cache.champ_select_analysis_key = None;
+                        }
+                        drop(cache);
+
                         log::error!("[ws-event] Failed to generate enriched team analysis data: {}", e);
                         if let Some(source) = e.source() {
                             log::error!("[ws-event] Caused by: {}", source);
@@ -958,10 +1023,19 @@ impl WsEventHandler {
                     }
                 }
             });
+
+            let abort_handle = task.abort_handle();
+            let mut cache = self.cache.write().await;
+            if cache.champ_select_analysis_generation == generation {
+                cache.champ_select_analysis_abort = Some(abort_handle);
+            } else {
+                abort_handle.abort();
+            }
         } else if event_type == "Delete" {
             log::info!("[ws-event] Champ select session cleared, but preserving analysis data for backfill.");
 
             let mut cache = self.cache.write().await;
+            cache.cancel_champ_select_analysis();
             cache.champ_select_session = None;
             // The team_analysis_data is intentionally not cleared here.
             // It is needed for the backfill process when the game phase changes to 'InProgress'.
