@@ -1,0 +1,37 @@
+---
+description: Nidalee 悬浮设计语言（surface / border / focus）
+alwaysApply: true
+---
+
+# Design Language
+
+完整规范见仓库根目录 `DESIGN.md`。
+
+## Surface
+
+- 浮钮：`surface-float` → `FloatIconButton`（`icon` | `pill`）
+- 状态条：`surface-chip`（无 hover 抬升）
+- 主卡：`surface-raised` → 默认 `Card`
+- 卡内分区：`surface-inset`；可点子卡：`surface-inset-interactive`（勿抄 float）
+
+## Border / Shadow / Ring
+
+- 常驻描边只用 `border`（默认 **1px**）
+- 阴影只做海拔，禁止 `0 0 0 1px` 假描边
+- `ring` / `focus-visible:ring-*` 只做焦点态
+- `border-2` 仅 danger / invalid / drop / live 强调，不当日常造型
+
+## Color
+
+- 真源：`src/styles/theme.css`（oklch only）
+- JS/Canvas：`themeColor()` / `themeColors()`
+
+## Type
+
+- 标签 `xs` / 正文与状态值 `sm` / 小标题 `base` / 主标题与次 KPI `lg` / 主 KPI `2xl`
+- 数字优先 `tabular-nums`；同级信息字号对齐
+
+## Share poster
+
+- Dashboard 分享长图：独立海报稿（固定宽 ~720px），非整页截图
+- 导出：PNG 另存为 + 剪贴板；细则见 `DESIGN.md`「Dashboard 分享海报」
