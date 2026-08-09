@@ -44,12 +44,12 @@
               {{ summonerInfo.summonerLevel }}
             </div>
             <!-- 挑战水晶等级 -->
-            <div
-              v-if="summonerInfo.challengeCrystalLevel"
-              class="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-yellow-500 flex items-center justify-center text-white text-xs font-bold border border-white"
-            >
-              {{ getChallengeIcon(summonerInfo.challengeCrystalLevel) }}
-            </div>
+            <img
+              v-if="getChallengeCrystalIconUrl(summonerInfo.challengeCrystalLevel)"
+              :src="getChallengeCrystalIconUrl(summonerInfo.challengeCrystalLevel)"
+              alt=""
+              class="absolute -top-1 -left-1 h-6 w-6 drop-shadow"
+            />
           </div>
 
           <div>
@@ -67,7 +67,15 @@
 
         <div class="text-right text-white">
           <div v-if="summonerInfo.challengePoints" class="mb-2">
-            <p class="text-white/80 text-sm">挑战点数</p>
+            <p class="text-white/80 text-sm flex items-center justify-end gap-1.5">
+              <img
+                v-if="getChallengeCrystalIconUrl(summonerInfo.challengeCrystalLevel)"
+                :src="getChallengeCrystalIconUrl(summonerInfo.challengeCrystalLevel)"
+                alt=""
+                class="h-4 w-4"
+              />
+              挑战点数
+            </p>
             <p class="text-xl font-bold">
               {{ formatChallengePoints(summonerInfo.challengePoints) }}
             </p>
@@ -111,13 +119,18 @@
           </h4>
           <div v-if="summonerInfo.soloRankTier" class="space-y-2">
             <div class="flex items-center space-x-4">
-              <img
+              <div
                 v-if="summonerInfo.soloRankTier"
-                :src="getTierIconUrl(summonerInfo.soloRankTier)"
-                :alt="formatRankTier(summonerInfo.soloRankTier)"
-                class="w-20 h-20 rounded-full border-2 shadow-lg transition-all duration-500 breath-glow"
+                class="relative size-28 shrink-0"
                 :style="getRankGlowBreathStyle(summonerInfo.soloRankTier)"
-              />
+              >
+                <span class="rank-glow-aura absolute left-1/2 top-1/2 size-24" aria-hidden="true" />
+                <img
+                  :src="getTierIconUrl(summonerInfo.soloRankTier)"
+                  :alt="formatRankTier(summonerInfo.soloRankTier)"
+                  class="relative z-10 h-28 w-28"
+                />
+              </div>
               <div class="flex flex-col justify-center min-w-[140px]">
                 <div class="flex items-center gap-2">
                   <TooltipProvider>
@@ -199,13 +212,18 @@
           </h4>
           <div v-if="summonerInfo.flexRankTier" class="space-y-2">
             <div class="flex flex-row-reverse items-center space-x-reverse space-x-4 w-full justify-end">
-              <img
+              <div
                 v-if="summonerInfo.flexRankTier"
-                :src="getTierIconUrl(summonerInfo.flexRankTier)"
-                :alt="formatRankTier(summonerInfo.flexRankTier)"
-                class="w-20 h-20 rounded-full border-2 shadow-lg transition-all duration-500 breath-glow"
+                class="relative size-28 shrink-0"
                 :style="getRankGlowBreathStyle(summonerInfo.flexRankTier)"
-              />
+              >
+                <span class="rank-glow-aura absolute left-1/2 top-1/2 size-24" aria-hidden="true" />
+                <img
+                  :src="getTierIconUrl(summonerInfo.flexRankTier)"
+                  :alt="formatRankTier(summonerInfo.flexRankTier)"
+                  class="relative z-10 h-28 w-28"
+                />
+              </div>
               <div class="flex flex-col justify-center min-w-[140px] items-end text-right">
                 <div class="flex flex-row-reverse items-center gap-2">
                   <TooltipProvider>
@@ -298,7 +316,7 @@
 
 <script setup lang="ts">
 import type { StyleValue } from 'vue'
-import { getTierIconUrl } from '@/lib'
+import { getChallengeCrystalIconUrl, getTierIconUrl } from '@/lib'
 import { Shield, Trophy, User, Users } from 'lucide-vue-next'
 import { appContextKey, type AppContext } from '@/types'
 const { isDark } = inject(appContextKey) as AppContext
@@ -322,21 +340,6 @@ const handleImageError = (event: Event): void => {
 const handleImageLoad = (): void => {
   imageLoadError.value = false
   imageLoading.value = false
-}
-
-const getChallengeIcon = (level: string): string => {
-  const iconMap: Record<string, string> = {
-    IRON: '🥉',
-    BRONZE: '🥉',
-    SILVER: '🥈',
-    GOLD: '🥇',
-    PLATINUM: '💎',
-    DIAMOND: '💎',
-    MASTER: '👑',
-    GRANDMASTER: '👑',
-    CHALLENGER: '⭐'
-  }
-  return iconMap[level] || '🏆'
 }
 
 const formatRankTier = (tier: string): string => {
@@ -477,10 +480,7 @@ const getRankGlowBreathStyle = (tier: string): StyleValue => {
   const color = rankGlowColorMap[tier] || '#a3a3a3'
   return {
     '--glow-color': color,
-    '--glow-color-a': color + '80',
-    borderColor: color,
-    background: '#fff',
-    transition: 'box-shadow 0.5s, border-color 0.5s'
+    '--glow-color-a': color + '80'
   } as StyleValue
 }
 
@@ -515,27 +515,29 @@ const getLpBadgeStyle = (tier: string) => {
 </script>
 
 <style scoped>
-@keyframes breath-glow {
-  0% {
-    box-shadow:
-      0 0 0 2px #fff,
-      0 0 16px 4px var(--glow-color),
-      0 0 32px 8px var(--glow-color-a);
+@keyframes rank-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: translate(-50%, -50%) scale(0.96);
   }
   50% {
-    box-shadow:
-      0 0 0 4px #fff,
-      0 0 32px 12px var(--glow-color),
-      0 0 64px 16px var(--glow-color-a);
-  }
-  100% {
-    box-shadow:
-      0 0 0 2px #fff,
-      0 0 16px 4px var(--glow-color),
-      0 0 32px 8px var(--glow-color-a);
+    opacity: 0.42;
+    transform: translate(-50%, -50%) scale(1.04);
   }
 }
-.breath-glow {
-  animation: breath-glow 2.4s ease-in-out infinite;
+
+.rank-glow-aura {
+  z-index: 0;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--glow-color) 55%, transparent) 0%,
+    color-mix(in oklab, var(--glow-color) 22%, transparent) 48%,
+    transparent 74%
+  );
+  filter: blur(10px);
+  animation: rank-glow-pulse 2.4s ease-in-out infinite;
+  pointer-events: none;
 }
 </style>
