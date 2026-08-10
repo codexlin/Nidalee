@@ -64,6 +64,7 @@ jobs:
       - name: 🦀 Setup Rust
         uses: dtolnay/rust-toolchain@1.97.1
         with:
+          components: rustfmt
           targets: x86_64-pc-windows-msvc
 
       - name: 🟢 Setup Node.js
@@ -75,6 +76,10 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+
+      - name: 🎨 Check Rust formatting
+        working-directory: src-tauri
+        run: cargo fmt --all -- --check
 
       - name: ✅ Cargo check
         working-directory: src-tauri
