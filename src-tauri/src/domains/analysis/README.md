@@ -313,10 +313,11 @@ cargo test --package nidalee event_analyzer
 
 ## 📚 **文档**
 
-- [集成设计方案](./docs/INTEGRATION_DESIGN.md) - 详细的架构设计
-- [实现总结](./docs/SUMMARY.md) - 完整的实现说明
-- [进度追踪](./docs/PROGRESS.md) - 开发进度和计划
-- [完成总结](./docs/COMPLETION_SUMMARY.md) - 项目完成状态
+历史设计文档（阶段报告、API 映射、阶段完成总结等）已归档到
+`docs/archive/2025-q4-analysis-refactor/`，本 README 是当前架构的唯一真相。
+
+- 阈值常量索引见 [THRESHOLDS.md](./THRESHOLDS.md)
+- 战术建议系统见 [tactical_advice/README.md](../tactical_advice/README.md)
 
 ## 🐛 **常见问题**
 
