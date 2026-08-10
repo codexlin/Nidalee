@@ -56,7 +56,7 @@
       v-if="selectedPlayer"
       :open="showPlayerDetails"
       :summoner="selectedPlayer"
-      :summoner-result="currentRestult ?? undefined"
+      :summoner-result="currentResult ?? undefined"
       :loading="summonerLoading"
       @close="closePlayerDetails"
     />
@@ -106,11 +106,12 @@ watch(
 )
 
 // Summoner details logic
-const { fetchSummonerInfo, currentRestult, loading: summonerLoading } = useSearchMatches()
+const { fetchSummonerInfo, currentResult, clearSummonerInfo, loading: summonerLoading } = useSearchMatches()
 const selectedPlayer = ref<UIPlayerData | null>(null)
 const showPlayerDetails = ref(false)
 
 const handlePlayerDetails = async (player: UIPlayerData) => {
+  clearSummonerInfo()
   selectedPlayer.value = player
   showPlayerDetails.value = true
   if (player.displayName && player.displayName !== '未知召唤师') {

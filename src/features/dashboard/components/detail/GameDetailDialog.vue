@@ -250,14 +250,14 @@
       >
         <SheetHeader class="space-y-0 text-left">
           <SheetTitle class="flex items-center gap-4 text-left">
-            <div v-if="currentRestult" class="flex items-center gap-4">
+            <div v-if="currentResult" class="flex items-center gap-4">
               <div class="w-14 h-14 rounded-full bg-muted flex items-center justify-center ring-1 ring-border">
                 <span class="text-lg font-bold text-foreground">{{
-                  currentRestult.displayName?.charAt(0)?.toUpperCase() || '?'
+                  currentResult.displayName?.charAt(0)?.toUpperCase() || '?'
                 }}</span>
               </div>
               <div>
-                <h3 class="text-lg font-bold text-foreground">{{ currentRestult.displayName || '未知召唤师' }}</h3>
+                <h3 class="text-lg font-bold text-foreground">{{ currentResult.displayName || '未知召唤师' }}</h3>
                 <p class="text-sm text-muted-foreground">召唤师详情与战绩分析</p>
               </div>
             </div>
@@ -282,9 +282,9 @@
           <span class="text-sm text-muted-foreground">正在查询召唤师战绩…</span>
         </div>
 
-        <div v-else-if="currentRestult" class="space-y-6">
-          <SummonerCard :summoner-info="currentRestult.summonerInfo" />
-          <GameStats :is-connected="true" :match-history-loading="false" :match-statistics="currentRestult.matches" />
+        <div v-else-if="currentResult" class="space-y-6">
+          <SummonerCard :summoner-info="currentResult.summonerInfo" />
+          <GameStats :is-connected="true" :match-history-loading="false" :match-statistics="currentResult.matches" />
         </div>
 
         <div v-else class="flex items-center justify-center py-8">
@@ -341,7 +341,7 @@ const cachedMatchEvidence = computed(() => {
 const isDetailsOpen = ref(false)
 const selectedPlayer = ref<{ displayName: string } | null>(null)
 
-const { fetchSummonerInfo, currentRestult, loading: searchLoading } = useSearchMatches()
+const { fetchSummonerInfo, currentResult, clearSummonerInfo, loading: searchLoading } = useSearchMatches()
 
 const myGrade = computed(() => (props.selectedGame ? displayGrade(props.selectedGame) : 'D'))
 
@@ -434,31 +434,42 @@ const myParticipantId = computed(() => {
 })
 
 watch(
-  () => props.selectedGame,
-  async (newGame) => {
-    if (newGame?.gameId === null || newGame?.gameId === undefined) {
+  () => props.selectedGame?.gameId,
+  async (gameId, _previousGameId, onCleanup) => {
+    let isCurrent = true
+    onCleanup(() => {
+      isCurrent = false
+    })
+
+    if (gameId === null || gameId === undefined) {
       gameDetailData.value = null
+      loading.value = false
       return
     }
 
     loading.value = true
+    gameDetailData.value = null
     try {
       const result = await invoke<GameDetail>('get_game_detail', {
-        gameId: newGame.gameId
+        gameId
       })
+      if (!isCurrent || props.selectedGame?.gameId !== gameId) return
       gameDetailData.value = result
     } catch (err: unknown) {
+      if (!isCurrent || props.selectedGame?.gameId !== gameId) return
       const message = err instanceof Error ? err.message : String(err)
       console.error('获取游戏详细信息失败:', message)
       activityLogger.logError.apiError(`获取游戏详细信息失败: ${message}`)
       gameDetailData.value = null
     } finally {
-      loading.value = false
+      if (isCurrent && props.selectedGame?.gameId === gameId) loading.value = false
     }
-  }
+  },
+  { immediate: true }
 )
 
 const openSummonerDetails = async (participant: ParticipantInfo) => {
+  clearSummonerInfo()
   selectedPlayer.value = {
     displayName: participant.summonerName
   }

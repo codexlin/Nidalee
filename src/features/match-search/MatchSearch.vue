@@ -21,9 +21,9 @@
             :key="name"
             :class="[
               'cursor-pointer select-none transition',
-              idx === cunrrentIndex ? 'bg-primary text-primary-foreground shadow' : 'bg-muted text-muted-foreground'
+              idx === currentIndex ? 'bg-primary text-primary-foreground shadow' : 'bg-muted text-muted-foreground'
             ]"
-            @click="cunrrentIndex = idx"
+            @click="currentIndex = idx"
           >
             {{ name }}
           </Badge>
@@ -88,8 +88,7 @@ import PositionDetailsDialog from './PositionDetailsDialog.vue'
 
 const { isConnected } = inject(appContextKey) as AppContext
 
-const { onSearch, cunrrentIndex, names, searchText, loading, currentResult, filteredCurrentMatches } =
-  useSearchMatches()
+const { onSearch, currentIndex, names, searchText, loading, currentResult, filteredCurrentMatches } = useSearchMatches()
 
 const searchPositionAnalysis = computed(() => currentResult.value?.positionAnalysis ?? null)
 const selectedPosition = ref<PositionStats | null>(null)
