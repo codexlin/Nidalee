@@ -20,6 +20,7 @@ declare module 'vue' {
     AnalysisHeader: typeof import('./../src/features/match-analysis/components/analysis/AnalysisHeader.vue')['default']
     AnalysisSettingsTab: typeof import('./../src/features/settings/components/analysis/AnalysisSettingsTab.vue')['default']
     AppSidebar: typeof import('./../src/components/layout/AppSidebar.vue')['default']
+    AppTopNav: typeof import('./../src/components/layout/AppTopNav.vue')['default']
     Avatar: typeof import('./../src/components/ui/avatar/Avatar.vue')['default']
     AvatarFallback: typeof import('./../src/components/ui/avatar/AvatarFallback.vue')['default']
     AvatarImage: typeof import('./../src/components/ui/avatar/AvatarImage.vue')['default']

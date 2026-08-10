@@ -2,7 +2,14 @@
   <div data-tauri-drag-region class="titlebar">
     <div class="titlebar-left">
       <img src="@/assets/logo.svg" alt="logo" class="logo" />
-      <span class="title">Nidalee - Made by <span class="animate-pulse"> ❤️ </span> CodexLin </span>
+      <span class="title">Nidalee</span>
+      <span class="versions tabular-nums select-none">
+        <span>{{ appVersionLabel }}</span>
+        <span class="versions-sep">·</span>
+        <span>游戏 {{ lolGameVersion || '—' }}</span>
+        <span class="versions-sep">·</span>
+        <span>Made by <span class="animate-pulse"> ❤️ </span> CodexLin</span>
+      </span>
     </div>
     <div v-if="inTauri" class="titlebar-right">
       <div class="titlebar-button" id="titlebar-minimize" @click="minimizeWindow">
@@ -29,10 +36,25 @@
 
 <script setup lang="ts">
 import { isTauri } from '@tauri-apps/api/core'
+import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWindow, type Window } from '@tauri-apps/api/window'
 
 const inTauri = isTauri()
 const appWindow: Window | null = inTauri ? getCurrentWindow() : null
+
+const appVersion = ref('')
+const appVersionLabel = computed(() => (appVersion.value ? `v${appVersion.value}` : 'v—'))
+
+const dataStore = useDataStore()
+const lolGameVersion = computed(() => dataStore.gameVersion)
+
+onMounted(async () => {
+  try {
+    appVersion.value = await getVersion()
+  } catch {
+    appVersion.value = ''
+  }
+})
 
 const minimizeWindow = () => {
   void appWindow?.minimize()
@@ -65,21 +87,41 @@ const hideWindow = () => {
   align-items: center;
   padding-left: 8px;
   gap: 8px;
+  min-width: 0;
 }
 
 .logo {
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
 }
 
 .title {
   font-size: 12px;
   color: var(--foreground);
+  flex-shrink: 0;
+}
+
+.versions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.versions-sep {
+  opacity: 0.55;
 }
 
 .titlebar-right {
   display: flex;
   height: 100%;
+  flex-shrink: 0;
 }
 
 .titlebar-button {

@@ -1,17 +1,20 @@
 <template>
-  <div class="px-4">
-    <div class="flex items-center gap-2">
-      <NotificationHoverCard title="系统活动" side="bottom" align="end" />
+  <div class="flex items-center gap-1.5">
+    <NotificationHoverCard title="系统活动" side="bottom" align="end" />
 
-      <FloatIconButton title="刷新数据" @click="refreshData">
-        <RefreshCw :size="17" />
-      </FloatIconButton>
-    </div>
+    <FloatIconButton class="p-2" title="刷新数据" @click="refreshData">
+      <RefreshCw :size="16" />
+    </FloatIconButton>
+
+    <FloatIconButton class="p-2" title="给项目点个 Star" aria-label="GitHub Star" @click="openGithub">
+      <Github :size="16" />
+    </FloatIconButton>
   </div>
 </template>
 
 <script setup lang="ts">
-import { RefreshCw } from 'lucide-vue-next'
+import { Github, RefreshCw } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import FloatIconButton from '@/components/common/FloatIconButton.vue'
 
 const activityLogger = useActivityLogger()
@@ -21,7 +24,6 @@ const { isConnected } = storeToRefs(connectionStore)
 const { updateSummonerAndMatches } = useSummonerAndMatchUpdater()
 
 const refreshData = async () => {
-  console.log('刷新数据')
   try {
     if (isConnected.value) {
       updateSummonerAndMatches()
@@ -31,6 +33,14 @@ const refreshData = async () => {
     activityLogger.logError.apiError('数据刷新失败')
   }
 }
-</script>
 
-<style></style>
+const openGithub = () => {
+  window.open('https://github.com/codexlin/Nidalee', '_blank', 'noopener,noreferrer')
+  setTimeout(() => {
+    toast.success('谢谢你的⭐！', {
+      description: '开发者收到了你的鼓励，超级开心 🥳',
+      duration: 3000
+    })
+  }, 200)
+}
+</script>

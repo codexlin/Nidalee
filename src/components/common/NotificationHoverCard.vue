@@ -1,11 +1,11 @@
 <template>
   <Popover>
     <PopoverTrigger as-child>
-      <FloatIconButton aria-label="查看活动通知" title="查看活动通知">
-        <Bell :size="17" />
+      <FloatIconButton class="p-2" aria-label="查看活动通知" title="查看活动通知">
+        <Bell :size="16" />
         <span
           v-if="unreadCount > 0"
-          class="absolute -top-1 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-destructive px-1 text-[10px] font-bold text-white shadow-md"
+          class="absolute -top-1 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-background bg-destructive px-1 text-[10px] font-bold text-white"
         >
           {{ unreadCount > 9 ? '9+' : unreadCount }}
         </span>
