@@ -301,6 +301,7 @@
 
 <script setup lang="ts">
 import { getChampionIconUrl, getChampionName, getQueueName } from '@/lib'
+import { createLatestRequestGuard } from '@/shared/utils/latestRequest'
 import { invoke } from '@tauri-apps/api/core'
 import { useClipboard } from '@vueuse/core'
 import { toast } from 'vue-sonner'
@@ -320,6 +321,7 @@ const { formatRelativeTime } = useFormatters()
 
 const loading = ref(false)
 const gameDetailData = ref<GameDetail | null>(null)
+const gameDetailRequests = createLatestRequestGuard()
 const dataStore = useDataStore()
 const analysisStore = usePersonalMatchAnalysisStore()
 const gameVersion = computed(() => dataStore.gameVersion)
@@ -436,10 +438,8 @@ const myParticipantId = computed(() => {
 watch(
   () => props.selectedGame?.gameId,
   async (gameId, _previousGameId, onCleanup) => {
-    let isCurrent = true
-    onCleanup(() => {
-      isCurrent = false
-    })
+    const request = gameDetailRequests.begin()
+    onCleanup(request.invalidate)
 
     if (gameId === null || gameId === undefined) {
       gameDetailData.value = null
@@ -453,16 +453,16 @@ watch(
       const result = await invoke<GameDetail>('get_game_detail', {
         gameId
       })
-      if (!isCurrent || props.selectedGame?.gameId !== gameId) return
+      if (!request.isCurrent() || props.selectedGame?.gameId !== gameId) return
       gameDetailData.value = result
     } catch (err: unknown) {
-      if (!isCurrent || props.selectedGame?.gameId !== gameId) return
+      if (!request.isCurrent() || props.selectedGame?.gameId !== gameId) return
       const message = err instanceof Error ? err.message : String(err)
       console.error('获取游戏详细信息失败:', message)
       activityLogger.logError.apiError(`获取游戏详细信息失败: ${message}`)
       gameDetailData.value = null
     } finally {
-      if (isCurrent && props.selectedGame?.gameId === gameId) loading.value = false
+      if (request.isCurrent() && props.selectedGame?.gameId === gameId) loading.value = false
     }
   },
   { immediate: true }
