@@ -176,7 +176,7 @@ const emit = defineEmits<{
 }>()
 
 // 使用缓存的英雄数据
-const { data: allChampionsData } = useChampionSummaryQuery()
+const { data: allChampionsData } = useChampions()
 
 // 状态
 const isEditing = computed(() => !!props.config)

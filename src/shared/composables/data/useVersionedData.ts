@@ -10,10 +10,12 @@ import { computed, type Ref, watchEffect } from 'vue'
 import { useQuery, type UseQueryReturnType } from '@tanstack/vue-query'
 import { setSummonerSpellCatalog } from '@/lib'
 import {
+  fetchChampionDetails,
   fetchCommunityDragonPerks,
   fetchCommunityDragonSummonerSpells,
   fetchQueues,
   type CDragonQueue,
+  type CommunityDragonChampion,
   type CommunityDragonPerk,
   type CommunityDragonSummonerSpell
 } from '@/lib/dataApi'
@@ -47,6 +49,31 @@ export function useChampions(): UseQueryReturnType<ChampionInfo[], Error> {
     gcTime: Infinity,
     refetchOnWindowFocus: false,
     enabled: computed(() => !!version.value)
+  })
+}
+
+/**
+ * 单个英雄详情（Community Dragon）
+ */
+export function useChampionDetails(
+  championId: Ref<number | null>
+): UseQueryReturnType<CommunityDragonChampion | null, Error> {
+  return useQuery({
+    queryKey: computed(() => ['static', 'championDetails', 'cdragon-latest', championId.value] as const),
+    queryFn: async () => {
+      const id = championId.value
+      if (!id || id <= 0) return null
+
+      const result = await fetchChampionDetails(id)
+      if (!result.success || !result.data) {
+        throw new Error(result.error || '获取英雄详情失败')
+      }
+      return result.data
+    },
+    staleTime: 1000 * 60 * 60,
+    gcTime: 1000 * 60 * 60 * 24,
+    refetchOnWindowFocus: false,
+    enabled: computed(() => championId.value !== null && championId.value > 0)
   })
 }
 

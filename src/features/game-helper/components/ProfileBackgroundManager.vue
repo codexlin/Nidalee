@@ -45,7 +45,7 @@
                   <Search class="h-8 w-8 text-destructive" />
                 </div>
                 <p class="text-destructive font-semibold text-lg mb-2">加载失败</p>
-                <p class="text-sm text-muted-foreground mb-6 max-w-md">{{ championsError }}</p>
+                <p class="text-sm text-muted-foreground mb-6 max-w-md">{{ championsError.message }}</p>
                 <button
                   @click="() => reloadChampions()"
                   class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
@@ -115,7 +115,7 @@
                 <X class="h-8 w-8 text-destructive" />
               </div>
               <p class="text-destructive font-semibold text-lg mb-2">加载失败</p>
-              <p class="text-sm text-muted-foreground mb-6 max-w-md">{{ skinsError }}</p>
+              <p class="text-sm text-muted-foreground mb-6 max-w-md">{{ skinsError.message }}</p>
               <button
                 @click="() => reloadSkins()"
                 class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
@@ -203,7 +203,7 @@ const {
   isLoading: loadingChampions,
   error: championsError,
   refetch: reloadChampions
-} = useChampionSummaryQuery()
+} = useChampions()
 const champions = computed<ChampionInfo[]>(() =>
   championsData.value
     ? championsData.value
@@ -218,7 +218,7 @@ const {
   isLoading: loadingSkins,
   error: skinsError,
   refetch: reloadSkins
-} = useChampionDetailsQuery(selectedChampionId)
+} = useChampionDetails(selectedChampionId)
 const championSkins = computed<CommunityDragonSkin[]>(() => championDetails.value?.skins ?? [])
 const applyingSkinId = ref<number | null>(null) // 跟踪正在应用的皮肤ID
 const shakeSkinId = ref<number | null>(null)
@@ -239,8 +239,7 @@ const filteredChampions = computed(() => {
 
 const handleChampionSelect = (champion: ChampionInfo) => {
   selectedChampion.value = champion
-  // 选中后自动触发 useChampionDetailsQuery
-  reloadSkins()
+  // 选中后 query key 自动变化并加载对应详情。
 }
 
 const clearChampion = () => {
