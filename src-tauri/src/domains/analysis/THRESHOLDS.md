@@ -316,7 +316,7 @@ let threshold = if is_ranked_mode {
 ### **完整的特征分析示例**
 
 ```rust
-use crate::lcu::types::{PlayerMatchStats, SummonerTrait};
+use crate::shared::types::{PlayerMatchStats, SummonerTrait};
 use super::thresholds;
 
 pub fn analyze_comprehensive_traits(stats: &PlayerMatchStats, is_ranked: bool) -> Vec<SummonerTrait> {
