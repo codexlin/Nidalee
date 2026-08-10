@@ -87,6 +87,7 @@ declare global {
   const useAutoVersionCheck: typeof import('../src/shared/composables/data/useAutoVersionCheck')['useAutoVersionCheck']
   const useBuildsByAliasQuery: typeof import('../src/shared/composables/useLolApiQuery')['useBuildsByAliasQuery']
   const useChampSelect: typeof import('../src/shared/composables/game/useChampSelect')['useChampSelect']
+  const useChampSelectAutomation: typeof import('../src/shared/composables/game/useChampSelectAutomation')['useChampSelectAutomation']
   const useChampSelectManager: typeof import('../src/shared/composables/game/useChampSelectManager')['useChampSelectManager']
   const useChampSelectSession: typeof import('../src/shared/composables/game/useChampSelectSession')['useChampSelectSession']
   const useChampionById: typeof import('../src/shared/composables/data/useVersionedData')['useChampionById']

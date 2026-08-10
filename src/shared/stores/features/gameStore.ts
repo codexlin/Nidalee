@@ -1,4 +1,5 @@
 import { isEqual } from 'radash'
+import { useChampSelectAutomation } from '@/shared/composables/game/useChampSelectAutomation'
 
 export const useGameStore = defineStore(
   'game',
@@ -24,6 +25,10 @@ export const useGameStore = defineStore(
       selectChampion: false,
       lockInProgress: false
     })
+    const champSelectAutomation = useChampSelectAutomation({
+      getCurrentSession: () => champSelectSession.value,
+      isChampSelectActive: () => currentPhase.value === 'ChampSelect'
+    })
 
     // 计算属性
     const isGameActive = computed(() => {
@@ -34,6 +39,7 @@ export const useGameStore = defineStore(
       return isInChampSelect.value || isReadyCheck.value
     })
     const clearExecutedActions = () => {
+      champSelectAutomation.cancelAutoActions()
       executedActions.value = {
         banChampion: false,
         selectChampion: false,
@@ -43,6 +49,7 @@ export const useGameStore = defineStore(
     // 更新游戏阶段
     const updateGamePhase = (phase: string) => {
       console.log('[GameStore] 更新游戏阶段:', phase)
+      const previousPhase = currentPhase.value
       currentPhase.value = phase
 
       // 更新具体状态
@@ -50,13 +57,17 @@ export const useGameStore = defineStore(
       isInChampSelect.value = phase === 'ChampSelect'
       isInQueue.value = phase === 'Lobby'
       isReadyCheck.value = phase === 'ReadyCheck'
+      if (previousPhase === 'ChampSelect' && phase !== 'ChampSelect') {
+        champSelectSession.value = null
+        clearExecutedActions()
+      }
       if (phase === 'None') {
         resetGameState()
       }
     }
 
     // 更新英雄选择会话
-    const updateChampSelectSession = async (session: ChampSelectSession | null) => {
+    const updateChampSelectSession = (session: ChampSelectSession | null) => {
       // 通过深度比较过滤掉无意义的重复更新
       if (isEqual(champSelectSession.value, session)) {
         return
@@ -66,7 +77,7 @@ export const useGameStore = defineStore(
 
       // 如果有选人会话，检查并执行自动操作
       if (session) {
-        await checkAndExecuteAutoActions(session)
+        checkAndExecuteAutoActions(session)
       } else {
         // 清除选人会话时，重置已执行的操作记录
         clearExecutedActions()
@@ -74,14 +85,13 @@ export const useGameStore = defineStore(
     }
 
     // 检查并执行自动操作
-    const checkAndExecuteAutoActions = async (session: ChampSelectSession) => {
+    const checkAndExecuteAutoActions = (session: ChampSelectSession) => {
       try {
         const autoFunctionStore = useAutoFunctionStore()
-        const { checkAndExecuteAutoActions: checkAutoActions } = useChampSelect()
         const activityLogger = useActivityLogger()
         console.log('[GameStore] 检查自动操作...')
 
-        const hasScheduledAction = await checkAutoActions(
+        const hasScheduledAction = champSelectAutomation.checkAndScheduleAutoActions(
           session,
           autoFunctionStore.autoFunctions,
           executedActions.value
@@ -134,11 +144,7 @@ export const useGameStore = defineStore(
       isInChampSelect.value = false
 
       // 重置已执行的操作记录
-      executedActions.value = {
-        banChampion: false,
-        selectChampion: false,
-        lockInProgress: false
-      }
+      clearExecutedActions()
     }
 
     return {

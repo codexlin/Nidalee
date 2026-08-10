@@ -22,12 +22,13 @@ export function useAppEvents() {
   const { updateMatchHistory, updateSummonerInfo, updateSummonerAndMatches, cancelPendingUpdates } =
     useSummonerAndMatchUpdater()
   const connectionStore = useConnectionStore()
+  const gameStore = useGameStore()
   const dataStore = useDataStore()
   const matchmakingStore = useMatchmakingStore()
   const matchAnalysisStore = useMatchAnalysisStore()
   const queryClient = useQueryClient() // ← 移到外层，所有函数共享同一个实例
 
-  const { handleGamePhaseChange } = gamePhaseManager
+  const { handleGamePhaseChange, cancelPendingAutoAccept } = gamePhaseManager
   const { handleLobbyChange, handleChampSelectChange } = champSelectManager
 
   // 事件处理函数
@@ -120,6 +121,8 @@ export function useAppEvents() {
   }
 
   const stopListening = () => {
+    cancelPendingAutoAccept()
+    gameStore.clearChampSelect()
     if (!listeningRequested && !listenersReady && unlisteners.length === 0) return
 
     listeningRequested = false
