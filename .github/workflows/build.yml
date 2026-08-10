@@ -66,6 +66,11 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - name: 🗄️ Rust cache
         uses: swatinem/rust-cache@v2
         with:
@@ -75,9 +80,18 @@ jobs:
         working-directory: src-tauri
         run: cargo check --all-targets --locked
 
+      - name: 🧹 Prepare generated TypeScript contracts
+        run: node scripts/prepare-types.mjs
+
       - name: 🧪 Cargo test
         working-directory: src-tauri
         run: cargo test --all-targets --locked
+
+      - name: 🔄 Sync generated TypeScript contracts
+        run: node scripts/sync-types.mjs
+
+      - name: 🧾 Verify generated TypeScript contracts
+        run: git diff --exit-code -- src/types/global.d.ts
 
   build-tauri:
     name: 🏗️ Build Tauri App (Windows)
