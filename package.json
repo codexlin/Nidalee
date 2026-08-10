@@ -10,12 +10,14 @@
   "scripts": {
     "dev": "vite",
     "dev:app": "tauri dev",
-    "build": "pnpm run lint && pnpm run format:check && pnpm run type-check && pnpm run build-only",
+    "build": "pnpm run lint && pnpm run format:check && pnpm run type-check && pnpm run test && pnpm run build-only",
     "build:analyze": "cross-env ANALYZE=true pnpm build-only",
     "build:prod": "cross-env NODE_ENV=production pnpm run build",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
     "types": "node scripts/prepare-types.mjs && cd src-tauri && cargo test --all-targets --locked && cd .. && node scripts/sync-types.mjs",
     "types:sync": "node scripts/sync-types.mjs",
     "types:check": "pnpm run types && git diff --exit-code -- src/types/global.d.ts",
@@ -68,6 +70,7 @@
     "vite": "^8.2.1",
     "vite-plugin-remove-console": "^2.2.0",
     "vite-plugin-vue-devtools": "^8",
+    "vitest": "^4.1.10",
     "vue-tsc": "^3.3.9"
   }
 }
