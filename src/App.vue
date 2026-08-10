@@ -22,6 +22,17 @@ const handleRouteChange = () => {
   randomTransition()
 }
 const route = useRoute()
+const router = useRouter()
+
+watch(
+  isConnected,
+  () => {
+    if (route.name !== 'dashboard') {
+      void router.replace({ name: 'dashboard' })
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -53,7 +64,9 @@ const route = useRoute()
             <div class="flex flex-col gap-6 p-6 bg-background">
               <router-view v-slot="{ Component }">
                 <transition :name="currentTransition" mode="out-in" @before-leave="handleRouteChange">
-                  <component :is="isConnected ? Component : ClientDisconnected" />
+                  <KeepAlive include="DashboardView">
+                    <component :is="isConnected ? Component : ClientDisconnected" />
+                  </KeepAlive>
                 </transition>
               </router-view>
               <BorderBeam

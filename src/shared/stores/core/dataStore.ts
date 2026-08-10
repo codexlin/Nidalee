@@ -137,10 +137,15 @@ export const useDataStore = defineStore(
       return runes.value.find((rune) => rune.id === id)
     }
 
-    // 数据清理方法
-    const clearAllData = () => {
+    // 账号会话数据不能跨断线或应用重启复用。
+    const clearAccountData = () => {
       clearSummonerInfo()
       clearMatchHistory()
+    }
+
+    // 数据清理方法
+    const clearAllData = () => {
+      clearAccountData()
       champions.value = []
       items.value = []
       runes.value = []
@@ -217,12 +222,8 @@ export const useDataStore = defineStore(
       getRuneById,
 
       // 清理方法
+      clearAccountData,
       clearAllData
-    }
-  },
-  {
-    persist: {
-      pick: ['summonerInfo', 'matchHistory', 'matchStatistics']
     }
   }
 )

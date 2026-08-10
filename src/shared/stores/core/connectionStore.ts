@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { usePersonalMatchAnalysisStore } from '@/shared/stores/features/personalMatchAnalysisStore'
 
 export const useConnectionStore = defineStore('connection', () => {
   const hasAuth = shallowRef<boolean | undefined>(undefined)
@@ -14,11 +15,19 @@ export const useConnectionStore = defineStore('connection', () => {
       connectionState.value === ('ProcessFound' as ConnectionState)
   )
   const isDisconnected = computed(() => connectionState.value === 'Disconnected')
-  const { updateSummonerAndMatches } = useSummonerAndMatchUpdater()
+  const { updateSummonerAndMatches, cancelPendingUpdates } = useSummonerAndMatchUpdater()
   const dataStore = useDataStore()
   const activityStore = useActivityStore()
   const sessionStore = useSessionStore()
   const gameStore = useGameStore()
+  const personalMatchAnalysisStore = usePersonalMatchAnalysisStore()
+
+  function clearAccountState() {
+    cancelPendingUpdates()
+    dataStore.clearAccountData()
+    personalMatchAnalysisStore.setLoading(false)
+    personalMatchAnalysisStore.clear()
+  }
 
   async function checkConnection() {
     try {
@@ -36,6 +45,12 @@ export const useConnectionStore = defineStore('connection', () => {
     // 如果状态没有变化，避免重复触发副作用（如重复拉取战绩）
     if (state === connectionState.value) {
       connectionError.value = errorMsg
+      // Initial hydration can already say Disconnected while persisted/HMR state still contains
+      // an old account. Cleanup is idempotent and must not be skipped with the state transition.
+      if (state === 'Disconnected') {
+        clearAccountState()
+        gameStore.resetGameState()
+      }
       return
     }
 
@@ -45,15 +60,16 @@ export const useConnectionStore = defineStore('connection', () => {
     switch (state) {
       case 'Connected':
         activityStore.addActivity('success', '已连接到客户端', 'connection')
-        // 连接成功，后端已自动处理认证，前端直接开始业务逻辑
-        updateSummonerAndMatches()
+        // Every transport generation starts from an empty account view. The ordered updater then
+        // commits current summoner data before requesting rank and match analysis.
+        clearAccountState()
+        void updateSummonerAndMatches()
         sessionStore.startSession()
         break
       case 'Disconnected':
+        clearAccountState()
         sessionStore.stopSession()
         activityStore.addActivity('error', '已断开与客户端的连接', 'connection')
-        // 直接在这里执行完整的清理逻辑
-        dataStore.clearAllData()
         gameStore.resetGameState()
         break
       case 'ProcessFound':

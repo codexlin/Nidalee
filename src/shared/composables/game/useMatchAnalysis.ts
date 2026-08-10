@@ -6,6 +6,10 @@ import { usePersonalMatchAnalysisStore } from '@/shared/stores/features/personal
 /** 忽略过期的 analyze_matches 响应，避免快速切换模式时「有时有数据有时没有」 */
 let analyzeSeq = 0
 
+export function cancelPendingMatchAnalysis() {
+  analyzeSeq += 1
+}
+
 /**
  * 统一个人战绩分析：Dashboard / 自动刷新只调用一次 `analyze_matches`
  *
@@ -132,6 +136,7 @@ export function useMatchAnalysis() {
     buildRequest,
     analyzeMatches,
     analyzeMatchesForPuuid,
+    cancelPendingMatchAnalysis,
     analysisStore
   }
 }

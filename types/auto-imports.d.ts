@@ -10,6 +10,7 @@ declare global {
   const AnalysisMode: typeof import('../src/shared/stores/features/analysisSettingsStore')['AnalysisMode']
   const EffectScope: typeof import('vue')['EffectScope']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
+  const cancelPendingMatchAnalysis: typeof import('../src/shared/composables/game/useMatchAnalysis')['cancelPendingMatchAnalysis']
   const computed: typeof import('vue')['computed']
   const createApp: typeof import('vue')['createApp']
   const createPinia: typeof import('pinia')['createPinia']

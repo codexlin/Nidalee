@@ -256,16 +256,4 @@ const runAiInsight = async () => {
 onMounted(() => {
   void ensureAiSynced()
 })
-
-watch(
-  () => isConnected.value,
-  async (connected) => {
-    if (connected && !personalAnalysis.result) {
-      selectedMatchMode.value = resolveInitialMode()
-      selectedMatchCount.value = resolveInitialCount()
-      await refreshAnalysis()
-    }
-  },
-  { immediate: true }
-)
 </script>
