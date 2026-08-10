@@ -153,7 +153,7 @@ const {
   flush: flushDelay
 } = useDebouncedNumberModel(delay, {
   delay: 500,
-  min: 0,
+  min: 1000,
   max: 10000,
   step: 100
 })
