@@ -194,12 +194,7 @@ static OBJECTIVES: MetricSpec = MetricSpec {
     direction: MetricDirection::HigherIsBetter,
     good_threshold: OBJECTIVE_GOOD_PER_GAME,
     bad_threshold: OBJECTIVE_BAD_PER_GAME,
-    describe: |value| {
-        format!(
-            "场均大约参与 {:.1} 次龙/峡谷这类大型资源。",
-            round1(value)
-        )
-    },
+    describe: |value| format!("场均大约参与 {:.1} 次龙/峡谷这类大型资源。", round1(value)),
 };
 
 static WIN_RATE: MetricSpec = MetricSpec {

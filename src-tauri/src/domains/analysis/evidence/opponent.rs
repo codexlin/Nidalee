@@ -136,11 +136,9 @@ pub fn resolve_lane_opponent(
                             || e.lane.eq_ignore_ascii_case("BOTTOM")
                             || e.role.eq_ignore_ascii_case("DUO_CARRY")))
                     || (target.position == EvidencePosition::Support
-                        && (e.role.eq_ignore_ascii_case("UTILITY")
-                            || e.role.eq_ignore_ascii_case("DUO_SUPPORT")))
+                        && (e.role.eq_ignore_ascii_case("UTILITY") || e.role.eq_ignore_ascii_case("DUO_SUPPORT")))
                     || (target.position == EvidencePosition::Mid
-                        && (e.role.eq_ignore_ascii_case("MIDDLE")
-                            || e.lane.eq_ignore_ascii_case("MIDDLE")))
+                        && (e.role.eq_ignore_ascii_case("MIDDLE") || e.lane.eq_ignore_ascii_case("MIDDLE")))
             })
             .collect();
         if let [only] = literal.as_slice() {
@@ -167,16 +165,12 @@ pub fn resolve_lane_opponent(
 }
 
 /// 目标是打野（或带惩戒）时，用敌方惩戒 / 打野位 / 野刀找唯一对位
-fn resolve_jungler_opponent(
-    target: &ParticipantInfo,
-    enemies: &[&ParticipantInfo],
-) -> Option<OpponentEvidence> {
+fn resolve_jungler_opponent(target: &ParticipantInfo, enemies: &[&ParticipantInfo]) -> Option<OpponentEvidence> {
     if !(target.has_smite || target.position == EvidencePosition::Jungle) {
         return None;
     }
 
-    let smite_enemies: Vec<&ParticipantInfo> =
-        enemies.iter().copied().filter(|e| e.has_smite).collect();
+    let smite_enemies: Vec<&ParticipantInfo> = enemies.iter().copied().filter(|e| e.has_smite).collect();
     if let [only] = smite_enemies.as_slice() {
         return Some(evidence(
             only,
@@ -221,13 +215,8 @@ fn resolve_jungler_opponent(
     }
 
     // 敌方位置/惩戒全糊：野刀遥遥领先的唯一敌人
-    clear_jungle_cs_leader(enemies).map(|only| {
-        evidence(
-            only,
-            OpponentMatchMethod::PositionMatch,
-            CONFIDENCE_SMITE_MATCH * 0.9,
-        )
-    })
+    clear_jungle_cs_leader(enemies)
+        .map(|only| evidence(only, OpponentMatchMethod::PositionMatch, CONFIDENCE_SMITE_MATCH * 0.9))
 }
 
 fn disambiguate_same_position<'a>(
@@ -520,10 +509,8 @@ fn participant_spell_ids(participant: &Value) -> [i64; 2] {
     let root1 = json_i64(participant.get("spell1Id")).or_else(|| json_i64(participant.get("summoner1Id")));
     let root2 = json_i64(participant.get("spell2Id")).or_else(|| json_i64(participant.get("summoner2Id")));
     let stats = participant.get("stats");
-    let stats1 = stats
-        .and_then(|s| json_i64(s.get("spell1Id")).or_else(|| json_i64(s.get("summoner1Id"))));
-    let stats2 = stats
-        .and_then(|s| json_i64(s.get("spell2Id")).or_else(|| json_i64(s.get("summoner2Id"))));
+    let stats1 = stats.and_then(|s| json_i64(s.get("spell1Id")).or_else(|| json_i64(s.get("summoner1Id"))));
+    let stats2 = stats.and_then(|s| json_i64(s.get("spell2Id")).or_else(|| json_i64(s.get("summoner2Id"))));
     [root1.or(stats1).unwrap_or(0), root2.or(stats2).unwrap_or(0)]
 }
 

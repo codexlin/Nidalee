@@ -65,8 +65,7 @@ pub async fn copy_png_to_clipboard(png_base64: String) -> Result<(), String> {
     let (width, height) = img.dimensions();
 
     tauri::async_runtime::spawn_blocking(move || {
-        let mut clipboard =
-            arboard::Clipboard::new().map_err(|e| format!("打开剪贴板失败: {e}"))?;
+        let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("打开剪贴板失败: {e}"))?;
         clipboard
             .set_image(arboard::ImageData {
                 width: width as usize,

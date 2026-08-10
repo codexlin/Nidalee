@@ -28,9 +28,9 @@ use serde_json::Value;
 
 // 证据层先落地，crate 内的消费者（orchestrator / advice）在后续任务接入
 #[allow(unused_imports)]
-pub use aggregate::aggregate_match_evidence;
-#[allow(unused_imports)]
 pub use activity::ActivityContext;
+#[allow(unused_imports)]
+pub use aggregate::aggregate_match_evidence;
 #[allow(unused_imports)]
 pub use events::{extract_event_evidence, EventExtractContext};
 #[allow(unused_imports)]

@@ -48,12 +48,7 @@ pub fn compact_evidence_for_ai(result: &MatchAnalysisResult) -> Option<AiPromptB
         .map(trait_to_prompt)
         .collect();
 
-    let diagnostics: Vec<String> = result
-        .diagnostics
-        .iter()
-        .take(8)
-        .map(|d| d.message.clone())
-        .collect();
+    let diagnostics: Vec<String> = result.diagnostics.iter().take(8).map(|d| d.message.clone()).collect();
 
     Some(AiPromptBundle {
         analyzed_games: evidence.match_count,
@@ -92,7 +87,8 @@ pub fn build_ai_prompt(bundle: &AiPromptBundle) -> Result<(String, String), Stri
 }
 3. findings/suggestions 必须引用 evidenceGameIds 中已有的对局 ID；没有证据就不要编造。
 4. 不要索要或假设玩家真实姓名、PUUID、队友身份。
-5. 用简体中文。"#.to_string();
+5. 用简体中文。"#
+        .to_string();
 
     let user = serde_json::to_string_pretty(bundle).map_err(|e| format!("序列化 AI 证据失败: {e}"))?;
     Ok((system, user))

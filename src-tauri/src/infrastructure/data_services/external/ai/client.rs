@@ -5,9 +5,7 @@ use std::time::Duration;
 use crate::domains::ai_analysis::{AiInsight, AiPromptBundle};
 
 use super::credentials::load_api_key;
-use super::types::{
-    AiProviderConfig, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ResponseFormat,
-};
+use super::types::{AiProviderConfig, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ResponseFormat};
 
 pub struct AiClient {
     http: Client,
@@ -65,10 +63,7 @@ impl AiClient {
             .map_err(|e| format!("AI 请求失败: {e}"))?;
 
         let status = response.status();
-        let text = response
-            .text()
-            .await
-            .map_err(|e| format!("读取 AI 响应失败: {e}"))?;
+        let text = response.text().await.map_err(|e| format!("读取 AI 响应失败: {e}"))?;
 
         if !status.is_success() {
             // 绝不把 Key 打进错误
@@ -105,10 +100,7 @@ impl AiClient {
 pub async fn test_connection(base_url: &str, model: &str) -> Result<String, String> {
     let client = AiClient::from_public(base_url, model)?;
     let content = client
-        .complete_json(
-            "Reply with a tiny JSON object {\"ok\":true}.",
-            "ping",
-        )
+        .complete_json("Reply with a tiny JSON object {\"ok\":true}.", "ping")
         .await?;
     Ok(format!("连接成功，模型返回 {} 字符", content.len()))
 }
@@ -146,10 +138,8 @@ pub fn normalize_ai_base_url(base_url: &str) -> Result<String, String> {
 pub fn parse_ai_insight_response(raw: &str) -> Result<AiInsight, String> {
     let trimmed = raw.trim();
     let json_slice = extract_json_object(trimmed).ok_or_else(|| "响应中未找到 JSON 对象".to_string())?;
-    let value: Value =
-        serde_json::from_str(json_slice).map_err(|e| format!("JSON 解析失败: {e}"))?;
-    let insight: AiInsight =
-        serde_json::from_value(value).map_err(|e| format!("AiInsight schema 校验失败: {e}"))?;
+    let value: Value = serde_json::from_str(json_slice).map_err(|e| format!("JSON 解析失败: {e}"))?;
+    let insight: AiInsight = serde_json::from_value(value).map_err(|e| format!("AiInsight schema 校验失败: {e}"))?;
 
     if insight.summary.trim().is_empty() {
         return Err("summary 不能为空".to_string());

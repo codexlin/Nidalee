@@ -71,16 +71,12 @@ pub fn frame_snapshot(frame: &Value, participant_id: i32) -> Option<FrameSnapsho
         jungle_cs: read_i64(participant, "jungleMinionsKilled"),
         total_gold: read_i64(participant, "totalGold"),
         current_gold: read_i64(participant, "currentGold"),
-        gold_per_second: participant
-            .get("goldPerSecond")
-            .and_then(Value::as_i64),
+        gold_per_second: participant.get("goldPerSecond").and_then(Value::as_i64),
         xp: read_i64(participant, "xp"),
         level: read_i64(participant, "level") as i32,
         x: position.and_then(|p| p.get("x")).and_then(Value::as_f64),
         y: position.and_then(|p| p.get("y")).and_then(Value::as_f64),
-        time_enemy_spent_controlled: participant
-            .get("timeEnemySpentControlled")
-            .and_then(Value::as_i64),
+        time_enemy_spent_controlled: participant.get("timeEnemySpentControlled").and_then(Value::as_i64),
         total_damage_done_to_champions: damage_stats
             .and_then(|d| d.get("totalDamageDoneToChampions"))
             .and_then(Value::as_i64),

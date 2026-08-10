@@ -15,7 +15,7 @@ use serde_json::{json, Value};
 use nidalee_lib::analysis_evidence::{
     advantage_to_percent, build_evidence_bundle, build_process_insight, extract_match_evidence, is_aram_queue,
     laning_opponent_diff, position_from_role_lane, resolve_lane_opponent, ActivityContext, DeathCause,
-    EvidenceConfidence, EvidenceEventKind, EventInvolvement, EvidenceIssue, EvidencePosition, EvidenceQuality,
+    EventInvolvement, EvidenceConfidence, EvidenceEventKind, EvidenceIssue, EvidencePosition, EvidenceQuality,
     GamePhase, MatchEvidence, MatchEvidenceInput, OpponentMatchMethod, ADVANTAGE_PERCENT_SCALE,
     MIN_SAMPLE_FOR_CONCLUSION,
 };
@@ -1179,10 +1179,7 @@ fn test_timeline_extracts_all_known_event_kinds() {
         events.unknown_events
     );
     assert!(
-        events
-            .key_events
-            .iter()
-            .any(|e| e.kind == EvidenceEventKind::Unknown),
+        events.key_events.iter().any(|e| e.kind == EvidenceEventKind::Unknown),
         "未知事件应进入 key_events"
     );
 

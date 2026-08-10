@@ -66,11 +66,7 @@ pub async fn get_game_process_review(
     game_id: u64,
     cached_evidence: Option<MatchEvidence>,
 ) -> Result<GameProcessReview, String> {
-    log::info!(
-        "[过程复盘] gameId={} cached={}",
-        game_id,
-        cached_evidence.is_some()
-    );
+    log::info!("[过程复盘] gameId={} cached={}", game_id, cached_evidence.is_some());
     let client = http_client::get_lcu_client();
     service::get_game_process_review_logic(&client, &puuid, game_id, cached_evidence).await
 }

@@ -190,8 +190,7 @@ impl<S: MatchDataSource> MatchFetcher<S> {
         let (display_games, bundles, mut diagnostics) = build_bundles(&raw_list, policy, display_target);
 
         // 仅在有队列过滤时报告「范围内不足」；无过滤时场数不够只是历史本身偏少
-        let insufficient_matches_in_scope =
-            policy.has_queue_filter() && display_games.len() < display_target;
+        let insufficient_matches_in_scope = policy.has_queue_filter() && display_games.len() < display_target;
         if insufficient_matches_in_scope {
             diagnostics.push(FetchDiagnostic::new(
                 FetchStage::List,

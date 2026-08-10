@@ -3,7 +3,11 @@ use ts_rs::TS;
 
 /// 发给模型的脱敏证据摘要（禁止含 PUUID / 召唤师名 / 完整时间线）
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../src/types/generated/AiPromptBundle.ts", rename_all = "camelCase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/AiPromptBundle.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AiPromptBundle {
     pub analyzed_games: u32,
@@ -16,7 +20,11 @@ pub struct AiPromptBundle {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../src/types/generated/AiPromptSummary.ts", rename_all = "camelCase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/AiPromptSummary.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AiPromptSummary {
     pub queue_id: i64,
@@ -29,7 +37,11 @@ pub struct AiPromptSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../src/types/generated/AiPromptTrait.ts", rename_all = "camelCase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/AiPromptTrait.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AiPromptTrait {
     pub key: String,
@@ -44,7 +56,11 @@ pub struct AiPromptTrait {
 
 /// 模型必须返回的结构化解读
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../../src/types/generated/AiInsight.ts", rename_all = "camelCase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/AiInsight.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AiInsight {
     pub summary: String,
@@ -54,7 +70,11 @@ pub struct AiInsight {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../../src/types/generated/AiInsightFinding.ts", rename_all = "camelCase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/AiInsightFinding.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AiInsightFinding {
     pub title: String,
@@ -65,7 +85,11 @@ pub struct AiInsightFinding {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export, export_to = "../../src/types/generated/AiInsightSuggestion.ts", rename_all = "camelCase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/AiInsightSuggestion.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AiInsightSuggestion {
     pub title: String,

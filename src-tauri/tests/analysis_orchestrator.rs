@@ -498,7 +498,10 @@ async fn test_traits_carry_evidence_and_sufficient_sample_supports_conclusion() 
             top.stats.traits.first()
         });
     assert!(
-        top.stats.traits.iter().any(|t| t.description.contains("补刀") || t.name.contains("补刀")),
+        top.stats
+            .traits
+            .iter()
+            .any(|t| t.description.contains("补刀") || t.name.contains("补刀")),
         "TOP 位置维度必须产出补刀特征，实际 {:?}",
         top.stats.traits
     );
@@ -579,7 +582,10 @@ async fn test_advice_is_evidence_backed_and_respects_perspective() {
         .find(|p| p.position == "TOP")
         .expect("TOP 位置分组必须存在");
     assert!(
-        top.stats.advice.iter().any(|a| a.title.contains("补刀") || a.problem.contains("补刀")),
+        top.stats
+            .advice
+            .iter()
+            .any(|a| a.title.contains("补刀") || a.problem.contains("补刀")),
         "TOP 位置维度必须产出补刀建议，实际 {:?}",
         top.stats.advice
     );
@@ -867,7 +873,10 @@ async fn test_mixed_modes_position_stats_only_count_ranked() {
     assert_eq!(total_position_games, 2, "位置统计只计入两场排位");
     assert!(result.capabilities.position_breakdown);
     assert_eq!(result.main_position, "TOP");
-    assert!(result.position_stats.iter().all(|p| p.position == "TOP" || p.position == "UNKNOWN"));
+    assert!(result
+        .position_stats
+        .iter()
+        .all(|p| p.position == "TOP" || p.position == "UNKNOWN"));
 }
 
 // === 13. 诊断去重 + capabilities 收敛 ===
@@ -889,7 +898,10 @@ async fn test_timeline_failures_dedupe_to_single_diagnostic() {
         "3 局时间线失败只能有 1 条诊断，实际 {:?}",
         result.diagnostics
     );
-    assert!(!result.capabilities.timeline, "无完整时间线时 timeline 能力必须为 false");
+    assert!(
+        !result.capabilities.timeline,
+        "无完整时间线时 timeline 能力必须为 false"
+    );
 }
 
 #[tokio::test]
@@ -931,9 +943,7 @@ fn test_overview_request_is_simple_with_timeline_disabled() {
 
 #[test]
 fn test_domains_analysis_must_not_import_infrastructure() {
-    let roots = [
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/domains"),
-    ];
+    let roots = [std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/domains")];
     let mut offenders = Vec::new();
     for root in roots {
         for entry in walkdir_rs(&root) {

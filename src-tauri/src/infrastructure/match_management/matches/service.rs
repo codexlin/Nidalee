@@ -10,8 +10,8 @@ use crate::domains::analysis::{
 };
 use crate::domains::tactical_advice::generate_advice;
 use crate::shared::types::{
-    AdvicePerspective, GameAdvice, GameDetail, GameProcessReview, ParticipantInfo, ParticipantStats,
-    PlayerMatchStats, TeamInfo, TeamStats,
+    AdvicePerspective, GameAdvice, GameDetail, GameProcessReview, ParticipantInfo, ParticipantStats, PlayerMatchStats,
+    TeamInfo, TeamStats,
 };
 use crate::shared::utils::{lcu_get, lcu_request_json};
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
@@ -171,9 +171,7 @@ pub async fn get_game_process_review_logic(
         }
     };
 
-    if !crate::domains::analysis::queue_config::QueueType::from_queue_id(evidence.queue_id as i32)
-        .is_ranked()
-    {
+    if !crate::domains::analysis::queue_config::QueueType::from_queue_id(evidence.queue_id as i32).is_ranked() {
         return Err("过程复盘仅支持排位对局（单双/灵活）".into());
     }
 

@@ -1612,8 +1612,8 @@ pub struct MatchPerformance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub game_mode: Option<String>,
     // ⭐ v3.1: 位置信息（用于前端展示和分析）
-    pub role: String,     // 原始 role：DUO_CARRY, DUO_SUPPORT, SOLO, JUNGLE
-    pub lane: String,     // 原始 lane：TOP, MIDDLE, BOTTOM, JUNGLE
+    pub role: String, // 原始 role：DUO_CARRY, DUO_SUPPORT, SOLO, JUNGLE
+    pub lane: String, // 原始 lane：TOP, MIDDLE, BOTTOM, JUNGLE
     /// ASCII 位置码：TOP / JUNGLE / MID / ADC / SUPPORT / ARAM / FLEX / UNKNOWN
     pub position: String,
 }

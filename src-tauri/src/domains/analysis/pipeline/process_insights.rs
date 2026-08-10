@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::domains::analysis::evidence::activity::ActivityContext;
 use crate::domains::analysis::evidence::position::EvidencePosition;
-use crate::domains::analysis::evidence::types::{DeathCause, EvidenceEventKind, EventInvolvement, GamePhase};
+use crate::domains::analysis::evidence::types::{DeathCause, EventInvolvement, EvidenceEventKind, GamePhase};
 use crate::domains::analysis::evidence::{EvidenceQuality, MatchEvidence, MIN_SAMPLE_FOR_CONCLUSION};
 use crate::shared::types::types::{
     ActivityBucketCount, DeathBreakdownCard, LaningProcessCard, ObjectiveProcessCard, OpponentCompareCard,
@@ -25,8 +25,7 @@ pub fn build_process_insight(matches: &[MatchEvidence]) -> ProcessInsight {
             timeline_games: 0,
             has_timeline: false,
             degradation_message: Some(
-                "这些对局没有可用时间线，暂时没法做过程复盘。请确认深度分析与时间线开关已打开。"
-                    .into(),
+                "这些对局没有可用时间线，暂时没法做过程复盘。请确认深度分析与时间线开关已打开。".into(),
             ),
             death_breakdown: None,
             laning_process: None,
@@ -209,10 +208,7 @@ pub fn build_key_moments(evidence: &MatchEvidence) -> Vec<ProcessKeyMoment> {
                     timestamp_ms: ke.timestamp_ms,
                     label: label.into(),
                     detail: ke.activity_context.map(activity_label).map(str::to_string),
-                    opponent_detail: ke
-                        .opponent_activity_context
-                        .map(activity_label)
-                        .map(str::to_string),
+                    opponent_detail: ke.opponent_activity_context.map(activity_label).map(str::to_string),
                 })
             }
             EvidenceEventKind::Dragon | EvidenceEventKind::Herald | EvidenceEventKind::Baron => {
@@ -223,13 +219,9 @@ pub fn build_key_moments(evidence: &MatchEvidence) -> Vec<ProcessKeyMoment> {
                     _ => "资源",
                 };
                 let label = match (ke.involvement, ke.allied_side) {
-                    (EventInvolvement::Killer | EventInvolvement::Assist, _) => {
-                        Some(format!("参与{resource}"))
-                    }
+                    (EventInvolvement::Killer | EventInvolvement::Assist, _) => Some(format!("参与{resource}")),
                     (EventInvolvement::Uninvolved, Some(false)) => Some(format!("错过{resource}")),
-                    (EventInvolvement::Uninvolved, Some(true)) => {
-                        Some(format!("己方{resource}（未参与）"))
-                    }
+                    (EventInvolvement::Uninvolved, Some(true)) => Some(format!("己方{resource}（未参与）")),
                     _ => None,
                 };
                 label.map(|label| ProcessKeyMoment {
@@ -240,10 +232,7 @@ pub fn build_key_moments(evidence: &MatchEvidence) -> Vec<ProcessKeyMoment> {
                         .map(activity_label)
                         .map(str::to_string)
                         .or_else(|| ke.detail.clone()),
-                    opponent_detail: ke
-                        .opponent_activity_context
-                        .map(activity_label)
-                        .map(str::to_string),
+                    opponent_detail: ke.opponent_activity_context.map(activity_label).map(str::to_string),
                 })
             }
             _ => None,
@@ -452,9 +441,7 @@ fn objective_card(matches: &[MatchEvidence]) -> Option<ObjectiveProcessCard> {
     let top_miss = missed_activity.first().map(|b| b.label.as_str()).unwrap_or("未知位置");
     let missed_total = dragons_missed + heralds_missed + barons_missed;
     let summary = if missed_total == 0 {
-        format!(
-            "大型资源你基本都有参与（龙 {dragons_taken}/{dragons_seen}，先锋 {heralds_taken}/{heralds_seen}）。"
-        )
+        format!("大型资源你基本都有参与（龙 {dragons_taken}/{dragons_seen}，先锋 {heralds_taken}/{heralds_seen}）。")
     } else {
         format!(
             "敌方独拿资源约 {missed_total} 次（小龙错过 {dragons_missed}、先锋 {heralds_missed}、大龙 {barons_missed}）。错过时你多半在{top_miss}。"
@@ -531,18 +518,9 @@ fn build_actions(
     if let Some(d) = death {
         if d.solo_rate >= 0.55 {
             let (title, detail) = match position {
-                EvidencePosition::Jungle => (
-                    "练反野与撤退",
-                    "单杀占比偏高：先摸清对位强弱期，没视野别硬反。",
-                ),
-                EvidencePosition::Support => (
-                    "少独走送掉",
-                    "单杀占比偏高：游走前先确认安全，没视野少独自探。",
-                ),
-                _ => (
-                    "加强对线细节",
-                    "单杀占比偏高：先摸清对位强势期，少做没视野的硬换。",
-                ),
+                EvidencePosition::Jungle => ("练反野与撤退", "单杀占比偏高：先摸清对位强弱期，没视野别硬反。"),
+                EvidencePosition::Support => ("少独走送掉", "单杀占比偏高：游走前先确认安全，没视野少独自探。"),
+                _ => ("加强对线细节", "单杀占比偏高：先摸清对位强势期，少做没视野的硬换。"),
             };
             actions.push(ProcessAction {
                 key: "death_solo".into(),
@@ -552,18 +530,9 @@ fn build_actions(
             });
         } else if d.gank_rate >= 0.55 {
             let (title, detail) = match position {
-                EvidencePosition::Jungle => (
-                    "别人数劣势硬开",
-                    "多人集火偏多：进野/开龙前先确认己方人数与视野。",
-                ),
-                EvidencePosition::Support => (
-                    "控进场时机",
-                    "多人集火偏多：先手别太深，跟团站位靠后排。",
-                ),
-                _ => (
-                    "减少被包夹",
-                    "多人集火偏多：线权不好时主动让一波，侧向插眼再推进。",
-                ),
+                EvidencePosition::Jungle => ("别人数劣势硬开", "多人集火偏多：进野/开龙前先确认己方人数与视野。"),
+                EvidencePosition::Support => ("控进场时机", "多人集火偏多：先手别太深，跟团站位靠后排。"),
+                _ => ("减少被包夹", "多人集火偏多：线权不好时主动让一波，侧向插眼再推进。"),
             };
             actions.push(ProcessAction {
                 key: "death_multi".into(),
@@ -592,11 +561,7 @@ fn build_actions(
         let missed = o.dragons_missed + o.heralds_missed + o.barons_missed;
         let missed_threshold = if allow_without_min_sample { 1 } else { 3 };
         if missed >= missed_threshold {
-            let where_ = o
-                .missed_activity
-                .first()
-                .map(|b| b.label.as_str())
-                .unwrap_or("别处");
+            let where_ = o.missed_activity.first().map(|b| b.label.as_str()).unwrap_or("别处");
             actions.push(ProcessAction {
                 key: "objective_timing".into(),
                 title: "资源刷新前提前靠".into(),

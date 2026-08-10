@@ -66,9 +66,8 @@ pub async fn test_ai_connection(state: State<'_, AiSettingsState>) -> Result<Str
 #[tauri::command]
 pub async fn preview_ai_prompt(result: MatchAnalysisResult) -> Result<Value, String> {
     ensure_local_ai_eligible(&result)?;
-    let bundle = compact_evidence_for_ai(&result).ok_or_else(|| {
-        "当前结果没有可用的排位深度证据，无法生成 AI 解读".to_string()
-    })?;
+    let bundle = compact_evidence_for_ai(&result)
+        .ok_or_else(|| "当前结果没有可用的排位深度证据，无法生成 AI 解读".to_string())?;
     serde_json::to_value(bundle).map_err(|e| e.to_string())
 }
 
@@ -87,9 +86,8 @@ pub async fn analyze_with_ai(
     }
     ensure_local_ai_eligible(&result)?;
 
-    let bundle = compact_evidence_for_ai(&result).ok_or_else(|| {
-        "当前结果没有可用的排位深度证据，无法生成 AI 解读".to_string()
-    })?;
+    let bundle = compact_evidence_for_ai(&result)
+        .ok_or_else(|| "当前结果没有可用的排位深度证据，无法生成 AI 解读".to_string())?;
     let (system, user) = build_ai_prompt(&bundle)?;
     let client = AiClient::from_public(&settings.base_url, &settings.model)?;
     client.analyze_evidence(&system, &user).await
