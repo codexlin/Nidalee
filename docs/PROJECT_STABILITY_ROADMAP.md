@@ -31,11 +31,12 @@
 | 对局分析单一数据流 | `0edf48c` | 应用事件层唯一恢复后端缓存，页面只读取 Store，实时事件不会被旧缓存覆盖 |
 | 前端旧响应保护 | `deb98d8` | 搜索、召唤师详情和对局详情只允许最新请求更新界面，并清理历史拼写 |
 | 静态数据查询收敛 | `bd253b7` | 英雄列表与详情统一到版本化数据入口，移除重复请求和陈旧自动导入声明 |
+| Rust → TypeScript 契约门禁 | `bf1e528` | 清空并稳定生成 111 份后端类型，CI 会阻止 `global.d.ts` 契约漂移 |
 | Dashboard 与样式批次 | 多个独立提交 | HarmonyOS 字体、Dashboard 设计、海报导出、过程复盘 UI 等已分批落地 |
 
 ### 当前执行位置
 
-阶段 0 至阶段 3 已完成。下一批优先进入阶段 6“质量门禁与测试基线”；阶段 4、阶段 5 的大文件拆分在行为测试和质量基线稳定后按模块逐批执行。
+阶段 0 至阶段 3 已完成；阶段 6 的 Rust → TypeScript 契约门禁已完成。下一批继续建立 Rust 格式基线，再逐步启用质量门禁；阶段 4、阶段 5 的大文件拆分在行为测试和质量基线稳定后按模块逐批执行。
 
 ## 三、推荐实施顺序
 
@@ -257,6 +258,8 @@ refactor-consolidate-static-data-queries
 
 **优先级：P1**
 
+**状态：部分完成（Rust → TypeScript 契约门禁：`bf1e528`）**
+
 ### Rust
 
 - 单独创建一次 `cargo fmt` 基线提交，避免格式变化污染业务提交。
@@ -273,9 +276,10 @@ refactor-consolidate-static-data-queries
 
 ### Rust → TypeScript 契约
 
-- 提供一个稳定命令完成“生成类型 → 同步目标文件 → 检查 git diff”。
-- CI 执行该命令，生成结果变化时直接失败。
-- 明确 `src/types/global.d.ts`、`types/auto-imports.d.ts` 和组件声明的生成来源。
+- [x] 提供稳定命令完成“清空旧生成物 → 生成类型 → 同步目标文件 → 检查 git diff”。
+- [x] CI 和发布预检执行相同流程，生成结果变化时直接失败。
+- [x] `src/types/global.d.ts` 由 Rust `ts-rs` 测试和同步脚本生成，不再保留手写补丁。
+- [ ] 在项目文档治理阶段补充 `types/auto-imports.d.ts` 和组件声明的生成来源。
 
 建议拆为多个提交：
 
@@ -413,9 +417,8 @@ docs-align-project-guidance-with-current-architecture
 
 按当前状态，最合理的连续执行顺序是：
 
-1. `test-cover-frontend-request-lifecycle`
-2. `chore-check-generated-type-contracts`
-3. `style-establish-rustfmt-baseline`
-4. `chore-enforce-rust-quality-gates`
+1. `style-establish-rustfmt-baseline`
+2. `chore-enforce-rust-quality-gates`
+3. `test-cover-frontend-request-lifecycle`
 
 完成这些批次后，再根据是否临近公开发布，在“文档治理 / 平台发布”和“大文件结构拆分”之间选择下一阶段。公开发布临近时优先处理发布平台、签名和 CI；否则优先清理质量基线和前端数据所有权。
