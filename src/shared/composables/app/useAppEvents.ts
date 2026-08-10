@@ -27,6 +27,7 @@ export function useAppEvents() {
   const matchmakingStore = useMatchmakingStore()
   const matchAnalysisStore = useMatchAnalysisStore()
   const queryClient = useQueryClient() // ← 移到外层，所有函数共享同一个实例
+  let analysisStateRevision = 0
 
   const { handleGamePhaseChange, cancelPendingAutoAccept } = gamePhaseManager
   const { handleLobbyChange, handleChampSelectChange } = champSelectManager
@@ -76,10 +77,15 @@ export function useAppEvents() {
     void updateSummonerAndMatches(summoner)
   }
 
+  const updateTeamAnalysisData = (data: TeamAnalysisData | null) => {
+    analysisStateRevision += 1
+    matchAnalysisStore.setTeamAnalysisData(data)
+  }
+
   // 战绩分析数据（异步到达）
-  const handleTeamAnalysisData = (event: { payload: TeamAnalysisData | null }) => {
+  const handleTeamAnalysisData = (event: Event<TeamAnalysisData | null>) => {
     console.log('[AppEvents] 收到战绩分析数据，更新 UI')
-    matchAnalysisStore.setTeamAnalysisData(event.payload)
+    updateTeamAnalysisData(event.payload)
   }
 
   const handleConnectionStateChange = async (event: Event<unknown>) => {
@@ -117,7 +123,7 @@ export function useAppEvents() {
 
   const handleGameFinished = () => {
     console.log('[AppEvents] 游戏结束事件')
-    matchAnalysisStore.clearAllData()
+    updateTeamAnalysisData(null)
   }
 
   const stopListening = () => {
@@ -146,14 +152,18 @@ export function useAppEvents() {
   }
 
   const restoreCachedAnalysis = async (generation: number) => {
+    const revisionBeforeRestore = analysisStateRevision
     try {
       console.log('[AppEvents] 🔄 尝试从后端缓存恢复数据...')
       const { invoke } = await import('@tauri-apps/api/core')
       const cachedData = await invoke<TeamAnalysisData | null>('get_cached_analysis_data')
       if (!listenersReady || listenerGeneration !== generation) return
+      // A live event or game-finished notification that arrived while the command was in flight
+      // is newer than this cache read and must keep ownership of the store.
+      if (analysisStateRevision !== revisionBeforeRestore) return
       if (cachedData) {
         console.log('[AppEvents] ✅ 找到缓存数据，正在恢复...')
-        handleTeamAnalysisData({ payload: cachedData })
+        updateTeamAnalysisData(cachedData)
       }
     } catch (error) {
       console.error('[AppEvents] 从后端缓存恢复数据失败:', error)

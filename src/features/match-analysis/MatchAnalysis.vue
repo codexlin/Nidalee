@@ -64,7 +64,6 @@
 </template>
 
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { useMatchAnalysisStore } from './store'
 import type { UIPlayerData } from '@/types/match-analysis'
 
@@ -91,47 +90,20 @@ const isDataReady = ref(false)
 
 watch(
   () => shouldShowAnalysis.value && hasMyTeamData.value,
-  (shouldShow) => {
+  (shouldShow, _previousValue, onCleanup) => {
     if (shouldShow) {
       // 数据加载完成后，延迟 150ms 再显示，避免闪烁
       isDataReady.value = false
-      setTimeout(() => {
+      const readyTimer = setTimeout(() => {
         isDataReady.value = true
       }, 150)
+      onCleanup(() => clearTimeout(readyTimer))
     } else {
       isDataReady.value = false
     }
   },
   { immediate: true }
 )
-
-onMounted(async () => {
-  console.log('[MatchAnalysis] Component mounted')
-
-  // 如果 store 中没有数据，尝试从后端缓存恢复
-  if (!matchAnalysisStore.hasMyTeamData && !matchAnalysisStore.hasEnemyTeamData) {
-    console.log('[MatchAnalysis] Store empty, attempting to restore from backend cache')
-
-    try {
-      const cachedData = await invoke<TeamAnalysisData | null>('get_cached_analysis_data')
-      if (cachedData) {
-        console.log('[MatchAnalysis] Successfully restored cached data')
-        matchAnalysisStore.setTeamAnalysisData(cachedData)
-      } else {
-        console.log('[MatchAnalysis] No cached data, waiting for WebSocket events')
-      }
-    } catch (error) {
-      console.error('[MatchAnalysis] Failed to restore cached data:', error)
-    }
-  } else {
-    console.log('[MatchAnalysis] Store already has data, skipping restore')
-  }
-})
-
-onBeforeUnmount(() => {
-  console.log('[MatchAnalysisViewV2] 🔴 组件即将卸载，清理数据')
-  // matchAnalysisStore.clearAllData()
-})
 
 // Summoner details logic
 const { fetchSummonerInfo, currentRestult, loading: summonerLoading } = useSearchMatches()
