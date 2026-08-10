@@ -71,26 +71,6 @@ export function useChampSelect() {
     selectChampion: boolean
     lockInProgress: boolean
   }
-  /**
-   * 判断是否需要自动跳转 OPGG 并应用符文
-   * @param session 当前选人会话
-   * @param autoFunctions 自动功能配置
-   * @returns {number | false} 选完英雄返回 championId，否则返回 false
-   */
-  function getAutoOpggChampionId(session: ChampSelectSession, autoFunctions: AutoFunctions): number | false {
-    if (!session?.actions || session.localPlayerCellId === undefined) return false
-    if (!autoFunctions?.runeConfig?.enabled) return false
-
-    const localPlayerCellId = session.localPlayerCellId
-    const myPickAction = session.actions
-      .flat()
-      .find((action) => action.actorCellId === localPlayerCellId && action.type === 'pick')
-
-    if (myPickAction?.completed && myPickAction.championId) {
-      return myPickAction.championId
-    }
-    return false
-  }
   async function checkAndExecuteAutoActions(
     session: ChampSelectSession,
     autoFunctions: AutoFunctions,
@@ -265,7 +245,6 @@ export function useChampSelect() {
     getChampSelectSession,
     pickChampion,
     banChampion,
-    checkAndExecuteAutoActions,
-    getAutoOpggChampionId
+    checkAndExecuteAutoActions
   }
 }

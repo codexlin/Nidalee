@@ -196,10 +196,8 @@ const handleApplySpecificRunes = async (runeIndex: number) => {
 }
 
 const route = useRoute()
-const autoFunctionStore = useAutoFunctionStore()
 
-// 自动搜索和应用符文
-const autoSearchAndApply = async (championIdRaw: string | number | (string | null)[] | undefined) => {
+const loadChampionFromRoute = async (championIdRaw: string | number | (string | null)[] | undefined) => {
   let championId: number | undefined
   if (Array.isArray(championIdRaw)) {
     championId = Number(championIdRaw[0])
@@ -209,27 +207,15 @@ const autoSearchAndApply = async (championIdRaw: string | number | (string | nul
   if (!championId || isNaN(championId)) return
   opggData.config.value.championId = championId
   await opggData.loadChampionBuild()
-  // @ts-expect-error: window.__AUTO_APPLY_RUNES__ is a custom global flag for auto rune
-  if (autoFunctionStore.autoFunctions.runeConfig.enabled || window.__AUTO_APPLY_RUNES__) {
-    await opggRunes.applyBestRunes(championId, opggData.config.value)
-    // @ts-expect-error: window.__AUTO_APPLY_RUNES__ is a custom global flag for auto rune
-    window.__AUTO_APPLY_RUNES__ = false
-  }
 }
 
 watch(
   () => route.query.championId,
   (newId) => {
     if (newId) {
-      autoSearchAndApply(newId)
+      void loadChampionFromRoute(newId)
     }
   },
   { immediate: true }
 )
-
-onMounted(() => {
-  if (route.query.championId) {
-    autoSearchAndApply(route.query.championId)
-  }
-})
 </script>

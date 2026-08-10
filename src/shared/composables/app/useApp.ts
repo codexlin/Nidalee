@@ -19,6 +19,8 @@ export function useApp() {
   const settingsStore = useSettingsStore()
   const appInit = useAppInitialization()
   const appEvents = useAppEvents()
+  const userRuneStore = useUserRuneStore()
+  const autoRune = useAutoRune()
   const { isConnected, connectionMessage, checkConnection, hasAuth } = useConnection()
   const isDark = computed(() => settingsStore.isDark)
   let instanceGeneration: number | null = null
@@ -43,13 +45,26 @@ export function useApp() {
         throw new Error('Tauri 事件监听器注册未完成')
       }
 
-      await enqueueLcuWsCommand('start_lcu_ws')
+      if (!userRuneStore.isLoaded) {
+        await userRuneStore.loadFromStore()
+      }
       if (generation !== activeLifecycleGeneration) return
 
+      autoRune.startAutoRuneWatch()
+      await enqueueLcuWsCommand('start_lcu_ws')
+      if (generation !== activeLifecycleGeneration) {
+        autoRune.stopAutoRuneWatch()
+        return
+      }
+
       await appInit.initializeApp()
-      if (generation !== activeLifecycleGeneration) return
+      if (generation !== activeLifecycleGeneration) {
+        autoRune.stopAutoRuneWatch()
+        return
+      }
       console.log('[App] 应用初始化和事件监听完成')
     } catch (error) {
+      autoRune.stopAutoRuneWatch()
       if (generation !== activeLifecycleGeneration) return
       appEvents.stopListening()
       appInit.cleanup()
@@ -59,6 +74,7 @@ export function useApp() {
   })
 
   onUnmounted(() => {
+    autoRune.stopAutoRuneWatch()
     if (instanceGeneration === null || activeLifecycleGeneration !== instanceGeneration) return
 
     activeLifecycleGeneration = null

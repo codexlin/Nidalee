@@ -1,9 +1,11 @@
-import { ref, watch } from 'vue'
+import { computed, shallowRef, watch, type WatchStopHandle } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useUserRuneStore, type RuneConfig } from '@/shared/stores/features/userRuneStore'
+import { useGameStore } from '@/shared/stores/features/gameStore'
 import { useMatchAnalysisStore } from '@/features/match-analysis/store'
-import { useAutoFunctionStore } from '@/shared/stores/features/autoFunctionStore'
 import { getChampionName } from '@/lib'
+
+const AUTO_RUNE_DELAY_MS = 1500
 
 /**
  * 自动符文应用 Composable
@@ -15,15 +17,48 @@ import { getChampionName } from '@/lib'
  */
 export function useAutoRune() {
   const userRuneStore = useUserRuneStore()
+  const gameStore = useGameStore()
   const matchAnalysisStore = useMatchAnalysisStore()
-  const autoFunctionStore = useAutoFunctionStore()
 
   // 状态
-  const isApplying = ref(false)
-  const lastAppliedChampionId = ref<number>(0)
-  const lastAppliedPosition = ref<string>('')
-  const lastError = ref<string | null>(null)
-  const lastSuccess = ref<string | null>(null)
+  const isApplying = shallowRef(false)
+  const lastAppliedChampionId = shallowRef<number>(0)
+  const lastAppliedPosition = shallowRef<string>('')
+  const lastError = shallowRef<string | null>(null)
+  const lastSuccess = shallowRef<string | null>(null)
+  let stopWatcher: WatchStopHandle | null = null
+  let pendingApplyTimer: ReturnType<typeof setTimeout> | null = null
+
+  const localPlayer = computed(() => {
+    const teamData = matchAnalysisStore.myTeamData
+    if (!teamData) return null
+    return teamData.players.find((player) => player.cellId === teamData.localPlayerCellId) ?? null
+  })
+
+  const lockedChampionId = computed(() => {
+    const session = gameStore.champSelectSession
+    if (!session?.actions || session.localPlayerCellId === undefined) return 0
+
+    const completedPick = session.actions
+      .flat()
+      .find(
+        (action) =>
+          action.actorCellId === session.localPlayerCellId &&
+          action.type === 'pick' &&
+          action.completed &&
+          typeof action.championId === 'number' &&
+          action.championId > 0
+      )
+
+    return completedPick?.championId ?? 0
+  })
+
+  const clearPendingApply = () => {
+    if (pendingApplyTimer !== null) {
+      clearTimeout(pendingApplyTimer)
+      pendingApplyTimer = null
+    }
+  }
 
   /**
    * 应用用户自定义符文
@@ -169,46 +204,57 @@ export function useAutoRune() {
    * 3. 触发自动应用
    */
   const startAutoRuneWatch = () => {
+    if (stopWatcher) return
+
     console.log('[AutoRune] 启动自动符文监听')
 
-    // 监听我方队伍数据的变化
-    watch(
-      () => matchAnalysisStore.myTeamData,
-      (newTeamData) => {
-        if (!newTeamData || !newTeamData.players) {
-          console.log('[AutoRune] 队伍数据为空，跳过')
+    stopWatcher = watch(
+      [
+        () => lockedChampionId.value,
+        () => localPlayer.value?.championId ?? 0,
+        () => localPlayer.value?.position ?? '',
+        () => matchAnalysisStore.currentPhase
+      ],
+      ([confirmedChampionId, analyzedChampionId, position, phase]) => {
+        clearPendingApply()
+
+        if (phase !== 'ChampSelect') {
+          if (phase === 'None') {
+            lastAppliedChampionId.value = 0
+            lastAppliedPosition.value = ''
+          }
           return
         }
 
-        // 查找当前玩家
-        const localPlayer = newTeamData.players.find((p) => p.cellId === newTeamData.localPlayerCellId)
-
-        if (!localPlayer) {
-          console.log('[AutoRune] 未找到当前玩家，跳过')
+        if (
+          typeof confirmedChampionId !== 'number' ||
+          confirmedChampionId <= 0 ||
+          analyzedChampionId !== confirmedChampionId
+        ) {
+          lastAppliedChampionId.value = 0
+          lastAppliedPosition.value = ''
           return
         }
-
-        const championId = localPlayer.championId
-        const position = localPlayer.position
 
         console.log('[AutoRune] 检测到英雄选择:', {
-          championId,
+          championId: confirmedChampionId,
           position,
-          playerName: localPlayer.displayName
+          playerName: localPlayer.value?.displayName
         })
 
-        // 只在 championId 有效时触发
-        if (championId && championId > 0) {
-          // 触发自动应用（带延迟）
-          const delay = autoFunctionStore.autoFunctions.runeConfig.delay || 1500
-
-          setTimeout(() => {
-            autoApplyRune(championId, position || undefined)
-          }, delay)
-        }
+        pendingApplyTimer = setTimeout(() => {
+          pendingApplyTimer = null
+          void autoApplyRune(confirmedChampionId, position || undefined)
+        }, AUTO_RUNE_DELAY_MS)
       },
-      { deep: true }
+      { immediate: true }
     )
+  }
+
+  const stopAutoRuneWatch = () => {
+    clearPendingApply()
+    stopWatcher?.()
+    stopWatcher = null
   }
 
   /**
@@ -240,6 +286,7 @@ export function useAutoRune() {
 
     // 方法
     startAutoRuneWatch,
+    stopAutoRuneWatch,
     manualApplyRune,
     reset
   }

@@ -19,8 +19,13 @@ interface AutoFunctions {
   acceptMatch: AutoFunctionConfig
   selectChampion: AutoSelectConfig
   banChampion: AutoBanConfig
-  runeConfig: AutoFunctionConfig
 }
+
+const autoFunctionKeys = [
+  'acceptMatch',
+  'selectChampion',
+  'banChampion'
+] as const satisfies readonly (keyof AutoFunctions)[]
 
 export const useAutoFunctionStore = defineStore(
   'autoFunction',
@@ -40,10 +45,6 @@ export const useAutoFunctionStore = defineStore(
         enabled: false,
         delay: 2000, // 默认2秒延迟
         championList: []
-      },
-      runeConfig: {
-        enabled: false,
-        delay: 1500 // 默认1.5秒延迟
       }
     })
 
@@ -51,8 +52,7 @@ export const useAutoFunctionStore = defineStore(
     const functionNames = {
       acceptMatch: '自动接受对局',
       selectChampion: '自动选择英雄',
-      banChampion: '自动禁用英雄',
-      runeConfig: '自动应用符文'
+      banChampion: '自动禁用英雄'
     } as const
 
     // 切换自动功能开关
@@ -91,8 +91,8 @@ export const useAutoFunctionStore = defineStore(
 
     // 禁用所有功能
     const disableAllFunctions = () => {
-      Object.keys(autoFunctions.value).forEach((key) => {
-        autoFunctions.value[key as keyof AutoFunctions].enabled = false
+      autoFunctionKeys.forEach((key) => {
+        autoFunctions.value[key].enabled = false
       })
     }
 
@@ -180,15 +180,15 @@ export const useAutoFunctionStore = defineStore(
 
     // 计算属性
     const enabledFunctionsCount = computed(() => {
-      return Object.values(autoFunctions.value).filter((config) => config.enabled).length
+      return autoFunctionKeys.filter((key) => autoFunctions.value[key].enabled).length
     })
 
     const enabledFunctions = computed(() => {
-      return Object.entries(autoFunctions.value)
-        .filter(([, config]) => config.enabled)
-        .map(([key]) => ({
-          key: key as keyof AutoFunctions,
-          name: functionNames[key as keyof AutoFunctions]
+      return autoFunctionKeys
+        .filter((key) => autoFunctions.value[key].enabled)
+        .map((key) => ({
+          key,
+          name: functionNames[key]
         }))
     })
 

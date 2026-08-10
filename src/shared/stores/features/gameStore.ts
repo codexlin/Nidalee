@@ -22,8 +22,7 @@ export const useGameStore = defineStore(
     const executedActions = shallowRef({
       banChampion: false,
       selectChampion: false,
-      lockInProgress: false,
-      applyRune: false
+      lockInProgress: false
     })
 
     // 计算属性
@@ -38,8 +37,7 @@ export const useGameStore = defineStore(
       executedActions.value = {
         banChampion: false,
         selectChampion: false,
-        lockInProgress: false,
-        applyRune: false
+        lockInProgress: false
       }
     }
     // 更新游戏阶段
@@ -79,17 +77,8 @@ export const useGameStore = defineStore(
     const checkAndExecuteAutoActions = async (session: ChampSelectSession) => {
       try {
         const autoFunctionStore = useAutoFunctionStore()
-        const { checkAndExecuteAutoActions: checkAutoActions, getAutoOpggChampionId } = useChampSelect()
+        const { checkAndExecuteAutoActions: checkAutoActions } = useChampSelect()
         const activityLogger = useActivityLogger()
-        const championId = getAutoOpggChampionId(session, autoFunctionStore.autoFunctions)
-        if (championId && !executedActions.value.applyRune) {
-          console.log('[GameStore] 检测到选完英雄，championId:', championId)
-          executedActions.value.applyRune = true
-          // 注意：不再自动跳转到 OPGG 页面，避免打断对局分析界面
-          // 用户可以手动点击英雄图标跳转到 OPGG 查看详情
-          // router.push({ name: 'opgg', query: { championId } })
-          console.log('[GameStore] 已标记符文应用状态，但不跳转页面')
-        }
         console.log('[GameStore] 检查自动操作...')
 
         const hasScheduledAction = await checkAutoActions(
@@ -148,8 +137,7 @@ export const useGameStore = defineStore(
       executedActions.value = {
         banChampion: false,
         selectChampion: false,
-        lockInProgress: false,
-        applyRune: false
+        lockInProgress: false
       }
     }
 
@@ -183,6 +171,6 @@ export const useGameStore = defineStore(
     }
   },
   {
-    persist: true
+    persist: false
   }
 )
