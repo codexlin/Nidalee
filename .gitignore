@@ -4,6 +4,7 @@ raw_match_data_*.json
 
 # Root-level Rust tooling/build cache
 /target/
+/.pnpm-store/
 
 # Logs
 logs
