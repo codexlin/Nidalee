@@ -32,11 +32,13 @@
 | 前端旧响应保护 | `deb98d8` | 搜索、召唤师详情和对局详情只允许最新请求更新界面，并清理历史拼写 |
 | 静态数据查询收敛 | `bd253b7` | 英雄列表与详情统一到版本化数据入口，移除重复请求和陈旧自动导入声明 |
 | Rust → TypeScript 契约门禁 | `bf1e528` | 清空并稳定生成 111 份后端类型，CI 会阻止 `global.d.ts` 契约漂移 |
+| Rust 格式基线 | `84c2a48` | 使用仓库 `.rustfmt.toml` 统一现有 Rust 排版，不混入行为修改 |
+| Rust 格式门禁 | `9bbfc75` | CI 与发布预检固定安装 rustfmt，并执行 `cargo fmt --all -- --check` |
 | Dashboard 与样式批次 | 多个独立提交 | HarmonyOS 字体、Dashboard 设计、海报导出、过程复盘 UI 等已分批落地 |
 
 ### 当前执行位置
 
-阶段 0 至阶段 3 已完成；阶段 6 的 Rust → TypeScript 契约门禁已完成。下一批继续建立 Rust 格式基线，再逐步启用质量门禁；阶段 4、阶段 5 的大文件拆分在行为测试和质量基线稳定后按模块逐批执行。
+阶段 0 至阶段 3 已完成；阶段 6 的 Rust → TypeScript 契约门禁和 Rust 格式门禁已完成。下一批为前端请求生命周期补最小单元测试；阶段 4、阶段 5 的大文件拆分在行为测试和质量基线稳定后按模块逐批执行。
 
 ## 三、推荐实施顺序
 
@@ -258,12 +260,12 @@ refactor-consolidate-static-data-queries
 
 **优先级：P1**
 
-**状态：部分完成（Rust → TypeScript 契约门禁：`bf1e528`）**
+**状态：部分完成（契约门禁：`bf1e528`；格式基线：`84c2a48`；格式门禁：`9bbfc75`）**
 
 ### Rust
 
-- 单独创建一次 `cargo fmt` 基线提交，避免格式变化污染业务提交。
-- 基线清理完成后在 CI 增加 `cargo fmt --check`。
+- [x] 单独创建一次 `cargo fmt` 基线提交，避免格式变化污染业务提交。
+- [x] 基线清理完成后在 CI 和发布预检增加 `cargo fmt --check`。
 - 分阶段处理 Clippy 告警，再增加 `cargo clippy --all-targets --locked -- -D warnings`；不要在现有大量告警未清理时直接阻塞所有开发。
 - 核心实时链路继续保留 reducer、认证恢复、重连和旧任务取消测试。
 
@@ -417,8 +419,7 @@ docs-align-project-guidance-with-current-architecture
 
 按当前状态，最合理的连续执行顺序是：
 
-1. `style-establish-rustfmt-baseline`
-2. `chore-enforce-rust-quality-gates`
-3. `test-cover-frontend-request-lifecycle`
+1. `test-cover-frontend-request-lifecycle`
+2. 分模块清理 Clippy 告警，再决定何时启用严格门禁
 
 完成这些批次后，再根据是否临近公开发布，在“文档治理 / 平台发布”和“大文件结构拆分”之间选择下一阶段。公开发布临近时优先处理发布平台、签名和 CI；否则优先清理质量基线和前端数据所有权。
