@@ -503,7 +503,7 @@ findBestMatch(championId: number, position?: string): RuneConfig | null {
 
 ## 许可证
 
-MIT License
+本项目采用 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.zh-Hans) 国际许可协议（署名-非商业性使用-相同方式共享）
 
 ---
 

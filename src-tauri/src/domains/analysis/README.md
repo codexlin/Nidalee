@@ -350,7 +350,7 @@ A: 数据质量取决于LCU API返回的数据完整性。如果<50分，建议�
 
 ## 📝 **许可证**
 
-本项目采用 MIT 许可证
+本项目采用 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) 国际许可协议（署名-非商业性使用-相同方式共享）
 
 ## 👥 **作者**
 

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.5",
+  "license": "CC-BY-NC-SA-4.0",
   "engines": {
     "node": ">=22.18.0"
   },
