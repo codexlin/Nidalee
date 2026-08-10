@@ -52,10 +52,11 @@ pub fn run() {
             infrastructure::game_session::connection::commands::check_connection_state_command,
             // 游戏流程 / 英雄选择 / 匹配
             infrastructure::game_session::gameflow::commands::get_game_version,
-            infrastructure::game_session::gameflow::commands::get_live_player_list,
-            infrastructure::game_session::gameflow::commands::get_live_events,
-            infrastructure::game_session::gameflow::commands::get_game_stats,
-            infrastructure::game_session::gameflow::commands::is_liveclient_available,
+            // LiveClient 数据
+            infrastructure::real_time::liveclient::commands::get_live_player_list,
+            infrastructure::real_time::liveclient::commands::get_live_events,
+            infrastructure::real_time::liveclient::commands::get_game_stats,
+            infrastructure::real_time::liveclient::commands::is_liveclient_available,
             infrastructure::champion_selection::champ_select::commands::get_champselect_team_players_info,
             infrastructure::champion_selection::champ_select::commands::get_champ_select_session,
             infrastructure::champion_selection::champ_select::commands::get_champ_select_session_typed,
