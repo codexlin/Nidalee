@@ -4,7 +4,7 @@ use crate::infrastructure::data_services::champion_data;
 use crate::infrastructure::data_services::summoner::service::get_summoner_by_id;
 use crate::infrastructure::match_management::analysis_data;
 use crate::shared::types::{ChampSelectSession, LobbyInfo, MatchmakingState, SummonerInfo};
-use crate::shared::{NidaleeError, Result};
+use crate::shared::Result;
 use reqwest::Client;
 use serde_json::Value;
 use std::sync::Arc;
@@ -16,7 +16,7 @@ use tokio::sync::RwLock;
 struct EventCache {
     gameflow_phase: Option<String>,
     gameflow_session: Option<String>, // Stores the session JSON string for comparison.
-    champ_select_session: Option<ChampSelectSession>,
+    champ_select_session: Option<Value>,
     matchmaking_state: Option<MatchmakingState>,
     lobby_info: Option<LobbyInfo>,
     // Cache for match statistics, keyed by summoner display name.
@@ -27,6 +27,10 @@ struct EventCache {
     // Only the newest champ-select session may publish enriched analysis.
     champ_select_analysis_generation: u64,
     champ_select_analysis_abort: Option<tokio::task::AbortHandle>,
+    // Every phase transition/reconnect invalidates in-game recovery work from the previous
+    // generation. A late task must never republish data for an old game.
+    in_game_recovery_generation: u64,
+    in_game_recovery_abort: Option<tokio::task::AbortHandle>,
 }
 
 impl EventCache {
@@ -37,8 +41,24 @@ impl EventCache {
         }
         self.champ_select_analysis_key = None;
     }
+
+    fn can_commit_champ_select_analysis(&self, generation: u64) -> bool {
+        self.champ_select_analysis_generation == generation
+    }
+
+    fn cancel_in_game_recovery(&mut self) {
+        self.in_game_recovery_generation = self.in_game_recovery_generation.wrapping_add(1);
+        if let Some(task) = self.in_game_recovery_abort.take() {
+            task.abort();
+        }
+    }
+
+    fn can_commit_in_game_recovery(&self, generation: u64) -> bool {
+        self.in_game_recovery_generation == generation && self.gameflow_phase.as_deref() == Some("InProgress")
+    }
 }
 
+#[derive(Clone)]
 pub struct WsEventHandler {
     app: AppHandle,
     cache: Arc<RwLock<EventCache>>,
@@ -64,6 +84,60 @@ impl WsEventHandler {
     pub async fn get_cached_team_analysis_data(&self) -> Option<crate::shared::types::TeamAnalysisData> {
         let cache = self.cache.read().await;
         cache.team_analysis_data.clone()
+    }
+
+    /// Feeds an HTTP fallback snapshot through the same reducer used by WebSocket events.
+    pub(crate) async fn handle_snapshot(&self, uri: &str, data: Value) -> Result<()> {
+        let payload = serde_json::json!({
+            "uri": uri,
+            "eventType": "Update",
+            "data": data,
+        });
+        self.handle_json_api_event(&payload).await
+    }
+
+    /// Replays current reducer state for listeners registered after the supervisor started.
+    /// The read lock keeps replay ordered with every cache write + synchronous emit.
+    pub(crate) async fn replay_cached_state(&self) {
+        let cache = self.cache.read().await;
+        if let Some(phase) = cache.gameflow_phase.as_ref() {
+            let _ = self.app.emit("gameflow-phase-change", &Some(phase.clone()));
+        }
+        if let Some(session) = cache
+            .gameflow_session
+            .as_ref()
+            .and_then(|session| serde_json::from_str::<Value>(session).ok())
+        {
+            let _ = self.app.emit("gameflow-session-changed", session);
+        }
+        if let Some(lobby) = cache.lobby_info.as_ref() {
+            let _ = self.app.emit("lobby-change", &Some(lobby.clone()));
+        }
+        if let Some(matchmaking) = cache.matchmaking_state.as_ref() {
+            let _ = self.app.emit("matchmaking-state-changed", matchmaking);
+        }
+        if let Some(champ_select) = cache.champ_select_session.as_ref() {
+            let _ = self.app.emit("champ-select-session-changed", champ_select);
+        }
+        if let Some(analysis) = cache.team_analysis_data.as_ref() {
+            let _ = self.app.emit("team-analysis-data", analysis);
+        }
+    }
+
+    /// Invalidates transport-scoped de-duplication and cancels work tied to the old socket.
+    /// Game-scoped analysis is also cleared: after reconnect, the next in-game snapshot must
+    /// rebuild from authoritative state rather than reuse a skeleton from a previous game.
+    pub(crate) async fn handle_transport_disconnected(&self) {
+        let mut cache = self.cache.write().await;
+        cache.cancel_champ_select_analysis();
+        cache.cancel_in_game_recovery();
+        cache.gameflow_phase = None;
+        cache.gameflow_session = None;
+        cache.champ_select_session = None;
+        cache.matchmaking_state = None;
+        cache.lobby_info = None;
+        cache.match_stats_cache.clear();
+        cache.team_analysis_data = None;
     }
 
     /// Handles a raw WebSocket event message.
@@ -152,40 +226,23 @@ impl WsEventHandler {
         log::info!("[ws-event] Gameflow phase change ({}) received: {}", event_type, data);
         if event_type == "Create" || event_type == "Update" {
             if let Some(phase) = data.as_str() {
-                let mut cache = self.cache.write().await;
-                if cache.gameflow_phase.as_ref() != Some(&phase.to_string()) {
-                    // When entering 'InProgress', trigger backfill or build logic.
-                    if phase == "InProgress" {
+                let recovery_plan = {
+                    let mut cache = self.cache.write().await;
+                    if cache.gameflow_phase.as_deref() == Some(phase) {
+                        log::debug!("[ws-event] Gameflow phase unchanged, skipping broadcast: {}", phase);
+                        return Ok(());
+                    }
+
+                    // Any phase transition invalidates work created by the preceding phase/game.
+                    cache.cancel_in_game_recovery();
+                    cache.gameflow_phase = Some(phase.to_string());
+                    if phase != "ChampSelect" {
                         cache.cancel_champ_select_analysis();
+                    }
+
+                    let recovery_plan = if phase == "InProgress" {
                         let has_cache = cache.team_analysis_data.is_some();
-
-                        // Clone required fields to satisfy the 'static lifetime for the new task.
-                        let app_clone = self.app.clone();
-                        let cache_clone = Arc::clone(&self.cache);
-                        let client_clone = self.client.clone();
-
-                        tokio::spawn(async move {
-                            // Reconstruct the handler in the new task to avoid lifetime issues.
-                            let temp_handler = WsEventHandler {
-                                app: app_clone,
-                                cache: cache_clone,
-                                client: client_clone,
-                            };
-
-                            if has_cache {
-                                // 🔥 有缓存数据（正常流程：选人→游戏），只回填敌方队伍
-                                log::info!("[ws-event] Cache available, starting enemy team backfill...");
-                                if let Err(e) = temp_handler.backfill_enemy_team_data().await {
-                                    log::error!("[ws-event-backfill] Failed to backfill enemy team data: {}", e);
-                                }
-                            } else {
-                                // 🔥 没有缓存数据（应用重启或游戏中打开），主动构建完整数据
-                                log::info!("[ws-event] No cache, building team data from scratch...");
-                                if let Err(e) = temp_handler.build_team_data_from_scratch().await {
-                                    log::error!("[ws-event-scratch] Failed to build team data from scratch: {}", e);
-                                }
-                            }
-                        });
+                        Some((cache.in_game_recovery_generation, has_cache))
                     } else if phase == "Lobby"
                         || phase == "None"
                         || phase == "EndOfGame"
@@ -193,7 +250,6 @@ impl WsEventHandler {
                         || phase == "PreEndOfGame"
                         || phase == "Terminated"
                     {
-                        cache.cancel_champ_select_analysis();
                         // ✅ 优化：游戏结束或返回大厅时，立即清空缓存释放内存
                         // 每把游戏的缓存独立，防止长期运行导致内存累积
                         let cache_size = cache.match_stats_cache.len();
@@ -215,28 +271,75 @@ impl WsEventHandler {
                             );
                             cache.team_analysis_data = None;
                         }
-                    }
-
-                    cache.gameflow_phase = Some(phase.to_string());
+                        None
+                    } else {
+                        None
+                    };
                     let _ = self.app.emit("gameflow-phase-change", &Some(phase.to_string()));
-                } else {
-                    log::debug!("[ws-event] Gameflow phase unchanged, skipping broadcast: {}", phase);
+                    recovery_plan
+                };
+
+                if let Some((generation, has_cache)) = recovery_plan {
+                    let handler = self.clone();
+                    // Do not let the task start network work until its abort handle has been
+                    // published into the current generation.
+                    let (start_tx, start_rx) = tokio::sync::oneshot::channel();
+                    let task = tokio::spawn(async move {
+                        if start_rx.await.is_err() {
+                            return;
+                        }
+
+                        let result = if has_cache {
+                            log::info!("[ws-event] Cache available, starting enemy team backfill...");
+                            handler.backfill_enemy_team_data(generation).await
+                        } else {
+                            log::info!("[ws-event] No cache, building team data from scratch...");
+                            handler.build_team_data_from_scratch(generation).await
+                        };
+
+                        if let Err(error) = result {
+                            log::error!("[ws-event-recovery] In-game recovery failed: {}", error);
+                        }
+
+                        let mut cache = handler.cache.write().await;
+                        if cache.in_game_recovery_generation == generation {
+                            cache.in_game_recovery_abort = None;
+                        }
+                    });
+                    let abort_handle = task.abort_handle();
+
+                    let mut cache = self.cache.write().await;
+                    if cache.can_commit_in_game_recovery(generation) {
+                        cache.in_game_recovery_abort = Some(abort_handle);
+                        let _ = start_tx.send(());
+                    } else {
+                        abort_handle.abort();
+                    }
                 }
             }
         } else if event_type == "Delete" {
-            let mut cache = self.cache.write().await;
-            if cache.gameflow_phase.is_some() {
-                log::info!("[ws-event] Gameflow phase cleared.");
+            {
+                let mut cache = self.cache.write().await;
+                cache.cancel_champ_select_analysis();
+                cache.cancel_in_game_recovery();
+                let should_emit = cache.gameflow_phase.is_some();
                 cache.gameflow_phase = None;
-                let _ = self.app.emit("gameflow-phase-change", &None::<String>);
+                if should_emit {
+                    log::info!("[ws-event] Gameflow phase cleared.");
+                    let _ = self.app.emit("gameflow-phase-change", &None::<String>);
+                }
             }
         }
         Ok(())
     }
 
     /// Backfills detailed match history for the enemy team during the 'InProgress' phase.
-    async fn backfill_enemy_team_data(&self) -> Result<()> {
+    async fn backfill_enemy_team_data(&self, generation: u64) -> Result<()> {
         log::info!("[ws-event-backfill] Starting backfill task...");
+
+        if !self.cache.read().await.can_commit_in_game_recovery(generation) {
+            return Ok(());
+        }
 
         // 1. Fetch the full player list from the LiveClient API.
         // Retry logic is necessary as the LiveClient API may not be ready immediately at game start.
@@ -288,13 +391,20 @@ impl WsEventHandler {
             live_players.len()
         );
 
-        // 2. Get the cached analysis data.
-        let mut cache = self.cache.write().await;
-        let team_analysis = match cache.team_analysis_data.as_mut() {
-            Some(data) => data,
-            None => {
-                log::warn!("[ws-event-backfill] No TeamAnalysisData in cache, cannot perform backfill.");
+        // 2. Snapshot cached analysis data. All network I/O below operates on this owned copy;
+        // no EventCache lock is held across an await.
+        let mut team_analysis = {
+            let cache = self.cache.read().await;
+            if !cache.can_commit_in_game_recovery(generation) {
+                log::debug!("[ws-event-backfill] Recovery generation {generation} is stale before backfill");
                 return Ok(());
+            }
+            match cache.team_analysis_data.clone() {
+                Some(data) => data,
+                None => {
+                    log::warn!("[ws-event-backfill] No TeamAnalysisData in cache, cannot perform backfill.");
+                    return Ok(());
+                }
             }
         };
 
@@ -476,19 +586,26 @@ impl WsEventHandler {
             }
         }
 
-        // Clone the updated data before releasing the lock on team_analysis.
-        let updated_data = team_analysis.clone();
+        let updated_data = team_analysis;
 
-        // Batch insert match stats into the cache now that the borrow on team_analysis is over.
+        // Commit only if this is still the active in-game generation.
+        let mut cache = self.cache.write().await;
+        if !cache.can_commit_in_game_recovery(generation) {
+            log::debug!("[ws-event-backfill] Discarding stale recovery generation {generation}");
+            return Ok(());
+        }
         for (summoner_name, stats) in stats_to_cache {
             cache.match_stats_cache.insert(summoner_name, stats);
         }
-
+        cache.team_analysis_data = Some(updated_data.clone());
+        cache.in_game_recovery_abort = None;
+        // Emit while the generation guard is still held. A phase transition cannot invalidate
+        // this recovery between the final check and publication.
+        let _ = self.app.emit("team-analysis-data", &updated_data);
         drop(cache);
 
         // 6. Emit the updated data to the frontend.
         log::info!("[ws-event-backfill] Emitting complete, backfilled analysis data to frontend.");
-        let _ = self.app.emit("team-analysis-data", &updated_data);
         log::info!("[ws-event-backfill] Backfill task completed.");
 
         Ok(())
@@ -496,11 +613,15 @@ impl WsEventHandler {
 
     /// 从头构建队伍分析数据（应用重启后没有缓存时使用）
     /// 同时处理我方和敌方队伍的数据
-    async fn build_team_data_from_scratch(&self) -> Result<()> {
+    async fn build_team_data_from_scratch(&self, generation: u64) -> Result<()> {
         log::info!(
             target: "ws::event_handler",
             "Building team data from LiveClient (app restart recovery)"
         );
+
+        if !self.cache.read().await.can_commit_in_game_recovery(generation) {
+            return Ok(());
+        }
 
         // 1. 获取 LiveClient 玩家列表（带重试）
         let live_players = {
@@ -738,11 +859,23 @@ impl WsEventHandler {
         let mut cache = self.cache.write().await;
 
         // 批量插入战绩缓存
+        if !cache.can_commit_in_game_recovery(generation) {
+            log::debug!(
+                target: "ws::event_handler",
+                "Discarding stale from-scratch recovery generation {}",
+                generation
+            );
+            return Ok(());
+        }
+
         for (summoner_name, stats) in stats_to_cache {
             cache.match_stats_cache.insert(summoner_name, stats);
         }
 
         cache.team_analysis_data = Some(team_analysis_data.clone());
+        cache.in_game_recovery_abort = None;
+        // Keep validation, cache commit and publication atomic with respect to phase changes.
+        let _ = self.app.emit("team-analysis-data", &team_analysis_data);
         log::debug!(
             target: "ws::event_handler",
             "TeamAnalysisData cached, match_stats_cache size: {}",
@@ -752,7 +885,6 @@ impl WsEventHandler {
         drop(cache);
 
         // 10. 发送到前端
-        let _ = self.app.emit("team-analysis-data", &team_analysis_data);
         log::info!(
             target: "ws::event_handler",
             "Build from scratch completed: my_team={}, enemy_team={}",
@@ -885,14 +1017,9 @@ impl WsEventHandler {
 
             if session_changed {
                 cache.gameflow_session = Some(session_json);
-
-                // Drop the lock before emitting to avoid holding it during the emit.
-                drop(cache);
                 let _ = self.app.emit("gameflow-session-changed", data);
-
                 log::debug!("[ws-event] Gameflow session updated and broadcast ({}).", event_type);
             } else {
-                drop(cache);
                 log::trace!("[ws-event] Gameflow session unchanged, skipping broadcast.");
             }
 
@@ -911,8 +1038,6 @@ impl WsEventHandler {
 
             let mut cache = self.cache.write().await;
             cache.gameflow_session = None;
-            drop(cache);
-
             // Only emit the session deletion event.
             // Phase deletion is handled by handle_gameflow_phase_change.
             let _ = self.app.emit("gameflow-session-changed", &None::<Value>);
@@ -926,7 +1051,11 @@ impl WsEventHandler {
         if event_type == "Create" || event_type == "Update" {
             // Step 1: Immediately send raw session data for fast auto-pick response.
             log::info!("[ws-event] Sending raw champ-select-session-changed event (immediate)");
-            let _ = self.app.emit("champ-select-session-changed", data);
+            {
+                let mut cache = self.cache.write().await;
+                cache.champ_select_session = Some(data.clone());
+                let _ = self.app.emit("champ-select-session-changed", data);
+            }
 
             // Step 2: Debounce the expensive enrichment work. Champ-select emits frequent
             // timer/action updates, while the raw event above must remain immediate for auto-pick.
@@ -964,7 +1093,7 @@ impl WsEventHandler {
                 tokio::time::sleep(std::time::Duration::from_millis(250)).await;
 
                 // Do not start remote enrichment if a newer session arrived during the debounce.
-                if cache_for_task.read().await.champ_select_analysis_generation != generation {
+                if !cache_for_task.read().await.can_commit_champ_select_analysis(generation) {
                     return;
                 }
 
@@ -978,7 +1107,7 @@ impl WsEventHandler {
                 match result {
                     Ok(enriched_data) => {
                         let mut cache = cache_for_task.write().await;
-                        if cache.champ_select_analysis_generation != generation {
+                        if !cache.can_commit_champ_select_analysis(generation) {
                             log::debug!("[ws-event] Discarding stale team analysis generation {}", generation);
                             return;
                         }
@@ -1001,15 +1130,14 @@ impl WsEventHandler {
                         cache.champ_select_analysis_abort = None;
                         log::info!("[ws-event] Enriched TeamAnalysisData has been cached.");
 
-                        // Drop the lock before emitting.
-                        drop(cache);
-
-                        // Send enriched data (this will update the UI with match stats).
+                        // Publish under the same generation guard as the cache commit so a newer
+                        // champ-select session cannot invalidate this result in between.
                         let _ = app.emit("team-analysis-data", &enriched_data);
+                        drop(cache);
                     }
                     Err(e) => {
                         let mut cache = cache_for_task.write().await;
-                        if cache.champ_select_analysis_generation == generation {
+                        if cache.can_commit_champ_select_analysis(generation) {
                             cache.champ_select_analysis_abort = None;
                             cache.champ_select_analysis_key = None;
                         }
@@ -1026,7 +1154,7 @@ impl WsEventHandler {
 
             let abort_handle = task.abort_handle();
             let mut cache = self.cache.write().await;
-            if cache.champ_select_analysis_generation == generation {
+            if cache.can_commit_champ_select_analysis(generation) {
                 cache.champ_select_analysis_abort = Some(abort_handle);
             } else {
                 abort_handle.abort();
@@ -1040,8 +1168,6 @@ impl WsEventHandler {
             // The team_analysis_data is intentionally not cleared here.
             // It is needed for the backfill process when the game phase changes to 'InProgress'.
             // Cleanup is handled by handle_gameflow_phase_change after the game ends.
-            drop(cache);
-
             // Send session deletion event to frontend.
             let _ = self.app.emit("champ-select-session-changed", &None::<Value>);
         }
@@ -1203,5 +1329,43 @@ impl WsEventHandler {
                 player.tier = info.solo_rank_tier.clone();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EventCache;
+
+    #[test]
+    fn in_game_recovery_generation_invalidates_old_work() {
+        let mut cache = EventCache {
+            gameflow_phase: Some("InProgress".to_string()),
+            ..EventCache::default()
+        };
+        let generation = cache.in_game_recovery_generation;
+
+        assert!(cache.can_commit_in_game_recovery(generation));
+
+        cache.cancel_in_game_recovery();
+
+        assert!(!cache.can_commit_in_game_recovery(generation));
+        assert!(cache.can_commit_in_game_recovery(cache.in_game_recovery_generation));
+    }
+
+    #[test]
+    fn in_game_recovery_cannot_commit_outside_in_progress() {
+        let cache = EventCache::default();
+
+        assert!(!cache.can_commit_in_game_recovery(cache.in_game_recovery_generation));
+    }
+
+    #[test]
+    fn champ_select_generation_invalidates_old_enrichment() {
+        let mut cache = EventCache::default();
+        let generation = cache.champ_select_analysis_generation;
+
+        assert!(cache.can_commit_champ_select_analysis(generation));
+        cache.cancel_champ_select_analysis();
+        assert!(!cache.can_commit_champ_select_analysis(generation));
     }
 }

@@ -1,4 +1,4 @@
-use crate::infrastructure::game_session::auth::service::ensure_valid_auth_info;
+use crate::infrastructure::game_session::auth::service::ensure_valid_auth_info_async;
 use crate::shared::types::{PlayerAnalysisData, TeamAnalysisData};
 use serde_json::Value;
 
@@ -54,7 +54,9 @@ async fn test_liveclient_port(port: u16) -> bool {
 /// 获取游戏内玩家列表
 pub async fn get_live_player_list() -> Result<Vec<crate::shared::types::LiveClientPlayer>, String> {
     // 确保 LCU 认证信息可用（虽然 LiveClient 不需要认证，但确保游戏正在运行）
-    let _auth = ensure_valid_auth_info().ok_or("无法获取 LCU 认证信息，请确保游戏正在运行")?;
+    let _auth = ensure_valid_auth_info_async()
+        .await
+        .ok_or("无法获取 LCU 认证信息，请确保游戏正在运行")?;
     // LiveClient 通常使用固定端口 2999，但我们可以尝试动态检测
     let liveclient_port = detect_liveclient_port().await.unwrap_or(2999);
 

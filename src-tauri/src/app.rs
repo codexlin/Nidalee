@@ -26,11 +26,8 @@ pub fn setup_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     ));
     app.handle().manage(connection_manager.clone());
 
-    // 启动连接监控和轮询服务
+    // 启动 WebSocket 连接状态投影服务
     start_services(app, connection_manager);
-
-    // 自动启动 LCU WebSocket
-    start_websocket(app);
 
     // 🌐 初始化游戏数据（异步加载，不阻塞应用启动）
     initialization::start_game_data_initialization();
@@ -38,25 +35,17 @@ pub fn setup_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// 启动 WebSocket 连接
-fn start_websocket(app: &mut App) {
-    let app_handle = app.handle().clone();
-    tokio::spawn(async move {
-        infrastructure::real_time::websocket::service::start_ws(app_handle).await;
-    });
-}
-
 /// 启动各种后台服务
 fn start_services(
     _app: &mut App,
     connection_manager: Arc<RwLock<infrastructure::game_session::connection::service::ConnectionManager>>,
 ) {
-    // 启动优化后的连接管理器（包含统一轮询）
+    // 连接管理器只投影 WebSocket 生命周期，不再执行独立认证轮询。
     let connection_manager_clone = connection_manager.clone();
     tokio::spawn(async move {
         let manager = connection_manager_clone.read().await;
         manager.start_monitoring().await;
     });
 
-    log::info!("[应用] 优化后的轮询系统已启动");
+    log::info!("[应用] WebSocket 连接状态投影已启动");
 }
