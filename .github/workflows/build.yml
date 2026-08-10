@@ -51,6 +51,9 @@ jobs:
       - name: 🧩 Type check
         run: pnpm run type-check
 
+      - name: 🧪 Frontend tests
+        run: pnpm run test
+
       - name: 🏗️ Build frontend
         run: pnpm run build-only
 
