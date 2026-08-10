@@ -1,5 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
+import { computed, ref, watch } from 'vue'
 import { RANKED_QUEUE_IDS, matchModeExcludesRanked, normalizeMatchModeKey } from '@/common/queueCatalog'
+import { useSettingsStore } from '@/shared/stores/ui/settingsStore'
+import { createLatestRequestGuard } from '@/shared/utils/latestRequest'
+import { useMatchFilter } from './useMatchFilter'
 
 // 专门处理战绩数据获取的 composable
 export function useSearchMatches() {
@@ -15,8 +19,8 @@ export function useSearchMatches() {
   const searchText = ref('')
   const currentIndex = ref(-1)
   const names = ref<string[]>([])
-  let summonerRequestRevision = 0
-  let recentMatchesRequestRevision = 0
+  const summonerRequests = createLatestRequestGuard()
+  const recentMatchesRequests = createLatestRequestGuard()
 
   // 类型过滤相关状态
   const selectedQueueTypes = ref<number[]>([])
@@ -33,7 +37,7 @@ export function useSearchMatches() {
     })
   })
   const clearSummonerInfo = () => {
-    summonerRequestRevision += 1
+    summonerRequests.invalidate()
     loading.value = false
     error.value = ''
     result.value = null
@@ -42,14 +46,14 @@ export function useSearchMatches() {
   }
 
   async function fetchSummonerInfo(summonerNames: string[]): Promise<SummonerWithMatches[] | null> {
-    const requestRevision = ++summonerRequestRevision
+    const request = summonerRequests.begin()
     try {
       loading.value = true
       error.value = ''
       const matches = await invoke<SummonerWithMatches[]>('get_summoners_and_histories', {
         names: summonerNames
       })
-      if (requestRevision !== summonerRequestRevision) return null
+      if (!request.isCurrent()) return null
 
       if (Array.isArray(matches) && matches.length > 0) {
         result.value = matches
@@ -68,14 +72,14 @@ export function useSearchMatches() {
       }
       return null
     } catch (e: unknown) {
-      if (requestRevision !== summonerRequestRevision) return null
+      if (!request.isCurrent()) return null
       error.value = e instanceof Error ? e.message : '查询失败'
       result.value = null
       currentResult.value = null
       currentIndex.value = -1
       return null
     } finally {
-      if (requestRevision === summonerRequestRevision) loading.value = false
+      if (request.isCurrent()) loading.value = false
     }
   }
   const onSearch = async () => {
@@ -105,12 +109,12 @@ export function useSearchMatches() {
     return fetchSummonerInfo(names.value)
   }
   const getRecentMatchesByPuuid = async (puuid: string[], count: number = 20) => {
-    const requestRevision = ++recentMatchesRequestRevision
+    const request = recentMatchesRequests.begin()
     try {
       const settled = await Promise.allSettled(
         puuid.map((id) => invoke<PlayerMatchStats>('get_recent_matches_by_puuid', { puuid: id, count }))
       )
-      if (requestRevision !== recentMatchesRequestRevision) return
+      if (!request.isCurrent()) return
 
       const successes = settled
         .filter((r): r is PromiseFulfilledResult<PlayerMatchStats> => r.status === 'fulfilled')
@@ -131,7 +135,7 @@ export function useSearchMatches() {
         summonerStats.value = null
       }
     } catch (error) {
-      if (requestRevision !== recentMatchesRequestRevision) return
+      if (!request.isCurrent()) return
       console.error('获取战绩数据失败(整体异常):', error)
       originalMatchData.value = null
       summonerStats.value = null
