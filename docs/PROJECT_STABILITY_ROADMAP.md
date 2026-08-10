@@ -29,11 +29,13 @@
 | 前端游戏生命周期 | `eed48c2` | `gameStore` 不再持久化运行态；自动符文改为应用级单例；去掉重复监听与旧配置源 |
 | 自动操作生命周期 | `e9b0101` | 自动接受、自动选人和自动禁用统一取消与执行前校验，用户手动操作优先 |
 | 对局分析单一数据流 | `0edf48c` | 应用事件层唯一恢复后端缓存，页面只读取 Store，实时事件不会被旧缓存覆盖 |
+| 前端旧响应保护 | `deb98d8` | 搜索、召唤师详情和对局详情只允许最新请求更新界面，并清理历史拼写 |
+| 静态数据查询收敛 | `bd253b7` | 英雄列表与详情统一到版本化数据入口，移除重复请求和陈旧自动导入声明 |
 | Dashboard 与样式批次 | 多个独立提交 | HarmonyOS 字体、Dashboard 设计、海报导出、过程复盘 UI 等已分批落地 |
 
 ### 当前执行位置
 
-阶段 0 和阶段 1 已完成。下一批从阶段 2“修复前端旧响应覆盖”开始，优先处理召唤师搜索和对局详情的请求竞态。
+阶段 0 至阶段 3 已完成。下一批优先进入阶段 6“质量门禁与测试基线”；阶段 4、阶段 5 的大文件拆分在行为测试和质量基线稳定后按模块逐批执行。
 
 ## 三、推荐实施顺序
 
@@ -112,7 +114,7 @@ refactor-centralize-match-analysis-state
 
 ## 阶段 2：修复前端旧响应覆盖
 
-**优先级：P0**
+**状态：已完成（`deb98d8`）**
 
 ### 已确认位置
 
@@ -152,7 +154,7 @@ fix-guard-stale-frontend-requests
 
 ## 阶段 3：统一静态游戏数据与图片查询
 
-**优先级：P1**
+**状态：已完成（`bd253b7`）**
 
 ### 已确认问题
 
@@ -411,9 +413,9 @@ docs-align-project-guidance-with-current-architecture
 
 按当前状态，最合理的连续执行顺序是：
 
-1. `fix-guard-stale-frontend-requests`
-2. `refactor-consolidate-static-data-queries`
-3. `test-cover-frontend-request-lifecycle`
-4. `chore-check-generated-type-contracts`
+1. `test-cover-frontend-request-lifecycle`
+2. `chore-check-generated-type-contracts`
+3. `style-establish-rustfmt-baseline`
+4. `chore-enforce-rust-quality-gates`
 
 完成这些批次后，再根据是否临近公开发布，在“文档治理 / 平台发布”和“大文件结构拆分”之间选择下一阶段。公开发布临近时优先处理发布平台、签名和 CI；否则优先清理质量基线和前端数据所有权。
