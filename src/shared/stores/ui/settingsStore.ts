@@ -1,12 +1,10 @@
 import { colors, radiusOptions, styles } from '@/lib/theme'
 import {
   isMatchModeKey,
-  matchModeToAnalysisMode,
   matchModeToQueueIds,
   normalizeMatchModeKey,
   type MatchModeKey
 } from '@/common/queueCatalog'
-import { useAnalysisSettingsStore } from '@/shared/stores/features/analysisSettingsStore'
 
 export const useSettingsStore = defineStore(
   'settings',
@@ -145,13 +143,8 @@ export const useSettingsStore = defineStore(
         lastMatchMode.value = normalizeMatchModeKey(lastMatchMode.value)
       }
 
-      // 当前拉取偏好与派生队列过滤 / 分析策略保持一致
+      // 当前拉取偏好与派生队列过滤保持一致
       defaultQueueTypes.value = matchModeToQueueIds(lastMatchMode.value)
-      try {
-        useAnalysisSettingsStore().setDefaultMode(matchModeToAnalysisMode(lastMatchMode.value))
-      } catch {
-        // ignore
-      }
 
       // 监听系统主题变化（仅作为参考，不强制覆盖用户设置）
       mediaQuery.addEventListener('change', (e) => {
@@ -194,16 +187,11 @@ export const useSettingsStore = defineStore(
       rememberMatchPreferences.value = enabled
     }
 
-    /** 写入上次战绩模式（供搜索过滤 / 分析策略同步） */
+    /** 写入上次战绩模式（供搜索过滤同步） */
     const setLastMatchMode = (mode: MatchModeKey) => {
       const normalized = normalizeMatchModeKey(mode)
       lastMatchMode.value = normalized
       defaultQueueTypes.value = matchModeToQueueIds(normalized)
-      try {
-        useAnalysisSettingsStore().setDefaultMode(matchModeToAnalysisMode(normalized))
-      } catch {
-        // Pinia 尚未就绪时忽略
-      }
     }
 
     // 战绩默认过滤方法（兼容旧逻辑 / 搜索页）

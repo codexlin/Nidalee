@@ -1,11 +1,11 @@
-import { AnalysisMode } from '@/shared/stores/features/analysisSettingsStore'
-
 /**
  * 统一战绩模式 key：
  * - all: 全部模式
  * - normals: 普通模式（非排位）
  * - mixedRanked: 排位（单双+灵活）
  * - 数字字符串: 具体 queueId（单双/灵活）
+ *
+ * AnalysisMode 来自 Rust → global.d.ts（IPC 契约），勿再维护前端枚举副本。
  */
 export type MatchModeKey = 'all' | 'normals' | 'mixedRanked' | `${number}`
 
@@ -31,32 +31,32 @@ export const MATCH_MODE_OPTIONS: MatchModeOption[] = [
     key: 'all',
     fallbackLabel: '全部模式',
     queueIds: [],
-    analysisMode: AnalysisMode.AllModes
+    analysisMode: 'allModes'
   },
   {
     key: 'normals',
     fallbackLabel: '普通模式',
     queueIds: [],
-    analysisMode: AnalysisMode.Normals,
+    analysisMode: 'normals',
     excludeRanked: true
   },
   {
     key: 'mixedRanked',
     fallbackLabel: '排位模式',
     queueIds: [420, 440],
-    analysisMode: AnalysisMode.MixedRanked
+    analysisMode: 'mixedRanked'
   },
   {
     key: '420',
     fallbackLabel: '单双排',
     queueIds: [420],
-    analysisMode: AnalysisMode.SoloRanked
+    analysisMode: 'soloRanked'
   },
   {
     key: '440',
     fallbackLabel: '灵活组排',
     queueIds: [440],
-    analysisMode: AnalysisMode.FlexRanked
+    analysisMode: 'flexRanked'
   }
 ]
 
@@ -123,7 +123,7 @@ export function getMatchModeOption(key: MatchModeKey): MatchModeOption {
       key,
       fallbackLabel: getQueueDisplayName(Number(key)),
       queueIds: key === 'all' || key === 'normals' || key === 'mixedRanked' ? [] : [Number(key)],
-      analysisMode: AnalysisMode.AllModes
+      analysisMode: 'allModes'
     }
   )
 }
@@ -134,10 +134,6 @@ export function getMatchModeLabel(key: MatchModeKey): string {
     return getQueueDisplayName(option.queueIds[0])
   }
   return option.fallbackLabel
-}
-
-export function matchModeToAnalysisMode(key: MatchModeKey): AnalysisMode {
-  return getMatchModeOption(key).analysisMode
 }
 
 export function matchModeToQueueIds(key: MatchModeKey): number[] {

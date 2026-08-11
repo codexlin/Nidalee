@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
 import { matchModeToInvokeArgs, type MatchModeKey } from '@/common/queueCatalog'
-import { useAnalysisSettingsStore } from '@/shared/stores/features/analysisSettingsStore'
 import { usePersonalMatchAnalysisStore } from '@/shared/stores/features/personalMatchAnalysisStore'
 
 /** 忽略过期的 analyze_matches 响应，避免快速切换模式时「有时有数据有时没有」 */
@@ -10,6 +9,28 @@ export function cancelPendingMatchAnalysis() {
   analyzeSeq += 1
 }
 
+/** 仪表盘 / 列表刷新：基础统计，不拉时间线、不开深度证据 */
+const DASHBOARD_OVERVIEW_FLAGS: AnalysisFeatureFlags = {
+  enabled: true,
+  timeline: false,
+  opponent: false,
+  teammate: false,
+  selfImprovement: false
+}
+
+function buildRequest(modeKey: MatchModeKey, count: number): MatchAnalysisRequest {
+  const args = matchModeToInvokeArgs(modeKey)
+
+  return {
+    count,
+    mode: args.analysisMode,
+    depth: 'simple',
+    queueId: args.queueId ?? undefined,
+    features: { ...DASHBOARD_OVERVIEW_FLAGS },
+    maxAnalysisGames: count
+  }
+}
+
 /**
  * 统一个人战绩分析：Dashboard / 自动刷新只调用一次 `analyze_matches`
  *
@@ -17,38 +38,10 @@ export function cancelPendingMatchAnalysis() {
  * 排位过程复盘在对局详情里按需 `get_game_process_review`。
  */
 export function useMatchAnalysis() {
-  const analysisSettings = useAnalysisSettingsStore()
   const analysisStore = usePersonalMatchAnalysisStore()
   const dataStore = useDataStore()
   const activityStore = useActivityStore()
   const settingsStore = useSettingsStore()
-
-  /** Dashboard 批量刷新：固定 Simple，零 timeline */
-  const dashboardOverviewFlags = (): AnalysisFeatureFlags => ({
-    enabled: analysisSettings.config.enabled,
-    timeline: false,
-    opponent: false,
-    teammate: false,
-    selfImprovement: false
-  })
-
-  const buildRequest = (
-    modeKey: MatchModeKey,
-    count: number,
-    overrides?: Partial<MatchAnalysisRequest>
-  ): MatchAnalysisRequest => {
-    const args = matchModeToInvokeArgs(modeKey)
-
-    return {
-      count,
-      mode: args.analysisMode,
-      depth: analysisSettings.config.depth,
-      queueId: args.queueId ?? undefined,
-      features: analysisSettings.toFeatureFlags(),
-      maxAnalysisGames: analysisSettings.config.maxAnalysisGames,
-      ...overrides
-    }
-  }
 
   /**
    * 单次分析：写入 personalMatchAnalysisStore + dataStore.matchStatistics
@@ -76,10 +69,7 @@ export function useMatchAnalysis() {
         throw new Error('当前召唤师 PUUID 不可用')
       }
 
-      const request = buildRequest(mode, count, {
-        depth: 'simple',
-        features: dashboardOverviewFlags()
-      })
+      const request = buildRequest(mode, count)
       const result = await invoke<MatchAnalysisResult>('analyze_matches', { puuid, request })
 
       // 期间又发起了新请求：丢弃本次结果，避免旧模式盖住新筛选
@@ -109,34 +99,8 @@ export function useMatchAnalysis() {
     }
   }
 
-  /**
-   * 分析任意 PUUID（不写 personalMatchAnalysisStore；供战绩搜索等场景）
-   */
-  const analyzeMatchesForPuuid = async (
-    puuid: string,
-    modeKey: MatchModeKey = 'all',
-    count = 20,
-    overrides?: Partial<MatchAnalysisRequest>
-  ): Promise<MatchAnalysisResult | null> => {
-    try {
-      // 默认与仪表盘一致：基础统计；调用方可显式 overrides 打开深度
-      const request = buildRequest(modeKey, count, {
-        depth: 'simple',
-        features: dashboardOverviewFlags(),
-        ...overrides
-      })
-      return await invoke<MatchAnalysisResult>('analyze_matches', { puuid, request })
-    } catch (e: unknown) {
-      console.error('[useMatchAnalysis] analyzeMatchesForPuuid 失败:', e)
-      return null
-    }
-  }
-
   return {
-    buildRequest,
     analyzeMatches,
-    analyzeMatchesForPuuid,
-    cancelPendingMatchAnalysis,
-    analysisStore
+    cancelPendingMatchAnalysis
   }
 }

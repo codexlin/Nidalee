@@ -6,8 +6,6 @@
 // biome-ignore lint: disable
 export {}
 declare global {
-  const AnalysisDepth: typeof import('../src/shared/stores/features/analysisSettingsStore')['AnalysisDepth']
-  const AnalysisMode: typeof import('../src/shared/stores/features/analysisSettingsStore')['AnalysisMode']
   const EffectScope: typeof import('vue')['EffectScope']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const cancelPendingMatchAnalysis: typeof import('../src/shared/composables/game/useMatchAnalysis')['cancelPendingMatchAnalysis']
@@ -73,7 +71,6 @@ declare global {
   const useActivityStore: typeof import('../src/shared/stores/core/activityStore')['useActivityStore']
   const useAiAnalysis: typeof import('../src/shared/composables/game/useAiAnalysis')['useAiAnalysis']
   const useAiSettingsStore: typeof import('../src/shared/stores/features/aiSettingsStore')['useAiSettingsStore']
-  const useAnalysisSettingsStore: typeof import('../src/shared/stores/features/analysisSettingsStore')['useAnalysisSettingsStore']
   const useApp: typeof import('../src/shared/composables/app/useApp')['useApp']
   const useAppEvents: typeof import('../src/shared/composables/app/useAppEvents')['useAppEvents']
   const useAppInitialization: typeof import('../src/shared/composables/app/useAppInitialization')['useAppInitialization']
@@ -127,6 +124,7 @@ declare global {
   const useRouter: typeof import('vue-router')['useRouter']
   const useRuneData: typeof import('../src/shared/composables/game/useRuneData')['useRuneData']
   const useRuneStyles: typeof import('../src/shared/composables/data/useVersionedData')['useRuneStyles']
+  const useSearchHistoryStore: typeof import('../src/shared/stores/features/searchHistoryStore')['useSearchHistoryStore']
   const useSearchMatches: typeof import('../src/shared/composables/game/useSearchMatches')['useSearchMatches']
   const useSessionStore: typeof import('../src/shared/stores/features/sessionStore')['useSessionStore']
   const useSettingsStore: typeof import('../src/shared/stores/ui/settingsStore')['useSettingsStore']
@@ -159,9 +157,6 @@ declare global {
   // @ts-ignore
   export type { AiSettingsPublic } from '../src/shared/stores/features/aiSettingsStore'
   import('../src/shared/stores/features/aiSettingsStore')
-  // @ts-ignore
-  export type { AnalysisDepth, AnalysisMode, AnalysisConfig } from '../src/shared/stores/features/analysisSettingsStore'
-  import('../src/shared/stores/features/analysisSettingsStore')
   // @ts-ignore
   export type { AutoFunctions, AutoFunctionConfig, AutoSelectConfig, AutoBanConfig } from '../src/shared/stores/features/autoFunctionStore'
   import('../src/shared/stores/features/autoFunctionStore')
