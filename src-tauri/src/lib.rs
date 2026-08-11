@@ -110,7 +110,6 @@ pub fn run() {
             infrastructure::data_services::static_catalog::commands::get_static_catalog_meta,
             infrastructure::data_services::static_catalog::commands::refresh_static_catalogs,
             // 英雄数据命令
-            infrastructure::data_services::champion_data::commands::init_champion_data,
             infrastructure::data_services::champion_data::commands::get_all_champion_data,
             infrastructure::data_services::champion_data::commands::get_champion_by_id,
             infrastructure::data_services::champion_data::commands::get_champion_by_alias,
@@ -118,7 +117,6 @@ pub fn run() {
             infrastructure::data_services::champion_data::commands::is_champion_data_loaded,
             infrastructure::data_services::champion_data::commands::get_champion_count_cmd,
             // 召唤师技能数据命令
-            infrastructure::champion_selection::summoner_spells::commands::init_summoner_spell_data,
             infrastructure::champion_selection::summoner_spells::commands::get_all_summoner_spell_data,
             infrastructure::champion_selection::summoner_spells::commands::get_summoner_spell_by_id,
             infrastructure::champion_selection::summoner_spells::commands::get_summoner_spell_by_name,

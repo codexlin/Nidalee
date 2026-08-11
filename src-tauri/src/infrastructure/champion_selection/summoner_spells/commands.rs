@@ -4,17 +4,6 @@ use super::service::{
 };
 use crate::infrastructure::data_services::static_catalog::ensure_static_catalogs;
 
-/// 🌐 初始化召唤师技能数据（委托 static_catalog，兼容旧调用）
-#[tauri::command]
-pub async fn init_summoner_spell_data() -> Result<(), String> {
-    ensure_static_catalogs().await?;
-    log::info!(
-        "[SummonerSpells] ✅ 召唤师技能数据初始化成功，共 {} 个技能",
-        get_spell_count()
-    );
-    Ok(())
-}
-
 /// 📋 获取所有召唤师技能数据
 #[tauri::command]
 pub async fn get_all_summoner_spell_data() -> Result<Vec<SummonerSpellInfo>, String> {

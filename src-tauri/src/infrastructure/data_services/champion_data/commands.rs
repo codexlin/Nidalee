@@ -5,17 +5,6 @@ use super::service::{
 };
 use crate::infrastructure::data_services::static_catalog::ensure_static_catalogs;
 
-/// 🌐 初始化英雄数据（委托 static_catalog，兼容旧调用）
-#[tauri::command]
-pub async fn init_champion_data() -> Result<(), String> {
-    ensure_static_catalogs().await?;
-    log::info!(
-        "[ChampionData] ✅ 英雄数据初始化成功，共 {} 个英雄",
-        get_champion_count()
-    );
-    Ok(())
-}
-
 /// 📋 获取所有英雄数据
 #[tauri::command]
 pub async fn get_all_champion_data() -> Result<Vec<ChampionInfo>, String> {
