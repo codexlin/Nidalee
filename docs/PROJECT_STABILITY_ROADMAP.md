@@ -1,10 +1,10 @@
 # Nidalee 稳定性与代码治理路线图
 
-> 最后更新：2026-08-10
+> 最后更新：2026-08-11
 >
 > 开发基线：`release-v3-dev`
 >
-> 当前开发分支：`fixbug/project-stability`
+> 当前开发分支：`feature/build-workbench`
 
 这份文档用于记录当前稳定性改造之后仍需处理的事项。它不是“看到大文件就拆”的重构清单，而是按用户可感知风险、数据正确性、依赖关系和实施成本排序的执行路线图。
 
@@ -35,10 +35,17 @@
 | Rust 格式基线 | `84c2a48` | 使用仓库 `.rustfmt.toml` 统一现有 Rust 排版，不混入行为修改 |
 | Rust 格式门禁 | `9bbfc75` | CI 与发布预检固定安装 rustfmt，并执行 `cargo fmt --all -- --check` |
 | Dashboard 与样式批次 | 多个独立提交 | HarmonyOS 字体、Dashboard 设计、海报导出、过程复盘 UI 等已分批落地 |
+| Rust 静态目录权威化 | `a5d6d8b` 等 | 英雄/技能由 `static_catalog` 按版本落盘；离线回退、Windows 覆盖、singleflight、前端禁止 `unknown` 版本兜底 |
+| 特殊模式英雄身份 | `7446470` | Jade 等变体身份解析与元数据支持 |
+| 匿名玩家 vs bot | `40890b4` | 选人隐名与自定义局机器人分类边界 |
 
 ### 当前执行位置
 
-阶段 0 至阶段 3 已完成；阶段 6 的 Rust → TypeScript 契约门禁和 Rust 格式门禁已完成。下一批为前端请求生命周期补最小单元测试；阶段 4、阶段 5 的大文件拆分在行为测试和质量基线稳定后按模块逐批执行。
+阶段 0 至阶段 3 已完成；**静态目录所有权重构已闭环**（含并发刷新回归测试、旧 `init_*` 入口移除）。阶段 6 的契约/格式门禁已完成。
+
+下一批建议：从 `GameDetailDialog.vue` 开始阶段 4 前端职责拆分。阶段 5 的 Rust 大模块拆分仍暂缓；阶段 8 发布平台决策在非公开发布阶段保持 P2。
+
+本轮静态目录已知可接受遗留：Windows `replace_file` 为备份—替换—回滚，非严格系统级 crash-atomic（缓存可重拉）。
 
 ## 三、推荐实施顺序
 
@@ -157,7 +164,7 @@ fix-guard-stale-frontend-requests
 
 ## 阶段 3：统一静态游戏数据与图片查询
 
-**状态：已完成（`bd253b7`）**
+**状态：已完成（FE 查询收敛 `bd253b7`；Rust 目录权威化 `a5d6d8b` 等）**
 
 ### 已确认问题
 
@@ -175,17 +182,20 @@ fix-guard-stale-frontend-requests
 - 建立统一 query key 工厂，避免各文件手写数组。
 - 统一 `staleTime`、`gcTime`、重试和版本变更失效策略。
 - 区分三类缓存：后端数据缓存、Vue Query 内存缓存、浏览器 HTTP 图片缓存。
+- **后续补强（已完成）**：英雄摘要与召唤师技能改由 Rust `static_catalog` 权威加载并按版本落盘；前端仅 IPC hydrate；Connected 时 `refresh_static_catalogs`（true singleflight）；删除旧 `init_champion_data` / `init_summoner_spell_data`。
 
 ### 验收标准
 
 - 英雄、符文、技能和图标不存在重复 query 定义。
 - 路由切换不重复请求版本化数据。
 - 版本变化时能统一失效，而不是逐个页面刷新。
+- 身份解析（分析 / 对局详情补名）只认 Rust 目录；离线可回退磁盘完整包。
 
 建议提交信息：
 
 ```text
 refactor-consolidate-static-data-queries
+refactor(static-catalog): centralize versioned game metadata
 ```
 
 ---
@@ -193,6 +203,8 @@ refactor-consolidate-static-data-queries
 ## 阶段 4：前端职责拆分与代码规范收敛
 
 **优先级：P1 / P2，按功能逐批执行**
+
+**状态：部分进行** — `src/lib/index.ts` 已大幅瘦身；下一批优先 `GameDetailDialog.vue`（请求生命周期 / 队伍 / 参赛者展示）。
 
 ### 推荐职责边界
 

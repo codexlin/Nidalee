@@ -55,8 +55,7 @@ setup_app(app)
 ├─ 4. 启动 WebSocket (异步)
 │    tokio::spawn(start_ws(app_handle))
 └─ 5. 异步加载游戏数据
-     init_champion_data()
-     init_summoner_spell_data()
+     ensure_static_catalogs()  // 版本化英雄/技能目录（Rust 权威）
 ```
 
 ---
