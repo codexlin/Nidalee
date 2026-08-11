@@ -230,7 +230,7 @@
                   class="h-9 w-9 rounded-full border border-primary/20"
                 />
                 <p class="text-xs font-medium text-center mt-1 truncate w-full">
-                  {{ getChampionName(champion.championId) }}
+                  {{ resolveChampionName(champion.championId, champion.championName) }}
                 </p>
                 <p
                   class="text-sm font-bold tabular-nums"
@@ -283,7 +283,9 @@
                       alt=""
                       class="h-9 w-9 shrink-0 rounded-full border-2 border-primary/20"
                     />
-                    <span class="font-semibold text-sm truncate">{{ getChampionName(game.championId) }}</span>
+                    <span class="font-semibold text-sm truncate">{{
+                      resolveChampionName(game.championId, game.championName)
+                    }}</span>
                   </div>
                   <div class="flex items-center gap-2 shrink-0">
                     <span class="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
@@ -330,7 +332,7 @@
 </template>
 
 <script setup lang="ts">
-import { getChampionIconUrl, getChampionName, getQueueName } from '@/lib'
+import { getChampionIconUrl, getQueueName, resolveChampionName } from '@/lib'
 import { BarChart, Calendar, Clock, Gamepad2, ImageDown, Loader2, RefreshCw, Star, Timer, Wifi } from 'lucide-vue-next'
 import FloatIconButton from '@/components/common/FloatIconButton.vue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'

@@ -232,6 +232,9 @@ pub struct BanInfo {
 pub struct ParticipantInfo {
     pub participant_id: i32,
     pub champion_id: i32,
+    /// 英雄中文名（含 JADE/经典模式 600xx）；详情列表展示用，避免前端目录未命中
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub champion_name: Option<String>,
     pub summoner_name: String,
     #[ts(type = "number")]
     pub profile_icon_id: i64,

@@ -304,9 +304,14 @@ pub async fn get_game_detail_logic(client: &Client, game_id: u64) -> Result<Game
         });
         let profile_icon_id = player_identity.map_or(0, |pi| pi.profile_icon);
 
+        let champion_name =
+            crate::infrastructure::data_services::champion_data::service::get_champion_info(champion_id)
+                .map(|info| info.name);
+
         participants.push(ParticipantInfo {
             participant_id: p.participant_id,
             champion_id,
+            champion_name,
             summoner_name,
             profile_icon_id,
             team_id,

@@ -17,7 +17,7 @@
           </p>
         </div>
         <SheetDescription v-if="selectedGame" class="text-sm text-muted-foreground">
-          {{ getChampionName(selectedGame.championId) }}
+          {{ resolveChampionName(selectedGame.championId, selectedGame.championName) }}
           <span class="text-border mx-1">·</span>
           {{ getQueueName(selectedGame.queueId ?? 0) }}
           <span class="text-border mx-1">·</span>
@@ -57,7 +57,9 @@
               </div>
               <div class="min-w-0 flex-1 space-y-1">
                 <div class="flex flex-wrap items-baseline gap-2">
-                  <h3 class="text-lg font-bold truncate">{{ getChampionName(selectedGame.championId) }}</h3>
+                  <h3 class="text-lg font-bold truncate">
+                    {{ resolveChampionName(selectedGame.championId, selectedGame.championName) }}
+                  </h3>
                   <span class="text-sm text-muted-foreground tabular-nums">
                     {{ getQueueName(selectedGame.queueId ?? 0) }}
                   </span>
@@ -310,7 +312,7 @@
 </template>
 
 <script setup lang="ts">
-import { getChampionIconUrl, getChampionName, getQueueName } from '@/lib'
+import { getChampionIconUrl, getQueueName, resolveChampionName } from '@/lib'
 import { createLatestRequestGuard } from '@/shared/utils/latestRequest'
 import { invoke } from '@tauri-apps/api/core'
 import { useClipboard } from '@vueuse/core'

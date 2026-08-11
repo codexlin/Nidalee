@@ -144,7 +144,7 @@
               class="h-9 w-9 rounded-full border border-primary/20"
             />
             <p class="text-xs font-medium text-center mt-1 truncate w-full">
-              {{ getChampionName(champion.championId) }}
+              {{ resolveChampionName(champion.championId, champion.championName) }}
             </p>
             <p class="text-sm font-bold tabular-nums" :class="champWinClass(champion.winRate)">
               {{ champion.winRate.toFixed(0) }}%
@@ -182,7 +182,9 @@
                     alt=""
                     class="h-9 w-9 shrink-0 rounded-full border-2 border-primary/20"
                   />
-                  <span class="font-semibold text-sm truncate">{{ getChampionName(game.championId) }}</span>
+                  <span class="font-semibold text-sm truncate">{{
+                    resolveChampionName(game.championId, game.championName)
+                  }}</span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                   <span class="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
@@ -228,7 +230,13 @@
 
 <script setup lang="ts">
 import { Calendar, Clock, Star, Timer, User } from 'lucide-vue-next'
-import { getChallengeCrystalIconUrl, getChampionIconUrl, getChampionName, getProfileIconUrl, getQueueName } from '@/lib'
+import {
+  getChallengeCrystalIconUrl,
+  getChampionIconUrl,
+  getProfileIconUrl,
+  getQueueName,
+  resolveChampionName,
+} from '@/lib'
 import { getMatchModeLabel, type MatchModeKey } from '@/common/queueCatalog'
 import SummonerTraits from './SummonerTraits.vue'
 import { displayGrade, gradeWatermarkClass, gradeWatermarkSizeClass } from '../utils/matchGrade'
