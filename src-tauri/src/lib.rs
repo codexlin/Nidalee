@@ -106,6 +106,9 @@ pub fn run() {
             infrastructure::real_time::websocket::commands::stop_lcu_ws,
             // 分析数据命令
             infrastructure::match_management::analysis_data::commands::get_cached_analysis_data,
+            // 静态目录（版本化英雄/技能）
+            infrastructure::data_services::static_catalog::commands::get_static_catalog_meta,
+            infrastructure::data_services::static_catalog::commands::refresh_static_catalogs,
             // 英雄数据命令
             infrastructure::data_services::champion_data::commands::init_champion_data,
             infrastructure::data_services::champion_data::commands::get_all_champion_data,

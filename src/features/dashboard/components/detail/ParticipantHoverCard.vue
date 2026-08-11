@@ -36,7 +36,7 @@
               {{ participant.summonerName }}
             </p>
             <p class="mt-0.5 truncate text-[11px] text-muted-foreground leading-tight">
-              {{ getChampionName(participant.championId) }}
+              {{ resolveChampionName(participant.championId, participant.championName) }}
               <span class="text-border mx-1">·</span>
               <span :class="gradeTextClass(grade)" class="font-semibold">评级 {{ grade }}</span>
             </p>
@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { getChampionIconUrl, getChampionName, getSpellMeta } from '@/lib'
+import { getChampionIconUrl, getSpellMeta, resolveChampionName } from '@/lib'
 import { gradeFromStats, gradeTextClass } from '../../utils/matchGrade'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import ThemedChart from '@/shared/components/charts/ThemedChart.vue'
@@ -99,8 +99,6 @@ const props = defineProps<{
   isMaxGold?: boolean
   isMaxDamage?: boolean
 }>()
-
-useSummonerSpells()
 
 const stats = computed(() => props.participant.stats)
 const grade = computed(() =>

@@ -168,28 +168,45 @@ Apply this pattern in any composable whose user can retrigger the call before th
 
 Understanding the data lifecycle helps optimize caching and reduce unnecessary API calls.
 
+### Static Data Ownership（权威方）
+
+| 数据 | 权威方 | 持久化 | 前端职责 |
+|------|--------|--------|----------|
+| 英雄摘要（含 Jade `600xx`） | **Rust** `static_catalog` | `%AppData%/nidalee/static/{version}/` | 仅 IPC → `setChampionCatalog` |
+| 召唤师技能 | **Rust** `static_catalog` | 同上 | 仅 IPC → `setSummonerSpellCatalog` |
+| 游戏版本 | **Rust**（DDragon `versions.json`，与静态包同源） | `meta.json` | `useStaticCatalogMeta` / `dataStore.gameVersion` |
+| 队列中文名 | **前端** CDragon | localStorage（按版本） | `useQueues` |
+| 符文 UI（styles/perks） | **前端** CDragon | localStorage（按版本，无 TTL） | `useRuneData` / `useCommunityDragonPerksQuery` |
+| 物品全表 | **前端** DDragon | localStorage（按版本） | `useItems`（首访，不预加载） |
+| 单英雄详情/皮肤 | **前端** CDragon | Query 长缓存 | `useChampionDetails`（按需） |
+
+**原则**：
+
+1. 身份解析（分析 / 对局详情补名 / WS 名→id）只认 Rust 目录。
+2. 前端禁止再直连 CDragon 拉英雄/技能全量。
+3. 「不预加载」≠「不缓存」：物品等首访后仍按版本持久化；版本不变不重拉。
+4. 失效只认游戏版本（Connected 时 `refresh_static_catalogs` + invalidate `['static']`）。
+
+启动入口：`useBootstrapStaticData()`（meta + champions + spells + queues）。
+
 ### Static Data (版本化缓存)
 **Definition**: Data that only changes when the LoL game version updates (typically every 2 weeks).
 
-**Cache Strategy**: Use `['static', 'category', version]` as query key. Invalidated automatically when game version changes.
+**Cache Strategy**: Use `['static', 'category', version]` as query key. Invalidated when game version changes.
 
 **Query Key Pattern**: `['static', '<category>', version]`
 
 | Data | Query Key | Source | Composable |
 |------|-----------|--------|------------|
-| 英雄列表 (Champions) | `['static', 'champions', version]` | LCU API | `useVersionedData()` |
-| 符文样式 (Rune Styles) | `['static', 'runes', version]` | LCU API | `useVersionedData()` |
-| 符文详情 (Perks) | `['static', 'perks', version]` | LCU API | `useVersionedData()` |
-| 符文图标 (Perk Icons) | `['static', 'perkIcons', version]` | LCU API | `useVersionedData()` |
-| 召唤师技能 (Summoner Spells) | `['static', 'spells', version]` | LCU API | `useVersionedData()` |
-| 游戏物品 (Items) | `['static', 'items', version]` | LCU API | - |
-| 游戏模式 (Game Modes) | `['static', 'gameModes', version]` | LCU API | - |
-| 地图 (Maps) | `['static', 'maps', version]` | LCU API | - |
-| 队列 (Queues) | `['static', 'queues', version]` | LCU API | - |
+| 静态包元信息 | `['staticCatalogMeta']` | Rust IPC | `useStaticCatalogMeta()` |
+| 英雄列表 | `['static', 'champions', version]` | Rust IPC（CDragon 落盘） | `useChampions()` |
+| 召唤师技能 | `['static', 'summonerSpells', version]` | Rust IPC | `useSummonerSpells()` |
+| 队列 | `['static', 'queues', version]` | CDragon + localStorage | `useQueues()` |
+| 符文元数据 | `['static', 'communityDragonPerks', version]` | CDragon + localStorage | `useCommunityDragonPerksQuery()` |
+| 物品 | `['static', 'items', version]` | DDragon + localStorage | `useItems()`（首访） |
+| 英雄详情 | `['static', 'championDetails', version, id]` | CDragon | `useChampionDetails()` |
 
-**Cache Config**: `staleTime: Infinity, gcTime: Infinity`
-
-There is exactly **one** versioned-data entry point (`useVersionedData`). Older duplicated entry points (e.g. `useChampionQuery`) have been retired.
+**Cache Config**: `staleTime: Infinity, gcTime: Infinity`（会话内）；跨启动由 Rust 磁盘 / FE `versionedCache` 负责。
 
 ---
 

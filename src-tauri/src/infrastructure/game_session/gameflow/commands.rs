@@ -1,28 +1,18 @@
-use crate::http_client;
+use crate::infrastructure::data_services::static_catalog::{
+    ensure_static_catalogs, fetch_ddragon_version, get_static_meta,
+};
 
 #[tauri::command]
 pub async fn get_game_version() -> Result<String, String> {
-    // 尝试从公开的Riot API获取最新版本
-    let client = http_client::get_public_client();
-
-    match client
-        .get("https://ddragon.leagueoflegends.com/api/versions.json")
-        .send()
-        .await
-    {
-        Ok(response) => {
-            if let Ok(versions) = response.json::<Vec<String>>().await {
-                if let Some(latest_version) = versions.first() {
-                    return Ok(latest_version.clone());
-                }
-            }
-        }
-        Err(_) => {
-            // 如果获取失败，返回一个相对较新的默认版本
-            return Ok("14.23.1".to_string());
-        }
+    if let Some(meta) = get_static_meta() {
+        return Ok(meta.version);
     }
-
-    // 备用默认版本
-    Ok("14.23.1".to_string())
+    // 尽量走静态包确保（离线可 hydrate 磁盘）
+    let _ = ensure_static_catalogs().await;
+    if let Some(meta) = get_static_meta() {
+        return Ok(meta.version);
+    }
+    fetch_ddragon_version()
+        .await
+        .ok_or_else(|| "无法获取游戏版本（网络不可用且无本地静态包）".to_string())
 }

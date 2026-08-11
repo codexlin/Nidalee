@@ -28,8 +28,8 @@
 </template>
 
 <script setup lang="ts">
-import { getItemIconUrl, getAllItems } from '@/lib'
-import type { DDragonItem } from '@/lib/dataApi'
+import { getItemIconUrl } from '@/lib'
+import { useItems } from '@/shared/composables/data/useVersionedData'
 
 defineProps<{
   rows: OpggItem[]
@@ -37,16 +37,9 @@ defineProps<{
 
 const dataStore = useDataStore()
 const gameVersion = computed(() => dataStore.gameVersion)
-const allItems = ref<Record<string, DDragonItem>>({})
+const { data: itemsResponse } = useItems()
 
-const loadItems = async (v?: string) => {
-  if (!v) return
-  const data = await getAllItems(v)
-  allItems.value = data.data || {}
-}
-
-onMounted(() => loadItems(gameVersion.value))
-watch(gameVersion, (v) => loadItems(v))
+const allItems = computed(() => itemsResponse.value?.data || {})
 
 const nameOf = (id: number) => allItems.value?.[String(id)]?.name || `物品${id}`
 

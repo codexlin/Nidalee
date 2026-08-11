@@ -1,34 +1,24 @@
 /// 召唤师技能数据命令层 - Tauri 命令接口
 use super::service::{
-    get_all_summoner_spells, get_spell_by_name, get_spell_count, get_summoner_spell_info, is_loaded,
-    load_summoner_spell_data, SummonerSpellInfo,
+    get_all_summoner_spells, get_spell_by_name, get_spell_count, get_summoner_spell_info, is_loaded, SummonerSpellInfo,
 };
+use crate::infrastructure::data_services::static_catalog::ensure_static_catalogs;
 
-/// 🌐 初始化召唤师技能数据（应用启动时调用）
+/// 🌐 初始化召唤师技能数据（委托 static_catalog，兼容旧调用）
 #[tauri::command]
 pub async fn init_summoner_spell_data() -> Result<(), String> {
-    match load_summoner_spell_data().await {
-        Ok(_) => {
-            log::info!(
-                "[SummonerSpells] ✅ 召唤师技能数据初始化成功，共 {} 个技能",
-                get_spell_count()
-            );
-            Ok(())
-        }
-        Err(e) => {
-            log::error!("[SummonerSpells] ❌ 召唤师技能数据初始化失败: {}", e);
-            Err(format!("初始化召唤师技能数据失败: {}", e))
-        }
-    }
+    ensure_static_catalogs().await?;
+    log::info!(
+        "[SummonerSpells] ✅ 召唤师技能数据初始化成功，共 {} 个技能",
+        get_spell_count()
+    );
+    Ok(())
 }
 
 /// 📋 获取所有召唤师技能数据
 #[tauri::command]
-pub fn get_all_summoner_spell_data() -> Result<Vec<SummonerSpellInfo>, String> {
-    if !is_loaded() {
-        return Err("召唤师技能数据尚未加载，请先调用 init_summoner_spell_data".to_string());
-    }
-
+pub async fn get_all_summoner_spell_data() -> Result<Vec<SummonerSpellInfo>, String> {
+    ensure_static_catalogs().await?;
     get_all_summoner_spells().ok_or_else(|| "获取召唤师技能数据失败".to_string())
 }
 

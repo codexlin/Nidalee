@@ -1,169 +1,98 @@
 /**
  * 版本化的静态数据查询
  *
- * 使用游戏版本号作为缓存 key，版本变化时自动失效
- * 避免不必要的数据请求，只在游戏更新时才重新获取
+ * 身份目录（英雄 / 召唤师技能）：Rust 权威 → IPC → 会话投影
+ * 展示目录（队列 / 符文 UI / 物品）：前端按版本缓存（localStorage）
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { computed, type Ref, watchEffect } from 'vue'
-import { useQuery, type UseQueryReturnType } from '@tanstack/vue-query'
-import { setSummonerSpellCatalog } from '@/lib'
-import {
-  fetchChampionDetails,
-  fetchCommunityDragonPerks,
-  fetchCommunityDragonSummonerSpells,
-  fetchQueues,
-  type CDragonQueue,
-  type CommunityDragonChampion,
-  type CommunityDragonPerk,
-  type CommunityDragonSummonerSpell
-} from '@/lib/dataApi'
+import { computed, watchEffect } from 'vue'
+import type { Ref } from 'vue'
+import { useQuery } from '@tanstack/vue-query'
+import type { UseQueryReturnType, useQueryClient } from '@tanstack/vue-query'
+import { setChampionCatalog, setSummonerSpellCatalog } from '@/lib'
+import { fetchChampionDetails, fetchCommunityDragonPerks, fetchItems, fetchQueues } from '@/lib/dataApi'
+import type { CDragonQueue, CommunityDragonChampion, CommunityDragonPerk, DDragonItemsResponse } from '@/lib/dataApi'
 import { setCdragonQueueNames } from '@/common/queueCatalog'
+import { readVersionedCache, writeVersionedCache } from '@/shared/utils/versionedCache'
+
+const QUEUE_CACHE_KEY = 'nidalee-static-queues'
+const RUNE_PERKS_CACHE_KEY = 'nidalee-static-cdragon-perks'
+const ITEMS_CACHE_KEY = 'nidalee-static-items'
+
+const staticCatalogMetaQueryOptions = {
+  queryKey: ['staticCatalogMeta'] as const,
+  queryFn: () => invoke<StaticCatalogMeta>('get_static_catalog_meta'),
+  staleTime: Infinity,
+  gcTime: Infinity,
+  refetchOnWindowFocus: false,
+  retry: 3
+}
 
 /**
- * 游戏版本查询
+ * 静态包元信息（含游戏版本）。不依赖 LCU，启动即可用。
+ */
+export function useStaticCatalogMeta(): UseQueryReturnType<StaticCatalogMeta, Error> {
+  return useQuery(staticCatalogMetaQueryOptions)
+}
+
+/**
+ * 游戏版本：与 Rust 静态包同源（共享 staticCatalogMeta 查询缓存）
  */
 export function useGameVersion(): UseQueryReturnType<string, Error> {
   return useQuery({
-    queryKey: ['gameVersion'],
-    queryFn: () => invoke<string>('get_game_version'),
-    staleTime: Infinity, // 版本号不会过期
-    gcTime: Infinity, // 永久保留版本信息
-    refetchOnWindowFocus: false,
-    retry: 1
+    ...staticCatalogMetaQueryOptions,
+    select: (meta: StaticCatalogMeta) => meta.version
   })
 }
 
 /**
- * 英雄列表查询（版本化）
+ * 英雄列表（IPC，含 Jade 600xx）
  */
 export function useChampions(): UseQueryReturnType<ChampionInfo[], Error> {
   const { data: version } = useGameVersion()
 
-  return useQuery({
-    // 版本号作为 key 的一部分，版本变化自动失效
-    queryKey: computed(() => ['static', 'champions', version.value] as const),
-    queryFn: () => invoke<ChampionInfo[]>('get_all_champion_data'),
-    staleTime: Infinity, // 版本不变时，数据永远新鲜
-    gcTime: Infinity,
-    refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value)
-  })
-}
-
-/**
- * 单个英雄详情（Community Dragon）
- */
-export function useChampionDetails(
-  championId: Ref<number | null>
-): UseQueryReturnType<CommunityDragonChampion | null, Error> {
-  return useQuery({
-    queryKey: computed(() => ['static', 'championDetails', 'cdragon-latest', championId.value] as const),
-    queryFn: async () => {
-      const id = championId.value
-      if (!id || id <= 0) return null
-
-      const result = await fetchChampionDetails(id)
-      if (!result.success || !result.data) {
-        throw new Error(result.error || '获取英雄详情失败')
-      }
-      return result.data
-    },
-    staleTime: 1000 * 60 * 60,
-    gcTime: 1000 * 60 * 60 * 24,
-    refetchOnWindowFocus: false,
-    enabled: computed(() => championId.value !== null && championId.value > 0)
-  })
-}
-
-/**
- * 符文样式查询（版本化）
- */
-export function useRuneStyles(): UseQueryReturnType<unknown, Error> {
-  const { data: version } = useGameVersion()
-
-  return useQuery({
-    queryKey: computed(() => ['static', 'runes', version.value] as const),
-    queryFn: () => invoke<unknown>('get_lcu_rune_styles'),
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value)
-  })
-}
-
-/**
- * 符文详情查询（版本化）
- */
-export function usePerks(): UseQueryReturnType<unknown, Error> {
-  const { data: version } = useGameVersion()
-
-  return useQuery({
-    queryKey: computed(() => ['static', 'perks', version.value] as const),
-    queryFn: () => invoke<unknown>('get_lcu_perks'),
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value)
-  })
-}
-
-/**
- * Community Dragon 符文元数据（图标路径等）
- * OP.GG RunesCard 用其解析 perk 图标 URL
- */
-export function useCommunityDragonPerksQuery(): UseQueryReturnType<CommunityDragonPerk[], Error> {
-  return useQuery({
-    queryKey: ['static', 'communityDragonPerks'] as const,
-    queryFn: async () => {
-      const res = await fetchCommunityDragonPerks()
-      if (!res.success || !res.data) {
-        throw new Error(res.error || '获取 Community Dragon 符文数据失败')
-      }
-      return res.data
-    },
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnWindowFocus: false
-  })
-}
-
-/**
- * 符文图标查询（版本化）
- */
-export function usePerkIcons(): UseQueryReturnType<Record<number, string>, Error> {
-  const { data: version } = useGameVersion()
-
-  return useQuery({
-    queryKey: computed(() => ['static', 'perkIcons', version.value] as const),
-    queryFn: () => invoke<Record<number, string>>('get_lcu_perk_icon'),
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value)
-  })
-}
-
-/**
- * 召唤师技能查询（Community Dragon，不依赖 LCU）
- *
- * 填充 `setSummonerSpellCatalog`，供 getSpellIconUrl / getSpellMeta 使用。
- */
-export function useSummonerSpells(): UseQueryReturnType<CommunityDragonSummonerSpell[], Error> {
   const query = useQuery({
-    queryKey: ['static', 'summonerSpells', 'cdragon'] as const,
+    queryKey: computed(() => ['static', 'champions', version.value] as const),
     queryFn: async () => {
-      const res = await fetchCommunityDragonSummonerSpells()
-      if (!res.success || !res.data) {
-        throw new Error(res.error || '获取 Community Dragon 召唤师技能失败')
-      }
-      setSummonerSpellCatalog(res.data)
-      return res.data
+      const champions = await invoke<ChampionInfo[]>('get_all_champion_data')
+      setChampionCatalog(champions)
+      return champions
     },
     staleTime: Infinity,
     gcTime: Infinity,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    enabled: computed(() => !!version.value),
+    retry: 3
+  })
+
+  watchEffect(() => {
+    if (query.data.value?.length) {
+      setChampionCatalog(query.data.value)
+    }
+  })
+
+  return query
+}
+
+/**
+ * 召唤师技能（IPC，不再前端直连 CDragon）
+ */
+export function useSummonerSpells(): UseQueryReturnType<SummonerSpellInfo[], Error> {
+  const { data: version } = useGameVersion()
+
+  const query = useQuery({
+    queryKey: computed(() => ['static', 'summonerSpells', version.value] as const),
+    queryFn: async () => {
+      const spells = await invoke<SummonerSpellInfo[]>('get_all_summoner_spell_data')
+      setSummonerSpellCatalog(spells)
+      return spells
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    enabled: computed(() => !!version.value),
+    retry: 3
   })
 
   watchEffect(() => {
@@ -176,34 +105,85 @@ export function useSummonerSpells(): UseQueryReturnType<CommunityDragonSummonerS
 }
 
 /**
- * 当前符文页查询（动态数据，不版本化）
+ * 单个英雄详情（Community Dragon，按需 + 长缓存）
  */
-export function useCurrentRunePage(): UseQueryReturnType<unknown, Error> {
+export function useChampionDetails(
+  championId: Ref<number | null>
+): UseQueryReturnType<CommunityDragonChampion | null, Error> {
+  const { data: version } = useGameVersion()
+
   return useQuery({
-    queryKey: ['currentRunePage'],
-    queryFn: () => invoke<unknown>('get_current_rune_page'),
-    staleTime: 1000 * 60, // 1 分钟
-    refetchOnWindowFocus: false
+    queryKey: computed(() => ['static', 'championDetails', version.value ?? 'latest', championId.value] as const),
+    queryFn: async () => {
+      const id = championId.value
+      if (!id || id <= 0) return null
+
+      const result = await fetchChampionDetails(id)
+      if (!result.success || !result.data) {
+        throw new Error(result.error || '获取英雄详情失败')
+      }
+      return result.data
+    },
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60 * 24,
+    refetchOnWindowFocus: false,
+    enabled: computed(() => championId.value !== null && championId.value > 0)
   })
 }
 
 /**
- * 队列目录（Community Dragon zh_cn）
- * 不依赖 LCU 连接，启动即可拉取并写入名称缓存
+ * Community Dragon 符文元数据（图标路径等）— 按版本持久化
+ */
+export function useCommunityDragonPerksQuery(): UseQueryReturnType<CommunityDragonPerk[], Error> {
+  const { data: version } = useGameVersion()
+
+  return useQuery({
+    queryKey: computed(() => ['static', 'communityDragonPerks', version.value] as const),
+    queryFn: async () => {
+      const v = version.value
+      if (!v) throw new Error('游戏版本未知，无法加载符文元数据')
+      const cached = readVersionedCache<CommunityDragonPerk[]>(RUNE_PERKS_CACHE_KEY, v)
+      if (cached?.length) return cached
+
+      const res = await fetchCommunityDragonPerks()
+      if (!res.success || !res.data) {
+        throw new Error(res.error || '获取 Community Dragon 符文数据失败')
+      }
+      writeVersionedCache(RUNE_PERKS_CACHE_KEY, v, res.data)
+      return res.data
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    enabled: computed(() => !!version.value)
+  })
+}
+
+/**
+ * 队列目录（CDragon）— 启动可预热，按版本持久化
  */
 export function useQueues(): UseQueryReturnType<CDragonQueue[], Error> {
+  const { data: version } = useGameVersion()
+
   const query = useQuery({
-    queryKey: ['static', 'queues', 'cdragon-zh_cn'] as const,
+    queryKey: computed(() => ['static', 'queues', version.value] as const),
     queryFn: async () => {
+      const v = version.value
+      if (!v) throw new Error('游戏版本未知，无法加载队列目录')
+      const cached = readVersionedCache<CDragonQueue[]>(QUEUE_CACHE_KEY, v)
+      if (cached?.length) return cached
+
       const result = await fetchQueues()
       if (!result.success || !result.data) {
         throw new Error(result.error || '获取队列数据失败')
       }
+      writeVersionedCache(QUEUE_CACHE_KEY, v, result.data)
       return result.data
     },
     staleTime: Infinity,
     gcTime: Infinity,
     refetchOnWindowFocus: false,
+    enabled: computed(() => !!version.value),
     retry: 2
   })
 
@@ -217,109 +197,79 @@ export function useQueues(): UseQueryReturnType<CDragonQueue[], Error> {
 }
 
 /**
- * 组合 hook：一次性获取所有静态数据
+ * 物品表（DDragon）— 首访拉取后按版本持久化，不预加载
  */
-export function useStaticData() {
-  const versionQuery = useGameVersion()
+export function useItems(): UseQueryReturnType<DDragonItemsResponse, Error> {
+  const { data: version } = useGameVersion()
+
+  return useQuery({
+    queryKey: computed(() => ['static', 'items', version.value] as const),
+    queryFn: async () => {
+      const v = version.value
+      if (!v) throw new Error('游戏版本未知')
+
+      const cached = readVersionedCache<DDragonItemsResponse>(ITEMS_CACHE_KEY, v)
+      if (cached?.data) return cached
+
+      const result = await fetchItems(v)
+      if (!result.success || !result.data) {
+        throw new Error(result.error || '获取物品数据失败')
+      }
+      writeVersionedCache(ITEMS_CACHE_KEY, v, result.data)
+      return result.data
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    // 仅在页面调用 useItems 时拉取；不要放进启动 bootstrap
+    enabled: computed(() => !!version.value)
+  })
+}
+
+/**
+ * 启动时 hydrate：元信息 + 英雄 + 技能 + 队列
+ */
+export function useBootstrapStaticData() {
+  const metaQuery = useStaticCatalogMeta()
   const championsQuery = useChampions()
-  const runeStylesQuery = useRuneStyles()
-  const perksQuery = usePerks()
-  const perkIconsQuery = usePerkIcons()
   const spellsQuery = useSummonerSpells()
-
-  const isLoading = computed(
-    () =>
-      versionQuery.isLoading.value ||
-      championsQuery.isLoading.value ||
-      runeStylesQuery.isLoading.value ||
-      perksQuery.isLoading.value ||
-      perkIconsQuery.isLoading.value ||
-      spellsQuery.isLoading.value
-  )
-
-  const error = computed(
-    () =>
-      versionQuery.error.value ||
-      championsQuery.error.value ||
-      runeStylesQuery.error.value ||
-      perksQuery.error.value ||
-      perkIconsQuery.error.value ||
-      spellsQuery.error.value
-  )
+  const queuesQuery = useQueues()
 
   const isReady = computed(
     () =>
-      !!versionQuery.data.value &&
-      !!championsQuery.data.value &&
-      !!runeStylesQuery.data.value &&
-      !!perksQuery.data.value &&
-      !!perkIconsQuery.data.value &&
-      !!spellsQuery.data.value
+      !!metaQuery.data.value &&
+      !!championsQuery.data.value?.length &&
+      !!spellsQuery.data.value?.length &&
+      !!queuesQuery.data.value?.length
   )
 
   return {
-    versionQuery,
+    metaQuery,
     championsQuery,
-    runeStylesQuery,
-    perksQuery,
-    perkIconsQuery,
     spellsQuery,
-    isLoading,
-    error,
+    queuesQuery,
     isReady
   }
 }
 
 /**
- * 手动刷新所有静态数据（用于检测到版本变化时）
+ * @deprecated 已拆为 useBootstrapStaticData；保留空壳避免误用 LCU 符文 hooks
  */
-export function useRefreshStaticData() {
-  const queryClient = useQueryClient()
+export function useStaticData() {
+  return useBootstrapStaticData()
+}
 
-  return async () => {
-    // 先刷新版本号
-    await queryClient.invalidateQueries({ queryKey: ['gameVersion'] })
-    // 版本变化后，其他查询会自动失效并重新获取
+/**
+ * Connected 时：后端按版本刷新静态包，再 invalidate 前端 static 查询
+ */
+export async function refreshStaticCatalogsOnVersionChange(queryClient: ReturnType<typeof useQueryClient>) {
+  const refreshed = await invoke<boolean>('refresh_static_catalogs')
+  const meta = await invoke<StaticCatalogMeta>('get_static_catalog_meta')
+  queryClient.setQueryData(['staticCatalogMeta'], meta)
+  if (refreshed) {
+    await queryClient.invalidateQueries({ queryKey: ['static'] })
   }
+  return { refreshed, meta }
 }
-
-/**
- * 获取单个英雄信息（从缓存中查找）
- */
-export function useChampionById(championId: Ref<number | null>) {
-  const { data: champions } = useChampions()
-
-  const champion = computed(() => {
-    if (!championId.value || !champions.value) return null
-    return (
-      champions.value.find((c: ChampionInfo) => c.id === championId.value) ||
-      champions.value.find((c: ChampionInfo) => c.alias === String(championId.value))
-    )
-  })
-
-  return { champion }
-}
-
-/**
- * 获取单个英雄信息（按名字）
- */
-export function useChampionByName(name: Ref<string | null>) {
-  const { data: champions } = useChampions()
-
-  const champion = computed(() => {
-    if (!name.value || !champions.value) return null
-    const searchName = name.value.toLowerCase()
-    return champions.value.find((c: ChampionInfo) => {
-      const cName = c.name?.toLowerCase() || ''
-      const cAlias = c.alias?.toLowerCase() || ''
-      return cName === searchName || cAlias === searchName
-    })
-  })
-
-  return { champion }
-}
-
-// 导入 QueryClient 类型
-import { useQueryClient } from '@tanstack/vue-query'
 
 /** OP.GG / 海克斯查询请用 `src/features/opgg/composables`（key 含 region/mode/tier） */

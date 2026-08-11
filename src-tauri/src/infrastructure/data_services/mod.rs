@@ -7,6 +7,7 @@
 
 pub mod champion_data;
 pub mod external;
+pub mod static_catalog;
 pub mod summoner;
 
 // Re-export services

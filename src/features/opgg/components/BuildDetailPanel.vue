@@ -285,7 +285,6 @@ const emit = defineEmits<{
   'apply-runes': [index: number]
 }>()
 
-useSummonerSpells()
 const { data: communityDragonPerks } = useCommunityDragonPerksQuery()
 
 const detailOpen = ref(true)

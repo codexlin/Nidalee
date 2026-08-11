@@ -209,8 +209,6 @@ const emit = defineEmits<{
   back: []
 }>()
 
-useSummonerSpells()
-
 const detailOpen = ref(true)
 const summary = computed(() => props.detail.summary)
 const bestSkill = computed(() => props.detail.skillOrders[0] ?? null)

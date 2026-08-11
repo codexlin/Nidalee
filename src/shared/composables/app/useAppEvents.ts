@@ -11,6 +11,8 @@ let startListeningPromise: Promise<boolean> | null = null
 let listenerGeneration = 0
 let cancelActiveConnectionStateDebounce: (() => void) | null = null
 let currentGameVersion: string | null = null
+let lastStaticCatalogCheckAt = 0
+const STATIC_CATALOG_CHECK_TTL_MS = 30_000
 
 /**
  * 应用事件处理组合式函数
@@ -98,22 +100,27 @@ export function useAppEvents() {
     }
   }
 
-  // 检查游戏版本，版本变化时清空静态数据缓存
+  // 检查游戏版本：委托 Rust 刷新静态包（短 TTL，避免快速重连刷屏）
   const checkGameVersion = async () => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core')
-      const newVersion = await invoke<string>('get_game_version')
+    const now = Date.now()
+    if (now - lastStaticCatalogCheckAt < STATIC_CATALOG_CHECK_TTL_MS && currentGameVersion) {
+      return
+    }
+    lastStaticCatalogCheckAt = now
 
-      if (newVersion && newVersion !== currentGameVersion) {
-        if (currentGameVersion) {
-          console.log(`[AppEvents] 检测到游戏版本变化: ${currentGameVersion} → ${newVersion}`)
-          // 清空所有静态数据缓存
-          queryClient.invalidateQueries({ queryKey: ['static'] })
-        } else {
-          console.log(`[AppEvents] 当前游戏版本: ${newVersion}`)
-        }
-        currentGameVersion = newVersion
+    try {
+      const { refreshStaticCatalogsOnVersionChange } = await import('@/shared/composables/data/useVersionedData')
+      const { refreshed, meta } = await refreshStaticCatalogsOnVersionChange(queryClient)
+      dataStore.setGameVersion(meta.version)
+
+      if (refreshed && currentGameVersion) {
+        console.log(`[AppEvents] 检测到游戏版本变化: ${currentGameVersion} → ${meta.version}`)
+      } else if (!currentGameVersion) {
+        console.log(`[AppEvents] 当前游戏版本: ${meta.version}`)
+      } else {
+        console.log(`[AppEvents] 版本未变化: ${meta.version}`)
       }
+      currentGameVersion = meta.version
     } catch (error) {
       console.error('[AppEvents] 检查游戏版本失败:', error)
     }

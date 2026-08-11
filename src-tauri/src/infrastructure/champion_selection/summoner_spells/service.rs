@@ -1,25 +1,36 @@
 /// 召唤师技能数据服务层 - 核心业务逻辑
-use once_cell::sync::OnceCell;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::RwLock;
+use ts_rs::TS;
 
 use crate::http_client;
 
-// 🔥 全局静态变量：召唤师技能 ID -> 完整信息映射
-static SUMMONER_SPELL_DATA: OnceCell<HashMap<i64, SummonerSpellInfo>> = OnceCell::new();
+struct SpellStore {
+    data: HashMap<i64, SummonerSpellInfo>,
+    name_to_id: HashMap<String, i64>,
+}
 
-// 🔥 全局静态变量：召唤师技能名称 -> ID 映射
-static SUMMONER_SPELL_NAME_TO_ID: OnceCell<HashMap<String, i64>> = OnceCell::new();
+static SPELL_STORE: Lazy<RwLock<Option<SpellStore>>> = Lazy::new(|| RwLock::new(None));
 
 /// 召唤师技能信息结构
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/SummonerSpellInfo.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct SummonerSpellInfo {
+    #[ts(type = "number")]
     pub id: i64, // 改为 i64 以支持大数值（API 可能返回 4294967295）
     pub name: String,
     pub description: String,
+    #[ts(type = "number")]
     pub summoner_level: i64, // 改为 i64
-    pub cooldown: i64,       // 改为 i64
+    #[ts(type = "number")]
+    pub cooldown: i64, // 改为 i64
     pub game_modes: Vec<String>,
     pub icon_path: String,
 }
@@ -57,16 +68,20 @@ fn build_summoner_spell_maps(
     (data_map, name_map)
 }
 
-/// 从 Community Dragon 获取召唤师技能数据并构建映射
-pub async fn load_summoner_spell_data() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // 检查是否已加载
-    if SUMMONER_SPELL_DATA.get().is_some() {
-        log::info!("[SummonerSpells] ✅ 召唤师技能数据已加载，跳过重复加载");
-        return Ok(());
-    }
+/// 安装/替换内存中的召唤师技能目录（供 static_catalog 编排）
+pub fn install_summoner_spell_maps(spells: Vec<SummonerSpellInfo>) -> Result<(), String> {
+    let (data, name_to_id) = build_summoner_spell_maps(spells);
+    let count = data.len();
+    let mut guard = SPELL_STORE.write().map_err(|e| format!("召唤师技能目录锁中毒: {e}"))?;
+    *guard = Some(SpellStore { data, name_to_id });
+    log::info!("[SummonerSpells] ✅ 召唤师技能目录已安装，共 {count} 个");
+    Ok(())
+}
 
-    log::info!("[SummonerSpells] 🌐 正在从 Community Dragon 加载召唤师技能数据...");
-
+/// 从 Community Dragon 拉取原始技能列表（不写内存）
+pub async fn fetch_summoner_spell_data_from_network(
+) -> Result<Vec<SummonerSpellInfo>, Box<dyn std::error::Error + Send + Sync>> {
+    log::info!("[SummonerSpells] 🌐 正在从 Community Dragon 拉取召唤师技能...");
     let url =
         "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/zh_cn/v1/summoner-spells.json";
 
@@ -76,33 +91,31 @@ pub async fn load_summoner_spell_data() -> Result<(), Box<dyn std::error::Error 
         .await?
         .error_for_status()?;
     let spells: Vec<SummonerSpellInfo> = response.json().await?;
+    Ok(spells)
+}
 
-    let (data_map, name_map) = build_summoner_spell_maps(spells);
+/// 从 Community Dragon 获取召唤师技能数据并构建映射（兼容旧入口）
+pub async fn load_summoner_spell_data() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if is_loaded() {
+        log::info!("[SummonerSpells] ✅ 召唤师技能数据已加载，跳过重复加载");
+        return Ok(());
+    }
 
-    log::info!(
-        "[SummonerSpells] ✅ 召唤师技能数据加载完成，共 {} 个技能",
-        data_map.len()
-    );
-
-    // 设置全局缓存
-    SUMMONER_SPELL_DATA
-        .set(data_map)
-        .map_err(|_| "无法设置 SUMMONER_SPELL_DATA")?;
-    SUMMONER_SPELL_NAME_TO_ID
-        .set(name_map)
-        .map_err(|_| "无法设置 SUMMONER_SPELL_NAME_TO_ID")?;
-
+    let spells = fetch_summoner_spell_data_from_network().await?;
+    install_summoner_spell_maps(spells)?;
     Ok(())
 }
 
 /// 根据 ID 获取召唤师技能信息
 pub fn get_summoner_spell_info(id: i64) -> Option<SummonerSpellInfo> {
-    SUMMONER_SPELL_DATA.get()?.get(&id).cloned()
+    let guard = SPELL_STORE.read().ok()?;
+    guard.as_ref()?.data.get(&id).cloned()
 }
 
 /// 获取所有召唤师技能数据（按 ID 排序）
 pub fn get_all_summoner_spells() -> Option<Vec<SummonerSpellInfo>> {
-    let data = SUMMONER_SPELL_DATA.get()?;
+    let guard = SPELL_STORE.read().ok()?;
+    let data = &guard.as_ref()?.data;
     let mut spells: Vec<SummonerSpellInfo> = data.values().cloned().collect();
     spells.sort_by_key(|s| s.id);
     Some(spells)
@@ -110,17 +123,22 @@ pub fn get_all_summoner_spells() -> Option<Vec<SummonerSpellInfo>> {
 
 /// 检查数据是否已加载
 pub fn is_loaded() -> bool {
-    SUMMONER_SPELL_DATA.get().is_some() && SUMMONER_SPELL_NAME_TO_ID.get().is_some()
+    SPELL_STORE.read().map(|g| g.is_some()).unwrap_or(false)
 }
 
 /// 获取召唤师技能总数
 pub fn get_spell_count() -> usize {
-    SUMMONER_SPELL_DATA.get().map(|m| m.len()).unwrap_or(0)
+    SPELL_STORE
+        .read()
+        .ok()
+        .and_then(|g| g.as_ref().map(|s| s.data.len()))
+        .unwrap_or(0)
 }
 
 /// 根据名称查找召唤师技能 ID（支持中文）
 pub fn get_spell_id_by_name(name: &str) -> Option<i64> {
-    SUMMONER_SPELL_NAME_TO_ID.get()?.get(name).copied()
+    let guard = SPELL_STORE.read().ok()?;
+    guard.as_ref()?.name_to_id.get(name).copied()
 }
 
 /// 根据名称查找召唤师技能（支持中文）
@@ -133,25 +151,12 @@ pub fn get_spell_by_name(name: &str) -> Option<SummonerSpellInfo> {
 mod tests {
     use super::*;
 
-    // ---------------------------------------------------------------------
-    // `keep_canonical_spell_id` 的离线用例（不联网）
-    //
-    // 「同名冲突时取最小 ID」是**当前上游契约假设**：通用本体技能（"引燃" id 14，
-    // 覆盖 CLASSIC/ARAM 等模式）的 ID 恒小于只服务单一模式的变体（JADE 专用 id 714）。
-    // 上游若不再遵守这个假设，下面的用例会先红——那时应该改成按 `game_modes`
-    // 覆盖面来判定本体，而不是放宽断言。
-    //
-    // 两个方向都要覆盖：上游数组顺序不受我们控制，实现必须与插入顺序无关。
-    // ---------------------------------------------------------------------
-
     /// 变体先、本体后：后写入的本体（更小 ID）必须覆盖掉变体
     #[test]
     fn canonical_spell_id_keeps_base_when_variant_comes_first() {
         let mut map: HashMap<String, i64> = HashMap::new();
 
-        // JADE 模式专用的"引燃"
         keep_canonical_spell_id(&mut map, "引燃".to_string(), 714);
-        // 通用本体"引燃"
         keep_canonical_spell_id(&mut map, "引燃".to_string(), 14);
 
         assert_eq!(map.get("引燃").copied(), Some(14));

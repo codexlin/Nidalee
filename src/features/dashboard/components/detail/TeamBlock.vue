@@ -16,7 +16,7 @@
           :key="ban.championId ?? `${teamId}-ban-${banIndex}`"
           :src="getChampionIconUrl(ban.championId)"
           class="h-7 w-7 rounded opacity-80"
-          :title="getChampionName(ban.championId)"
+          :title="resolveChampionName(ban.championId)"
           alt=""
         />
       </div>
@@ -95,7 +95,7 @@
                   <img
                     :src="getChampionIconUrl(participant.championId)"
                     class="h-9 w-9 rounded-full"
-                    :title="getChampionName(participant.championId)"
+                    :title="resolveChampionName(participant.championId, participant.championName)"
                     alt=""
                   />
                   <span
@@ -104,7 +104,9 @@
                     {{ participant.stats?.champLevel || '?' }}
                   </span>
                 </div>
-                <span class="truncate text-sm font-medium">{{ getChampionName(participant.championId) }}</span>
+                <span class="truncate text-sm font-medium">{{
+                  resolveChampionName(participant.championId, participant.championName)
+                }}</span>
               </div>
             </td>
             <td class="px-2 py-2.5">
@@ -192,12 +194,11 @@
 import { Copy } from 'lucide-vue-next'
 import {
   getChampionIconUrl,
-  getChampionName,
   getItemIconUrl,
-  getPerkIconUrlByCommunityDragon,
   getPerkImageUrlFromIconPath,
   getProfileIconUrl,
-  getSpellMeta
+  getSpellMeta,
+  resolveChampionName,
 } from '@/lib'
 import { gradeFromStats, gradeTextClass } from '../../utils/matchGrade'
 import ParticipantHoverCard from './ParticipantHoverCard.vue'
@@ -217,14 +218,8 @@ const emit = defineEmits<{
   (e: 'copy-name', name: string): void
 }>()
 
-/** 与 OP.GG RunesCard / 符文设置页同一套图标解析；技能目录由 App 初始化预加载 */
-const { data: communityPerks } = useCommunityDragonPerksQuery()
-useSummonerSpells()
+/** 符文 styles + perks 统一经 useRuneData（perks 底层复用 CommunityDragon Query） */
 const runeData = useRuneData()
-
-onMounted(() => {
-  void runeData.loadRuneData()
-})
 
 const itemSlots = [0, 1, 2, 3, 4, 5, 6] as const
 
@@ -260,7 +255,8 @@ const primaryStyleLabel = (participant: ParticipantInfo) => {
 const keystoneIcon = (participant: ParticipantInfo) => {
   const perkId = participant.perk0
   if (!perkId) return ''
-  return getPerkIconUrlByCommunityDragon(perkId, communityPerks.value ?? [])
+  const perk = runeData.getPerkById(perkId)
+  return getPerkImageUrlFromIconPath(perk?.iconPath ?? '', perkId)
 }
 
 const hasRune = (participant: ParticipantInfo) =>
