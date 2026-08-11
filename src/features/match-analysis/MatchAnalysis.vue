@@ -47,8 +47,10 @@
         </div>
       </div>
 
-      <!-- Pre-Analysis Status Hub -->
-      <GameStatusHub v-else key="status" />
+      <!-- Pre-Analysis Status Hub：包一层元素，避免 Transition 对组件根节点告警导致切换卡住 -->
+      <div v-else key="status" class="w-full">
+        <GameStatusHub />
+      </div>
     </Transition>
 
     <!-- Summoner Details Dialog -->
