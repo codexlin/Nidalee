@@ -41,36 +41,33 @@ watch(
 <template>
   <div id="app" class="flex h-screen flex-col overflow-hidden bg-background">
     <Toaster richColors :theme />
-    <TitleBar />
-    <template v-if="route.path === '/forbidden'">
-      <router-view />
-    </template>
-    <template v-else>
-      <div class="flex min-h-0 flex-1 flex-col overflow-hidden bg-background pt-8">
-        <AppTopNav />
+    <TooltipProvider :delay-duration="300">
+      <TitleBar />
+      <template v-if="route.path === '/forbidden'">
+        <router-view />
+      </template>
+      <template v-else>
+        <div class="flex min-h-0 flex-1 flex-col overflow-hidden bg-background pt-10">
+          <AppTopNav v-if="isConnected" />
 
-        <div
-          class="flex-1 overflow-y-auto scroll-smooth scrollbar-thin scrollbar-track-transparent scrollbar-thumb-rounded-full scrollbar-thumb-slate-400/50 dark:scrollbar-thumb-slate-500/50"
-        >
-          <div class="flex flex-col gap-6 bg-background p-6">
-            <router-view v-slot="{ Component }">
-              <transition :name="currentTransition" mode="out-in" @before-leave="handleRouteChange">
-                <KeepAlive include="DashboardView">
-                  <component :is="isConnected ? Component : ClientDisconnected" />
-                </KeepAlive>
-              </transition>
-            </router-view>
-            <BorderBeam
-              class="transition-colors"
-              :colorFrom="'var(--color-primary)'"
-              :size="250"
-              :duration="12"
-              :delay="9"
-              :border-width="2"
-            />
+          <div
+            class="min-h-0 flex-1 overflow-y-auto scroll-smooth scrollbar-thin scrollbar-track-transparent scrollbar-thumb-rounded-full scrollbar-thumb-slate-400/50 dark:scrollbar-thumb-slate-500/50"
+          >
+            <div
+              class="flex min-h-full flex-col bg-background"
+              :class="isConnected ? 'gap-6 p-6' : 'p-0'"
+            >
+              <router-view v-slot="{ Component }">
+                <transition :name="currentTransition" mode="out-in" @before-leave="handleRouteChange">
+                  <KeepAlive :include="['DashboardView', 'OpggView']">
+                    <component :is="isConnected ? Component : ClientDisconnected" />
+                  </KeepAlive>
+                </transition>
+              </router-view>
+            </div>
           </div>
         </div>
-      </div>
-    </template>
+      </template>
+    </TooltipProvider>
   </div>
 </template>

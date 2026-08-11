@@ -1,106 +1,99 @@
-<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- 背景圆环 -->
-  <circle cx="60" cy="60" r="55" fill="url(#bgGradient)" stroke="url(#strokeGradient)" stroke-width="2" />
-
-  <!-- 豹头轮廓 -->
-  <path
-    d="M45 35 C35 35, 30 42, 30 50 C30 58, 35 65, 45 67 L50 72 C52 75, 55 77, 60 77 C65 77, 68 75, 70 72 L75 67 C85 65, 90 58, 90 50 C90 42, 85 35, 75 35 C70 35, 65 37, 60 40 C55 37, 50 35, 45 35 Z"
-    fill="url(#headGradient)" stroke="url(#accentGradient)" stroke-width="1.5" />
-
-  <!-- 豹耳 -->
-  <path d="M45 35 C42 30, 38 28, 35 32 C38 35, 42 37, 45 35 Z" fill="url(#earGradient)" />
-  <path d="M75 35 C78 30, 82 28, 85 32 C82 35, 78 37, 75 35 Z" fill="url(#earGradient)" />
-
-  <!-- 豹眼 -->
-  <ellipse cx="50" cy="50" rx="4" ry="6" fill="url(#eyeGradient)" />
-  <ellipse cx="70" cy="50" rx="4" ry="6" fill="url(#eyeGradient)" />
-  <circle cx="50" cy="48" r="1.5" fill="#FFD700" />
-  <circle cx="70" cy="48" r="1.5" fill="#FFD700" />
-
-  <!-- 鼻子 -->
-  <path d="M58 58 L62 58 L60 62 Z" fill="url(#noseGradient)" />
-
-  <!-- 胡须 -->
-  <line x1="35" y1="52" x2="45" y2="54" stroke="url(#whiskerGradient)" stroke-width="1.5" stroke-linecap="round" />
-  <line x1="35" y1="58" x2="45" y2="58" stroke="url(#whiskerGradient)" stroke-width="1.5" stroke-linecap="round" />
-  <line x1="75" y1="54" x2="85" y2="52" stroke="url(#whiskerGradient)" stroke-width="1.5" stroke-linecap="round" />
-  <line x1="75" y1="58" x2="85" y2="58" stroke="url(#whiskerGradient)" stroke-width="1.5" stroke-linecap="round" />
-
-  <!-- 游戏助手符号 -->
-  <g transform="translate(60,85)">
-    <!-- 游戏控制器图标 -->
-    <rect x="-8" y="-4" width="16" height="8" rx="4" fill="url(#controllerGradient)" stroke="url(#accentGradient)"
-      stroke-width="1" />
-    <circle cx="-4" cy="0" r="1.5" fill="url(#buttonGradient)" />
-    <circle cx="4" cy="0" r="1.5" fill="url(#buttonGradient)" />
-    <rect x="-2" y="-6" width="4" height="2" rx="1" fill="url(#accentGradient)" />
-  </g>
-
-  <!-- 装饰性豹纹 -->
-  <g opacity="0.3">
-    <circle cx="25" cy="25" r="2" fill="url(#spotGradient)" />
-    <circle cx="95" cy="25" r="2" fill="url(#spotGradient)" />
-    <circle cx="25" cy="95" r="2" fill="url(#spotGradient)" />
-    <circle cx="95" cy="95" r="2" fill="url(#spotGradient)" />
-  </g>
-
-  <!-- 渐变定义 -->
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    <linearGradient id="badgeBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1C2740" />
+      <stop offset="100%" stop-color="#080B14" />
     </linearGradient>
-
-    <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4ade80;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#06b6d4;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#34D8C9" />
+      <stop offset="100%" stop-color="#3E7BFA" />
     </linearGradient>
-
-    <radialGradient id="headGradient" cx="50%" cy="40%" r="60%">
-      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
-      <stop offset="70%" style="stop-color:#f59e0b;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
+    <linearGradient id="furGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F8C468" />
+      <stop offset="55%" stop-color="#EF9B2E" />
+      <stop offset="100%" stop-color="#C6720F" />
+    </linearGradient>
+    <linearGradient id="clawGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9CF3FF" />
+      <stop offset="100%" stop-color="#3E7BFA" />
+    </linearGradient>
+    <radialGradient id="eyeGlow" cx="50%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#8CF9CE" />
+      <stop offset="60%" stop-color="#2FBE8C" />
+      <stop offset="100%" stop-color="#0E7F5B" />
     </radialGradient>
-
-    <linearGradient id="earGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
-    </linearGradient>
-
-    <radialGradient id="eyeGradient" cx="50%" cy="30%" r="70%">
-      <stop offset="0%" style="stop-color:#065f46;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#047857;stop-opacity:1" />
+    <radialGradient id="sheen" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.16" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
     </radialGradient>
-
-    <linearGradient id="noseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1f2937;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#374151;stop-opacity:1" />
-    </linearGradient>
-
-    <linearGradient id="whiskerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#6b7280;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#9ca3af;stop-opacity:1" />
-    </linearGradient>
-
-    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
-    </linearGradient>
-
-    <linearGradient id="controllerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#374151;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1f2937;stop-opacity:1" />
-    </linearGradient>
-
-    <radialGradient id="buttonGradient" cx="50%" cy="30%" r="70%">
-      <stop offset="0%" style="stop-color:#4ade80;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
-    </radialGradient>
-
-    <radialGradient id="spotGradient" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" style="stop-color:#d97706;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#92400e;stop-opacity:1" />
-    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <clipPath id="badgeClip">
+      <circle cx="256" cy="256" r="228" />
+    </clipPath>
   </defs>
+
+  <!-- 徽章底 -->
+  <circle cx="256" cy="256" r="228" fill="url(#badgeBg)" />
+  <circle cx="256" cy="256" r="225" fill="url(#sheen)" />
+
+  <g clip-path="url(#badgeClip)">
+    <g transform="translate(256,256)">
+      <!-- 爪痕：狩猎者标志，斜切过右耳与脸颊 -->
+      <g filter="url(#glow)" stroke="url(#clawGrad)" stroke-width="6" stroke-linecap="round" opacity="0.9">
+        <line x1="52" y1="-138" x2="122" y2="-48" />
+        <line x1="70" y1="-146" x2="140" y2="-56" />
+        <line x1="88" y1="-152" x2="158" y2="-62" />
+      </g>
+
+      <!-- 豹头轮廓：几何低多边形，锐利而非圆润 -->
+      <path
+        d="M -96,-140 L -45,-90 L 0,-108 L 45,-90 L 96,-140 L 118,-60 L 128,10 L 98,78 L 0,108 L -98,78 L -128,10 L -118,-60 Z"
+        fill="url(#furGrad)" stroke="url(#ringGrad)" stroke-width="4" stroke-linejoin="round" />
+
+      <!-- 耳内暗面 -->
+      <path d="M -88,-128 L -66,-98 L -48,-104 Z" fill="#8A4E14" opacity="0.9" />
+      <path d="M 88,-128 L 66,-98 L 48,-104 Z" fill="#8A4E14" opacity="0.9" />
+
+      <!-- 豹纹斑点 -->
+      <g fill="#5C3212" opacity="0.5">
+        <ellipse cx="-72" cy="-15" rx="13" ry="8" transform="rotate(-20 -72 -15)" />
+        <ellipse cx="70" cy="-25" rx="11" ry="7" transform="rotate(15 70 -25)" />
+        <ellipse cx="-40" cy="50" rx="10" ry="6" transform="rotate(10 -40 50)" />
+        <ellipse cx="45" cy="55" rx="9" ry="6" transform="rotate(-15 45 55)" />
+        <ellipse cx="0" cy="-75" rx="9" ry="6" />
+      </g>
+
+      <!-- 猫科竖瞳，微微上挑 -->
+      <g transform="translate(-46,-8) rotate(-16)">
+        <ellipse rx="27" ry="12" fill="url(#eyeGlow)" stroke="#063D2B" stroke-width="1.5" />
+        <rect x="-3" y="-15" width="6" height="24" rx="3" fill="#0B1220" />
+        <circle cx="-4" cy="-8" r="2" fill="#EAFBF3" opacity="0.85" />
+      </g>
+      <g transform="translate(46,-8) rotate(16)">
+        <ellipse rx="27" ry="12" fill="url(#eyeGlow)" stroke="#063D2B" stroke-width="1.5" />
+        <rect x="-3" y="-15" width="6" height="24" rx="3" fill="#0B1220" />
+        <circle cx="4" cy="-8" r="2" fill="#EAFBF3" opacity="0.85" />
+      </g>
+
+      <!-- 鼻 -->
+      <path d="M -11,30 L 11,30 L 0,44 Z" fill="#0B1220" />
+
+      <!-- 胡须 -->
+      <g stroke="#CBD5E1" stroke-width="2" stroke-linecap="round" opacity="0.35">
+        <line x1="-70" y1="34" x2="-118" y2="24" />
+        <line x1="-68" y1="48" x2="-116" y2="52" />
+        <line x1="70" y1="34" x2="118" y2="24" />
+        <line x1="68" y1="48" x2="116" y2="52" />
+      </g>
+    </g>
+  </g>
+
+  <!-- 徽章描边 -->
+  <circle cx="256" cy="256" r="225" fill="none" stroke="url(#ringGrad)" stroke-width="6" opacity="0.9" />
 </svg>

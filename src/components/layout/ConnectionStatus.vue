@@ -1,53 +1,85 @@
 <template>
   <div
-    class="surface-chip flex items-center gap-2 px-3 py-1.5"
-    :class="isConnected ? '' : 'border-destructive/50'"
+    class="titlebar-status no-drag"
+    :class="{ 'is-offline': !isConnected }"
+    :title="statusTitle"
   >
-    <div class="flex items-center gap-2">
-      <div
-        :class="['h-1.5 w-1.5 shrink-0 rounded-full', isConnected ? 'bg-emerald-500' : 'bg-destructive']"
-      />
-      <span class="max-w-28 truncate text-sm font-medium text-foreground">
-        {{ isConnected ? summonerInfo?.displayName || '未知召唤师' : '未连接' }}
-      </span>
-    </div>
-
+    <span :class="['status-dot', isConnected ? 'is-online' : 'is-offline']" />
+    <span class="status-name">
+      {{ isConnected ? summonerInfo?.displayName || '未知召唤师' : '未连接' }}
+    </span>
     <GameLauncher v-if="!isConnected" />
-
-    <template v-if="isConnected && summonerInfo">
-      <div class="hidden h-3.5 w-px bg-border sm:block" />
-      <div class="hidden items-center gap-1 sm:flex">
-        <span class="text-xs text-muted-foreground">等级</span>
-        <span class="text-sm font-medium text-foreground tabular-nums">{{ summonerInfo.summonerLevel }}</span>
-      </div>
-    </template>
-
-    <template v-if="isConnected">
-      <div class="hidden h-3.5 w-px bg-border md:block" />
-      <div class="hidden items-center gap-1 md:flex">
-        <Clock class="size-3.5 text-muted-foreground" />
-        <span class="text-sm font-medium text-foreground tabular-nums">{{ sessionDuration }}</span>
-      </div>
-      <div class="hidden h-3.5 w-px bg-border md:block" />
-      <div class="hidden items-center gap-1 md:flex">
-        <span class="text-xs text-muted-foreground">自动</span>
-        <span class="text-sm font-medium text-foreground tabular-nums">{{ enabledFunctionsCount }}</span>
-      </div>
-    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Clock } from 'lucide-vue-next'
 import GameLauncher from '@/components/common/GameLauncher.vue'
 
 const dataStore = useDataStore()
 const connectionStore = useConnectionStore()
-const sessionStore = useSessionStore()
-const autoFunctionStore = useAutoFunctionStore()
 
 const { summonerInfo } = storeToRefs(dataStore)
 const { isConnected } = storeToRefs(connectionStore)
-const sessionDuration = computed(() => sessionStore.formattedTotal)
-const { enabledFunctionsCount } = storeToRefs(autoFunctionStore)
+
+const statusTitle = computed(() => {
+  if (!isConnected.value) return '客户端未连接'
+  const level = summonerInfo.value?.summonerLevel
+  return level ? `已连接 · 等级 ${level}` : '已连接'
+})
 </script>
+
+<style scoped>
+.titlebar-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 320px;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklch, var(--border) 40%, transparent);
+  background: color-mix(in oklch, var(--muted) 28%, transparent);
+  color: var(--muted-foreground);
+}
+
+.titlebar-status.is-offline {
+  border-color: color-mix(in oklch, var(--destructive) 40%, transparent);
+}
+
+.titlebar-status :deep(button) {
+  color: inherit;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.status-dot.is-online {
+  background: var(--color-emerald-500, #10b981);
+}
+
+.status-dot.is-offline {
+  background: var(--destructive);
+}
+
+.status-name {
+  min-width: 0;
+  max-width: 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--foreground);
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+</style>

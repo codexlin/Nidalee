@@ -43,3 +43,7 @@ tsconfig.node.tsbuildinfo
 # Vite generated files
 vite.config.js
 vite.config.d.ts
+
+# Agent/local cargo target dirs
+src-tauri/target-agent/
+

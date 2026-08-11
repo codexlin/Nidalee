@@ -45,11 +45,14 @@
 
 | 角色 | Tailwind | 重量 | 示例 |
 |------|----------|------|------|
-| 标签 / 辅助说明 | `text-xs` | normal，多用 `text-muted-foreground` | 「等级」「胜率」标签、样本提示、相对时间 |
-| 正文 / 控件 / 状态值 | `text-sm` | medium / bold | 昵称、会话时长、等级值、下拉、特征行内文 |
-| 区块小标题 | `text-base` | medium / bold | 「召唤师特征」「常用英雄」「最近对局」 |
-| 页内主标题 / 次级 KPI | `text-lg` | medium / bold | 「游戏统计」、段位名、KDA、特征胜率、今日对局数 |
-| 主 KPI | `text-2xl` | medium / bold | 概览总胜率 |
+| 标签 / 区块说明 / 辅助 | `text-xs` | normal，`text-muted-foreground` | 「主色、圆角…」「自定义你的个性签名」、版本号、英雄格名 |
+| 正文 / 控件 / 字段标签 / **页顶副标题** | `text-sm` | medium / bold | 昵称、下拉、「主题主色」、**「自定义系统主题与游戏助手」** |
+| 区块小标题（卡内分区） | `text-lg`（18px） | medium | 「主题外观」「个人签名」「强度榜」「推荐符文」 |
+| 页顶主标题（工作条） | `text-xl`（20px） | medium | 「设置」「构建推荐」 |
+| 次级 KPI | `text-lg` | medium / bold | 段位名、KDA、特征胜率 |
+| 主 KPI | `text-2xl`（24px） | medium / bold | 概览总胜率 |
+
+> 副标题分层：**页顶副标题用 `sm`，区块说明用 `xs`**，不要混成一档。工具页：页顶 `xl` → 页副标题 `sm` → 区块 `lg` → 区块说明 `xs` → 字段 `sm`。Dashboard 密信息区卡内仍可用 `text-base`。
 
 原则：
 

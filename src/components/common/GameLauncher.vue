@@ -3,13 +3,13 @@
     <button
       type="button"
       :disabled="launching"
-      class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-primary outline-none transition-colors hover:bg-primary/10 focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50"
-      :title="launching ? '启动中…' : '启动游戏'"
+      class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50"
+      :title="launching ? '启动中…' : '启动纯净客户端'"
       @click="launchGame"
     >
       <Loader2 v-if="launching" class="size-3.5 animate-spin" />
       <Gamepad2 v-else class="size-3.5" />
-      <span>{{ launching ? '启动中' : '启动' }}</span>
+      <span>{{ launching ? '启动中' : '启动纯净客户端' }}</span>
     </button>
 
     <button
