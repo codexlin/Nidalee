@@ -18,9 +18,10 @@ pub fn parse_champion_build(data: Value, position: &str) -> Result<OpggChampionB
     let play = average_stats.get("play").and_then(|v| v.as_i64()).unwrap_or(0);
     let first_place = average_stats.get("first_place").and_then(|v| v.as_i64());
     // Arena 用吃鸡率填 win_rate，便于前端统一展示
-    let win_rate = average_stats.get("win_rate").and_then(|v| v.as_f64()).or_else(|| {
-        first_place.and_then(|fp| if play > 0 { Some(fp as f64 / play as f64) } else { None })
-    });
+    let win_rate = average_stats
+        .get("win_rate")
+        .and_then(|v| v.as_f64())
+        .or_else(|| first_place.and_then(|fp| if play > 0 { Some(fp as f64 / play as f64) } else { None }));
     let pick_rate = average_stats.get("pick_rate").and_then(|v| v.as_f64());
     let ban_rate = average_stats.get("ban_rate").and_then(|v| v.as_f64());
     let kda = average_stats.get("kda").and_then(|v| v.as_f64()).or_else(|| {

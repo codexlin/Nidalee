@@ -10,11 +10,8 @@ fn f64_field(v: &Value, key: &str) -> f64 {
 }
 
 fn i32_field(v: &Value, key: &str) -> Option<i32> {
-    v.get(key).and_then(|x| {
-        x.as_i64()
-            .map(|n| n as i32)
-            .or_else(|| x.as_f64().map(|n| n as i32))
-    })
+    v.get(key)
+        .and_then(|x| x.as_i64().map(|n| n as i32).or_else(|| x.as_f64().map(|n| n as i32)))
 }
 
 fn i32_field_or(v: &Value, key: &str, default: i32) -> i32 {
@@ -22,31 +19,20 @@ fn i32_field_or(v: &Value, key: &str, default: i32) -> i32 {
 }
 
 fn str_field(v: &Value, key: &str) -> String {
-    v.get(key)
-        .and_then(|x| x.as_str())
-        .unwrap_or("")
-        .to_string()
+    v.get(key).and_then(|x| x.as_str()).unwrap_or("").to_string()
 }
 
 fn string_array(v: &Value, key: &str) -> Vec<String> {
     v.get(key)
         .and_then(|x| x.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|x| x.as_str().map(|s| s.to_string()))
-                .collect()
-        })
+        .map(|arr| arr.iter().filter_map(|x| x.as_str().map(|s| s.to_string())).collect())
         .unwrap_or_default()
 }
 
 fn i32_array(v: &Value, key: &str) -> Vec<i32> {
     v.get(key)
         .and_then(|x| x.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|x| x.as_i64().map(|n| n as i32))
-                .collect()
-        })
+        .map(|arr| arr.iter().filter_map(|x| x.as_i64().map(|n| n as i32)).collect())
         .unwrap_or_default()
 }
 
@@ -128,9 +114,7 @@ fn parse_augment(v: &Value, catalog: &HashMap<i32, CatalogAugment>) -> Option<He
         rarity_display_name: {
             let s = str_field(v, "rarityDisplayName");
             if s.is_empty() {
-                catalog_hit
-                    .map(|c| c.rarity_display_name.clone())
-                    .unwrap_or_default()
+                catalog_hit.map(|c| c.rarity_display_name.clone()).unwrap_or_default()
             } else {
                 s
             }
@@ -291,10 +275,7 @@ fn parse_champion_detail_with_catalog(
         pick_rate: f64_field(&stats, "pickRate"),
         tier: i32_field(&stats, "tier"),
         data_version: data_version.clone(),
-        game_patch: stats
-            .get("gamePatch")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string()),
+        game_patch: stats.get("gamePatch").and_then(|v| v.as_str()).map(|s| s.to_string()),
     };
 
     let mut augments: Vec<HextechAugmentStat> = raw
@@ -302,11 +283,7 @@ fn parse_champion_detail_with_catalog(
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().filter_map(|row| parse_augment(row, catalog)).collect())
         .unwrap_or_default();
-    augments.sort_by(|a, b| {
-        b.win_rate
-            .partial_cmp(&a.win_rate)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    augments.sort_by(|a, b| b.win_rate.partial_cmp(&a.win_rate).unwrap_or(std::cmp::Ordering::Equal));
 
     let mut augment_trios: Vec<HextechAugmentTrio> = raw
         .get("augmentTrios")
@@ -360,42 +337,22 @@ fn parse_champion_detail_with_catalog(
     let summoner_spells: Vec<HextechSpellCombo> = build
         .get("summonerSpells")
         .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(parse_spell_combo)
-                .take(MAX_COMBOS)
-                .collect()
-        })
+        .map(|arr| arr.iter().filter_map(parse_spell_combo).take(MAX_COMBOS).collect())
         .unwrap_or_default();
     let skill_orders: Vec<HextechSkillOrder> = build
         .get("skillOrders")
         .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(parse_skill_order)
-                .take(MAX_COMBOS)
-                .collect()
-        })
+        .map(|arr| arr.iter().filter_map(parse_skill_order).take(MAX_COMBOS).collect())
         .unwrap_or_default();
     let starting_items: Vec<HextechItemCombo> = build
         .get("startingItems")
         .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(parse_item_combo)
-                .take(MAX_COMBOS)
-                .collect()
-        })
+        .map(|arr| arr.iter().filter_map(parse_item_combo).take(MAX_COMBOS).collect())
         .unwrap_or_default();
     let core_items: Vec<HextechItemCombo> = build
         .get("coreItems")
         .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(parse_item_combo)
-                .take(MAX_COMBOS)
-                .collect()
-        })
+        .map(|arr| arr.iter().filter_map(parse_item_combo).take(MAX_COMBOS).collect())
         .unwrap_or_default();
 
     Ok(HextechChampionDetail {

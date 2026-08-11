@@ -12,9 +12,7 @@ pub async fn get_champion_build(
 ) -> Result<OpggChampionBuild, String> {
     let client = OpggClient::new();
     let pos = resolve_build_position(mode, position.as_deref());
-    let raw_data = client
-        .get_champion_build(region, mode, champion_id, &pos, tier)
-        .await?;
+    let raw_data = client.get_champion_build(region, mode, champion_id, &pos, tier).await?;
     let label = if pos.is_empty() { mode } else { pos.as_str() };
     parse_champion_build(raw_data, label).map_err(|e| e.to_string())
 }
@@ -28,9 +26,7 @@ pub async fn get_champion_build_raw(
 ) -> Result<Value, String> {
     let client = OpggClient::new();
     let pos = resolve_build_position(mode, position.as_deref());
-    client
-        .get_champion_build(region, mode, champion_id, &pos, tier)
-        .await
+    client.get_champion_build(region, mode, champion_id, &pos, tier).await
 }
 
 pub async fn get_tier_list(region: &str, mode: &str, tier: &str) -> Result<OpggTierList, String> {
@@ -70,28 +66,14 @@ fn parse_tier_stats(stats: &Value) -> OpggTierStats {
         .unwrap_or(0) as i32;
 
     let play = stats.get("play").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-    let first_place = stats
-        .get("first_place")
-        .and_then(|v| v.as_i64())
-        .map(|v| v as i32);
-    let total_place = stats
-        .get("total_place")
-        .and_then(|v| v.as_i64())
-        .map(|v| v as i32);
+    let first_place = stats.get("first_place").and_then(|v| v.as_i64()).map(|v| v as i32);
+    let total_place = stats.get("total_place").and_then(|v| v.as_i64()).map(|v| v as i32);
 
     // Arena 无 win_rate，用吃鸡率顶上便于统一排序/展示
     let win_rate = stats
         .get("win_rate")
         .and_then(|v| v.as_f64())
-        .or_else(|| {
-            first_place.and_then(|fp| {
-                if play > 0 {
-                    Some(fp as f64 / play as f64)
-                } else {
-                    None
-                }
-            })
-        })
+        .or_else(|| first_place.and_then(|fp| if play > 0 { Some(fp as f64 / play as f64) } else { None }))
         .unwrap_or(0.0);
 
     OpggTierStats {
@@ -126,9 +108,7 @@ fn parse_roles(item: &Value) -> Vec<OpggTierRole> {
                     Some(OpggTierRole {
                         name,
                         win_rate: normalize_rate(stats.get("win_rate").and_then(|v| v.as_f64()).unwrap_or(0.0)),
-                        role_rate: normalize_rate(
-                            stats.get("role_rate").and_then(|v| v.as_f64()).unwrap_or(0.0),
-                        ),
+                        role_rate: normalize_rate(stats.get("role_rate").and_then(|v| v.as_f64()).unwrap_or(0.0)),
                         play: stats.get("play").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
                     })
                 })
@@ -156,10 +136,7 @@ fn parse_tier_list_item(item: &Value) -> Option<OpggTierListItem> {
         return None;
     }
 
-    let average_stats = item
-        .get("average_stats")
-        .map(parse_tier_stats)
-        .unwrap_or_default();
+    let average_stats = item.get("average_stats").map(parse_tier_stats).unwrap_or_default();
 
     if average_stats.rank <= 0 && average_stats.play <= 0 {
         return None;
@@ -188,11 +165,7 @@ fn parse_tier_list_item(item: &Value) -> Option<OpggTierListItem> {
                                 .collect()
                         })
                         .unwrap_or_default();
-                    Some(OpggTierPosition {
-                        name,
-                        stats,
-                        counters,
-                    })
+                    Some(OpggTierPosition { name, stats, counters })
                 })
                 .collect()
         })

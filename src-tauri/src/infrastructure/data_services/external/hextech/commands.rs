@@ -1,7 +1,5 @@
 use crate::infrastructure::data_services::external::hextech::service;
-use crate::infrastructure::data_services::external::hextech::types::{
-    HextechChampionDetail, HextechTierList,
-};
+use crate::infrastructure::data_services::external::hextech::types::{HextechChampionDetail, HextechTierList};
 
 #[tauri::command]
 pub async fn get_hextech_tier_list() -> Result<HextechTierList, String> {

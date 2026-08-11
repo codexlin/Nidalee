@@ -120,10 +120,7 @@ fn tier_list_url(region: &str, mode: &str, tier: &str) -> String {
             region, mode, tier
         )
     } else {
-        format!(
-            "https://lol-api-champion.op.gg/api/{}/champions/{}",
-            region, mode
-        )
+        format!("https://lol-api-champion.op.gg/api/{}/champions/{}", region, mode)
     }
 }
 
