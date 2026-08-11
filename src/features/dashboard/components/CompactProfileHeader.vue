@@ -2,7 +2,10 @@
   <Card class="relative overflow-hidden px-5">
     <!-- 主内容：左中右三栏布局 -->
     <div class="relative">
-      <div class="flex items-center justify-between gap-6">
+      <div
+        class="flex items-center gap-6"
+        :class="showToday ? 'justify-between' : 'justify-start gap-10'"
+      >
         <!-- 左栏：头像 + 基本信息 -->
         <div class="flex items-center gap-4 shrink-0">
           <div class="relative shrink-0">
@@ -80,17 +83,17 @@
             <div class="relative shrink-0">
               <template v-if="soloRank.tier !== 'UNRANKED'">
                 <span
-                  class="rank-glow-aura absolute left-1/2 top-1/2 size-16"
+                  class="rank-glow-aura absolute left-1/2 top-1/2 size-20"
                   :style="getRankGlowStyle(soloRank.tier)"
                   aria-hidden="true"
                 />
-                <img :src="getTierIconUrl(soloRank.tier)" class="relative z-10 h-20 w-20" alt="" />
+                <img :src="getTierIconUrl(soloRank.tier)" class="relative z-10 h-24 w-24" alt="" />
               </template>
               <div
                 v-else
-                class="h-20 w-20 rounded-full bg-muted/40 flex items-center justify-center border border-border/30"
+                class="flex h-24 w-24 items-center justify-center rounded-full border border-border/30 bg-muted/40"
               >
-                <Shield class="h-6 w-6 text-muted-foreground" />
+                <Shield class="h-7 w-7 text-muted-foreground" />
               </div>
             </div>
             <div class="flex flex-col flex-1 min-w-0 gap-1">
@@ -159,24 +162,24 @@
             <div class="relative shrink-0">
               <template v-if="flexRank.tier !== 'UNRANKED'">
                 <span
-                  class="rank-glow-aura absolute left-1/2 top-1/2 size-16"
+                  class="rank-glow-aura absolute left-1/2 top-1/2 size-20"
                   :style="getRankGlowStyle(flexRank.tier)"
                   aria-hidden="true"
                 />
-                <img :src="getTierIconUrl(flexRank.tier)" class="relative z-10 h-20 w-20" alt="" />
+                <img :src="getTierIconUrl(flexRank.tier)" class="relative z-10 h-24 w-24" alt="" />
               </template>
               <div
                 v-else
-                class="h-20 w-20 rounded-full bg-muted/40 flex items-center justify-center border border-border/30"
+                class="flex h-24 w-24 items-center justify-center rounded-full border border-border/30 bg-muted/40"
               >
-                <Shield class="h-6 w-6 text-muted-foreground" />
+                <Shield class="h-7 w-7 text-muted-foreground" />
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 右栏：今日统计（标签 xs，数值 lg） -->
-        <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 items-center">
+        <!-- 右栏：今日统计（标签 xs，数值 lg）；搜索他人页可隐藏 -->
+        <div v-if="showToday" class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 items-center">
           <span class="text-xs text-muted-foreground">今日对局</span>
           <span class="text-lg font-semibold text-foreground text-right tabular-nums leading-none">{{
             todayMatches?.total || 0
@@ -219,13 +222,20 @@ interface TodayMatches {
   losses: number
 }
 
-const props = defineProps<{
-  isConnected: boolean
-  summonerInfo: SummonerInfo | null
-  todayMatches: TodayMatches
-  soloRank: RankInfo
-  flexRank: RankInfo
-}>()
+const props = withDefaults(
+  defineProps<{
+    isConnected: boolean
+    summonerInfo: SummonerInfo | null
+    todayMatches: TodayMatches
+    soloRank: RankInfo
+    flexRank: RankInfo
+    /** 查他人时隐藏「今日」块 */
+    showToday?: boolean
+  }>(),
+  {
+    showToday: true
+  }
+)
 
 const { formatChallengePoints } = useFormatters()
 

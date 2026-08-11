@@ -250,6 +250,8 @@ pub fn to_multi_position_analysis(result: &MatchAnalysisResult) -> MultiPosition
         position_stats: result.position_stats.clone(),
         main_position: result.main_position.clone(),
         overall_stats: result.overall_stats.clone(),
+        ranked_stats: result.ranked_stats.clone(),
+        other_stats: result.other_stats.clone(),
     }
 }
 

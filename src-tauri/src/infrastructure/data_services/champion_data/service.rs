@@ -130,6 +130,9 @@ pub fn get_champion_info_by_name(name: &str) -> Option<ChampionInfo> {
 }
 
 /// 获取所有英雄数据（按 ID 排序）
+///
+/// 含特殊模式变体（如 `Jade_*`），战绩/对局需要按 ID 解析名字与图标。
+/// 选英雄列表请在前端用 `isStandardChampion` 过滤，不要在这里裁掉。
 pub fn get_all_champions() -> Option<Vec<ChampionInfo>> {
     let data = CHAMPION_DATA.get()?;
     let mut champions: Vec<ChampionInfo> = data.values().cloned().collect();
@@ -221,5 +224,6 @@ mod tests {
         assert_eq!(names.get("黑暗之女").copied(), Some(1));
         assert_eq!(names.get("安妮").copied(), Some(1));
         assert!(!data.contains_key(&-1));
+        assert!(data.contains_key(&60001), "模式变体应保留在全量缓存，供战绩按 ID 查询");
     }
 }

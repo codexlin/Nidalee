@@ -67,6 +67,10 @@
             :is-connected="true"
             :match-history-loading="false"
             :match-statistics="summonerResult.matches"
+            :ranked-stats="summonerResult.positionAnalysis?.rankedStats"
+            :other-stats="summonerResult.positionAnalysis?.otherStats"
+            :position-stats="summonerResult.positionAnalysis?.positionStats"
+            :main-position="summonerResult.positionAnalysis?.mainPosition"
           />
         </div>
 

@@ -319,55 +319,7 @@ export function useChampionByName(name: Ref<string | null>) {
   return { champion }
 }
 
-/**
- * 按需加载的 OP.GG 数据（带版本号）
- */
-export function useOpggBuild(
-  championId: Ref<number>,
-  position: Ref<string>,
-  options?: {
-    enabled?: Ref<boolean>
-  }
-) {
-  const { data: version } = useGameVersion()
-
-  return useQuery({
-    queryKey: computed(() => ['opgg', 'build', championId.value, position.value, version.value] as const),
-    queryFn: () =>
-      invoke('get_opgg_champion_build', {
-        championId: championId.value,
-        position: position.value || 'MIDDLE',
-        region: 'cn',
-        mode: 'ranked',
-        tier: 'platinum_plus'
-      }),
-    staleTime: 1000 * 60 * 60, // 1 小时（OP.GG 数据可能更新）
-    gcTime: 1000 * 60 * 60 * 24, // 24 小时
-    refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value && championId.value > 0 && (options?.enabled?.value ?? true))
-  })
-}
-
-/**
- * OP.GG 英雄强度榜（带版本号）
- */
-export function useOpggTierList() {
-  const { data: version } = useGameVersion()
-
-  return useQuery({
-    queryKey: computed(() => ['opgg', 'tierList', version.value] as const),
-    queryFn: () =>
-      invoke('get_opgg_tier_list', {
-        region: 'cn',
-        mode: 'ranked',
-        tier: 'platinum_plus'
-      }),
-    staleTime: 1000 * 60 * 60, // 1 小时
-    gcTime: 1000 * 60 * 60 * 24,
-    refetchOnWindowFocus: false,
-    enabled: computed(() => !!version.value)
-  })
-}
-
 // 导入 QueryClient 类型
 import { useQueryClient } from '@tanstack/vue-query'
+
+/** OP.GG / 海克斯查询请用 `src/features/opgg/composables`（key 含 region/mode/tier） */

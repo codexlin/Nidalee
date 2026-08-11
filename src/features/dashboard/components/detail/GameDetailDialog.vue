@@ -2,10 +2,20 @@
   <Sheet :open="!!visible" @update:open="(v) => (visible = v)">
     <SheetContent
       side="right"
-      class="w-full sm:w-[min(1000px,92vw)] sm:max-w-none p-0 gap-0 flex flex-col h-full overflow-hidden"
+      class="w-full sm:w-[min(1100px,90vw)] sm:max-w-none p-0 gap-0 flex flex-col h-full overflow-hidden"
     >
       <SheetHeader class="shrink-0 space-y-1 px-6 pt-6 pb-3 pr-12 text-left border-b border-border/60">
-        <SheetTitle class="text-lg font-bold">对局详情</SheetTitle>
+        <div class="flex items-center justify-between gap-3">
+          <SheetTitle class="text-lg font-bold">对局详情</SheetTitle>
+          <p class="text-xs text-muted-foreground shrink-0 tabular-nums">
+            <kbd
+              class="rounded border border-border bg-muted/60 px-1.5 py-0.5 font-sans text-[11px] text-foreground/80"
+            >
+              Esc
+            </kbd>
+            <span class="ml-1">退出</span>
+          </p>
+        </div>
         <SheetDescription v-if="selectedGame" class="text-sm text-muted-foreground">
           {{ getChampionName(selectedGame.championId) }}
           <span class="text-border mx-1">·</span>
@@ -244,7 +254,7 @@
 
   <!-- 召唤师详情：与对局抽屉并列，避免嵌套层级冲突 -->
   <Sheet v-model:open="isDetailsOpen">
-    <SheetContent side="right" class="w-full sm:w-[min(1000px,92vw)] sm:max-w-none overflow-y-auto p-0 gap-0">
+    <SheetContent side="right" class="w-full sm:w-[min(1100px,90vw)] sm:max-w-none overflow-y-auto p-0 gap-0">
       <div
         class="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border p-6 pr-12"
       >

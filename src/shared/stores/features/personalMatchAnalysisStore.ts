@@ -11,6 +11,8 @@ export const usePersonalMatchAnalysisStore = defineStore('personalMatchAnalysis'
   const lastPuuid = ref<string | null>(null)
 
   const overallStats = computed(() => result.value?.overallStats ?? null)
+  const rankedStats = computed(() => result.value?.rankedStats ?? null)
+  const otherStats = computed(() => result.value?.otherStats ?? null)
   const positionStats = computed(() => result.value?.positionStats ?? [])
   const mainPosition = computed(() => result.value?.mainPosition ?? 'UNKNOWN')
   const matches = computed(() => result.value?.matches ?? [])
@@ -33,7 +35,9 @@ export const usePersonalMatchAnalysisStore = defineStore('personalMatchAnalysis'
     return {
       positionStats: result.value.positionStats,
       mainPosition: result.value.mainPosition,
-      overallStats: result.value.overallStats
+      overallStats: result.value.overallStats,
+      rankedStats: result.value.rankedStats,
+      otherStats: result.value.otherStats
     }
   })
 
@@ -68,6 +72,8 @@ export const usePersonalMatchAnalysisStore = defineStore('personalMatchAnalysis'
     error,
     lastPuuid,
     overallStats,
+    rankedStats,
+    otherStats,
     positionStats,
     mainPosition,
     matches,

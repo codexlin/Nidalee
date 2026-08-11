@@ -127,23 +127,41 @@
 
       <!-- 有数据时展示 -->
       <div v-else class="space-y-6">
+        <div v-if="showBucketTabs" class="surface-chip inline-flex items-center gap-1 p-1">
+          <button
+            v-for="tab in bucketTabOptions"
+            :key="tab.key"
+            type="button"
+            class="rounded-lg px-3 py-1.5 text-sm font-medium outline-none transition-colors focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+            :class="
+              activeBucket === tab.key
+                ? 'bg-primary/15 text-primary'
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+            "
+            @click="activeBucket = tab.key"
+          >
+            {{ tab.label }}
+            <span class="ml-1 tabular-nums text-xs opacity-80">{{ tab.games }}</span>
+          </button>
+        </div>
+
         <div class="surface-inset px-4 py-3.5">
           <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
             <div>
               <p class="text-xs text-muted-foreground mb-1">胜率</p>
               <p class="text-2xl font-semibold tabular-nums leading-none" :class="winRateToneClass">
-                {{ (matchStatistics?.winRate || 0).toFixed(0) }}%
+                {{ (bucketStatistics?.winRate || 0).toFixed(0) }}%
               </p>
             </div>
             <div class="h-9 w-px bg-border/70 hidden sm:block mb-0.5" />
             <div>
               <p class="text-xs text-muted-foreground mb-1">战绩</p>
               <p class="text-lg font-semibold tabular-nums leading-none">
-                <span class="text-green-600 dark:text-green-400">{{ matchStatistics?.wins || 0 }}</span>
+                <span class="text-green-600 dark:text-green-400">{{ bucketStatistics?.wins || 0 }}</span>
                 <span class="text-muted-foreground/70 font-normal mx-1">-</span>
-                <span class="text-red-600 dark:text-red-400">{{ matchStatistics?.losses || 0 }}</span>
+                <span class="text-red-600 dark:text-red-400">{{ bucketStatistics?.losses || 0 }}</span>
                 <span class="ml-1.5 text-xs font-normal text-muted-foreground tabular-nums">
-                  {{ matchStatistics?.totalGames || 0 }} 场
+                  {{ bucketStatistics?.totalGames || 0 }} 场
                 </span>
               </p>
             </div>
@@ -151,7 +169,7 @@
             <div>
               <p class="text-xs text-muted-foreground mb-1">平均 KDA</p>
               <p class="text-lg font-semibold tabular-nums leading-none text-foreground">
-                {{ (matchStatistics?.avgKda || 0).toFixed(2) }}
+                {{ (bucketStatistics?.avgKda || 0).toFixed(2) }}
               </p>
             </div>
             <div
@@ -182,11 +200,11 @@
         >
           <div v-if="hasIdentitySection" class="space-y-4">
             <SummonerTraits
-              :analysis-traits="analysisTraits"
-              :match-statistics="matchStatistics"
-              :position-stats="positionStats"
-              :main-position="mainPosition"
-              :filter-mode="selectedMatchMode"
+              :analysis-traits="bucketTraits"
+              :match-statistics="bucketStatistics"
+              :position-stats="bucketPositionStats"
+              :main-position="bucketMainPosition"
+              :filter-mode="bucketFilterMode"
             />
           </div>
 
@@ -232,7 +250,7 @@
           </div>
         </div>
 
-        <div v-if="matchStatistics?.recentPerformance?.length" class="space-y-4">
+        <div v-if="listGames.length" class="space-y-4">
           <div class="space-y-1">
             <h4 class="text-base font-semibold flex items-center">
               <Calendar class="h-5 w-5 mr-2 text-muted-foreground" />
@@ -242,8 +260,8 @@
           </div>
           <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))">
             <div
-              v-for="game in (matchStatistics?.recentPerformance || []).slice(0, showCount)"
-              :key="game.gameCreation"
+              v-for="game in listGames.slice(0, showCount)"
+              :key="game.gameId ?? `${game.gameCreation}-${game.championId}`"
               class="surface-inset-interactive group relative flex cursor-pointer overflow-hidden"
               @click="openGameDetail(game)"
             >
@@ -300,7 +318,7 @@
               </div>
             </div>
           </div>
-          <div v-if="(matchStatistics?.recentPerformance?.length || 0) > showCount" class="flex justify-center mt-4">
+          <div v-if="listGames.length > showCount" class="flex justify-center mt-4">
             <FloatIconButton variant="pill" title="加载更多" @click="loadMore"> 加载更多 </FloatIconButton>
           </div>
         </div>
@@ -320,6 +338,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import type { AcceptableValue } from 'reka-ui'
 import { MATCH_MODE_OPTIONS, getMatchModeLabel, isMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
 import { displayGrade, gradeWatermarkClass, gradeWatermarkSizeClass } from '../utils/matchGrade'
+import { inferModeAffinityTraits } from '../utils/inferModeAffinityTraits'
 
 const dialogOpen = ref(false)
 const selectedGame = ref<MatchPerformance | null>(null)
@@ -327,10 +346,16 @@ const matchModeOptions = MATCH_MODE_OPTIONS
 
 const matchCountOptions = [20, 25, 30] as const
 
+type StatsBucket = 'ranked' | 'other'
+
 const props = defineProps<{
   isConnected: boolean
   matchHistoryLoading: boolean
   matchStatistics: PlayerMatchStats | null
+  /** 排位桶（420/440）；全部模式优先用此驱动 KPI */
+  rankedStats?: PlayerMatchStats | null
+  /** 非排位桶 */
+  otherStats?: PlayerMatchStats | null
   /** 统一契约特征（Dashboard 优先传入；仅用于少量过程异常信号） */
   analysisTraits?: DeterministicTrait[] | null
   /** 排位分路：作为召唤师身份特征展示 */
@@ -365,12 +390,104 @@ const resolvedDisplayGames = computed(() => {
 })
 const showAiBadge = computed(() => hasGames.value && !!props.aiReady)
 
+const rankedBucket = computed(() => {
+  const stats = props.rankedStats
+  return stats && (stats.totalGames || 0) > 0 ? stats : null
+})
+const otherBucket = computed(() => {
+  const stats = props.otherStats
+  return stats && (stats.totalGames || 0) > 0 ? stats : null
+})
+
+/** 全部模式 / 搜索页：有两侧样本时展示双桶切换 */
+const showBucketTabs = computed(() => {
+  const mode = props.selectedMatchMode
+  const dualContext = mode === undefined || mode === 'all'
+  return dualContext && !!rankedBucket.value && !!otherBucket.value
+})
+
+const bucketTabOptions = computed(() => {
+  const tabs: { key: StatsBucket; label: string; games: number }[] = []
+  if (rankedBucket.value) {
+    tabs.push({ key: 'ranked', label: '排位', games: rankedBucket.value.totalGames || 0 })
+  }
+  if (otherBucket.value) {
+    tabs.push({ key: 'other', label: '其他', games: otherBucket.value.totalGames || 0 })
+  }
+  return tabs
+})
+
+const activeBucket = ref<StatsBucket>('ranked')
+
+watch(
+  [rankedBucket, otherBucket, () => props.selectedMatchMode],
+  () => {
+    const mode = props.selectedMatchMode
+    if (mode === 'normals') {
+      activeBucket.value = 'other'
+      return
+    }
+    if (mode === 'mixedRanked' || mode === '420' || mode === '440') {
+      activeBucket.value = 'ranked'
+      return
+    }
+    // 全部 / 搜索：默认排位，无排位则其他
+    activeBucket.value = rankedBucket.value ? 'ranked' : 'other'
+  },
+  { immediate: true }
+)
+
+const isRankedBucketActive = computed(() => {
+  const mode = props.selectedMatchMode
+  if (mode === 'normals') return false
+  if (mode === 'mixedRanked' || mode === '420' || mode === '440') return true
+  if (showBucketTabs.value) return activeBucket.value === 'ranked'
+  if (mode === undefined || mode === 'all') return !!rankedBucket.value
+  return false
+})
+
+const bucketStatistics = computed(() => {
+  if (isRankedBucketActive.value) {
+    return rankedBucket.value ?? props.matchStatistics
+  }
+  return otherBucket.value ?? props.matchStatistics
+})
+
+const bucketFilterMode = computed<MatchModeKey | undefined>(() => {
+  if (isRankedBucketActive.value) {
+    const mode = props.selectedMatchMode
+    if (mode === '420' || mode === '440' || mode === 'mixedRanked') return mode
+    return 'mixedRanked'
+  }
+  return 'normals'
+})
+
+const bucketPositionStats = computed(() => (isRankedBucketActive.value ? props.positionStats : null))
+const bucketMainPosition = computed(() => (isRankedBucketActive.value ? props.mainPosition : null))
+const bucketTraits = computed(() => {
+  const traits = props.analysisTraits || []
+  if (isRankedBucketActive.value) {
+    return traits.filter((t) => !t.key.startsWith('mode_affinity') || t.key === 'mode_affinity_ranked')
+  }
+  // 其他桶：优先用传入特征里的模式亲和；搜索页未投影 traits 时按当前桶对局本地推断
+  const fromProps = traits.filter((t) => t.key.startsWith('mode_affinity') || t.key.startsWith('fun_'))
+  const affinityFromProps = fromProps.filter(
+    (t) => t.supportsConclusion && t.key.startsWith('mode_affinity') && t.key !== 'mode_affinity_ranked'
+  )
+  if (affinityFromProps.length) return fromProps
+  return inferModeAffinityTraits(bucketStatistics.value?.recentPerformance)
+})
+
 /** 样本不足说明放进概览卡底部，标题区不再堆长句 */
 const sampleShortfallTip = computed(() => {
   if (!hasGames.value) return ''
-  const n = resolvedDisplayGames.value
+  const n = bucketStatistics.value?.totalGames || resolvedDisplayGames.value
   const requested = props.matchCount
   if (requested === null || requested === undefined || n <= 0 || n >= requested) return ''
+  if (showBucketTabs.value) {
+    const label = isRankedBucketActive.value ? '排位' : '其他'
+    return `已选 ${requested} 场，其中「${label}」近期仅有 ${n} 场`
+  }
   const mode =
     props.selectedMatchMode && props.selectedMatchMode !== 'all'
       ? `「${getMatchModeLabel(props.selectedMatchMode)}」`
@@ -378,9 +495,22 @@ const sampleShortfallTip = computed(() => {
   return `已选 ${requested} 场，${mode}近期仅有 ${n} 场`
 })
 
-/** 最近对局胜负点阵：列表通常新→旧，反转为左旧右新；最多 20 点 */
+/** 最近对局列表跟当前桶走（排位/其他），避免 KPI 15 场、列表却被客户端队列滤成几场 */
+const listGames = computed(() => bucketStatistics.value?.recentPerformance || [])
+
+const initialShowCount = 10
+const showCount = ref(initialShowCount)
+const loadMore = () => {
+  showCount.value += 10
+}
+
+watch(listGames, () => {
+  showCount.value = initialShowCount
+})
+
+/** 当前桶胜负点阵：列表通常新→旧，反转为左旧右新；最多 20 点 */
 const recentResultDots = computed(() => {
-  const list = props.matchStatistics?.recentPerformance || []
+  const list = listGames.value
   if (!list.length) return [] as boolean[]
   const chronological = [...list].reverse()
   return chronological.slice(-20).map((g) => !!g.win)
@@ -388,7 +518,7 @@ const recentResultDots = computed(() => {
 
 /** 胜率以 50% 为界：正绿负红 */
 const winRateToneClass = computed(() => {
-  const rate = props.matchStatistics?.winRate ?? 0
+  const rate = bucketStatistics.value?.winRate ?? 0
   if (rate > 50) return 'text-emerald-600 dark:text-emerald-400'
   if (rate < 50) return 'text-rose-600 dark:text-rose-400'
   return 'text-foreground'
@@ -411,19 +541,17 @@ const emptyDetail = computed(() => {
 })
 
 /** Dashboard 常用英雄：最多 Top 5（含 1 场） */
-const favoriteChampions = computed(() => (props.matchStatistics?.favoriteChampions || []).slice(0, 5))
+const favoriteChampions = computed(() => (bucketStatistics.value?.favoriteChampions || []).slice(0, 5))
 const hasFavoriteChampions = computed(() => favoriteChampions.value.length > 0)
-const isRankedFilterMode = computed(() => {
-  const mode = props.selectedMatchMode
-  return mode === 'mixedRanked' || mode === '420' || mode === '440'
-})
+
+const hasPositionStats = computed(() =>
+  (bucketPositionStats.value || []).some((p) => p.position !== 'UNKNOWN' && p.games > 0)
+)
 
 const hasIdentitySection = computed(() => {
-  if (isRankedFilterMode.value) {
-    return (props.positionStats || []).some((p) => p.position !== 'UNKNOWN')
-  }
+  if (isRankedBucketActive.value) return hasPositionStats.value
   return (
-    props.analysisTraits?.some(
+    bucketTraits.value?.some(
       (t) => t.supportsConclusion && t.key.startsWith('mode_affinity') && t.key !== 'mode_affinity_ranked'
     ) ?? false
   )
@@ -457,10 +585,4 @@ const handleCountSelect = (value: AcceptableValue) => {
 }
 
 const { formatGameTime, formatRelativeTime } = useFormatters()
-
-const initialShowCount = 10
-const showCount = ref(initialShowCount)
-const loadMore = () => {
-  showCount.value += 10
-}
 </script>

@@ -14,6 +14,15 @@ vi.mock('@/shared/stores/ui/settingsStore', () => ({
   })
 }))
 
+vi.mock('@/shared/stores/features/searchHistoryStore', () => ({
+  useSearchHistoryStore: () => ({
+    items: [],
+    add: vi.fn(),
+    remove: vi.fn(),
+    clear: vi.fn()
+  })
+}))
+
 interface Deferred<T> {
   promise: Promise<T>
   resolve: (value: T) => void

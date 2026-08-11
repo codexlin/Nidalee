@@ -47,6 +47,8 @@
         :is-connected="isConnected"
         :match-history-loading="matchHistoryLoading"
         :match-statistics="matchStatistics"
+        :ranked-stats="personalAnalysis.rankedStats"
+        :other-stats="personalAnalysis.otherStats"
         :analysis-traits="personalAnalysis.traits"
         :position-stats="positionAnalysis?.positionStats"
         :main-position="positionAnalysis?.mainPosition"

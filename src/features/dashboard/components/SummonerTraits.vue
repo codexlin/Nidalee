@@ -97,10 +97,16 @@ const props = defineProps<{
   filterMode?: string | null
 }>()
 
-/** 排位筛选才用分路身份；娱乐 / 全部 / 未知分路走模式身份 */
+const hasPositionStats = computed(() =>
+  (props.positionStats || []).some((p) => p.position !== 'UNKNOWN' && p.games > 0)
+)
+
+/** 排位筛选用分路；搜索页未传 mode 且有分路数据时也用分路；其余走模式身份 */
 const usePositionIdentity = computed(() => {
   const mode = props.filterMode
-  if (!mode || !isMatchModeKey(mode)) return false
+  if (!mode || !isMatchModeKey(mode)) {
+    return hasPositionStats.value
+  }
   const key = mode as MatchModeKey
   return key === 'mixedRanked' || key === '420' || key === '440'
 })

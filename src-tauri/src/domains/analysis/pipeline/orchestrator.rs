@@ -102,6 +102,48 @@ pub fn orchestrate_analysis(
     let matches: Vec<MatchPerformance> = overall_stats.recent_performance.clone();
     let display_games = overall_stats.total_games;
 
+    let ranked_games: Vec<ParsedGame> = parsed
+        .iter()
+        .filter(|game| is_ranked_queue(game.queue_id))
+        .cloned()
+        .collect();
+    let other_games: Vec<ParsedGame> = parsed
+        .iter()
+        .filter(|game| !is_ranked_queue(game.queue_id))
+        .cloned()
+        .collect();
+
+    let ranked_stats = if ranked_games.is_empty() {
+        None
+    } else {
+        Some(analyze_player_stats_with_resolver(
+            &ranked_games,
+            input.target_puuid,
+            AnalysisContext::new(),
+            input.champion_name,
+        ))
+    };
+    let mut other_stats = if other_games.is_empty() {
+        None
+    } else {
+        Some(analyze_player_stats_with_resolver(
+            &other_games,
+            input.target_puuid,
+            AnalysisContext::new(),
+            input.champion_name,
+        ))
+    };
+
+    // 非排位桶单独算模式亲和/娱乐特征，避免「全部」样本被排位占比压成「排位为主」
+    if let Some(stats) = other_stats.as_mut() {
+        let other_traits = analyze_traits(&TraitAnalysisContext {
+            display_games: &other_games,
+            evidence_matches: &[],
+            position: None,
+        });
+        stats.traits = legacy_traits(&other_traits);
+    }
+
     let mut diagnostics = policy.diagnostics.clone();
     let evidence = build_evidence(policy, &input, &mut diagnostics);
 
@@ -133,6 +175,8 @@ pub fn orchestrate_analysis(
 
     MatchAnalysisResult {
         overall_stats,
+        ranked_stats,
+        other_stats,
         position_stats,
         main_position,
         analyzed_games: evidence.as_ref().map(|bundle| bundle.match_count).unwrap_or(0),

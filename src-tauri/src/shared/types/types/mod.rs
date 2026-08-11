@@ -272,6 +272,33 @@ pub struct ParticipantStats {
     pub total_damage_dealt_to_champions: i32,
     pub total_damage_taken: i32,
     pub vision_score: i32,
+    /// 补刀（小兵）
+    #[serde(default)]
+    pub total_minions_killed: i32,
+    /// 野怪补刀
+    #[serde(default)]
+    pub neutral_minions_killed: i32,
+    /// 最大多杀（2=双杀 … 5=五杀）
+    #[serde(default)]
+    pub largest_multi_kill: i32,
+    /// 最大连杀
+    #[serde(default)]
+    pub largest_killing_spree: i32,
+    /// 推塔数
+    #[serde(default)]
+    pub turret_kills: i32,
+    /// 推水晶数
+    #[serde(default)]
+    pub inhibitor_kills: i32,
+    /// 插眼
+    #[serde(default)]
+    pub wards_placed: i32,
+    /// 排眼
+    #[serde(default)]
+    pub wards_killed: i32,
+    /// 对防御塔伤害
+    #[serde(default)]
+    pub damage_dealt_to_turrets: i32,
     pub item0: Option<i32>,
     pub item1: Option<i32>,
     pub item2: Option<i32>,
@@ -1280,8 +1307,18 @@ pub struct MultiPositionAnalysis {
     /// 主要位置（场次最多的）
     pub main_position: String,
 
-    /// 总览数据（所有位置合计）
+    /// 总览数据（所有位置合计；全部模式下为混合合计）
     pub overall_stats: PlayerMatchStats,
+
+    /// 排位桶统计（420/440）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub ranked_stats: Option<PlayerMatchStats>,
+
+    /// 非排位桶统计
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub other_stats: Option<PlayerMatchStats>,
 }
 
 /// ⭐ v3.4: 单个位置的统计数据

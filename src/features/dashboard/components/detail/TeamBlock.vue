@@ -26,13 +26,13 @@
       <table class="w-full text-sm table-fixed">
         <thead>
           <tr class="text-sm text-muted-foreground border-b border-border/40">
-            <th class="text-left font-medium px-3 py-2.5 w-[22%]">召唤师</th>
-            <th class="text-left font-medium px-2 py-2.5 w-[16%]">英雄</th>
+            <th class="text-left font-medium px-3 py-2.5 w-[18%]">召唤师</th>
+            <th class="text-left font-medium px-2 py-2.5 w-[15%]">英雄</th>
             <th class="text-center font-medium px-2 py-2.5 w-[10%]">天赋/技能</th>
-            <th class="text-center font-medium px-2 py-2.5 w-[22%]">装备</th>
-            <th class="text-center font-medium px-2 py-2.5 w-[10%]">KDA</th>
-            <th class="text-center font-medium px-2 py-2.5 w-[8%]">经济</th>
-            <th class="text-center font-medium px-2 py-2.5 w-[8%]">伤害</th>
+            <th class="text-center font-medium px-2 py-2.5 w-[24%]">装备</th>
+            <th class="text-center font-medium px-2 py-2.5 w-[11%]">KDA</th>
+            <th class="text-center font-medium px-2 py-2.5 w-[9%]">经济</th>
+            <th class="text-center font-medium px-2 py-2.5 w-[9%]">伤害</th>
             <th class="text-center font-medium px-2 py-2.5 w-[4%]">评级</th>
           </tr>
         </thead>
@@ -44,23 +44,41 @@
             :class="participant.participantId === myParticipantId ? 'bg-primary/5' : 'hover:bg-muted/30'"
           >
             <td class="px-3 py-2.5">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <img
-                  :src="getProfileIconUrl(participant.profileIconId)"
-                  class="h-9 w-9 rounded-full shrink-0 ring-1 ring-border/50"
-                  alt=""
-                />
-                <button
-                  type="button"
-                  class="min-w-0 truncate text-left text-sm font-medium hover:text-foreground text-foreground/90"
-                  :title="participant.summonerName"
-                  @click="emit('open-summoner', participant)"
+              <div class="flex w-full items-center gap-2 min-w-0">
+                <ParticipantHoverCard
+                  :participant="participant"
+                  :team-kills="teamKills"
+                  :team-max-gold="maxTeamGold"
+                  :team-max-damage="maxTeamDamage"
+                  :team-max-vision="maxTeamVision"
+                  :is-max-gold="isTeamMaxGold(participant)"
+                  :is-max-damage="isTeamMaxDamage(participant)"
                 >
-                  <span>{{ displayName(participant.summonerName).name }}</span>
-                  <span v-if="displayName(participant.summonerName).tag" class="text-muted-foreground font-normal"
-                    >#{{ displayName(participant.summonerName).tag }}</span
+                  <button
+                    type="button"
+                    class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-left outline-none"
+                    @click="emit('open-summoner', participant)"
                   >
-                </button>
+                    <img
+                      :src="getProfileIconUrl(participant.profileIconId)"
+                      class="h-9 w-9 rounded-full shrink-0 ring-1 ring-border/50"
+                      alt=""
+                    />
+                    <span
+                      class="min-w-0 flex-1 overflow-hidden text-sm font-medium hover:text-foreground text-foreground/90"
+                      :title="participant.summonerName"
+                    >
+                      <span class="block truncate">
+                        {{ displayName(participant.summonerName).name
+                        }}<span
+                          v-if="displayName(participant.summonerName).tag"
+                          class="text-muted-foreground font-normal"
+                          >#{{ displayName(participant.summonerName).tag }}</span
+                        >
+                      </span>
+                    </span>
+                  </button>
+                </ParticipantHoverCard>
                 <button
                   type="button"
                   class="shrink-0 text-muted-foreground hover:text-foreground p-0.5"
@@ -91,14 +109,17 @@
             </td>
             <td class="px-2 py-2.5">
               <div class="flex items-center justify-center gap-1.5">
-                <div class="relative size-7 shrink-0" :title="primaryStyleLabel(participant)">
+                <div
+                  v-if="hasRune(participant)"
+                  class="relative size-7 shrink-0"
+                  :title="primaryStyleLabel(participant)"
+                >
                   <img
                     v-if="primaryStyleIcon(participant)"
                     :src="primaryStyleIcon(participant)"
                     class="size-7 rounded bg-muted/40"
                     alt=""
                   />
-                  <div v-else class="size-7 rounded bg-muted/40" />
                   <img
                     v-if="keystoneIcon(participant)"
                     :src="keystoneIcon(participant)"
@@ -142,10 +163,16 @@
               <span class="text-muted-foreground/50">/</span>
               <span class="text-blue-500">{{ participant.stats?.assists }}</span>
             </td>
-            <td class="px-2 py-2.5 text-center tabular-nums text-sm font-medium">
+            <td
+              class="px-2 py-2.5 text-center tabular-nums text-sm font-medium"
+              :class="isTeamMaxGold(participant) ? 'text-red-600 dark:text-red-400 font-semibold' : ''"
+            >
               {{ formatNumber(participant.stats?.goldEarned || 0) }}
             </td>
-            <td class="px-2 py-2.5 text-center tabular-nums text-sm font-medium">
+            <td
+              class="px-2 py-2.5 text-center tabular-nums text-sm font-medium"
+              :class="isTeamMaxDamage(participant) ? 'text-red-600 dark:text-red-400 font-semibold' : ''"
+            >
               {{ formatNumber(participant.stats?.totalDamageDealtToChampions || 0) }}
             </td>
             <td
@@ -173,8 +200,9 @@ import {
   getSpellMeta
 } from '@/lib'
 import { gradeFromStats, gradeTextClass } from '../../utils/matchGrade'
+import ParticipantHoverCard from './ParticipantHoverCard.vue'
 
-defineProps<{
+const props = defineProps<{
   title: string
   teamId: string
   won: boolean
@@ -233,6 +261,31 @@ const keystoneIcon = (participant: ParticipantInfo) => {
   const perkId = participant.perk0
   if (!perkId) return ''
   return getPerkIconUrlByCommunityDragon(perkId, communityPerks.value ?? [])
+}
+
+const hasRune = (participant: ParticipantInfo) =>
+  !!(primaryStyleIcon(participant) || keystoneIcon(participant))
+
+const teamKills = computed(() =>
+  props.participants.reduce((sum, p) => sum + (p.stats?.kills || 0), 0)
+)
+const maxTeamGold = computed(() =>
+  Math.max(0, ...props.participants.map((p) => p.stats?.goldEarned || 0))
+)
+const maxTeamDamage = computed(() =>
+  Math.max(0, ...props.participants.map((p) => p.stats?.totalDamageDealtToChampions || 0))
+)
+const maxTeamVision = computed(() =>
+  Math.max(0, ...props.participants.map((p) => p.stats?.visionScore || 0))
+)
+
+const isTeamMaxGold = (participant: ParticipantInfo) => {
+  const gold = participant.stats?.goldEarned || 0
+  return gold > 0 && gold === maxTeamGold.value
+}
+const isTeamMaxDamage = (participant: ParticipantInfo) => {
+  const dmg = participant.stats?.totalDamageDealtToChampions || 0
+  return dmg > 0 && dmg === maxTeamDamage.value
 }
 
 const participantGrade = (participant: ParticipantInfo) =>

@@ -1,6 +1,7 @@
 <template>
-  <div class="flex items-center justify-center h-screen bg-background">
-    <div class="w-full max-w-2xl mx-auto px-6">
+  <!-- 勿用 h-screen：外层已有 TitleBar + Nav + padding，100vh 会把「正在大厅」顶偏下 -->
+  <div class="flex min-h-[calc(100dvh-10.5rem)] w-full items-center justify-center bg-background">
+    <div class="w-full max-w-2xl mx-auto px-2">
       <!-- Matchmaking View -->
       <div v-if="['Matchmaking'].includes(currentPhase)">
         <Card class="p-6 rounded-lg shadow-sm">

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { computed, ref, watch } from 'vue'
 import { RANKED_QUEUE_IDS, matchModeExcludesRanked, normalizeMatchModeKey } from '@/common/queueCatalog'
 import { useSettingsStore } from '@/shared/stores/ui/settingsStore'
+import { useSearchHistoryStore } from '@/shared/stores/features/searchHistoryStore'
 import { createLatestRequestGuard } from '@/shared/utils/latestRequest'
 import { useMatchFilter } from './useMatchFilter'
 
@@ -10,6 +11,7 @@ export function useSearchMatches() {
   const { filterMultipleMatchesByQueueTypes } = useMatchFilter()
   const { filterMatchesByQueueTypes } = useMatchFilter()
   const settingsStore = useSettingsStore()
+  const searchHistoryStore = useSearchHistoryStore()
 
   const loading = ref(false)
   const error = ref('')
@@ -61,8 +63,9 @@ export function useSearchMatches() {
         currentIndex.value = 0
         // 直接设置当前结果，不依赖watch
         currentResult.value = matches[0]
-        // 查询成功
-        console.log('matches', matches)
+        searchHistoryStore.add(
+          matches.map((m) => m.displayName || m.summonerInfo?.displayName || '').filter(Boolean)
+        )
         return matches
       } else {
         // 查询无结果时清空当前结果

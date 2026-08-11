@@ -83,9 +83,25 @@ struct ApiParticipantStats {
     total_damage_taken: Option<i32>,
     #[serde(default)]
     vision_score: Option<i32>,
-    /// 本场最大连杀（双杀=2 … 五杀=5）；LCU 战绩详情常见字段
+    /// 本场最大多杀（双杀=2 … 五杀=5）；LCU 战绩详情常见字段
     #[serde(default)]
     largest_multi_kill: Option<i32>,
+    #[serde(default)]
+    largest_killing_spree: Option<i32>,
+    #[serde(default)]
+    total_minions_killed: Option<i32>,
+    #[serde(default)]
+    neutral_minions_killed: Option<i32>,
+    #[serde(default)]
+    turret_kills: Option<i32>,
+    #[serde(default)]
+    inhibitor_kills: Option<i32>,
+    #[serde(default)]
+    wards_placed: Option<i32>,
+    #[serde(default)]
+    wards_killed: Option<i32>,
+    #[serde(default)]
+    damage_dealt_to_turrets: Option<i32>,
     #[serde(default)]
     item0: Option<i32>,
     #[serde(default)]
@@ -310,6 +326,15 @@ pub async fn get_game_detail_logic(client: &Client, game_id: u64) -> Result<Game
                 total_damage_dealt_to_champions: damage,
                 total_damage_taken: damage_taken,
                 vision_score: vision,
+                total_minions_killed: stats.total_minions_killed.unwrap_or(0),
+                neutral_minions_killed: stats.neutral_minions_killed.unwrap_or(0),
+                largest_multi_kill: stats.largest_multi_kill.unwrap_or(0),
+                largest_killing_spree: stats.largest_killing_spree.unwrap_or(0),
+                turret_kills: stats.turret_kills.unwrap_or(0),
+                inhibitor_kills: stats.inhibitor_kills.unwrap_or(0),
+                wards_placed: stats.wards_placed.unwrap_or(0),
+                wards_killed: stats.wards_killed.unwrap_or(0),
+                damage_dealt_to_turrets: stats.damage_dealt_to_turrets.unwrap_or(0),
                 item0: stats.item0,
                 item1: stats.item1,
                 item2: stats.item2,

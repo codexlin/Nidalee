@@ -363,6 +363,15 @@ async fn test_all_modes_keeps_fun_games_in_stats_but_deep_evidence_is_ranked_onl
     let (result, calls) = analyze(MockSource::from_specs(&specs), &request).await;
 
     assert_eq!(result.overall_stats.total_games, 4, "全部模式的基础统计包含娱乐局");
+    let ranked = result.ranked_stats.as_ref().expect("全部模式必须拆出排位桶");
+    let other = result.other_stats.as_ref().expect("全部模式必须拆出其他桶");
+    assert_eq!(ranked.total_games, 2, "排位桶仅含 420/440");
+    assert_eq!(other.total_games, 2, "其他桶含非排位局");
+    assert_eq!(
+        ranked.total_games + other.total_games,
+        result.overall_stats.total_games,
+        "双桶场次之和应等于展示场次"
+    );
     let evidence = result.evidence.as_ref().expect("混合模式仍有排位深度证据");
     let queues: Vec<i64> = evidence.matches.iter().map(|m| m.queue_id).collect();
     assert_eq!(queues, vec![420, 440], "深度证据只允许来自排位队列");
@@ -611,6 +620,16 @@ async fn test_legacy_views_are_lossless_projections_of_the_single_result() {
         multi_position.overall_stats.recent_performance.len(),
         result.matches.len(),
         "旧的 recent_performance 与新的 matches 是同一批展示对局"
+    );
+    assert_eq!(
+        multi_position.ranked_stats.as_ref().map(|s| s.total_games),
+        result.ranked_stats.as_ref().map(|s| s.total_games),
+        "投影必须保留排位桶"
+    );
+    assert_eq!(
+        multi_position.other_stats.as_ref().map(|s| s.total_games),
+        result.other_stats.as_ref().map(|s| s.total_games),
+        "投影必须保留其他桶"
     );
 }
 
