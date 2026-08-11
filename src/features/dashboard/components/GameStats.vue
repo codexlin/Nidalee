@@ -250,105 +250,34 @@
           </div>
         </div>
 
-        <div v-if="listGames.length" class="space-y-4">
-          <div class="space-y-1">
-            <h4 class="text-base font-semibold flex items-center">
-              <Calendar class="h-5 w-5 mr-2 text-muted-foreground" />
-              最近对局
-            </h4>
-            <p class="text-xs text-muted-foreground">右下角为自研评级（S+～D）。点击查看详情。</p>
-          </div>
-          <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))">
-            <div
-              v-for="game in listGames.slice(0, showCount)"
-              :key="game.gameId ?? `${game.gameCreation}-${game.championId}`"
-              class="surface-inset-interactive group relative flex cursor-pointer overflow-hidden"
-              @click="openGameDetail(game)"
-            >
-              <div :class="game.win ? 'bg-emerald-600' : 'bg-rose-600'" class="w-1 shrink-0"></div>
-              <!-- 大号衬底评级字 -->
-              <span
-                class="pointer-events-none absolute -right-1 -bottom-2 z-0 select-none font-black leading-none tabular-nums -rotate-12 origin-bottom-right"
-                :class="[gradeWatermarkSizeClass(displayGrade(game)), gradeWatermarkClass(displayGrade(game))]"
-                aria-hidden="true"
-              >
-                {{ displayGrade(game) }}
-              </span>
-              <div class="relative z-10 flex-1 p-3">
-                <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center gap-2 min-w-0">
-                    <img
-                      v-if="game.championId"
-                      :src="getChampionIconUrl(game.championId)"
-                      alt=""
-                      class="h-9 w-9 shrink-0 rounded-full border-2 border-primary/20"
-                    />
-                    <span class="font-semibold text-sm truncate">{{
-                      resolveChampionName(game.championId, game.championName)
-                    }}</span>
-                  </div>
-                  <div class="flex items-center gap-2 shrink-0">
-                    <span class="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
-                      <Timer class="w-3 h-3 shrink-0" />
-                      {{ formatGameTime(game.gameDuration ?? 0) }}
-                    </span>
-                    <span
-                      class="h-5 px-1.5 inline-flex items-center rounded-md text-xs font-medium text-white"
-                      :class="game.win ? 'bg-emerald-600' : 'bg-rose-600'"
-                    >
-                      {{ game.win ? '胜' : '负' }}
-                    </span>
-                  </div>
-                </div>
-                <div class="pr-6">
-                  <span class="font-mono font-bold text-base tabular-nums leading-none">
-                    <span class="text-red-500">{{ game.kills }}</span>
-                    <span class="text-muted-foreground/50">/</span>
-                    <span class="text-muted-foreground">{{ game.deaths }}</span>
-                    <span class="text-muted-foreground/50">/</span>
-                    <span class="text-blue-500">{{ game.assists }}</span>
-                  </span>
-                  <div class="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                    <span class="flex items-center gap-1">
-                      <Clock class="w-3 h-3 shrink-0" />
-                      {{ formatRelativeTime(game.gameCreation ?? 0) }}
-                    </span>
-                    <span class="text-border">·</span>
-                    <span class="truncate">{{ getQueueName(game.queueId ?? 0) }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-if="listGames.length > showCount" class="flex justify-center mt-4">
-            <FloatIconButton variant="pill" title="加载更多" @click="loadMore"> 加载更多 </FloatIconButton>
-          </div>
-        </div>
+        <RecentMatchList
+          :games="listGames"
+          :show-count="showCount"
+          @load-more="loadMore"
+          @open-game-detail="openGameDetail"
+        />
       </div>
     </div>
   </Card>
 
+  <!-- 放在加载/断线/空态分支外，避免刷新或断线卸载列表时关掉详情 -->
   <GameDetailDialog v-model:visible="dialogOpen" :selectedGame="selectedGame" />
 </template>
 
 <script setup lang="ts">
-import { getChampionIconUrl, getQueueName, resolveChampionName } from '@/lib'
-import { BarChart, Calendar, Clock, Gamepad2, ImageDown, Loader2, RefreshCw, Star, Timer, Wifi } from 'lucide-vue-next'
+import { getChampionIconUrl, resolveChampionName } from '@/lib'
+import { BarChart, Gamepad2, ImageDown, Loader2, RefreshCw, Star, Wifi } from 'lucide-vue-next'
 import FloatIconButton from '@/components/common/FloatIconButton.vue'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { AcceptableValue } from 'reka-ui'
 import { MATCH_MODE_OPTIONS, getMatchModeLabel, isMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
-import { displayGrade, gradeWatermarkClass, gradeWatermarkSizeClass } from '../utils/matchGrade'
-import { inferModeAffinityTraits } from '../utils/inferModeAffinityTraits'
+import { useGameStatsBuckets } from '../composables/useGameStatsBuckets'
+import GameDetailDialog from './detail/GameDetailDialog.vue'
+import RecentMatchList from './RecentMatchList.vue'
 
-const dialogOpen = ref(false)
-const selectedGame = ref<MatchPerformance | null>(null)
 const matchModeOptions = MATCH_MODE_OPTIONS
-
 const matchCountOptions = [20, 25, 30] as const
-
-type StatsBucket = 'ranked' | 'other'
 
 const props = defineProps<{
   isConnected: boolean
@@ -381,189 +310,40 @@ const props = defineProps<{
 
 const showRememberOption = computed(() => props.selectedMatchMode !== undefined && props.matchCount !== undefined)
 
-const isFilterEmpty = computed(() => !!props.matchStatistics && (props.matchStatistics.totalGames || 0) === 0)
+const {
+  isFilterEmpty,
+  hasGames,
+  showBucketTabs,
+  bucketTabOptions,
+  activeBucket,
+  bucketStatistics,
+  bucketFilterMode,
+  bucketPositionStats,
+  bucketMainPosition,
+  bucketTraits,
+  sampleShortfallTip,
+  listGames,
+  showCount,
+  loadMore,
+  recentResultDots,
+  winRateToneClass,
+  emptyTitle,
+  emptyDetail,
+  favoriteChampions,
+  hasFavoriteChampions,
+  hasIdentitySection
+} = useGameStatsBuckets(props)
 
-const hasGames = computed(() => (props.matchStatistics?.totalGames || 0) > 0)
-const resolvedDisplayGames = computed(() => {
-  if (props.displayGames !== null && props.displayGames !== undefined && props.displayGames > 0) {
-    return props.displayGames
-  }
-  return props.matchStatistics?.totalGames || 0
-})
 const showAiBadge = computed(() => hasGames.value && !!props.aiReady)
 
-const rankedBucket = computed(() => {
-  const stats = props.rankedStats
-  return stats && (stats.totalGames || 0) > 0 ? stats : null
-})
-const otherBucket = computed(() => {
-  const stats = props.otherStats
-  return stats && (stats.totalGames || 0) > 0 ? stats : null
-})
+const dialogOpen = ref(false)
+const selectedGame = ref<MatchPerformance | null>(null)
 
-/** 全部模式 / 搜索页：有两侧样本时展示双桶切换 */
-const showBucketTabs = computed(() => {
-  const mode = props.selectedMatchMode
-  const dualContext = mode === undefined || mode === 'all'
-  return dualContext && !!rankedBucket.value && !!otherBucket.value
-})
-
-const bucketTabOptions = computed(() => {
-  const tabs: { key: StatsBucket; label: string; games: number }[] = []
-  if (rankedBucket.value) {
-    tabs.push({ key: 'ranked', label: '排位', games: rankedBucket.value.totalGames || 0 })
-  }
-  if (otherBucket.value) {
-    tabs.push({ key: 'other', label: '其他', games: otherBucket.value.totalGames || 0 })
-  }
-  return tabs
-})
-
-const activeBucket = ref<StatsBucket>('ranked')
-
-watch(
-  [rankedBucket, otherBucket, () => props.selectedMatchMode],
-  () => {
-    const mode = props.selectedMatchMode
-    if (mode === 'normals') {
-      activeBucket.value = 'other'
-      return
-    }
-    if (mode === 'mixedRanked' || mode === '420' || mode === '440') {
-      activeBucket.value = 'ranked'
-      return
-    }
-    // 全部 / 搜索：默认排位，无排位则其他
-    activeBucket.value = rankedBucket.value ? 'ranked' : 'other'
-  },
-  { immediate: true }
-)
-
-const isRankedBucketActive = computed(() => {
-  const mode = props.selectedMatchMode
-  if (mode === 'normals') return false
-  if (mode === 'mixedRanked' || mode === '420' || mode === '440') return true
-  if (showBucketTabs.value) return activeBucket.value === 'ranked'
-  if (mode === undefined || mode === 'all') return !!rankedBucket.value
-  return false
-})
-
-const bucketStatistics = computed(() => {
-  if (isRankedBucketActive.value) {
-    return rankedBucket.value ?? props.matchStatistics
-  }
-  return otherBucket.value ?? props.matchStatistics
-})
-
-const bucketFilterMode = computed<MatchModeKey | undefined>(() => {
-  if (isRankedBucketActive.value) {
-    const mode = props.selectedMatchMode
-    if (mode === '420' || mode === '440' || mode === 'mixedRanked') return mode
-    return 'mixedRanked'
-  }
-  return 'normals'
-})
-
-const bucketPositionStats = computed(() => (isRankedBucketActive.value ? props.positionStats : null))
-const bucketMainPosition = computed(() => (isRankedBucketActive.value ? props.mainPosition : null))
-const bucketTraits = computed(() => {
-  const traits = props.analysisTraits || []
-  if (isRankedBucketActive.value) {
-    return traits.filter((t) => !t.key.startsWith('mode_affinity') || t.key === 'mode_affinity_ranked')
-  }
-  // 其他桶：优先用传入特征里的模式亲和；搜索页未投影 traits 时按当前桶对局本地推断
-  const fromProps = traits.filter((t) => t.key.startsWith('mode_affinity') || t.key.startsWith('fun_'))
-  const affinityFromProps = fromProps.filter(
-    (t) => t.supportsConclusion && t.key.startsWith('mode_affinity') && t.key !== 'mode_affinity_ranked'
-  )
-  if (affinityFromProps.length) return fromProps
-  return inferModeAffinityTraits(bucketStatistics.value?.recentPerformance)
-})
-
-/** 样本不足说明放进概览卡底部，标题区不再堆长句 */
-const sampleShortfallTip = computed(() => {
-  if (!hasGames.value) return ''
-  const n = bucketStatistics.value?.totalGames || resolvedDisplayGames.value
-  const requested = props.matchCount
-  if (requested === null || requested === undefined || n <= 0 || n >= requested) return ''
-  if (showBucketTabs.value) {
-    const label = isRankedBucketActive.value ? '排位' : '其他'
-    return `已选 ${requested} 场，其中「${label}」近期仅有 ${n} 场`
-  }
-  const mode =
-    props.selectedMatchMode && props.selectedMatchMode !== 'all'
-      ? `「${getMatchModeLabel(props.selectedMatchMode)}」`
-      : '当前模式'
-  return `已选 ${requested} 场，${mode}近期仅有 ${n} 场`
-})
-
-/** 最近对局列表跟当前桶走（排位/其他），避免 KPI 15 场、列表却被客户端队列滤成几场 */
-const listGames = computed(() => bucketStatistics.value?.recentPerformance || [])
-
-const initialShowCount = 10
-const showCount = ref(initialShowCount)
-const loadMore = () => {
-  showCount.value += 10
-}
-
-watch(listGames, () => {
-  showCount.value = initialShowCount
-})
-
-/** 当前桶胜负点阵：列表通常新→旧，反转为左旧右新；最多 20 点 */
-const recentResultDots = computed(() => {
-  const list = listGames.value
-  if (!list.length) return [] as boolean[]
-  const chronological = [...list].reverse()
-  return chronological.slice(-20).map((g) => !!g.win)
-})
-
-/** 胜率以 50% 为界：正绿负红 */
-const winRateToneClass = computed(() => {
-  const rate = bucketStatistics.value?.winRate ?? 0
-  if (rate > 50) return 'text-emerald-600 dark:text-emerald-400'
-  if (rate < 50) return 'text-rose-600 dark:text-rose-400'
-  return 'text-foreground'
-})
-
-const emptyTitle = computed(() => {
-  const mode = props.selectedMatchMode
-  if (mode && mode !== 'all') {
-    return `最近没有「${getMatchModeLabel(mode)}」对局`
-  }
-  return '最近没有可展示的对局'
-})
-
-const emptyDetail = computed(() => {
-  const scanned = props.scannedGames
-  if (scanned && scanned > 0) {
-    return `已查看最近 ${scanned} 场历史。可以换到全部模式，或打几场后再刷新。`
-  }
-  return '可以换到全部模式，或打几场后再刷新。'
-})
-
-/** Dashboard 常用英雄：最多 Top 5（含 1 场） */
-const favoriteChampions = computed(() => (bucketStatistics.value?.favoriteChampions || []).slice(0, 5))
-const hasFavoriteChampions = computed(() => favoriteChampions.value.length > 0)
-
-const hasPositionStats = computed(() =>
-  (bucketPositionStats.value || []).some((p) => p.position !== 'UNKNOWN' && p.games > 0)
-)
-
-const hasIdentitySection = computed(() => {
-  if (isRankedBucketActive.value) return hasPositionStats.value
-  return (
-    bucketTraits.value?.some(
-      (t) => t.supportsConclusion && t.key.startsWith('mode_affinity') && t.key !== 'mode_affinity_ranked'
-    ) ?? false
-  )
-})
-
-const openGameDetail = (game: MatchPerformance) => {
+function openGameDetail(game: MatchPerformance) {
   selectedGame.value = game
-  console.log(game)
   dialogOpen.value = true
 }
+
 const emit = defineEmits<{
   (e: 'fetch-match-history'): void
   (e: 'mode-change', mode: MatchModeKey): void
@@ -585,6 +365,4 @@ const handleCountSelect = (value: AcceptableValue) => {
     emit('count-change', count)
   }
 }
-
-const { formatGameTime, formatRelativeTime } = useFormatters()
 </script>

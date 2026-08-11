@@ -204,7 +204,7 @@ refactor(static-catalog): centralize versioned game metadata
 
 **优先级：P1 / P2，按功能逐批执行**
 
-**状态：部分进行** — `src/lib/index.ts` 已大幅瘦身；`GameDetailDialog` 已拆为组合壳：`useGameDetail`、`MatchSummaryCard`、`TeamBlock`、`MatchProcessReview`、`SummonerDetailSheet` / `useSummonerDetailSheet`。下一批可转向 `GameStats.vue` 或 `SummonerCard.vue`。
+**状态：部分进行** — `src/lib/index.ts` 已大幅瘦身；`GameDetailDialog` 已拆为组合壳。`GameStats` 已抽出有边界的 `useGameStatsBuckets` + `RecentMatchList`（工具栏/概览暂留壳内）。`SummonerCard` 仍未拆。
 
 ### 推荐职责边界
 
