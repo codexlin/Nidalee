@@ -65,15 +65,9 @@
 
         <div class="w-[86px] shrink-0 py-1 pl-2">
           <div class="flex h-full flex-col justify-center gap-[5px] text-[11px] tabular-nums">
-            <div
-              v-for="row in detailRows"
-              :key="row.label"
-              class="flex items-baseline gap-1.5 leading-none"
-            >
+            <div v-for="row in detailRows" :key="row.label" class="flex items-baseline gap-1.5 leading-none">
               <span class="shrink-0 text-muted-foreground">{{ row.label }}</span>
-              <span class="min-w-0 font-medium text-foreground truncate" :class="row.toneClass">{{
-                row.value
-              }}</span>
+              <span class="min-w-0 font-medium text-foreground truncate" :class="row.toneClass">{{ row.value }}</span>
             </div>
           </div>
         </div>
@@ -88,7 +82,7 @@ import { gradeFromStats, gradeTextClass } from '../../utils/matchGrade'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import ThemedChart from '@/shared/components/charts/ThemedChart.vue'
 import { themeColor, themeColors } from '@/lib/themeColor'
-import type { ChartData, ChartOptions, ScriptableScaleContext, TooltipItem } from 'chart.js'
+import type { ChartData, ChartOptions, ScriptableScalePointLabelContext, TooltipItem } from 'chart.js'
 
 const props = defineProps<{
   participant: ParticipantInfo
@@ -113,9 +107,7 @@ const killParticipation = computed(() => {
   return Math.min(100, (involvements / team) * 100)
 })
 
-const totalCs = computed(
-  () => (stats.value?.totalMinionsKilled ?? 0) + (stats.value?.neutralMinionsKilled ?? 0)
-)
+const totalCs = computed(() => (stats.value?.totalMinionsKilled ?? 0) + (stats.value?.neutralMinionsKilled ?? 0))
 
 const formatCompact = (n: number) => {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
@@ -257,7 +249,7 @@ const radarChartOptions = computed((): ChartOptions<'radar'> => {
         grid: { color: c.border },
         angleLines: { color: c.border },
         pointLabels: {
-          color: (ctx: ScriptableScaleContext) => {
+          color: (ctx: ScriptableScalePointLabelContext) => {
             const axis = axes[ctx.index]
             if (axis?.emphasize) return 'oklch(0.63 0.2 25)'
             return c.foreground
