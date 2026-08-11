@@ -1,99 +1,33 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="512"
+  height="512"
+  viewBox="0 0 512 512"
+  fill="none"
+>
+  <title>Nidalee</title>
   <defs>
-    <linearGradient id="badgeBg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1C2740" />
-      <stop offset="100%" stop-color="#080B14" />
+    <linearGradient id="tile" x1="82" y1="64" x2="430" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111C27" />
+      <stop offset="1" stop-color="#081018" />
     </linearGradient>
-    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#34D8C9" />
-      <stop offset="100%" stop-color="#3E7BFA" />
+    <linearGradient id="mark" x1="112" y1="88" x2="404" y2="424" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4BE8BC" />
+      <stop offset="1" stop-color="#32D6A3" />
     </linearGradient>
-    <linearGradient id="furGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#F8C468" />
-      <stop offset="55%" stop-color="#EF9B2E" />
-      <stop offset="100%" stop-color="#C6720F" />
-    </linearGradient>
-    <linearGradient id="clawGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#9CF3FF" />
-      <stop offset="100%" stop-color="#3E7BFA" />
-    </linearGradient>
-    <radialGradient id="eyeGlow" cx="50%" cy="35%" r="65%">
-      <stop offset="0%" stop-color="#8CF9CE" />
-      <stop offset="60%" stop-color="#2FBE8C" />
-      <stop offset="100%" stop-color="#0E7F5B" />
-    </radialGradient>
-    <radialGradient id="sheen" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.16" />
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
-    </radialGradient>
-    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur stdDeviation="3" result="blur" />
-      <feMerge>
-        <feMergeNode in="blur" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-    <clipPath id="badgeClip">
-      <circle cx="256" cy="256" r="228" />
-    </clipPath>
   </defs>
 
-  <!-- 徽章底 -->
-  <circle cx="256" cy="256" r="228" fill="url(#badgeBg)" />
-  <circle cx="256" cy="256" r="225" fill="url(#sheen)" />
+  <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#tile)" />
 
-  <g clip-path="url(#badgeClip)">
-    <g transform="translate(256,256)">
-      <!-- 爪痕：狩猎者标志，斜切过右耳与脸颊 -->
-      <g filter="url(#glow)" stroke="url(#clawGrad)" stroke-width="6" stroke-linecap="round" opacity="0.9">
-        <line x1="52" y1="-138" x2="122" y2="-48" />
-        <line x1="70" y1="-146" x2="140" y2="-56" />
-        <line x1="88" y1="-152" x2="158" y2="-62" />
-      </g>
+  <g fill="url(#mark)">
+    <!-- Left and right hunter strokes. Their angled terminals form the outer spear silhouette. -->
+    <path d="M112 96 176 160v208l-64 64V96Z" />
+    <path d="m336 160 64-64v336l-64-64V160Z" />
 
-      <!-- 豹头轮廓：几何低多边形，锐利而非圆润 -->
-      <path
-        d="M -96,-140 L -45,-90 L 0,-108 L 45,-90 L 96,-140 L 118,-60 L 128,10 L 98,78 L 0,108 L -98,78 L -128,10 L -118,-60 Z"
-        fill="url(#furGrad)" stroke="url(#ringGrad)" stroke-width="4" stroke-linejoin="round" />
+    <!-- The descending stroke keeps the mark unmistakably readable as an N. -->
+    <path d="m112 128 32-48 256 256v48h-32L112 128Z" />
 
-      <!-- 耳内暗面 -->
-      <path d="M -88,-128 L -66,-98 L -48,-104 Z" fill="#8A4E14" opacity="0.9" />
-      <path d="M 88,-128 L 66,-98 L 48,-104 Z" fill="#8A4E14" opacity="0.9" />
-
-      <!-- 豹纹斑点 -->
-      <g fill="#5C3212" opacity="0.5">
-        <ellipse cx="-72" cy="-15" rx="13" ry="8" transform="rotate(-20 -72 -15)" />
-        <ellipse cx="70" cy="-25" rx="11" ry="7" transform="rotate(15 70 -25)" />
-        <ellipse cx="-40" cy="50" rx="10" ry="6" transform="rotate(10 -40 50)" />
-        <ellipse cx="45" cy="55" rx="9" ry="6" transform="rotate(-15 45 55)" />
-        <ellipse cx="0" cy="-75" rx="9" ry="6" />
-      </g>
-
-      <!-- 猫科竖瞳，微微上挑 -->
-      <g transform="translate(-46,-8) rotate(-16)">
-        <ellipse rx="27" ry="12" fill="url(#eyeGlow)" stroke="#063D2B" stroke-width="1.5" />
-        <rect x="-3" y="-15" width="6" height="24" rx="3" fill="#0B1220" />
-        <circle cx="-4" cy="-8" r="2" fill="#EAFBF3" opacity="0.85" />
-      </g>
-      <g transform="translate(46,-8) rotate(16)">
-        <ellipse rx="27" ry="12" fill="url(#eyeGlow)" stroke="#063D2B" stroke-width="1.5" />
-        <rect x="-3" y="-15" width="6" height="24" rx="3" fill="#0B1220" />
-        <circle cx="4" cy="-8" r="2" fill="#EAFBF3" opacity="0.85" />
-      </g>
-
-      <!-- 鼻 -->
-      <path d="M -11,30 L 11,30 L 0,44 Z" fill="#0B1220" />
-
-      <!-- 胡须 -->
-      <g stroke="#CBD5E1" stroke-width="2" stroke-linecap="round" opacity="0.35">
-        <line x1="-70" y1="34" x2="-118" y2="24" />
-        <line x1="-68" y1="48" x2="-116" y2="52" />
-        <line x1="70" y1="34" x2="118" y2="24" />
-        <line x1="68" y1="48" x2="116" y2="52" />
-      </g>
-    </g>
+    <!-- A short, widened hunter pupil: visible at 24 px without becoming a drawn eye. -->
+    <path d="m256 296 13 15v34l-13 15-13-15v-34l13-15Z" />
   </g>
-
-  <!-- 徽章描边 -->
-  <circle cx="256" cy="256" r="225" fill="none" stroke="url(#ringGrad)" stroke-width="6" opacity="0.9" />
 </svg>
