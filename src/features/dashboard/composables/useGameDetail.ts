@@ -33,25 +33,6 @@ function markersForTeam(team: TeamInfo | undefined, side: '蓝队' | '红队'): 
   }))
 }
 
-export function multiKillLabel(n: number) {
-  if (!n || n <= 1) return '无'
-  if (n === 2) return '双杀'
-  if (n === 3) return '三杀'
-  if (n === 4) return '四杀'
-  if (n >= 5) return '五杀'
-  return String(n)
-}
-
-export function formatMatchDuration(seconds: number) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}分 ${s}秒`
-}
-
-export function formatMatchNumber(num: number) {
-  return num.toLocaleString()
-}
-
 /**
  * 对局详情请求与派生数据：负责 get_game_detail + 旧请求丢弃，不负责弹窗 UI。
  */
@@ -195,11 +176,7 @@ export function useGameDetail(selectedGame: MaybeRefOrGetter<MatchPerformance | 
     blueFirstMarkers,
     redFirstMarkers,
     myParticipantId,
-    getTeamResult,
     getTeamBans,
-    getTeamParticipants,
-    multiKillLabel,
-    formatDuration: formatMatchDuration,
-    formatNumber: formatMatchNumber
+    getTeamParticipants
   }
 }

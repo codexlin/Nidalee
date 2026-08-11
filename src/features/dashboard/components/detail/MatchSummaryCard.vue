@@ -179,7 +179,7 @@
 import { getChampionIconUrl, getQueueName, resolveChampionName } from '@/lib'
 import { Timer } from 'lucide-vue-next'
 import { computed } from 'vue'
-import { formatMatchDuration, formatMatchNumber, multiKillLabel } from '../../composables/useGameDetail'
+import { formatMatchDuration, formatMatchNumber, multiKillLabel } from '../../utils/matchDetailFormatters'
 import { displayGrade, gradeTextClass, gradeWatermarkClass, gradeWatermarkSizeClass } from '../../utils/matchGrade'
 
 type TeamObjectives = {

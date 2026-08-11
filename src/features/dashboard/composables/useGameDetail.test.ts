@@ -43,6 +43,15 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve, reject }
 }
 
+function emptyTeamStats(): TeamStats {
+  return {
+    kills: 0,
+    goldEarned: 0,
+    totalDamageDealtToChampions: 0,
+    visionScore: 0
+  }
+}
+
 function game(gameId: number, championId = 1): MatchPerformance {
   return {
     gameId,
@@ -63,16 +72,23 @@ function detail(gameId: number): GameDetail {
   return {
     gameId,
     gameDuration: 1800,
+    gameCreation: 0,
+    gameMode: 'CLASSIC',
+    gameType: 'MATCHED_GAME',
     gameVersion: '16.1.1',
+    mapId: 11,
+    queueId: 420,
     participants: [],
     teams: [],
+    blueTeamStats: emptyTeamStats(),
+    redTeamStats: emptyTeamStats(),
     maxDamage: 0,
     maxTank: 0,
     maxStreak: 0,
     bestPlayerChampionId: 0,
     maxTankChampionId: 0,
     maxStreakChampionId: 0
-  } as GameDetail
+  } satisfies GameDetail
 }
 
 describe('useGameDetail request lifecycle', () => {
