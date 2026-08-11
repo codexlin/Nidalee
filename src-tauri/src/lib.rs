@@ -90,6 +90,9 @@ pub fn run() {
             infrastructure::data_services::external::opgg::commands::get_opgg_tier_list,
             infrastructure::data_services::external::opgg::commands::get_opgg_champion_positions,
             infrastructure::data_services::external::opgg::commands::apply_opgg_runes,
+            // 海克斯（dtodo aramgg）
+            infrastructure::data_services::external::hextech::commands::get_hextech_tier_list,
+            infrastructure::data_services::external::hextech::commands::get_hextech_champion_detail,
             // OpenAI-compatible BYOK
             infrastructure::data_services::external::ai::commands::get_ai_settings,
             infrastructure::data_services::external::ai::commands::set_ai_settings,

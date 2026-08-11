@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { getChampionName } from '@/lib'
 import type { OpggConfig } from './useOpggData'
+import { buildRequestPosition } from '../types/modes'
 
 export function useOpggRunes() {
   const applying = ref(false)
@@ -32,12 +33,16 @@ export function useOpggRunes() {
       const championName = getChampionName(championId)
 
       // 调用Tauri命令应用符文
+      if (config.mode === 'arena') {
+        throw new Error('竞技场模式无符文数据，无法套用')
+      }
+
       await invoke<string>('apply_opgg_runes', {
         region: config.region,
         mode: config.mode,
         championId: championId,
         championName: championName,
-        position: config.mode === 'ranked' ? config.position : null,
+        position: buildRequestPosition(config.mode, config.position),
         tier: config.tier,
         buildIndex: runeIndex
       })

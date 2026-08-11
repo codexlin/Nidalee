@@ -54,7 +54,7 @@ export const formatNumber = (num: number): string => {
 }
 
 /**
- * 根据英雄ID获取英雄图标URL
+ * 根据英雄ID获取英雄图标URL（Community Dragon）
  * @param championId 英雄ID，number或string
  * @returns 英雄图标URL
  */
@@ -62,15 +62,24 @@ export const getChampionIconUrl = (championId: number | string | null): string =
   if (!championId) return ''
   return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${championId}.png`
 }
-/**
- * 根据英雄别名获取英雄图标URL
- * @param alias 英雄别名
- * @returns 英雄图标URL
- */
-export const getChampionIconUrlByAlias = (alias: string): string => {
-  if (!alias) return ''
-  return `https://game.gtimg.cn/images/lol/act/img/champion/${alias}.png`
-}
+
+/** 特殊模式变体别名前缀（CDragon / DDragon 会混入，中文名与本体相同） */
+const MODE_CHAMPION_ALIAS_RE = /^(Jade_|Ruby_)/i
+
+/** 正式召唤师峡谷英雄：排除模式变体（id≥10000 或 Jade_/Ruby_ 前缀） */
+export const isStandardChampionId = (id: number): boolean =>
+  Number.isFinite(id) && id > 0 && id < 10000
+
+export const isStandardChampionAlias = (alias: string): boolean =>
+  !!alias && !MODE_CHAMPION_ALIAS_RE.test(alias)
+
+/** Community Dragon / LCU 摘要条目 */
+export const isStandardChampion = (c: { id: number; alias?: string }): boolean =>
+  isStandardChampionId(c.id) && (!c.alias || isStandardChampionAlias(c.alias))
+
+/** Data Dragon champion.json 条目（`id` 为别名，`key` 为数字 ID） */
+export const isStandardDDragonChampion = (c: { id: string; key: string | number }): boolean =>
+  isStandardChampionId(Number(c.key)) && isStandardChampionAlias(String(c.id))
 // 处理 Community Dragon 路径
 export const getCommunityDragonUrl = (path: string): string => {
   if (!path) return ''

@@ -1,4 +1,7 @@
+import { computed, ref, type MaybeRefOrGetter, toValue } from 'vue'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { fetchOpggChampionBuild, fetchOpggTierList } from '@/lib/dataApi'
+import { OPGG_MODES, buildRequestPosition } from '../types/modes'
 
 export interface OpggConfig {
   region: string
@@ -8,57 +11,74 @@ export interface OpggConfig {
   championId: number
 }
 
-export interface OpggState {
-  loading: boolean
-  error: string | null
-  message: string
-  championBuild: OpggChampionBuild | null
-  tierList: OpggTierList | null
+const STALE_MS = 1000 * 60 * 60
+const GC_MS = 1000 * 60 * 60 * 24
+
+export function opggTierListQueryKey(region: string, mode: string, tier: string) {
+  return ['opgg', 'tierList', region, mode, tier] as const
 }
 
-export function useOpggData() {
-  // 状态管理
-  const state = ref<OpggState>({
-    loading: false,
-    error: null,
-    message: '',
-    championBuild: null,
-    tierList: null
-  })
+export function opggBuildQueryKey(
+  region: string,
+  mode: string,
+  tier: string,
+  championId: number,
+  position: string
+) {
+  return ['opgg', 'build', region, mode, tier, championId, position] as const
+}
 
-  // 配置选项
+async function loadOpggTierList(region: string, mode: string, tier: string): Promise<OpggTierList> {
+  const result = await fetchOpggTierList({ region, mode, tier })
+  if (!result.success || !result.data) {
+    throw new Error(result.error || '获取强度榜失败')
+  }
+  return result.data
+}
+
+async function loadOpggChampionBuild(config: OpggConfig): Promise<OpggChampionBuild> {
+  const position = buildRequestPosition(config.mode, config.position) ?? undefined
+  const result = await fetchOpggChampionBuild({
+    region: config.region,
+    mode: config.mode,
+    champion_id: config.championId,
+    position,
+    tier: config.tier
+  })
+  if (!result.success || !result.data) {
+    throw new Error(result.error || '获取英雄详细数据失败')
+  }
+  return result.data
+}
+
+export function useOpggData(options?: {
+  /** 浏览强度榜时启用 */
+  tierListEnabled?: MaybeRefOrGetter<boolean>
+  /** 查看方案详情时启用 */
+  buildEnabled?: MaybeRefOrGetter<boolean>
+}) {
+  const queryClient = useQueryClient()
+
   const config = ref<OpggConfig>({
-    region: 'global',
+    region: 'kr',
     mode: 'ranked',
-    tier: 'all',
+    tier: 'emerald_plus',
     position: 'MID',
     championId: 157
   })
 
-  // 选项数据
   const regions = [
     { value: 'global', label: '全球' },
     { value: 'kr', label: '韩服' },
     { value: 'na', label: '北美' }
-    // { value: 'euw', label: '欧洲西部' },
-    // { value: 'eune', label: '欧洲北欧东部' },
-    // { value: 'jp', label: '日服' },
-    // { value: 'br', label: '巴西' },
-    // { value: 'lan', label: '拉丁美洲北部' },
-    // { value: 'las', label: '拉丁美洲南部' },
-    // { value: 'oce', label: '大洋洲' },
-    // { value: 'tr', label: '土耳其' },
-    // { value: 'ru', label: '俄罗斯' }
   ]
 
-  const modes = [
-    { value: 'ranked', label: '排位赛' }
-    // { value: 'aram', label: '大乱斗' },
-    // { value: 'arena', label: '斗魂竞技场' }
-    // { value: 'urf', label: '无限火力' }
-  ]
+  const modes = OPGG_MODES.map(({ value, label }) => ({ value, label }))
 
   const tiers = [
+    { value: 'emerald_plus', label: '翡翠+' },
+    { value: 'platinum_plus', label: '铂金+' },
+    { value: 'diamond_plus', label: '钻石+' },
     { value: 'all', label: '全部段位' },
     { value: 'iron', label: '黑铁' },
     { value: 'bronze', label: '青铜' },
@@ -80,117 +100,85 @@ export function useOpggData() {
     { value: 'SUPPORT', label: '辅助' }
   ]
 
-  // 获取英雄详细数据
-  const loadChampionBuild = async () => {
-    if (!config.value.championId) {
-      state.value.error = '请输入英雄ID'
-      return
+  const buildPositionKey = computed(
+    () => buildRequestPosition(config.value.mode, config.value.position) ?? ''
+  )
+
+  const tierListQuery = useQuery({
+    queryKey: computed(() =>
+      opggTierListQueryKey(config.value.region, config.value.mode, config.value.tier)
+    ),
+    queryFn: () => loadOpggTierList(config.value.region, config.value.mode, config.value.tier),
+    staleTime: STALE_MS,
+    gcTime: GC_MS,
+    refetchOnWindowFocus: false,
+    enabled: computed(() => toValue(options?.tierListEnabled) ?? true)
+  })
+
+  const buildQuery = useQuery({
+    queryKey: computed(() =>
+      opggBuildQueryKey(
+        config.value.region,
+        config.value.mode,
+        config.value.tier,
+        config.value.championId,
+        buildPositionKey.value
+      )
+    ),
+    queryFn: () => loadOpggChampionBuild(config.value),
+    staleTime: STALE_MS,
+    gcTime: GC_MS,
+    refetchOnWindowFocus: false,
+    enabled: computed(
+      () => (toValue(options?.buildEnabled) ?? false) && config.value.championId > 0
+    )
+  })
+
+  const loading = computed(
+    () =>
+      (toValue(options?.tierListEnabled) && tierListQuery.isFetching.value) ||
+      (toValue(options?.buildEnabled) && buildQuery.isFetching.value)
+  )
+
+  const error = computed(() => {
+    if (toValue(options?.buildEnabled) && buildQuery.error.value) {
+      return (buildQuery.error.value as Error).message
     }
-
-    state.value.loading = true
-    state.value.error = null
-    state.value.championBuild = null
-    state.value.message = ''
-
-    try {
-      state.value.message = '正在获取英雄详细数据...'
-      console.log('🔍 开始获取OP.GG数据:', {
-        region: config.value.region,
-        mode: config.value.mode,
-        champion_id: config.value.championId,
-        position: config.value.position,
-        tier: config.value.tier
-      })
-
-      const result = await fetchOpggChampionBuild({
-        region: config.value.region,
-        mode: config.value.mode,
-        champion_id: config.value.championId,
-        position: config.value.position,
-        tier: config.value.tier
-      })
-
-      console.log('📊 OP.GG数据获取结果:', result)
-
-      if (result.success && result.data) {
-        // 强制触发响应式更新
-        state.value.championBuild = null
-        state.value.championBuild = result.data
-        state.value.message = '英雄详细数据加载成功！'
-        console.log('✅ 数据设置成功:', result.data)
-        console.log('🔍 状态检查 - championBuild:', state.value.championBuild)
-      } else {
-        state.value.error = result.error || '获取英雄详细数据失败'
-        console.error('❌ 数据获取失败:', result.error)
-      }
-    } catch (err) {
-      state.value.error = err instanceof Error ? err.message : '未知错误'
-      console.error('💥 数据获取异常:', err)
-    } finally {
-      state.value.loading = false
+    if (toValue(options?.tierListEnabled) && tierListQuery.error.value) {
+      return (tierListQuery.error.value as Error).message
     }
-  }
+    return null
+  })
 
-  // 获取层级列表数据
-  const loadTierList = async () => {
-    state.value.loading = true
-    state.value.error = null
-    state.value.tierList = null
-    state.value.message = ''
+  const refreshTierList = () =>
+    queryClient.invalidateQueries({
+      queryKey: ['opgg', 'tierList']
+    })
 
-    try {
-      state.value.message = '正在获取层级列表...'
+  const refreshBuild = () =>
+    queryClient.invalidateQueries({
+      queryKey: ['opgg', 'build']
+    })
 
-      const result = await fetchOpggTierList({
-        region: config.value.region,
-        mode: config.value.mode,
-        tier: config.value.tier
-      })
-
-      if (result.success && result.data) {
-        state.value.tierList = result.data
-        state.value.message = '层级列表加载成功！'
-      } else {
-        state.value.error = result.error || '获取层级列表失败'
-      }
-    } catch (err) {
-      state.value.error = err instanceof Error ? err.message : '未知错误'
-    } finally {
-      state.value.loading = false
-    }
-  }
-
-  // 清空数据
-  const clearData = () => {
-    state.value.championBuild = null
-    state.value.tierList = null
-    state.value.error = null
-    state.value.message = ''
-  }
-
-  // 测试组件功能
-  const testComponent = () => {
-    state.value.message = '组件功能正常，可以与后端通信！'
-    setTimeout(() => {
-      state.value.message = ''
-    }, 3000)
+  const refreshCurrent = () => {
+    if (toValue(options?.buildEnabled)) return refreshBuild()
+    return refreshTierList()
   }
 
   return {
-    // 状态
-    state,
-
-    // 配置
     config,
     regions,
     modes,
     tiers,
     positions,
-
-    // 方法
-    loadChampionBuild,
-    loadTierList,
-    clearData,
-    testComponent
+    tierList: computed(() => tierListQuery.data.value ?? null),
+    championBuild: computed(() => buildQuery.data.value ?? null),
+    loading,
+    error,
+    tierListQuery,
+    buildQuery,
+    refreshTierList,
+    refreshBuild,
+    refreshCurrent
   }
 }

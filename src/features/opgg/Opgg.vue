@@ -1,221 +1,291 @@
 <template>
-  <div class="min-h-screen">
-    <div class="max-w-5xl mx-auto space-y-8">
-      <!-- 页面标题 -->
-      <div class="text-center space-y-2">
-        <h1 class="text-4xl font-extrabold text-primary drop-shadow-sm">🎯 OP.GG 英雄构建推荐</h1>
-        <p class="text-lg text-muted-foreground">获取最新的英雄出装、符文和克制关系数据</p>
-      </div>
-
-      <!-- 配置面板 -->
-      <div
-        class="rounded-xl shadow-lg bg-white/80 dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 p-4"
-      >
-        <OpggConfigPanel
-          :config="opggData.config.value"
-          :regions="opggData.regions"
-          :modes="opggData.modes"
-          :tiers="opggData.tiers"
-          :positions="opggData.positions"
-          @update:config="handleConfigUpdate"
-        />
-      </div>
-
-      <!-- 操作按钮 -->
-      <div class="flex flex-wrap gap-4 justify-end">
-        <OpggActionButtons
-          :loading="opggData.state.value.loading"
-          :champion-id="opggData.config.value.championId"
-          :champion-build="opggData.state.value.championBuild"
-          @load-build="opggData.loadChampionBuild"
-          @apply-best-runes="handleApplyBestRunes"
-        />
-      </div>
-
-      <!-- 错误提示 -->
-      <Card v-if="opggData.state.value.error" class="border-destructive bg-destructive/10 rounded-xl shadow-md">
-        <CardContent class="pt-6">
-          <div class="flex items-center gap-3">
-            <AlertCircle class="h-4 w-4 text-destructive" />
-            <div>
-              <h3 class="font-semibold text-destructive">出现错误</h3>
-              <p class="text-sm text-destructive/80">{{ opggData.state.value.error }}</p>
-            </div>
+  <!--
+    浏览态：整页锁高 = 视口 − TitleBar(2.5) − TopNav(3) − 页 padding(3) = 8.5rem
+    配置卡/强度榜说明行都在此盒内用 flex 分配，避免再估算它们的高度导致「还差一点点」外滚。
+  -->
+  <div
+    class="flex w-full flex-col gap-4"
+    :class="showingDetail ? '' : 'h-[calc(100dvh-8.5rem)] overflow-hidden'"
+  >
+    <Card class="shrink-0 gap-0 py-0">
+      <CardContent class="space-y-3 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h1 class="text-xl font-medium leading-tight">构建推荐</h1>
+            <p class="mt-1 text-sm text-muted-foreground">
+              {{ showingDetail ? '方案详情' : '按分路看强度，点英雄看指南' }}
+            </p>
           </div>
-        </CardContent>
-      </Card>
-
-      <!-- 成功消息 -->
-      <Card
-        v-if="opggData.state.value.message && !opggData.state.value.message.includes('✨')"
-        class="border-blue-200 bg-blue-50/80 dark:border-blue-800 dark:bg-blue-950/80 rounded-xl shadow-md"
-      >
-        <CardContent>
-          <div class="flex items-center gap-3">
-            <Info class="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <div>
-              <h3 class="font-semibold text-blue-800 dark:text-blue-200">操作提示</h3>
-              <p class="text-sm text-blue-700 dark:text-blue-300 whitespace-pre-line">
-                {{ opggData.state.value.message }}
-              </p>
-            </div>
+          <div class="flex gap-0.5 rounded-full surface-inset p-0.5">
+            <button
+              v-for="p in BUILD_PROVIDERS"
+              :key="p.id"
+              type="button"
+              class="rounded-full px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40"
+              :class="
+                providerId === p.id ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
+              "
+              :disabled="!p.available"
+              :title="p.hint"
+              @click="switchProvider(p.id)"
+            >
+              {{ p.label }}
+            </button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      <!-- 成功应用符文消息 -->
-      <Card
-        v-if="opggData.state.value.message && opggData.state.value.message.includes('✨')"
-        class="border-green-200 bg-green-50/80 dark:border-green-800 dark:bg-green-950/80 rounded-xl shadow-md"
-      >
-        <CardContent class="pt-6">
-          <div class="flex items-center gap-3">
-            <CheckCircle class="h-4 w-4 text-green-600 dark:text-green-400" />
-            <div>
-              <h3 class="font-semibold text-green-800 dark:text-green-200">符文应用成功</h3>
-              <p class="text-sm text-green-700 dark:text-green-300 whitespace-pre-line">
-                {{ opggData.state.value.message }}
-              </p>
-            </div>
+        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3">
+          <OpggConfigPanel
+            :config="activeConfig"
+            :regions="opggData.regions"
+            :modes="opggData.modes"
+            :tiers="opggData.tiers"
+            :positions="opggData.positions"
+            :compact="isHextech"
+            @update:config="handleConfigUpdate"
+          />
+          <div class="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" class="h-9" :disabled="loading" @click="handleRefresh">
+              <RefreshCw :class="['mr-1.5 size-3.5', loading && 'animate-spin']" />
+              刷新
+            </Button>
+            <Button
+              v-if="showingDetail && !isHextech"
+              size="sm"
+              class="h-9"
+              :disabled="!canApplyRunes"
+              @click="handleApplyBestRunes"
+            >
+              <Wand2 class="mr-1.5 size-3.5" />
+              套最佳符文
+            </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <!-- 英雄构建数据显示 -->
-      <div v-if="opggData.state.value.championBuild" class="space-y-8">
-        <!-- 英雄基本信息 -->
-        <div
-          class="rounded-xl shadow-lg bg-white/90 dark:bg-neutral-900/90 border border-neutral-200 dark:border-neutral-800 p-4"
-        >
-          <ChampionSummaryCard :summary="opggData.state.value.championBuild.summary" />
         </div>
+      </CardContent>
+    </Card>
 
-        <!-- 推荐符文 -->
-        <div
-          class="rounded-xl shadow-lg bg-white/90 dark:bg-neutral-900/90 border border-neutral-200 dark:border-neutral-800 p-4"
-        >
-          <RunesCard :perks="opggData.state.value.championBuild.perks" @apply-runes="handleApplySpecificRunes" />
-        </div>
-
-        <!-- 召唤师技能 -->
-        <div
-          v-if="opggData.state.value.championBuild.summonerSpells?.length"
-          class="rounded-xl shadow-lg bg-white/90 dark:bg-neutral-900/90 border border-neutral-200 dark:border-neutral-800 p-4"
-        >
-          <SummonerSpellsCard :spells="opggData.state.value.championBuild.summonerSpells" />
-        </div>
-
-        <!-- 推荐装备 -->
-        <div
-          v-if="opggData.state.value.championBuild.items"
-          class="rounded-xl shadow-lg bg-white/90 dark:bg-neutral-900/90 border border-neutral-200 dark:border-neutral-800 p-4"
-        >
-          <ItemsCard :items="opggData.state.value.championBuild.items" />
-        </div>
-
-        <!-- 技能加点 -->
-        <div
-          v-if="opggData.state.value.championBuild.championSkills"
-          class="rounded-xl shadow-lg bg-white/90 dark:bg-neutral-900/90 border border-neutral-200 dark:border-neutral-800 p-4"
-        >
-          <SkillsCard :skills="opggData.state.value.championBuild.championSkills" />
-        </div>
-
-        <!-- 克制关系 -->
-        <div
-          v-if="opggData.state.value.championBuild.counters"
-          class="rounded-xl shadow-lg bg-white/90 dark:bg-neutral-900/90 border border-neutral-200 dark:border-neutral-800 p-4"
-        >
-          <CountersCard :counters="opggData.state.value.championBuild.counters" />
-        </div>
-      </div>
-
-      <!-- 层级列表数据显示 -->
-      <Card v-if="opggData.state.value.tierList" class="bg-muted/20 rounded-xl shadow-md">
-        <CardHeader>
-          <CardTitle class="text-sm">🔍 调试信息 - 英雄层级列表</CardTitle>
-          <CardDescription>数据版本: {{ opggData.state.value.tierList.meta?.version }}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea class="h-96">
-            <pre class="text-xs text-muted-foreground">{{
-              JSON.stringify(opggData.state.value.tierList, null, 2)
-            }}</pre>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+    <div
+      v-if="activeError"
+      class="flex shrink-0 items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm"
+    >
+      <AlertCircle class="mt-0.5 size-4 shrink-0 text-destructive" />
+      <p class="text-destructive">{{ activeError }}</p>
     </div>
+
+    <Card
+      v-if="!showingDetail"
+      class="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden py-0"
+    >
+      <div class="flex min-h-0 flex-1 overflow-hidden">
+        <ChampionGrid :selected-id="activeChampionId" @select="onSelectChampion" />
+        <TierListPanel
+          ref="tierPanelRef"
+          embedded
+          :tier-list="activeTierList"
+          :loading="loading"
+          :default-position="opggData.config.value.position"
+          :mode="tierMode"
+          @select-champion="onSelectFromTier"
+          @update:position="onBrowsePosition"
+        />
+      </div>
+    </Card>
+
+    <!-- 详情 -->
+    <template v-else>
+      <HextechDetailPanel
+        v-if="isHextech && hextechData.detail.value"
+        :detail="hextechData.detail.value"
+        @back="goBack"
+      />
+      <BuildDetailPanel
+        v-else-if="!isHextech && opggData.championBuild.value"
+        :build="opggData.championBuild.value"
+        :mode="opggData.config.value.mode"
+        @back="goBack"
+        @apply-runes="handleApplySpecificRunes"
+      />
+      <Card v-else class="gap-0 py-0">
+        <CardContent class="flex h-40 flex-col items-center justify-center gap-1 text-muted-foreground">
+          <p class="text-sm">{{ loading ? '正在加载方案…' : '暂无方案数据' }}</p>
+          <button type="button" class="text-xs text-primary hover:underline" @click="goBack">返回强度榜</button>
+        </CardContent>
+      </Card>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { AlertCircle, Info, CheckCircle } from 'lucide-vue-next'
+import { AlertCircle, RefreshCw, Wand2 } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { useOpggData, type OpggConfig } from './composables/useOpggData'
+import { useHextechData } from './composables/useHextechData'
 import { useOpggRunes } from './composables/useOpggRunes'
+import { BUILD_PROVIDERS, providerSupports, type BuildProviderId } from './types/buildProvider'
+import { buildRequestPosition, usesLanePosition } from './types/modes'
+import TierListPanel from './components/TierListPanel.vue'
+import OpggConfigPanel from './components/OpggConfigPanel.vue'
+import BuildDetailPanel from './components/BuildDetailPanel.vue'
+import HextechDetailPanel from './components/HextechDetailPanel.vue'
+import ChampionGrid from './components/ChampionGrid.vue'
 
-// 获取数据存储
-// const dataStore = useDataStore()
+const providerId = ref<BuildProviderId>('opgg')
+const showingDetail = ref(false)
+const tierPanelRef = ref<{ activePosition?: { value: string } } | null>(null)
 
-// 使用 composables
-const opggData = useOpggData()
+const isHextech = computed(() => providerId.value === 'hextech')
+const browseMode = computed(() => !showingDetail.value)
+
+const opggData = useOpggData({
+  tierListEnabled: computed(() => !isHextech.value && browseMode.value),
+  buildEnabled: computed(() => !isHextech.value && showingDetail.value)
+})
+const hextechData = useHextechData({
+  tierListEnabled: computed(() => isHextech.value && browseMode.value),
+  detailEnabled: computed(() => isHextech.value && showingDetail.value)
+})
 const opggRunes = useOpggRunes()
+const route = useRoute()
+const router = useRouter()
 
-// 处理配置更新
-const handleConfigUpdate = (newConfig: OpggConfig) => {
-  // 更新配置
-  Object.assign(opggData.config.value, newConfig)
+const loading = computed(() =>
+  isHextech.value ? hextechData.loading.value : opggData.loading.value
+)
+const activeError = computed(() =>
+  isHextech.value ? hextechData.error.value : opggData.error.value
+)
+const activeTierList = computed(() =>
+  isHextech.value ? hextechData.tierListAsOpgg.value : opggData.tierList.value
+)
+const tierMode = computed(() => (isHextech.value ? 'hextech' : opggData.config.value.mode))
+const activeChampionId = computed(() =>
+  isHextech.value ? hextechData.championId.value : opggData.config.value.championId
+)
+const activeConfig = computed(() => {
+  if (!isHextech.value) return opggData.config.value
+  return {
+    ...opggData.config.value,
+    championId: hextechData.championId.value,
+    mode: 'hextech',
+    region: 'cn'
+  }
+})
+
+const canApplyRunes = computed(() => {
+  if (isHextech.value) return false
+  return !!opggData.championBuild.value?.perks?.length && !opggData.loading.value
+})
+
+const resolveBrowsePosition = () => {
+  const fromPanel = tierPanelRef.value?.activePosition?.value
+  if (fromPanel && fromPanel !== 'all') return fromPanel
+  return opggData.config.value.position || 'MID'
 }
 
-// 处理符文应用
+const goBack = () => {
+  showingDetail.value = false
+  if (route.query.championId) {
+    const next = { ...route.query }
+    delete next.championId
+    void router.replace({ query: next })
+  }
+}
+
+const openDetail = (championId: number, position?: string) => {
+  if (isHextech.value) {
+    hextechData.selectChampion(championId)
+  } else {
+    opggData.config.value.championId = championId
+    if (position) opggData.config.value.position = position
+  }
+  showingDetail.value = true
+}
+
+const onSelectChampion = (championId: number) => {
+  const pos = usesLanePosition(opggData.config.value.mode) ? resolveBrowsePosition() : 'none'
+  openDetail(championId, pos)
+}
+
+const onSelectFromTier = (championId: number, position: string) => {
+  openDetail(championId, position)
+}
+
+const onBrowsePosition = (position: string) => {
+  if (!isHextech.value) opggData.config.value.position = position
+}
+
+const switchProvider = (id: BuildProviderId) => {
+  if (providerId.value === id) return
+  if (!providerSupports(id, 'tierList') && !showingDetail.value) {
+    toast.message('当前数据源暂不支持强度榜')
+  }
+  providerId.value = id
+  showingDetail.value = false
+}
+
+const handleConfigUpdate = (newConfig: OpggConfig) => {
+  if (isHextech.value) return
+
+  const modeChanged = newConfig.mode !== opggData.config.value.mode
+  Object.assign(opggData.config.value, newConfig)
+
+  if (modeChanged) {
+    if (!usesLanePosition(newConfig.mode)) {
+      opggData.config.value.position = 'MID'
+    }
+    // 换模式后回到浏览；Query key 变化会自动拉新榜
+    if (!showingDetail.value || !newConfig.championId) {
+      showingDetail.value = false
+    }
+  }
+}
+
+const handleRefresh = () => {
+  if (!providerSupports(providerId.value, 'tierList') && !showingDetail.value) {
+    toast.message('当前数据源暂不支持强度榜')
+    return
+  }
+  void (isHextech.value ? hextechData.refreshCurrent() : opggData.refreshCurrent())
+}
+
 const handleApplyBestRunes = async () => {
   try {
     await opggRunes.applyBestRunes(opggData.config.value.championId, opggData.config.value)
-    if (opggRunes.applySuccess.value) {
-      console.log('符文应用成功:', opggRunes.applySuccess.value)
-    }
-    if (opggRunes.applyError.value) {
-      console.log('符文应用失败:', opggRunes.applyError.value)
-    }
+    if (opggRunes.applySuccess.value) toast.success('已套用最佳符文')
+    if (opggRunes.applyError.value) toast.error(opggRunes.applyError.value)
   } catch (error) {
-    console.error('应用符文时发生错误:', error)
+    toast.error(error instanceof Error ? error.message : '应用符文失败')
   }
 }
 
 const handleApplySpecificRunes = async (runeIndex: number) => {
   try {
     await opggRunes.applySpecificRunes(runeIndex, opggData.config.value.championId, opggData.config.value)
-    if (opggRunes.applySuccess.value) {
-      console.log('符文应用成功:', opggRunes.applySuccess.value)
-    }
-    if (opggRunes.applyError.value) {
-      console.log('符文应用失败:', opggRunes.applyError.value)
-    }
+    if (opggRunes.applySuccess.value) toast.success(`已套用方案 ${runeIndex + 1}`)
+    if (opggRunes.applyError.value) toast.error(opggRunes.applyError.value)
   } catch (error) {
-    console.error('应用特定符文时发生错误:', error)
+    toast.error(error instanceof Error ? error.message : '应用符文失败')
   }
 }
 
-const route = useRoute()
-
-const loadChampionFromRoute = async (championIdRaw: string | number | (string | null)[] | undefined) => {
+const loadChampionFromRoute = (championIdRaw: string | number | (string | null)[] | undefined) => {
   let championId: number | undefined
-  if (Array.isArray(championIdRaw)) {
-    championId = Number(championIdRaw[0])
-  } else {
-    championId = Number(championIdRaw)
-  }
+  if (Array.isArray(championIdRaw)) championId = Number(championIdRaw[0])
+  else championId = Number(championIdRaw)
   if (!championId || isNaN(championId)) return
-  opggData.config.value.championId = championId
-  await opggData.loadChampionBuild()
+  const pos = buildRequestPosition(opggData.config.value.mode, opggData.config.value.position) || undefined
+  openDetail(championId, pos === 'none' ? undefined : pos)
 }
 
 watch(
   () => route.query.championId,
   (newId) => {
-    if (newId) {
-      void loadChampionFromRoute(newId)
-    }
+    if (newId) loadChampionFromRoute(newId)
   },
   { immediate: true }
 )
+
+watch(activeError, (msg, prev) => {
+  if (msg && msg !== prev) toast.error(msg)
+})
 </script>

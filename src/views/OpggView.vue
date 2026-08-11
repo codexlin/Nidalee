@@ -1,9 +1,9 @@
 <template>
-  <div class="min-h-screen">
-    <div class="w-full">
-      <Opgg />
-    </div>
+  <div class="w-full min-w-0">
+    <Opgg />
   </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+defineOptions({ name: 'OpggView' })
+</script>

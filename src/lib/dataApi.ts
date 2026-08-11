@@ -816,6 +816,42 @@ export async function fetchOpggChampionPositions(params: {
 }
 
 /**
+ * 海克斯强度榜（dtodo aramgg）
+ */
+export async function fetchHextechTierList(): Promise<ApiResponse<HextechTierList>> {
+  try {
+    const data = await invoke<HextechTierList>('get_hextech_tier_list')
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+/**
+ * 海克斯英雄详情（增强 / 出装）
+ */
+export async function fetchHextechChampionDetail(
+  championId: number
+): Promise<ApiResponse<HextechChampionDetail>> {
+  try {
+    const data = await invoke<HextechChampionDetail>('get_hextech_champion_detail', {
+      championId
+    })
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+/**
  * 应用OP.GG推荐符文配置
  */
 export async function applyOpggRunes(params: {
