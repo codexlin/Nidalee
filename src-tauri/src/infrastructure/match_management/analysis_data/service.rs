@@ -45,7 +45,7 @@ pub async fn build_team_analysis_from_session(
             my_team.len()
         );
         for (idx, player) in my_team.iter().enumerate() {
-            match parse_player_from_session(player, local_player_cell_id).await {
+            match parse_player_from_session(player, local_player_cell_id, is_custom_game).await {
                 Ok(mut player_data) => {
                     log::debug!(
                         target: "analysis_data::service",
@@ -104,7 +104,7 @@ pub async fn build_team_analysis_from_session(
             their_team.len()
         );
         for (idx, player) in their_team.iter().enumerate() {
-            match parse_player_from_session(player, local_player_cell_id).await {
+            match parse_player_from_session(player, local_player_cell_id, is_custom_game).await {
                 Ok(mut player_data) => {
                     log::debug!(
                         target: "analysis_data::service",
@@ -234,51 +234,120 @@ pub async fn build_team_analysis_from_session(
     })
 }
 
+/// 选人阶段身份分类结果
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ChampSelectIdentity {
+    pub is_bot: bool,
+    pub is_obfuscated: bool,
+}
+
+/// 机器人 vs 选人隐名：
+/// - 征召敌方 summonerId=0 / 空 puuid / HIDDEN 是 LCU 匿名，**不是** bot
+/// - 仅 playerType=BOT/NPC，或自定义局里明确无人机身份时标 is_bot
+pub(crate) fn classify_champ_select_identity(
+    player_type: &str,
+    summoner_id_num: i64,
+    game_name: &str,
+    puuid: &str,
+    name_visibility: &str,
+    is_custom_game: bool,
+) -> ChampSelectIdentity {
+    let is_explicit_bot = player_type.eq_ignore_ascii_case("BOT") || player_type.eq_ignore_ascii_case("NPC");
+    let is_custom_bot = is_custom_game && summoner_id_num == 0 && game_name.is_empty() && puuid.is_empty();
+    let is_bot = is_explicit_bot || is_custom_bot;
+    let is_obfuscated =
+        !is_bot && (name_visibility.eq_ignore_ascii_case("HIDDEN") || (game_name.is_empty() && puuid.is_empty()));
+    ChampSelectIdentity { is_bot, is_obfuscated }
+}
+
+/// 兼容 LCU JSON 里 id 可能是 number 或 string（含超大 u64）。
+/// 分类只用「是否为 0」；无法解析时按 0（匿名/缺失）。
+pub(crate) fn parse_lcu_id_i64(value: &serde_json::Value) -> i64 {
+    if let Some(n) = value.as_i64() {
+        return n;
+    }
+    if let Some(n) = value.as_u64() {
+        return i64::try_from(n).unwrap_or(i64::MAX);
+    }
+    if let Some(s) = value.as_str() {
+        if let Ok(n) = s.parse::<i64>() {
+            return n;
+        }
+        if let Ok(n) = s.parse::<u64>() {
+            return i64::try_from(n).unwrap_or(i64::MAX);
+        }
+    }
+    0
+}
+
+fn lcu_id_as_string(value: &serde_json::Value) -> Option<String> {
+    if let Some(s) = value.as_str() {
+        if s.is_empty() {
+            return None;
+        }
+        return Some(s.to_string());
+    }
+    if let Some(n) = value.as_i64() {
+        return Some(n.to_string());
+    }
+    if let Some(n) = value.as_u64() {
+        return Some(n.to_string());
+    }
+    None
+}
+
 /// 从选人会话的玩家数据中解析基础信息
 async fn parse_player_from_session(
     player: &serde_json::Value,
     local_cell_id: i32,
+    is_custom_game: bool,
 ) -> Result<PlayerAnalysisData, Box<dyn std::error::Error + Send + Sync>> {
     let cell_id = player["cellId"].as_i64().unwrap_or(0) as i32;
     let display_name = player["displayName"].as_str().unwrap_or("").to_string();
-    // 兼容 LCU 返回的 summonerId 可能为 string 或 number
-    let summoner_id = if let Some(s) = player["summonerId"].as_str() {
-        Some(s.to_string())
-    } else if let Some(n) = player["summonerId"].as_i64() {
-        Some(n.to_string())
-    } else {
-        None
-    };
-
-    // 机器人判断逻辑
-    // 1. summonerId 为 0 表示机器人
-    // 2. gameName 为空字符串且隐藏名称
-    // 3. puuid 为空字符串
-    // 注意：敌方玩家在选人阶段 puuid 可能为空，这是正常的，会在后续获取战绩时修正
-    let summoner_id_num = player["summonerId"].as_i64().unwrap_or(0);
+    let summoner_id = lcu_id_as_string(&player["summonerId"]);
+    let summoner_id_num = parse_lcu_id_i64(&player["summonerId"]);
     let game_name = player["gameName"].as_str().unwrap_or("");
     let puuid = player["puuid"].as_str().unwrap_or("");
     let name_visibility = player["nameVisibilityType"].as_str().unwrap_or("");
+    let player_type = player["playerType"].as_str().unwrap_or("");
 
-    let is_bot = summoner_id_num == 0 || (game_name.is_empty() && name_visibility == "HIDDEN") || puuid.is_empty();
+    let identity = classify_champ_select_identity(
+        player_type,
+        summoner_id_num,
+        game_name,
+        puuid,
+        name_visibility,
+        is_custom_game,
+    );
+    let is_bot = identity.is_bot;
+    let resolved_display_name = if identity.is_obfuscated {
+        String::new()
+    } else {
+        display_name
+    };
+    let is_obfuscated = identity.is_obfuscated;
 
     log::debug!(
         target: "analysis_data::service",
-        "Parsed player: cellId={}, displayName='{}', gameName='{}', tagLine='{}', summonerId={}, isBot={}, puuid='{}'",
+        "Parsed player: cellId={}, displayName='{}', gameName='{}', tagLine='{}', summonerId={}, isBot={}, obfuscated={}, puuid='{}'",
         cell_id,
-        display_name,
+        resolved_display_name,
         game_name,
         player["tagLine"].as_str().unwrap_or(""),
         summoner_id_num,
         is_bot,
+        is_obfuscated,
         puuid
     );
 
     Ok(PlayerAnalysisData {
         cell_id,
-        display_name,
+        display_name: resolved_display_name,
         summoner_id,
-        puuid: player["puuid"].as_str().map(|s| s.to_string()),
+        puuid: player["puuid"]
+            .as_str()
+            .map(|s| s.to_string())
+            .filter(|s| !s.is_empty()),
         is_local: cell_id == local_cell_id,
         is_bot,
 
@@ -599,3 +668,63 @@ async fn fetch_all_players_match_stats_internal(
 // 注意：convert_match_statistics_to_player_stats 函数已被移除
 // 原因：PlayerMatchStats 已经在 get_recent_matches_by_puuid 中由通用分析器完整计算
 // 包含所有增强字段（traits, today_games, dpm, cspm, vspm 等）
+
+#[cfg(test)]
+mod identity_tests {
+    use super::{classify_champ_select_identity, parse_lcu_id_i64};
+    use serde_json::json;
+
+    #[test]
+    fn ranked_hidden_enemy_is_obfuscated_human_not_bot() {
+        let id = classify_champ_select_identity("HUMAN", 0, "", "", "HIDDEN", false);
+        assert!(!id.is_bot);
+        assert!(id.is_obfuscated);
+    }
+
+    #[test]
+    fn custom_game_empty_identity_is_bot() {
+        let id = classify_champ_select_identity("", 0, "", "", "", true);
+        assert!(id.is_bot);
+        assert!(!id.is_obfuscated);
+    }
+
+    #[test]
+    fn explicit_bot_player_type_is_bot() {
+        let id = classify_champ_select_identity("BOT", 0, "", "", "HIDDEN", false);
+        assert!(id.is_bot);
+        assert!(!id.is_obfuscated);
+    }
+
+    #[test]
+    fn normal_human_keeps_identity() {
+        let id = classify_champ_select_identity(
+            "HUMAN",
+            12345,
+            "SummonerOne",
+            "e21feb65-440d-566c-bab4-c9d5af9497c0",
+            "VISIBLE",
+            false,
+        );
+        assert!(!id.is_bot);
+        assert!(!id.is_obfuscated);
+    }
+
+    #[test]
+    fn string_summoner_id_keeps_custom_hidden_player_human() {
+        // LCU 偶发把 summonerId 序列化为字符串；旧逻辑 as_i64()→0 会误判自定义局隐名人为 bot
+        let summoner_id_num = parse_lcu_id_i64(&json!("12345"));
+        assert_eq!(summoner_id_num, 12345);
+        let id = classify_champ_select_identity("", summoner_id_num, "", "", "HIDDEN", true);
+        assert!(!id.is_bot);
+        assert!(id.is_obfuscated);
+    }
+
+    #[test]
+    fn parse_lcu_id_accepts_number_and_string() {
+        assert_eq!(parse_lcu_id_i64(&json!(42)), 42);
+        assert_eq!(parse_lcu_id_i64(&json!("42")), 42);
+        assert_eq!(parse_lcu_id_i64(&json!(0)), 0);
+        assert_eq!(parse_lcu_id_i64(&json!("0")), 0);
+        assert_eq!(parse_lcu_id_i64(&json!(null)), 0);
+    }
+}

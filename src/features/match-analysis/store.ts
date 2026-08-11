@@ -66,6 +66,8 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
         return '无限火力'
       case 1020:
         return '云顶之弈'
+      case 4310:
+        return '经典模式'
       default:
         return queueId.value > 0 ? `队列 ${queueId.value}` : '未知模式'
     }
@@ -86,6 +88,8 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
         return '🔥'
       case 1020:
         return '♟️'
+      case 4310:
+        return '⚔️'
       default:
         return '🎮'
     }
@@ -110,13 +114,28 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
         localPlayerCellId: -1
       }
 
-      myTeamStats.value = data.myTeam
-        .map((p) => (p.matchStats ? { displayName: p.displayName, ...p.matchStats } : null))
-        .filter(Boolean) as EnrichedPlayerMatchStats[]
+      // 保留与 players 同序的槽位；附带 puuid/cellId 供 TeamAnalysisCard 匹配
+      myTeamStats.value = data.myTeam.map((p) =>
+        p.matchStats
+          ? {
+              displayName: p.displayName,
+              puuid: p.puuid,
+              cellId: p.cellId,
+              ...p.matchStats
+            }
+          : null
+      ) as (EnrichedPlayerMatchStats | null)[]
 
-      enemyTeamStats.value = data.enemyTeam
-        .map((p) => (p.matchStats ? { displayName: p.displayName, ...p.matchStats } : null))
-        .filter(Boolean) as EnrichedPlayerMatchStats[]
+      enemyTeamStats.value = data.enemyTeam.map((p) =>
+        p.matchStats
+          ? {
+              displayName: p.displayName,
+              puuid: p.puuid,
+              cellId: p.cellId,
+              ...p.matchStats
+            }
+          : null
+      ) as (EnrichedPlayerMatchStats | null)[]
 
       // 2. 更新队列信息
       queueId.value = Number(data.queueId)

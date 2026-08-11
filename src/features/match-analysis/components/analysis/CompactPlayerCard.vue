@@ -2,13 +2,14 @@
   <div
     class="relative group bg-card/80 backdrop-blur-sm border-b-2 rounded-none p-1.5 transition-all duration-200 mb-2"
     :class="[
-      player.isBot
-        ? 'opacity-60 grayscale cursor-not-allowed'
+      player.isBot || identityPending
+        ? 'opacity-80 cursor-default'
         : 'hover:shadow-md hover:shadow-primary/10 hover:border-primary/30 cursor-pointer',
+      player.isBot ? 'grayscale' : '',
       isLocal ? 'border-primary' : 'border-border/40'
     ]"
     :style="isLocal ? { boxShadow: '-4px 0 12px -4px var(--color-primary)' } : {}"
-    @click="!player.isBot && $emit('select', player)"
+    @click="canSelect && $emit('select', player)"
   >
     <div class="flex items-start gap-1.5">
       <div class="flex-1">
@@ -51,14 +52,20 @@
             >
               机器人
             </div>
+            <div
+              v-else-if="identityPending"
+              class="absolute -top-1 -right-1 bg-muted-foreground/80 text-background text-[8px] px-1 py-0.5 rounded-full font-bold z-10"
+            >
+              匿名
+            </div>
           </div>
           <div class="flex flex-col justify-center min-w-0">
             <div class="flex items-center gap-1">
               <h3 class="text-xs font-bold text-foreground truncate max-w-24">
-                {{ player.displayName || '未知召唤师' }}
+                {{ nameLabel }}
               </h3>
               <div
-                v-if="player.tier"
+                v-if="player.tier && !identityPending"
                 class="px-1 py-0.5 text-[9px] font-bold rounded bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30 flex-shrink-0"
               >
                 {{ player.tier }}
@@ -110,7 +117,7 @@
               <div v-else class="w-full h-full bg-muted" />
             </div>
           </div>
-          <div v-if="playerStats && !player.isBot" class="flex items-center gap-1 flex-shrink-0">
+          <div v-if="playerStats && canShowStats" class="flex items-center gap-1 flex-shrink-0">
             <span class="text-[9px] text-muted-foreground">KDA</span>
             <div class="flex items-center gap-0.5">
               <span class="text-xs text-green-600 dark:text-green-400 font-medium">{{
@@ -126,7 +133,7 @@
               }}</span>
             </div>
           </div>
-          <div v-if="playerStats && !player.isBot" class="flex items-center gap-0.5 flex-shrink-0">
+          <div v-if="playerStats && canShowStats" class="flex items-center gap-0.5 flex-shrink-0">
             <span class="text-xs font-bold" :class="getWinRateColor(playerStats.winRate)">
               {{ playerStats.winRate?.toFixed(0) }}%
             </span>
@@ -164,8 +171,13 @@
 
         <div v-if="player.isBot" class="mt-2 text-center py-1">
           <span class="text-xs text-muted-foreground bg-muted/60 dark:bg-muted/50 px-2 py-0.5 rounded"
-            >🤖 机器人，无需分析</span
+            >机器人，无需分析</span
           >
+        </div>
+        <div v-else-if="identityPending" class="mt-2 text-center py-1">
+          <span class="text-xs text-muted-foreground bg-muted/60 dark:bg-muted/50 px-2 py-0.5 rounded">
+            选人阶段匿名 · 进对局后由 LiveClient 补全
+          </span>
         </div>
         <div v-else class="mt-2 space-y-3">
           <div v-if="recentPerformance.length > 0" class="flex flex-col gap-1">
@@ -176,7 +188,7 @@
                 :key="idx"
                 class="relative flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px]"
                 :class="[match.win ? 'bg-green-500/12 dark:bg-green-500/20' : 'bg-red-500/12 dark:bg-red-500/20']"
-                :title="`${getQueueName(match.queueId ?? 0)} - ${getChampionName(match.championId)} - ${match.win ? '胜利' : '失败'} ${match.kills}/${match.deaths}/${match.assists}`"
+                :title="`${getQueueName(match.queueId ?? 0)} - ${resolveChampionName(match.championId, match.championName)} - ${match.win ? '胜利' : '失败'} ${match.kills}/${match.deaths}/${match.assists}`"
               >
                 <div
                   class="w-4.5 h-4.5 rounded-full text-[9px] font-bold text-white leading-none flex-shrink-0 flex items-center justify-center"
@@ -187,7 +199,7 @@
                 <img
                   v-if="match.championId"
                   :src="getChampionIconUrl(match.championId)"
-                  :alt="getChampionName(match.championId)"
+                  :alt="resolveChampionName(match.championId, match.championName)"
                   class="w-5 h-5 rounded-sm object-cover"
                 />
                 <span class="font-medium">{{ match.kills || 0 }}/{{ match.deaths || 0 }}/{{ match.assists || 0 }}</span>
@@ -206,12 +218,12 @@
                 <div class="flex items-center gap-2">
                   <img
                     :src="getChampionIconUrl(champ.championId)"
-                    :alt="champ.championName || getChampionName(champ.championId)"
+                    :alt="resolveChampionName(champ.championId, champ.championName)"
                     class="w-6 h-6 rounded"
                   />
                   <div class="flex flex-col">
                     <span class="text-xs font-medium">{{
-                      champ.championName || getChampionName(champ.championId)
+                      resolveChampionName(champ.championId, champ.championName)
                     }}</span>
                     <span class="text-[10px] text-muted-foreground">{{ champ.games }}场</span>
                   </div>
@@ -268,7 +280,14 @@ import { Button } from '@/components/ui/button'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { Badge } from '@/components/ui/badge'
 import { Lightbulb } from 'lucide-vue-next'
-import { getChampionIconUrl, getChampionName, getRoleIconUrl, getSpellMeta, getQueueName } from '@/lib'
+import {
+  getChampionIconUrl,
+  getChampionName,
+  getRoleIconUrl,
+  getSpellMeta,
+  getQueueName,
+  resolveChampionName,
+} from '@/lib'
 import type { UIPlayerData } from '@/types/match-analysis'
 
 /** 对局分析玩家展示：基于 UIPlayerData，兼容选人阶段的 assignedPosition */
@@ -283,8 +302,26 @@ const props = defineProps<{
 
 const emit = defineEmits<{ select: [player: CompactPlayer] }>()
 
+/** 选人阶段敌方被 LCU 隐名是正常现象，不是机器人；身份要等进对局 LiveClient 回填 */
+const identityPending = computed(() => {
+  if (props.player.isBot) return false
+  const puuid = props.player.puuid?.trim()
+  if (puuid) return false
+  const name = props.player.displayName?.trim()
+  return !name || name === '未知召唤师'
+})
+
+const nameLabel = computed(() => {
+  if (props.player.isBot) return props.player.displayName?.trim() || '机器人'
+  if (identityPending.value) return props.isAlly === false ? '敌方选手' : '匿名玩家'
+  return props.player.displayName
+})
+
+const canSelect = computed(() => !props.player.isBot && !identityPending.value)
+const canShowStats = computed(() => !props.player.isBot && !identityPending.value)
+
 const adviceList = computed(() => props.playerStats?.advice ?? [])
-const hasAdvice = computed(() => adviceList.value.length > 0)
+const hasAdvice = computed(() => canShowStats.value && adviceList.value.length > 0)
 const analysisChampions = computed(() => props.playerStats?.favoriteChampions ?? [])
 const topTraits = computed(() => props.playerStats?.traits ?? [])
 const recentPerformance = computed(() => props.playerStats?.recentPerformance ?? [])

@@ -13,7 +13,7 @@
     </div>
   </Card>
   <div class="mt-4 text-center text-xs text-muted-foreground" v-if="teamType === 'enemy'">
-    <p>💡 敌方完整信息将在游戏开始后获取</p>
+    <p>选人阶段敌方匿名属正常；进对局后通过 LiveClient 补全姓名与战绩</p>
   </div>
 </template>
 
@@ -62,6 +62,13 @@ const playerStatsMap = computed(() => {
 
   props.teamData.players.forEach((player, index) => {
     if (!player) return
+
+    // 0. 与 players 同序的槽位（store 已按队伍顺序保留 null 槽）
+    const byIndex = props.teamStats![index]
+    if (byIndex) {
+      map.set(index, byIndex)
+      return
+    }
 
     // 通过 puuid, displayName 或 cellId 匹配战绩
     const matchedStats = props.teamStats!.find((stats) => {
