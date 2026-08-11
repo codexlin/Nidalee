@@ -1,69 +1,60 @@
 <template>
-  <Card class="transition-all duration-200 hover:shadow-lg border-border bg-card">
-    <CardHeader class="space-y-4">
-      <div class="flex items-start justify-between">
-        <div class="space-y-2 flex-1">
-          <CardTitle class="text-lg font-semibold text-card-foreground">
-            {{ title }}
-          </CardTitle>
-          <CardDescription class="text-sm text-muted-foreground leading-relaxed">
-            {{ description }}
-          </CardDescription>
+  <Card class="gap-0 py-0">
+    <CardHeader class="gap-3 px-4 py-4 sm:px-5">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0 space-y-0.5">
+          <CardTitle class="text-lg font-medium leading-tight">{{ title }}</CardTitle>
+          <CardDescription class="text-xs text-muted-foreground">{{ description }}</CardDescription>
         </div>
-        <Switch :model-value="enabled" @update:model-value="enabled = $event" class="ml-4" />
+        <Switch :model-value="enabled" class="mt-0.5 shrink-0" @update:model-value="enabled = $event" />
       </div>
     </CardHeader>
 
-    <CardContent v-if="enabled" class="space-y-6 pt-0">
-      <Separator />
-
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <Label class="text-sm font-medium text-foreground">执行延迟</Label>
-          <div class="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-            <span>{{ formatDelayDisplay(debouncedDelay) }}</span>
-            <div v-if="isDelayPending" class="h-2 w-2 bg-orange-500 rounded-full animate-pulse" title="设置保存中..." />
-            <div v-else class="h-2 w-2 bg-green-500 rounded-full" title="设置已保存" />
-          </div>
-        </div>
-
-        <div class="space-y-4">
-          <Slider
-            :model-value="delayModel"
-            @update:model-value="(val: number[] | undefined) => (delayModel = val || [0])"
-            :max="10000"
-            :min="1000"
-            :step="100"
-            class="w-full"
+    <CardContent v-if="enabled" class="space-y-4 border-t border-border/50 px-4 py-4 sm:px-5">
+      <div class="flex items-center justify-between gap-3">
+        <Label class="text-sm font-medium">执行延迟</Label>
+        <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span class="tabular-nums">{{ formatDelayDisplay(debouncedDelay) }}</span>
+          <span
+            class="size-1.5 rounded-full"
+            :class="isDelayPending ? 'animate-pulse bg-primary' : 'bg-emerald-500'"
+            :title="isDelayPending ? '设置保存中…' : '设置已保存'"
           />
-
-          <div class="flex items-center gap-3 bg-muted/50 p-3 rounded-lg">
-            <Input
-              :model-value="debouncedDelay"
-              @update:model-value="
-                (val: string | number) => (debouncedDelay = typeof val === 'string' ? parseInt(val) || 0 : val)
-              "
-              type="number"
-              :min="1000"
-              :max="10000"
-              :step="100"
-              class="w-28 text-center text-sm"
-            />
-            <span class="text-xs text-muted-foreground font-medium">毫秒</span>
-          </div>
         </div>
+      </div>
+
+      <Slider
+        :model-value="delayModel"
+        :max="10000"
+        :min="1000"
+        :step="100"
+        class="w-full"
+        @update:model-value="(val: number[] | undefined) => (delayModel = val || [0])"
+      />
+
+      <div class="flex items-center gap-2 rounded-xl surface-inset px-3 py-2">
+        <Input
+          :model-value="debouncedDelay"
+          type="number"
+          :min="1000"
+          :max="10000"
+          :step="100"
+          class="h-9 w-28 text-center text-sm tabular-nums"
+          @update:model-value="
+            (val: string | number) => (debouncedDelay = typeof val === 'string' ? parseInt(val) || 0 : val)
+          "
+        />
+        <span class="text-xs text-muted-foreground">毫秒</span>
       </div>
     </CardContent>
   </Card>
 </template>
 
 <script setup lang="ts">
-interface Props {
+defineProps<{
   title: string
   description: string
-}
-
-defineProps<Props>()
+}>()
 
 const enabled = defineModel<boolean>('enabled', { default: false })
 const delay = defineModel<number>('delay', { default: 1000 })
@@ -79,22 +70,16 @@ const {
   step: 100
 })
 
-// Slider 需要数组格式，创建计算属性处理转换
 const delayModel = computed({
-  get: () => {
-    return [debouncedDelay.value]
-  },
-  set: (value: number[] | undefined) => {
-    const newDelay = value?.[0] || 0
-    debouncedDelay.value = newDelay
+  get: () => [debouncedDelay.value],
+  set: (val: number[] | undefined) => {
+    debouncedDelay.value = val?.[0] || 0
   }
 })
 
-const formatDelayDisplay = (value: number) => {
-  if (value < 1000) {
-    return `${value}ms`
-  }
-  return `${(value / 1000).toFixed(1)}s`
+function formatDelayDisplay(val: number) {
+  if (val >= 1000) return (val / 1000).toFixed(1) + ' 秒'
+  return val + ' 毫秒'
 }
 
 onBeforeUnmount(() => {

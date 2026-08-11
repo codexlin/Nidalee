@@ -50,9 +50,9 @@ export const useAutoFunctionStore = defineStore(
 
     // 功能名称映射
     const functionNames = {
-      acceptMatch: '自动接受对局',
-      selectChampion: '自动选择英雄',
-      banChampion: '自动禁用英雄'
+      acceptMatch: '辅助接受',
+      selectChampion: '辅助选人',
+      banChampion: '辅助禁人'
     } as const
 
     // 切换自动功能开关

@@ -1,57 +1,54 @@
 <template>
-  <div class="space-y-6">
-    <!-- 简单模式 -->
-    <Card class="p-8">
-      <div class="space-y-6">
-        <div>
-          <h2 class="text-xl font-bold text-primary flex items-center gap-2">
-            <Zap class="h-5 w-5" />
-            简单模式（自动应用）
-          </h2>
-          <p class="text-sm text-muted-foreground">选人阶段自动应用符文，支持 OP.GG 推荐和用户自定义配置</p>
+  <div class="space-y-4">
+    <Card class="gap-0 overflow-hidden py-0">
+      <div class="space-y-0.5 border-b border-border/50 px-4 py-4 sm:px-5">
+        <h2 class="flex items-center gap-2 text-lg font-medium leading-tight">
+          <Zap class="size-4 text-muted-foreground" />
+          简单模式
+        </h2>
+        <p class="text-xs text-muted-foreground">选人阶段自动应用符文，支持 OP.GG 与自定义配置</p>
+      </div>
+
+      <div class="space-y-4 px-4 py-4 sm:px-5">
+        <div class="flex items-center justify-between gap-4 rounded-xl surface-inset px-3 py-3">
+          <div class="min-w-0 space-y-0.5">
+            <div class="text-sm font-medium">启用自动符文配置</div>
+            <div class="text-xs text-muted-foreground">选择英雄后自动应用最佳符文</div>
+          </div>
+          <Switch v-model="autoApply.enabled" @update:model-value="handleAutoApplyChange" />
         </div>
 
-        <div class="border-t border-dashed border-border pt-6 space-y-4">
-          <!-- 启用开关 -->
-          <div class="flex items-center justify-between gap-4">
-            <div class="space-y-1">
-              <div class="text-sm font-medium text-foreground">启用自动符文配置</div>
-              <div class="text-xs text-muted-foreground">选择英雄后自动应用最佳符文配置</div>
-            </div>
-            <Switch v-model="autoApply.enabled" @update:model-value="handleAutoApplyChange" />
-          </div>
-
-          <!-- 优先级策略 -->
-          <div class="space-y-2">
-            <div class="text-sm font-medium text-foreground">优先级策略</div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="space-y-1.5">
+            <Label class="text-sm font-medium">优先级策略</Label>
             <Select v-model:model-value="autoApply.strategy" @update:model-value="handleStrategyChange">
-              <SelectTrigger class="w-full">
+              <SelectTrigger class="h-9 w-full text-sm">
                 <SelectValue placeholder="选择策略" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="auto">
                   <div class="flex items-center gap-2">
-                    <Sparkles class="h-4 w-4" />
+                    <Sparkles class="size-3.5" />
                     <div>
-                      <div class="font-medium">智能模式（推荐）</div>
+                      <div class="text-sm font-medium">智能模式（推荐）</div>
                       <div class="text-xs text-muted-foreground">优先自定义，回退 OP.GG</div>
                     </div>
                   </div>
                 </SelectItem>
                 <SelectItem value="opgg">
                   <div class="flex items-center gap-2">
-                    <Globe class="h-4 w-4" />
+                    <Globe class="size-3.5" />
                     <div>
-                      <div class="font-medium">仅 OP.GG</div>
+                      <div class="text-sm font-medium">仅 OP.GG</div>
                       <div class="text-xs text-muted-foreground">总是使用 OP.GG 推荐</div>
                     </div>
                   </div>
                 </SelectItem>
                 <SelectItem value="custom">
                   <div class="flex items-center gap-2">
-                    <User class="h-4 w-4" />
+                    <User class="size-3.5" />
                     <div>
-                      <div class="font-medium">仅自定义</div>
+                      <div class="text-sm font-medium">仅自定义</div>
                       <div class="text-xs text-muted-foreground">只使用用户自定义配置</div>
                     </div>
                   </div>
@@ -60,11 +57,10 @@
             </Select>
           </div>
 
-          <!-- OP.GG 段位参考 -->
-          <div class="space-y-2">
-            <div class="text-sm font-medium text-foreground">OP.GG 段位参考</div>
+          <div class="space-y-1.5">
+            <Label class="text-sm font-medium">OP.GG 段位参考</Label>
             <Select v-model:model-value="autoApply.opggTier" @update:model-value="handleTierChange">
-              <SelectTrigger class="w-full">
+              <SelectTrigger class="h-9 w-full text-sm">
                 <SelectValue placeholder="选择段位" />
               </SelectTrigger>
               <SelectContent>
@@ -75,51 +71,46 @@
               </SelectContent>
             </Select>
           </div>
+        </div>
 
-          <!-- 显示提示 -->
-          <div class="flex items-center justify-between gap-4">
-            <div class="space-y-1">
-              <div class="text-sm font-medium text-foreground">显示应用成功提示</div>
-              <div class="text-xs text-muted-foreground">应用符文后显示 Toast 通知</div>
-            </div>
-            <Switch v-model="autoApply.showToast" @update:model-value="handleShowToastChange" />
+        <div class="flex items-center justify-between gap-4 rounded-xl surface-inset px-3 py-3">
+          <div class="min-w-0 space-y-0.5">
+            <div class="text-sm font-medium">显示应用成功提示</div>
+            <div class="text-xs text-muted-foreground">应用符文后显示 Toast 通知</div>
           </div>
+          <Switch v-model="autoApply.showToast" @update:model-value="handleShowToastChange" />
+        </div>
 
-          <!-- 状态显示 -->
-          <div v-if="autoApply.enabled" class="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20">
-            <div class="flex items-start gap-3">
-              <CheckCircle2 class="h-5 w-5 text-primary mt-0.5" />
-              <div class="flex-1">
-                <div class="text-sm font-medium text-primary">自动符文配置已启用</div>
-                <div class="text-xs text-muted-foreground mt-1">
-                  当前策略：{{ strategyLabel }} | OP.GG 段位：{{ autoApply.opggTier }}
-                </div>
-              </div>
+        <div
+          v-if="autoApply.enabled"
+          class="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
+        >
+          <CheckCircle2 class="mt-0.5 size-4 shrink-0 text-primary" />
+          <div class="min-w-0 space-y-0.5">
+            <div class="text-sm font-medium text-primary">自动符文配置已启用</div>
+            <div class="text-xs text-muted-foreground">
+              当前策略：{{ strategyLabel }} · OP.GG 段位：{{ autoApply.opggTier }}
             </div>
           </div>
         </div>
       </div>
     </Card>
 
-    <!-- 复杂模式 -->
-    <Card class="p-8">
-      <div class="space-y-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-xl font-bold text-primary flex items-center gap-2">
-              <Settings class="h-5 w-5" />
-              复杂模式（自定义符文配置）
-            </h2>
-            <p class="text-sm text-muted-foreground">为每个英雄和位置创建专属符文配置</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <Badge variant="outline" class="text-xs"> {{ configCount }} 个配置 </Badge>
-          </div>
+    <Card class="gap-0 overflow-hidden py-0">
+      <div class="flex flex-wrap items-start justify-between gap-3 border-b border-border/50 px-4 py-4 sm:px-5">
+        <div class="min-w-0 space-y-0.5">
+          <h2 class="flex items-center gap-2 text-lg font-medium leading-tight">
+            <Settings class="size-4 text-muted-foreground" />
+            复杂模式
+          </h2>
+          <p class="text-xs text-muted-foreground">为每个英雄和位置创建专属符文配置</p>
         </div>
-
-        <div class="border-t border-dashed border-border pt-6">
-          <RuneConfigList />
-        </div>
+        <span class="rounded-full surface-inset px-2.5 py-1 text-xs tabular-nums text-muted-foreground">
+          {{ configCount }} 个配置
+        </span>
+      </div>
+      <div class="px-4 py-4 sm:px-5">
+        <RuneConfigList />
       </div>
     </Card>
   </div>
@@ -131,7 +122,6 @@ import { Zap, Sparkles, Globe, User, Settings, CheckCircle2 } from 'lucide-vue-n
 import type { AcceptableValue } from 'reka-ui'
 import RuneConfigList from './RuneConfigList.vue'
 
-// 确保 userRuneStore 在组件加载时初始化
 onMounted(async () => {
   if (!useUserRuneStore().isLoaded) {
     await useUserRuneStore().loadFromStore()
@@ -139,12 +129,9 @@ onMounted(async () => {
 })
 
 const userRuneStore = useUserRuneStore()
-
-// 响应式状态
 const autoApply = computed(() => userRuneStore.autoApply)
 const configCount = computed(() => userRuneStore.configCount)
 
-// 策略标签映射
 const strategyLabel = computed(() => {
   const labels = {
     auto: '智能模式',
@@ -154,7 +141,6 @@ const strategyLabel = computed(() => {
   return labels[autoApply.value.strategy]
 })
 
-// 事件处理
 const handleAutoApplyChange = async (enabled: boolean) => {
   await userRuneStore.updateAutoApply({ enabled })
 }

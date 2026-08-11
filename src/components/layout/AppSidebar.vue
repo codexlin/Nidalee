@@ -178,7 +178,6 @@ import {
   Radar,
   BarChart3,
   Settings,
-  Sparkles,
   Swords,
   Trophy,
   TestTube,
@@ -228,12 +227,7 @@ const analysisItems = [
 // 游戏辅助
 const gameAssistItems = [
   {
-    title: '游戏小助手',
-    url: '/game-helper',
-    icon: Sparkles
-  },
-  {
-    title: 'OP.GG查询',
+    title: '构建推荐',
     url: '/opgg',
     icon: BarChart3
   }

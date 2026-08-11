@@ -2,6 +2,15 @@
   <div class="flex items-center gap-1.5">
     <NotificationHoverCard title="系统活动" side="bottom" align="end" />
 
+    <FloatIconButton
+      class="p-2"
+      :title="settingsStore.isDark ? '切换浅色模式' : '切换深色模式'"
+      @click="settingsStore.toggleTheme(!settingsStore.isDark)"
+    >
+      <Sun v-if="settingsStore.isDark" :size="16" />
+      <Moon v-else :size="16" />
+    </FloatIconButton>
+
     <FloatIconButton class="p-2" title="刷新数据" @click="refreshData">
       <RefreshCw :size="16" />
     </FloatIconButton>
@@ -13,12 +22,13 @@
 </template>
 
 <script setup lang="ts">
-import { Github, RefreshCw } from 'lucide-vue-next'
+import { Github, Moon, RefreshCw, Sun } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import FloatIconButton from '@/components/common/FloatIconButton.vue'
 
 const activityLogger = useActivityLogger()
 const connectionStore = useConnectionStore()
+const settingsStore = useSettingsStore()
 
 const { isConnected } = storeToRefs(connectionStore)
 const { updateSummonerAndMatches } = useSummonerAndMatchUpdater()

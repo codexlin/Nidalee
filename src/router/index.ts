@@ -13,8 +13,7 @@ const productionRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/game-helper',
-    name: 'game-helper',
-    component: () => import('../views/GameHelperView.vue')
+    redirect: { path: '/settings', query: { tab: 'game' } }
   },
   {
     path: '/match-analysis',
