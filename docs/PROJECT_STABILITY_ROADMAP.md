@@ -222,7 +222,7 @@ refactor(static-catalog): centralize versioned game metadata
 
 以下文件达到“需要审查职责”的规模，但不能仅按行数机械拆分：
 
-- `src/lib/dataApi.ts`：按静态数据、图标 URL、版本和外部数据源拆分。
+- `src/lib/dataApi.ts`：已抽出 `lib/api/httpClient` + `lib/api/externalBuilds`（OP.GG/Hextech IPC）；DDragon/CDragon HTTP 仍留在 `dataApi.ts`，有改动动机再拆。
 - `src/lib/index.ts`：只保留稳定的公共导出；实现逻辑移动到对应领域模块。
 - `GameDetailDialog.vue`：把请求生命周期、队伍区块和参赛者展示拆开。
 - `SummonerCard.vue`：拆为身份、排位、升级进度和会话统计区块。
