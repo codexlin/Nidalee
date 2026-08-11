@@ -31,6 +31,18 @@ enum RefreshFlight {
 
 static REFRESH_FLIGHT: Lazy<Mutex<RefreshFlight>> = Lazy::new(|| Mutex::new(RefreshFlight::Idle));
 
+/// 测试用：替换 `refresh_static_catalogs_inner`，便于验证 singleflight / 取消语义
+#[cfg(test)]
+static TEST_REFRESH_HOOK: Lazy<Mutex<Option<std::sync::Arc<TestRefreshHook>>>> = Lazy::new(|| Mutex::new(None));
+
+#[cfg(test)]
+struct TestRefreshHook {
+    calls: std::sync::atomic::AtomicUsize,
+    started: tokio::sync::mpsc::UnboundedSender<()>,
+    release: std::sync::Arc<tokio::sync::Notify>,
+    result: RefreshResult,
+}
+
 const CHAMPIONS_FILE: &str = "champions.json";
 const SPELLS_FILE: &str = "summoner-spells.json";
 const META_FILE: &str = "meta.json";
@@ -367,6 +379,20 @@ async fn refresh_static_catalogs_inner() -> RefreshResult {
     }
 }
 
+async fn run_refresh_work() -> RefreshResult {
+    #[cfg(test)]
+    {
+        let hook = TEST_REFRESH_HOOK.lock().await.clone();
+        if let Some(hook) = hook {
+            hook.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let _ = hook.started.send(());
+            hook.release.notified().await;
+            return hook.result.clone();
+        }
+    }
+    refresh_static_catalogs_inner().await
+}
+
 /// 版本变化时强制刷新。并发调用共享同一次执行结果（true singleflight）。
 ///
 /// coordinator 在独立 task 中运行：调用方取消不会中断刷新，也不会把 flight 卡在 `Running`。
@@ -378,7 +404,7 @@ pub async fn refresh_static_catalogs_if_stale() -> Result<bool, String> {
                 let (tx, rx) = oneshot::channel();
                 *flight = RefreshFlight::Running { waiters: vec![tx] };
                 tokio::spawn(async move {
-                    let result = refresh_static_catalogs_inner().await;
+                    let result = run_refresh_work().await;
                     let waiters = {
                         let mut flight = REFRESH_FLIGHT.lock().await;
                         match std::mem::replace(&mut *flight, RefreshFlight::Idle) {
@@ -561,5 +587,92 @@ mod tests {
         let (version, _, _, loaded_at) = find_newest_disk_bundle().expect("bundle");
         assert_eq!(version, "16.3.1");
         assert_eq!(loaded_at, 300);
+    }
+}
+
+#[cfg(test)]
+mod flight_tests {
+    use super::*;
+    use std::sync::atomic::Ordering;
+    use std::sync::Arc;
+    use tokio::sync::Notify;
+
+    static FLIGHT_TEST_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+
+    async fn install_hook(result: RefreshResult) -> (Arc<TestRefreshHook>, tokio::sync::mpsc::UnboundedReceiver<()>) {
+        let (started_tx, started_rx) = tokio::sync::mpsc::unbounded_channel();
+        let release = Arc::new(Notify::new());
+        let hook = Arc::new(TestRefreshHook {
+            calls: std::sync::atomic::AtomicUsize::new(0),
+            started: started_tx,
+            release: release.clone(),
+            result,
+        });
+        *TEST_REFRESH_HOOK.lock().await = Some(hook.clone());
+        (hook, started_rx)
+    }
+
+    async fn clear_hook_and_flight() {
+        *TEST_REFRESH_HOOK.lock().await = None;
+        *REFRESH_FLIGHT.lock().await = RefreshFlight::Idle;
+    }
+
+    #[tokio::test]
+    async fn concurrent_waiters_share_single_refresh() {
+        let _guard = FLIGHT_TEST_LOCK.lock().await;
+        clear_hook_and_flight().await;
+
+        let (hook, mut started_rx) = install_hook(Ok(true)).await;
+
+        let a = tokio::spawn(refresh_static_catalogs_if_stale());
+        started_rx.recv().await.expect("coordinator started");
+
+        let b = tokio::spawn(refresh_static_catalogs_if_stale());
+        let c = tokio::spawn(refresh_static_catalogs_if_stale());
+        tokio::task::yield_now().await;
+
+        assert_eq!(hook.calls.load(Ordering::SeqCst), 1);
+        hook.release.notify_waiters();
+
+        assert_eq!(a.await.unwrap(), Ok(true));
+        assert_eq!(b.await.unwrap(), Ok(true));
+        assert_eq!(c.await.unwrap(), Ok(true));
+        assert_eq!(hook.calls.load(Ordering::SeqCst), 1);
+
+        clear_hook_and_flight().await;
+    }
+
+    #[tokio::test]
+    async fn cancelling_first_caller_does_not_stick_flight() {
+        let _guard = FLIGHT_TEST_LOCK.lock().await;
+        clear_hook_and_flight().await;
+
+        let (hook, mut started_rx) = install_hook(Ok(true)).await;
+
+        let first = tokio::spawn(refresh_static_catalogs_if_stale());
+        started_rx.recv().await.expect("coordinator started");
+        first.abort();
+        let _ = first.await;
+
+        let second = tokio::spawn(refresh_static_catalogs_if_stale());
+        tokio::task::yield_now().await;
+        assert_eq!(
+            hook.calls.load(Ordering::SeqCst),
+            1,
+            "cancelled caller must not start a second refresh"
+        );
+
+        hook.release.notify_waiters();
+        assert_eq!(second.await.unwrap(), Ok(true));
+
+        // flight 已恢复 Idle：下一次刷新应再次进入 hook
+        let (hook2, mut started_rx2) = install_hook(Ok(false)).await;
+        let third = tokio::spawn(refresh_static_catalogs_if_stale());
+        started_rx2.recv().await.expect("second flight started");
+        hook2.release.notify_waiters();
+        assert_eq!(third.await.unwrap(), Ok(false));
+        assert_eq!(hook2.calls.load(Ordering::SeqCst), 1);
+
+        clear_hook_and_flight().await;
     }
 }
