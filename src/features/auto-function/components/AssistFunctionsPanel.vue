@@ -68,11 +68,7 @@
             </div>
             <p class="text-xs text-muted-foreground">禁用阶段按顺序禁英雄</p>
           </div>
-          <Switch
-            :model-value="ban.enabled"
-            class="mt-0.5 shrink-0"
-            @update:model-value="(v) => (ban.enabled = v)"
-          />
+          <Switch :model-value="ban.enabled" class="mt-0.5 shrink-0" @update:model-value="(v) => (ban.enabled = v)" />
         </div>
         <div v-if="ban.enabled" class="mt-3 space-y-3">
           <ChampionPickRow

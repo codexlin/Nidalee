@@ -22,10 +22,7 @@
             <div class="text-sm font-medium">启用本地 AI</div>
             <div class="text-xs text-muted-foreground">关闭后仪表盘不展示 AI 入口</div>
           </div>
-          <Switch
-            :model-value="aiSettings.enabled"
-            @update:model-value="(v: boolean) => aiSettings.setEnabled(v)"
-          />
+          <Switch :model-value="aiSettings.enabled" @update:model-value="(v: boolean) => aiSettings.setEnabled(v)" />
         </div>
 
         <div v-if="aiSettings.enabled" class="space-y-3">
@@ -76,16 +73,8 @@
           </div>
 
           <div class="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" class="h-8" :disabled="aiBusy" @click="saveEndpoint">
-              保存端点
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              class="h-8"
-              :disabled="aiBusy || !aiSettings.hasApiKey"
-              @click="testAi"
-            >
+            <Button variant="outline" size="sm" class="h-8" :disabled="aiBusy" @click="saveEndpoint"> 保存端点 </Button>
+            <Button variant="outline" size="sm" class="h-8" :disabled="aiBusy || !aiSettings.hasApiKey" @click="testAi">
               测试连接
             </Button>
           </div>

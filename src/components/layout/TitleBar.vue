@@ -34,17 +34,17 @@
             <rect width="10" height="1" x="1" y="5.5" fill="currentColor" />
           </svg>
         </div>
-      <div class="titlebar-button" id="titlebar-maximize" @click="toggleMaximize">
-        <!-- 还原 -->
-        <svg v-if="isMaximized" width="12" height="12" viewBox="0 0 12 12">
-          <rect x="3" y="1.5" width="7.5" height="7.5" fill="none" stroke="currentColor" />
-          <rect x="1.5" y="3" width="7.5" height="7.5" fill="var(--background)" stroke="currentColor" />
-        </svg>
-        <!-- 最大化 -->
-        <svg v-else width="12" height="12" viewBox="0 0 12 12">
-          <rect width="9" height="9" x="1.5" y="1.5" fill="none" stroke="currentColor" />
-        </svg>
-      </div>
+        <div class="titlebar-button" id="titlebar-maximize" @click="toggleMaximize">
+          <!-- 还原 -->
+          <svg v-if="isMaximized" width="12" height="12" viewBox="0 0 12 12">
+            <rect x="3" y="1.5" width="7.5" height="7.5" fill="none" stroke="currentColor" />
+            <rect x="1.5" y="3" width="7.5" height="7.5" fill="var(--background)" stroke="currentColor" />
+          </svg>
+          <!-- 最大化 -->
+          <svg v-else width="12" height="12" viewBox="0 0 12 12">
+            <rect width="9" height="9" x="1.5" y="1.5" fill="none" stroke="currentColor" />
+          </svg>
+        </div>
         <div class="titlebar-button close" id="titlebar-close" @click="hideWindow">
           <svg width="12" height="12" viewBox="0 0 12 12">
             <path

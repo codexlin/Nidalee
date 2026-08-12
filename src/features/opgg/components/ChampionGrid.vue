@@ -5,12 +5,7 @@
     <div class="shrink-0 space-y-2 border-b border-border/60 p-3">
       <div class="relative">
         <Search class="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          v-model="query"
-          class="h-8 pl-8 text-sm"
-          placeholder="搜索英雄…"
-          aria-label="搜索英雄"
-        />
+        <Input v-model="query" class="h-8 pl-8 text-sm" placeholder="搜索英雄…" aria-label="搜索英雄" />
       </div>
       <div class="flex flex-wrap gap-0.5 rounded-full surface-inset p-0.5">
         <button
@@ -19,9 +14,7 @@
           type="button"
           class="rounded-full px-2.5 py-1 text-sm font-medium transition-colors"
           :class="
-            activeRole === tag.value
-              ? 'bg-primary/15 text-primary'
-              : 'text-muted-foreground hover:text-foreground'
+            activeRole === tag.value ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
           "
           @click="activeRole = tag.value"
         >

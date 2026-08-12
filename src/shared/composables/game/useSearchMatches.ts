@@ -63,9 +63,7 @@ export function useSearchMatches() {
         currentIndex.value = 0
         // 直接设置当前结果，不依赖watch
         currentResult.value = matches[0]
-        searchHistoryStore.add(
-          matches.map((m) => m.displayName || m.summonerInfo?.displayName || '').filter(Boolean)
-        )
+        searchHistoryStore.add(matches.map((m) => m.displayName || m.summonerInfo?.displayName || '').filter(Boolean))
         return matches
       } else {
         // 查询无结果时清空当前结果

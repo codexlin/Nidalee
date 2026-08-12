@@ -22,9 +22,7 @@
           type="button"
           class="rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
           :class="
-            activePosition === pos.value
-              ? 'bg-primary/15 text-primary'
-              : 'text-muted-foreground hover:text-foreground'
+            activePosition === pos.value ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
           "
           @click="activePosition = pos.value"
         >
@@ -78,11 +76,7 @@
         {{ mode === 'hextech' ? '暂无海克斯强度榜' : '暂无强度榜数据' }}
       </p>
       <p class="text-xs text-muted-foreground">
-        {{
-          mode === 'hextech'
-            ? '稍后重试，或切换到 OP.GG 查看其它模式'
-            : '调整区域 / 模式后刷新，或从上方切换数据源'
-        }}
+        {{ mode === 'hextech' ? '稍后重试，或切换到 OP.GG 查看其它模式' : '调整区域 / 模式后刷新，或从上方切换数据源' }}
       </p>
     </div>
 
@@ -99,10 +93,7 @@
                 @click="toggleSort('rank')"
               >
                 #
-                <ChevronsUpDown
-                  v-if="sortKey !== 'rank'"
-                  class="size-3.5 opacity-50"
-                />
+                <ChevronsUpDown v-if="sortKey !== 'rank'" class="size-3.5 opacity-50" />
                 <ChevronDown
                   v-else
                   class="size-3.5 transition-transform"
@@ -121,10 +112,7 @@
                 @click="toggleSort('winRate')"
               >
                 {{ primaryRateLabel(mode) }}
-                <ChevronsUpDown
-                  v-if="sortKey !== 'winRate'"
-                  class="size-3.5 opacity-50"
-                />
+                <ChevronsUpDown v-if="sortKey !== 'winRate'" class="size-3.5 opacity-50" />
                 <ChevronDown
                   v-else
                   class="size-3.5 transition-transform"
@@ -141,10 +129,7 @@
                 @click="toggleSort('pickRate')"
               >
                 选取
-                <ChevronsUpDown
-                  v-if="sortKey !== 'pickRate'"
-                  class="size-3.5 opacity-50"
-                />
+                <ChevronsUpDown v-if="sortKey !== 'pickRate'" class="size-3.5 opacity-50" />
                 <ChevronDown
                   v-else
                   class="size-3.5 transition-transform"
@@ -162,10 +147,7 @@
                 @click="toggleSort('play')"
               >
                 场次
-                <ChevronsUpDown
-                  v-if="sortKey !== 'play'"
-                  class="size-3.5 opacity-50"
-                />
+                <ChevronsUpDown v-if="sortKey !== 'play'" class="size-3.5 opacity-50" />
                 <ChevronDown
                   v-else
                   class="size-3.5 transition-transform"
@@ -187,11 +169,7 @@
             <td class="px-4 py-2.5 text-muted-foreground">{{ row.rank }}</td>
             <td class="px-3 py-2.5">
               <div class="flex min-w-0 items-center gap-3">
-                <img
-                  :src="getChampionIconUrl(row.championId)"
-                  alt=""
-                  class="size-9 rounded-lg ring-1 ring-border/50"
-                />
+                <img :src="getChampionIconUrl(row.championId)" alt="" class="size-9 rounded-lg ring-1 ring-border/50" />
                 <span class="truncate font-medium">{{ getChampionName(row.championId) }}</span>
               </div>
             </td>
@@ -245,13 +223,7 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronsUpDown } from 'lucide-vue-next'
 import { getChampionIconUrl, getChampionName } from '@/lib'
-import {
-  primaryRateLabel,
-  showBanColumn,
-  showCounterColumn,
-  showRoleColumn,
-  usesLanePosition
-} from '../types/modes'
+import { primaryRateLabel, showBanColumn, showCounterColumn, showRoleColumn, usesLanePosition } from '../types/modes'
 
 type SortKey = 'rank' | 'winRate' | 'pickRate' | 'play'
 type SortDir = 'asc' | 'desc'

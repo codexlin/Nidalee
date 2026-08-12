@@ -79,9 +79,7 @@
             :class="
               cn(
                 'inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors',
-                !settingsStore.isDark
-                  ? 'border-primary bg-accent shadow'
-                  : 'border-muted hover:border-primary/40'
+                !settingsStore.isDark ? 'border-primary bg-accent shadow' : 'border-muted hover:border-primary/40'
               )
             "
             @click="() => settingsStore.toggleTheme(false)"
@@ -94,9 +92,7 @@
             :class="
               cn(
                 'inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors',
-                settingsStore.isDark
-                  ? 'border-primary bg-accent shadow'
-                  : 'border-muted hover:border-primary/40'
+                settingsStore.isDark ? 'border-primary bg-accent shadow' : 'border-muted hover:border-primary/40'
               )
             "
             @click="() => settingsStore.toggleTheme(true)"

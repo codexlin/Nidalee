@@ -36,17 +36,11 @@
         <div class="overflow-hidden rounded-xl surface-inset">
           <ScrollArea class="h-[min(520px,calc(85vh-240px))] w-full">
             <div class="p-2">
-              <div
-                v-if="loadingChampions"
-                class="grid grid-cols-[repeat(auto-fill,3.25rem)] justify-start gap-1"
-              >
+              <div v-if="loadingChampions" class="grid grid-cols-[repeat(auto-fill,3.25rem)] justify-start gap-1">
                 <Skeleton v-for="i in 40" :key="i" class="size-[3.25rem] rounded-lg" />
               </div>
 
-              <div
-                v-else-if="championsError"
-                class="flex flex-col items-center justify-center gap-3 py-16 text-center"
-              >
+              <div v-else-if="championsError" class="flex flex-col items-center justify-center gap-3 py-16 text-center">
                 <div class="flex size-12 items-center justify-center rounded-xl bg-destructive/10">
                   <Search class="size-5 text-destructive" />
                 </div>
@@ -111,10 +105,7 @@
           <p class="text-center text-sm text-muted-foreground">正在加载皮肤数据…</p>
         </div>
 
-        <div
-          v-else-if="skinsError"
-          class="flex flex-col items-center justify-center gap-3 py-16 text-center"
-        >
+        <div v-else-if="skinsError" class="flex flex-col items-center justify-center gap-3 py-16 text-center">
           <div class="flex size-12 items-center justify-center rounded-xl bg-destructive/10">
             <X class="size-5 text-destructive" />
           </div>
@@ -144,9 +135,7 @@
                 :alt="skin.name"
                 class="aspect-[1.7] w-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
-              <div
-                class="absolute inset-0 z-10 bg-black/40 transition-colors duration-300 group-hover:bg-black/20"
-              />
+              <div class="absolute inset-0 z-10 bg-black/40 transition-colors duration-300 group-hover:bg-black/20" />
 
               <div
                 v-if="applyingSkinId === skin.id"
@@ -171,10 +160,7 @@
             </div>
           </div>
 
-          <div
-            v-if="!championSkins.length"
-            class="flex flex-col items-center justify-center gap-2 py-16 text-center"
-          >
+          <div v-if="!championSkins.length" class="flex flex-col items-center justify-center gap-2 py-16 text-center">
             <div class="flex size-12 items-center justify-center rounded-xl surface-inset">
               <Users class="size-5 text-muted-foreground" />
             </div>
@@ -284,8 +270,7 @@ const LoadingSpinner = defineComponent({
     return () =>
       h('div', { class: 'flex items-center justify-center' }, [
         h('span', {
-          class:
-            'inline-block size-8 animate-spin rounded-full border-4 border-primary border-t-transparent'
+          class: 'inline-block size-8 animate-spin rounded-full border-4 border-primary border-t-transparent'
         })
       ])
   }

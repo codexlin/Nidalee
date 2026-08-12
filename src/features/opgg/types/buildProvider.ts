@@ -6,10 +6,7 @@ export type BuildProviderId = 'opgg' | 'hextech' | 'lol101'
 
 export type BuildWorkspaceView = 'tier' | 'build'
 
-export type BuildProviderCapability =
-  | 'tierList'
-  | 'championBuild'
-  | 'applyRunes'
+export type BuildProviderCapability = 'tierList' | 'championBuild' | 'applyRunes'
 
 export interface BuildProviderMeta {
   id: BuildProviderId

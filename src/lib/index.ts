@@ -67,11 +67,9 @@ export const getChampionIconUrl = (championId: number | string | null): string =
 const MODE_CHAMPION_ALIAS_RE = /^(Jade_|Ruby_)/i
 
 /** 正式召唤师峡谷英雄：排除模式变体（id≥10000 或 Jade_/Ruby_ 前缀） */
-export const isStandardChampionId = (id: number): boolean =>
-  Number.isFinite(id) && id > 0 && id < 10000
+export const isStandardChampionId = (id: number): boolean => Number.isFinite(id) && id > 0 && id < 10000
 
-export const isStandardChampionAlias = (alias: string): boolean =>
-  !!alias && !MODE_CHAMPION_ALIAS_RE.test(alias)
+export const isStandardChampionAlias = (alias: string): boolean => !!alias && !MODE_CHAMPION_ALIAS_RE.test(alias)
 
 /** Community Dragon / LCU 摘要条目 */
 export const isStandardChampion = (c: { id: number; alias?: string }): boolean =>

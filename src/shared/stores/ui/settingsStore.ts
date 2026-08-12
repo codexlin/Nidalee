@@ -1,10 +1,5 @@
 import { colors, radiusOptions, styles } from '@/lib/theme'
-import {
-  isMatchModeKey,
-  matchModeToQueueIds,
-  normalizeMatchModeKey,
-  type MatchModeKey
-} from '@/common/queueCatalog'
+import { isMatchModeKey, matchModeToQueueIds, normalizeMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
 
 export const useSettingsStore = defineStore(
   'settings',

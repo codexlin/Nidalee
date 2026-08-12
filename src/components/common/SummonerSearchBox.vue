@@ -22,9 +22,7 @@
           {{ loading ? '查询中' : '查询' }}
         </FloatIconButton>
       </form>
-      <p v-if="!compact" class="mt-2 text-xs text-muted-foreground">
-        支持批量查询，使用英文逗号分隔多名召唤师
-      </p>
+      <p v-if="!compact" class="mt-2 text-xs text-muted-foreground">支持批量查询，使用英文逗号分隔多名召唤师</p>
     </div>
 
     <!-- 空态：最近搜索 -->

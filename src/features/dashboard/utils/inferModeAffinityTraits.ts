@@ -8,13 +8,7 @@ function countQueue(games: MatchPerformance[], queueId: number): number {
   return games.filter((g) => Number(g.queueId) === queueId).length
 }
 
-function makeTrait(
-  key: string,
-  name: string,
-  count: number,
-  total: number,
-  description: string
-): DeterministicTrait {
+function makeTrait(key: string, name: string, count: number, total: number, description: string): DeterministicTrait {
   return {
     key,
     name,
@@ -109,9 +103,7 @@ export function inferModeAffinityTraits(games: MatchPerformance[] | null | undef
     const count = countQueue(list, q.id)
     if (passes(count, total)) {
       const pct = Math.round((count / total) * 100)
-      return [
-        makeTrait(q.key, q.name, count, total, `最近 ${count}/${total} 场在打${q.name}（${pct}%）。`)
-      ]
+      return [makeTrait(q.key, q.name, count, total, `最近 ${count}/${total} 场在打${q.name}（${pct}%）。`)]
     }
   }
 

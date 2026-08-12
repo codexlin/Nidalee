@@ -1,15 +1,8 @@
 <template>
   <div class="space-y-3">
     <div class="relative">
-      <Search
-        class="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
-      />
-      <Input
-        v-model="searchText"
-        class="h-9 pl-8 text-sm"
-        placeholder="搜索英雄名称或别名…"
-        aria-label="搜索英雄"
-      />
+      <Search class="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+      <Input v-model="searchText" class="h-9 pl-8 text-sm" placeholder="搜索英雄名称或别名…" aria-label="搜索英雄" />
       <button
         v-if="searchText"
         type="button"
@@ -32,20 +25,12 @@
     <div class="overflow-hidden rounded-xl surface-inset">
       <ScrollArea class="h-[min(520px,calc(85vh-220px))] w-full">
         <div class="p-3">
-          <div
-            v-if="showInitialLoading"
-            class="flex flex-col items-center justify-center gap-2 py-16 text-center"
-          >
-            <div
-              class="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
-            />
+          <div v-if="showInitialLoading" class="flex flex-col items-center justify-center gap-2 py-16 text-center">
+            <div class="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             <p class="text-sm text-muted-foreground">加载英雄列表…</p>
           </div>
 
-          <div
-            v-else-if="errorMessage"
-            class="flex flex-col items-center justify-center gap-3 py-16 text-center"
-          >
+          <div v-else-if="errorMessage" class="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <p class="text-sm font-medium text-destructive">加载失败</p>
             <p class="max-w-md text-xs text-muted-foreground">{{ errorMessage }}</p>
             <Button size="sm" class="h-8" @click="() => refetch()">重新加载</Button>
@@ -68,9 +53,7 @@
                   loading="lazy"
                   draggable="false"
                 />
-                <span class="w-full truncate text-[11px] leading-tight text-muted-foreground">{{
-                  champion.name
-                }}</span>
+                <span class="w-full truncate text-[11px] leading-tight text-muted-foreground">{{ champion.name }}</span>
               </button>
             </div>
 
@@ -107,9 +90,7 @@ const champions = computed(() =>
 )
 
 /** 仅无缓存时显示全屏 loading；有缓存时即时展示 */
-const showInitialLoading = computed(
-  () => (isPending.value || isLoading.value) && champions.value.length === 0
-)
+const showInitialLoading = computed(() => (isPending.value || isLoading.value) && champions.value.length === 0)
 
 const errorMessage = computed(() => {
   if (champions.value.length) return null
@@ -120,8 +101,6 @@ const errorMessage = computed(() => {
 const filteredChampions = computed(() => {
   const q = searchText.value.trim().toLowerCase()
   if (!q) return champions.value
-  return champions.value.filter(
-    (c) => c.name.toLowerCase().includes(q) || c.alias.toLowerCase().includes(q)
-  )
+  return champions.value.filter((c) => c.name.toLowerCase().includes(q) || c.alias.toLowerCase().includes(q))
 })
 </script>

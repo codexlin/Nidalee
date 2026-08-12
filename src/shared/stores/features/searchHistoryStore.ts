@@ -7,9 +7,7 @@ export const useSearchHistoryStore = defineStore(
     const items = ref<string[]>([])
 
     const add = (names: string | string[]) => {
-      const list = (Array.isArray(names) ? names : [names])
-        .map((n) => n.trim())
-        .filter(Boolean)
+      const list = (Array.isArray(names) ? names : [names]).map((n) => n.trim()).filter(Boolean)
       if (!list.length) return
 
       let next = [...items.value]

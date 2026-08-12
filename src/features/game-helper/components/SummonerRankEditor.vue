@@ -15,12 +15,7 @@
       <Select v-model="rankTier">
         <SelectTrigger class="h-9 w-full text-sm sm:w-[11rem]">
           <span class="flex min-w-0 items-center gap-2">
-            <img
-              v-if="getTierIconUrl(rankTier)"
-              :src="getTierIconUrl(rankTier)"
-              alt=""
-              class="size-5 shrink-0"
-            />
+            <img v-if="getTierIconUrl(rankTier)" :src="getTierIconUrl(rankTier)" alt="" class="size-5 shrink-0" />
             <span class="truncate">{{ tierLabelMap[rankTier] || rankTier }}</span>
           </span>
         </SelectTrigger>
@@ -77,12 +72,7 @@
         <Select v-model="rankTier">
           <SelectTrigger class="h-9 w-full text-sm sm:w-[11rem]">
             <span class="flex min-w-0 items-center gap-2">
-              <img
-                v-if="getTierIconUrl(rankTier)"
-                :src="getTierIconUrl(rankTier)"
-                alt=""
-                class="size-5 shrink-0"
-              />
+              <img v-if="getTierIconUrl(rankTier)" :src="getTierIconUrl(rankTier)" alt="" class="size-5 shrink-0" />
               <span class="truncate">{{ tierLabelMap[rankTier] || rankTier }}</span>
             </span>
           </SelectTrigger>

@@ -69,12 +69,7 @@
           class="grid items-center gap-2 border-b border-border/40 px-2.5 py-2 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto]"
         >
           <div class="flex min-w-0 items-center gap-2">
-            <img
-              :src="aug.iconUrl"
-              alt=""
-              class="size-8 shrink-0 rounded-md ring-1 ring-border/50"
-              @error="fadeImg"
-            />
+            <img :src="aug.iconUrl" alt="" class="size-8 shrink-0 rounded-md ring-1 ring-border/50" @error="fadeImg" />
             <div class="min-w-0">
               <p class="truncate text-sm font-medium">{{ aug.name }}</p>
               <p class="text-xs text-muted-foreground">
@@ -226,16 +221,14 @@ watch(
   }
 )
 
-const kpis = computed(
-  (): StatKpiItem[] => [
-    { label: '胜率', value: pct(summary.value.winRate) },
-    { label: '选取', value: pct(summary.value.pickRate) },
-    {
-      label: 'Tier',
-      value: summary.value.tier && summary.value.tier > 0 ? String(summary.value.tier) : '—'
-    }
-  ]
-)
+const kpis = computed((): StatKpiItem[] => [
+  { label: '胜率', value: pct(summary.value.winRate) },
+  { label: '选取', value: pct(summary.value.pickRate) },
+  {
+    label: 'Tier',
+    value: summary.value.tier && summary.value.tier > 0 ? String(summary.value.tier) : '—'
+  }
+])
 
 const pct = (n: number | null | undefined) => `${((n ?? 0) * 100).toFixed(1)}%`
 

@@ -84,9 +84,7 @@ export function useHextechData(options?: {
     staleTime: STALE_MS,
     gcTime: GC_MS,
     refetchOnWindowFocus: false,
-    enabled: computed(
-      () => (toValue(options?.detailEnabled) ?? false) && championId.value > 0
-    )
+    enabled: computed(() => (toValue(options?.detailEnabled) ?? false) && championId.value > 0)
   })
 
   const tierListAsOpgg = computed((): OpggTierList | null => {
@@ -114,11 +112,9 @@ export function useHextechData(options?: {
     championId.value = id
   }
 
-  const refreshTierList = () =>
-    queryClient.invalidateQueries({ queryKey: hextechTierListQueryKey() })
+  const refreshTierList = () => queryClient.invalidateQueries({ queryKey: hextechTierListQueryKey() })
 
-  const refreshDetail = () =>
-    queryClient.invalidateQueries({ queryKey: ['hextech', 'detail'] })
+  const refreshDetail = () => queryClient.invalidateQueries({ queryKey: ['hextech', 'detail'] })
 
   const refreshCurrent = () => {
     if (toValue(options?.detailEnabled)) return refreshDetail()

@@ -1,9 +1,5 @@
 <template>
-  <div
-    class="titlebar-status no-drag"
-    :class="{ 'is-offline': !isConnected }"
-    :title="statusTitle"
-  >
+  <div class="titlebar-status no-drag" :class="{ 'is-offline': !isConnected }" :title="statusTitle">
     <span :class="['status-dot', isConnected ? 'is-online' : 'is-offline']" />
     <span class="status-name">
       {{ isConnected ? summonerInfo?.displayName || '未知召唤师' : '未连接' }}
