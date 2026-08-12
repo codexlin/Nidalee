@@ -65,7 +65,7 @@ const navItems = [
   { title: '仪表盘', url: '/', icon: LayoutDashboard },
   { title: '对局分析', url: '/match-analysis', icon: Swords },
   { title: '战绩查询', url: '/match-search', icon: Search },
-  { title: '构建推荐', url: '/opgg', icon: Sparkles },
+  { title: '构建中心', url: '/opgg', icon: Sparkles },
   { title: '设置', url: '/settings', icon: Settings }
 ] as const
 

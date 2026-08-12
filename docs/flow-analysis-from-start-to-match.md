@@ -209,7 +209,7 @@ ChampSelectManager.handleChampSelectChange(session)
   ↓
 gameStore.updateChampSelectSession(session)
   ↓
-触发自动选人检查 (useAutoRune, useAutoChampion)
+触发自动选人检查（useAutoBuild、useAutoChampion）
 ```
 
 ### 4.3 自动选人逻辑
@@ -424,7 +424,7 @@ has_lol_process()
 │  │  业务处理 Composables                                   │  │
 │  │  - useGamePhaseManager → 处理游戏阶段变化                │  │
 │  │  - useChampSelectManager → 处理英雄选择                  │  │
-│  │  - useAutoRune → 自动符文                               │  │
+│  │  - useAutoBuild → 自动构建                              │  │
 │  │  - useAutoChampion → 自动选人                            │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │  ┌───────────────────────────────────────────────────────────┐  │

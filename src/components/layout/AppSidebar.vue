@@ -227,7 +227,7 @@ const analysisItems = [
 // 游戏辅助
 const gameAssistItems = [
   {
-    title: '构建推荐',
+    title: '构建中心',
     url: '/opgg',
     icon: BarChart3
   }

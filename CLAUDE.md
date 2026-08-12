@@ -225,6 +225,18 @@ Understanding the data lifecycle helps optimize caching and reduce unnecessary A
 
 ---
 
+### Build Center Ownership
+
+- Provider recommendations are transient server state owned by Vue Query.
+- User-owned build snapshots and auto-build policy are owned only by `buildPresetStore` and persisted in `build-presets.json`.
+- Settings controls behavior only; recommendation browsing and preset editing live in the Build Center.
+- Direct recommendation apply, saved preset apply, and automatic apply all go through `useBuildApplication` and the single Rust command `apply_rune_selection`.
+- Future items/spells/skill orders extend `BuildPreset.components`; do not add provider-specific stores or application commands.
+
+See `docs/BUILD_CENTER_ARCHITECTURE.md` and `docs/RUNE_SYSTEM_GUIDE.md`.
+
+---
+
 ### Dynamic Data (WS-主, HTTP-snapshot 兜底)
 **Definition**: Data that changes frequently during gameplay.
 

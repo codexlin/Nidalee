@@ -4,11 +4,7 @@
       <FloatIconButton class="p-2" title="返回强度榜" aria-label="返回强度榜" @click="emit('back')">
         <ArrowLeft class="size-4" />
       </FloatIconButton>
-      <img
-        :src="getChampionIconUrl(summary.championId)"
-        alt=""
-        class="size-11 rounded-xl ring-1 ring-border"
-      />
+      <img :src="getChampionIconUrl(summary.championId)" alt="" class="size-11 rounded-xl ring-1 ring-border" />
       <div class="min-w-0">
         <h2 class="text-lg font-medium leading-tight">{{ getChampionName(summary.championId) }}</h2>
         <p class="mt-0.5 text-xs text-muted-foreground">
@@ -29,9 +25,7 @@
           :key="index"
           class="grid items-center gap-2 border-b border-border/40 px-2.5 py-2 last:border-b-0 sm:grid-cols-[1.5rem_minmax(0,1fr)_auto] sm:gap-3 sm:px-3"
         >
-          <span
-            class="flex size-5 items-center justify-center rounded bg-primary/10 text-xs font-bold text-primary"
-          >
+          <span class="flex size-5 items-center justify-center rounded bg-primary/10 text-xs font-bold text-primary">
             {{ index + 1 }}
           </span>
 
@@ -94,15 +88,17 @@
             </div>
           </div>
 
-          <RateColumns
-            :win-rate="safeRate(rune.win, rune.play)"
-            :pick-rate="rune.pickRate"
-            :games="rune.play"
-          >
-            <Button size="sm" class="h-7 px-2.5 text-xs" @click="emit('apply-runes', index)">
-              <Wand2 class="size-3" />
-              应用
-            </Button>
+          <RateColumns :win-rate="safeRate(rune.win, rune.play)" :pick-rate="rune.pickRate" :games="rune.play">
+            <div class="flex items-center gap-1">
+              <Button size="sm" variant="outline" class="h-7 px-2 text-xs" @click="emit('save-runes', index)">
+                <BookmarkPlus class="size-3" />
+                保存
+              </Button>
+              <Button size="sm" class="h-7 px-2.5 text-xs" @click="emit('apply-runes', index)">
+                <Wand2 class="size-3" />
+                应用
+              </Button>
+            </div>
           </RateColumns>
         </div>
       </div>
@@ -263,7 +259,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, ChevronDown, Wand2 } from 'lucide-vue-next'
+import { ArrowLeft, BookmarkPlus, ChevronDown, Wand2 } from 'lucide-vue-next'
 import FloatIconButton from '@/components/common/FloatIconButton.vue'
 import { getChampionIconUrl, getChampionName, getPerkIconUrlByCommunityDragon, getSpellMeta } from '@/lib'
 import ItemRows from './ItemRows.vue'
@@ -283,6 +279,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   back: []
   'apply-runes': [index: number]
+  'save-runes': [index: number]
 }>()
 
 const { data: communityDragonPerks } = useCommunityDragonPerksQuery()
@@ -316,7 +313,7 @@ const positionLabel = computed(() => {
   return positionMap[summary.value.position] || summary.value.position || '未知分路'
 })
 
-const pct = (v?: number | null) => (v == null || Number.isNaN(v) ? '—' : `${(v * 100).toFixed(1)}%`)
+const pct = (v?: number | null) => (v === null || v === undefined || Number.isNaN(v) ? '—' : `${(v * 100).toFixed(1)}%`)
 const safeRate = (win: number, play: number) => (play > 0 ? win / play : 0)
 
 const kpis = computed((): StatKpiItem[] => {
@@ -330,7 +327,7 @@ const kpis = computed((): StatKpiItem[] => {
   }
   items.push({
     label: 'KDA',
-    value: summary.value.kda == null ? '—' : summary.value.kda.toFixed(2)
+    value: summary.value.kda === null || summary.value.kda === undefined ? '—' : summary.value.kda.toFixed(2)
   })
   return items
 })

@@ -227,7 +227,7 @@ refactor(static-catalog): centralize versioned game metadata
 - `GameDetailDialog.vue`：把请求生命周期、队伍区块和参赛者展示拆开。
 - `SummonerCard.vue`：拆为身份、排位、升级进度和会话统计区块。
 - `GameStats.vue`：分离筛选状态、列表数据和空状态展示。
-- `RunePerkPicker.vue`：分离符文选择规则与视觉列表。
+- `RuneSelectionPicker.vue`：符文选择规则与视觉列表已收敛到构建中心方案编辑器。
 - `DataCollectionTestView.vue`：确认只在开发环境可达，避免测试工具进入正式用户路径。
 
 ### 拆分规则

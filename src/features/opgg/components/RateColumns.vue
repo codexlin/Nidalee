@@ -21,12 +21,12 @@ defineProps<{
 }>()
 
 const formatPct = (v?: number | null) => {
-  if (v == null || Number.isNaN(v)) return '—'
+  if (v === null || v === undefined || Number.isNaN(v)) return '—'
   return `${(v * 100).toFixed(1)}%`
 }
 
 const formatPlay = (n?: number | null) => {
-  if (n == null) return '—'
+  if (n === null || n === undefined) return '—'
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
   return String(n)
 }

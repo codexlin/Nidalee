@@ -118,13 +118,13 @@
       >
         <Sparkles class="mt-0.5 size-4 shrink-0 text-primary" />
         <span class="min-w-0 space-y-0.5">
-          <span class="block text-sm font-medium">符文辅助已移至「符文配置」</span>
-          <span class="block text-xs text-muted-foreground">支持智能匹配、OP.GG 推荐与自定义配置</span>
+          <span class="block text-sm font-medium">符文辅助已移至「自动构建」</span>
+          <span class="block text-xs text-muted-foreground">这里只设置应用策略，方案统一在构建中心管理</span>
         </span>
       </button>
     </div>
 
-    <!-- 符文配置 -->
+    <!-- 自动构建 -->
     <div v-else-if="activeTab === 'runes'" class="space-y-4">
       <RuneSettingsTab />
     </div>
@@ -170,7 +170,7 @@ const tabs = [
   { id: 'appearance', label: '外观设置', icon: Palette },
   { id: 'game', label: '游戏设置', icon: Gamepad2 },
   { id: 'automation', label: '辅助功能', icon: Zap },
-  { id: 'runes', label: '符文配置', icon: Sparkles },
+  { id: 'runes', label: '自动构建', icon: Sparkles },
   { id: 'shortcuts', label: '快捷键设置', icon: Keyboard }
 ] as const
 

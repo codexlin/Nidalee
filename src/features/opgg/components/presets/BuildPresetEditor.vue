@@ -15,7 +15,7 @@
         <div class="min-w-0">
           <h3 class="flex items-center gap-2 text-base font-semibold">
             <Sparkles class="size-4 text-primary" />
-            {{ isEditing ? '编辑自定义符文' : '新建自定义符文' }}
+            {{ isEditing ? '编辑构建方案' : '新建构建方案' }}
           </h3>
           <p class="mt-0.5 text-xs text-muted-foreground">设置适用条件并完成一套 9 枚符文。</p>
         </div>
@@ -157,7 +157,7 @@
         </div>
 
         <div class="p-4 sm:p-5">
-          <RunePerkPicker
+          <RuneSelectionPicker
             :primary-style-id="formData.primaryStyleId"
             :sub-style-id="formData.subStyleId"
             :selected-perk-ids="formData.selectedPerkIds"
@@ -181,24 +181,32 @@ import { invoke } from '@tauri-apps/api/core'
 import { toast } from 'vue-sonner'
 import { ArrowLeft, Check, CheckCircle2, Download, FileInput, Sparkles } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
-import { useUserRuneStore, type RuneConfig } from '@/shared/stores/features/userRuneStore'
-import RunePerkPicker from './RunePerkPicker.vue'
+import { fetchOpggChampionBuild } from '@/lib/dataApi'
+import { useBuildPresetStore } from '@/shared/stores/features/buildPresetStore'
+import {
+  isBuildPosition,
+  validateRuneSelection,
+  type BuildPreset,
+  type BuildPresetScope,
+  type BuildPresetSource
+} from '@/shared/models/buildPreset'
+import RuneSelectionPicker from './RuneSelectionPicker.vue'
 
-type RuneScope = RuneConfig['scope']
+type RuneScope = BuildPresetScope
 
 interface Props {
-  config?: RuneConfig | null
+  preset?: BuildPreset | null
   saving?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  config: null,
+  preset: null,
   saving: false
 })
 
 const emit = defineEmits<{
   close: []
-  save: [config: RuneConfig]
+  save: [preset: BuildPreset]
 }>()
 
 const scopeOptions: Array<{ value: RuneScope; label: string; description: string }> = [
@@ -216,7 +224,7 @@ const positions = [
 ]
 
 const { data: allChampionsData } = useChampions()
-const userRuneStore = useUserRuneStore()
+const presetStore = useBuildPresetStore()
 const championSearch = ref('')
 const championSearchFocused = ref(false)
 const importSource = ref<'opgg' | 'client' | null>(null)
@@ -231,10 +239,10 @@ const formData = reactive({
   subStyleId: 8200,
   selectedPerkIds: [] as number[],
   isDefault: false,
-  source: 'custom' as RuneConfig['source']
+  source: { kind: 'custom' } as BuildPresetSource
 })
 
-const isEditing = computed(() => props.config !== null)
+const isEditing = computed(() => props.preset !== null)
 const isImporting = computed(() => importSource.value !== null)
 const needsChampion = computed(() => formData.scope !== 'position-all')
 const needsPosition = computed(() => formData.scope !== 'champion-all')
@@ -258,37 +266,50 @@ const isFormValid = computed(() => {
   if (!formData.name.trim()) return false
   if (needsChampion.value && formData.championId === null) return false
   if (needsPosition.value && formData.position === null) return false
-  return formData.selectedPerkIds.length === 9
+  return (
+    validateRuneSelection({
+      primaryStyleId: formData.primaryStyleId,
+      subStyleId: formData.subStyleId,
+      selectedPerkIds: formData.selectedPerkIds
+    }) === null
+  )
 })
 
 const formStatusText = computed(() => {
   if (!formData.name.trim()) return '请填写配置名称'
   if (needsChampion.value && formData.championId === null) return '请选择适用英雄'
   if (needsPosition.value && formData.position === null) return '请选择适用位置'
-  if (formData.selectedPerkIds.length !== 9) return `符文尚未完整：${formData.selectedPerkIds.length} / 9`
+  const runeError = validateRuneSelection({
+    primaryStyleId: formData.primaryStyleId,
+    subStyleId: formData.subStyleId,
+    selectedPerkIds: formData.selectedPerkIds
+  })
+  if (runeError) return runeError
   return '配置完整，可以保存'
 })
 
 const resetForm = () => {
-  const config = props.config
+  const preset = props.preset
+  const target = preset?.applicability
+  const runes = preset?.components.runes
   Object.assign(formData, {
-    name: config?.name ?? '',
-    championId: config?.championId ?? null,
-    championName: config?.championName ?? null,
-    position: config?.position ?? null,
-    scope: config?.scope ?? 'champion-position',
-    primaryStyleId: config?.primaryStyleId ?? 8000,
-    subStyleId: config?.subStyleId ?? 8200,
-    selectedPerkIds: [...(config?.selectedPerkIds ?? [])],
-    isDefault: config?.isDefault ?? false,
-    source: config?.source ?? 'custom'
+    name: preset?.name ?? '',
+    championId: target?.championId ?? null,
+    championName: target?.championName ?? null,
+    position: target?.position ?? null,
+    scope: target?.scope ?? 'champion-position',
+    primaryStyleId: runes?.primaryStyleId ?? 8000,
+    subStyleId: runes?.subStyleId ?? 8200,
+    selectedPerkIds: [...(runes?.selectedPerkIds ?? [])],
+    isDefault: preset?.isDefault ?? false,
+    source: preset ? { ...preset.source } : { kind: 'custom' }
   })
-  championSearch.value = config?.championName ?? ''
+  championSearch.value = target?.championName ?? ''
   championSearchFocused.value = false
   importSource.value = null
 }
 
-watch(() => props.config, resetForm, { immediate: true })
+watch(() => props.preset, resetForm, { immediate: true })
 
 const scopeOptionClass = (scope: RuneScope) =>
   cn(
@@ -319,13 +340,15 @@ const handleImportFromOpgg = async () => {
 
   importSource.value = 'opgg'
   try {
-    const build = await invoke<OpggChampionBuild>('get_opgg_champion_build', {
+    const response = await fetchOpggChampionBuild({
       region: 'kr',
       mode: 'ranked',
-      championId: formData.championId,
+      champion_id: formData.championId,
       position: formData.position,
-      tier: userRuneStore.autoApply.opggTier
+      tier: presetStore.autoBuild.opggTier
     })
+    if (!response.success || !response.data) throw new Error(response.error || '推荐数据暂不可用')
+    const build = response.data
     const bestPerk = build.perks?.[0]
     if (!bestPerk || bestPerk.perks.length !== 9) {
       throw new Error('推荐数据不完整')
@@ -333,7 +356,14 @@ const handleImportFromOpgg = async () => {
     formData.primaryStyleId = bestPerk.primaryId
     formData.subStyleId = bestPerk.secondaryId
     formData.selectedPerkIds = [...bestPerk.perks]
-    formData.source = 'opgg'
+    formData.source = {
+      kind: 'opgg',
+      provider: 'opgg',
+      region: 'kr',
+      mode: 'ranked',
+      tier: presetStore.autoBuild.opggTier,
+      capturedAt: Date.now()
+    }
     toast.success('已载入 OP.GG 推荐符文')
   } catch (error) {
     toast.error(`载入失败：${error instanceof Error ? error.message : String(error)}`)
@@ -352,7 +382,7 @@ const handleLoadFromClient = async () => {
     formData.primaryStyleId = currentPage.primaryStyleId
     formData.subStyleId = currentPage.subStyleId
     formData.selectedPerkIds = [...currentPage.selectedPerkIds]
-    formData.source = 'import'
+    formData.source = { kind: 'client', capturedAt: Date.now() }
     toast.success('已载入客户端当前符文页')
   } catch (error) {
     toast.error(`载入失败：${error instanceof Error ? error.message : String(error)}`)
@@ -364,21 +394,28 @@ const handleLoadFromClient = async () => {
 const handleSave = () => {
   if (!isFormValid.value || props.saving) return
 
+  const now = Date.now()
   emit('save', {
-    id: props.config?.id ?? crypto.randomUUID(),
+    id: props.preset?.id ?? crypto.randomUUID(),
     name: formData.name.trim(),
-    championId: needsChampion.value ? formData.championId : null,
-    championName: needsChampion.value ? formData.championName : null,
-    position: needsPosition.value ? formData.position : null,
-    scope: formData.scope,
-    primaryStyleId: formData.primaryStyleId,
-    subStyleId: formData.subStyleId,
-    selectedPerkIds: [...formData.selectedPerkIds],
+    applicability: {
+      championId: needsChampion.value ? formData.championId : null,
+      championName: needsChampion.value ? formData.championName : null,
+      position: needsPosition.value && isBuildPosition(formData.position) ? formData.position : null,
+      scope: formData.scope
+    },
+    components: {
+      runes: {
+        primaryStyleId: formData.primaryStyleId,
+        subStyleId: formData.subStyleId,
+        selectedPerkIds: [...formData.selectedPerkIds]
+      }
+    },
+    source: { ...formData.source },
     isDefault: formData.isDefault,
-    source: formData.source,
-    createdAt: props.config?.createdAt ?? Date.now(),
-    updatedAt: Date.now(),
-    usageCount: props.config?.usageCount ?? 0
+    createdAt: props.preset?.createdAt ?? now,
+    updatedAt: now,
+    usageCount: props.preset?.usageCount ?? 0
   })
 }
 
