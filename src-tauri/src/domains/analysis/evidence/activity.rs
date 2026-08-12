@@ -86,19 +86,12 @@ fn near_river(x: f64, y: f64) -> bool {
 }
 
 fn in_fountain(x: f64, y: f64, team_id: i32) -> bool {
-    let (fx, fy) = if team_id == 100 {
-        BLUE_FOUNTAIN
-    } else {
-        RED_FOUNTAIN
-    };
+    let (fx, fy) = if team_id == 100 { BLUE_FOUNTAIN } else { RED_FOUNTAIN };
     ((x - fx).powi(2) + (y - fy).powi(2)).sqrt() <= FOUNTAIN_RADIUS
 }
 
 /// 在有序帧中找 `timestamp <= event_ms` 的最近目标快照
-pub fn nearest_snapshot_at<'a>(
-    frames: &'a [(i64, FrameSnapshot)],
-    event_ms: i64,
-) -> Option<&'a FrameSnapshot> {
+pub fn nearest_snapshot_at(frames: &[(i64, FrameSnapshot)], event_ms: i64) -> Option<&FrameSnapshot> {
     frames
         .iter()
         .rev()

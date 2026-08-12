@@ -26,6 +26,7 @@ use crate::domains::analysis::pipeline::{
     OrchestratorInput,
 };
 use crate::infrastructure::data_services::champion_data::service::get_champion_info;
+use crate::infrastructure::data_services::static_catalog::ensure_static_catalogs;
 use crate::shared::types::{AdvicePerspective, GameAdvice, MultiPositionAnalysis, PlayerMatchStats};
 
 use super::fetch_types::FetchStage;
@@ -127,6 +128,7 @@ pub async fn analyze_matches_for_puuid(
     puuid: &str,
     request: &MatchAnalysisRequest,
 ) -> Result<MatchAnalysisResult, String> {
+    ensure_static_catalogs().await?;
     analyze_matches_with_fetcher(&lcu_fetcher(client), puuid, request).await
 }
 
@@ -250,6 +252,8 @@ pub fn to_multi_position_analysis(result: &MatchAnalysisResult) -> MultiPosition
         position_stats: result.position_stats.clone(),
         main_position: result.main_position.clone(),
         overall_stats: result.overall_stats.clone(),
+        ranked_stats: result.ranked_stats.clone(),
+        other_stats: result.other_stats.clone(),
     }
 }
 

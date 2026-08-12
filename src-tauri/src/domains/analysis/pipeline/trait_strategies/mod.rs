@@ -31,7 +31,6 @@ pub struct TraitAnalysisContext<'a> {
 
 /// 特征策略抽象
 pub trait TraitStrategy {
-    fn id(&self) -> &'static str;
     fn analyze(&self, ctx: &TraitAnalysisContext<'_>) -> Vec<DeterministicTrait>;
 }
 

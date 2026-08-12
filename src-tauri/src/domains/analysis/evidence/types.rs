@@ -382,9 +382,14 @@ pub struct KeyEventEvidence {
     /// 击杀者是否为对线对手（仅死亡事件）
     #[serde(default)]
     pub lane_opponent_kill: bool,
+    /// 目标玩家在事件邻近帧的粗活动（「我在干嘛」）
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub activity_context: Option<super::activity::ActivityContext>,
+    /// 对位玩家在事件邻近帧的粗活动（「对位在干嘛」）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub opponent_activity_context: Option<super::activity::ActivityContext>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub item_id: Option<i32>,
@@ -436,6 +441,7 @@ impl KeyEventEvidence {
             assistant_count: 0,
             lane_opponent_kill: false,
             activity_context: None,
+            opponent_activity_context: None,
             item_id: None,
             skill_slot: None,
             actor_participant_id: None,

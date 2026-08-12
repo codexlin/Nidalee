@@ -3,7 +3,11 @@ use ts_rs::TS;
 
 /// 前端可见的 AI 配置（绝不包含明文 Key）
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../src/types/generated/AiPublicSettings.ts", rename_all = "camelCase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/AiPublicSettings.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AiPublicSettings {
     pub enabled: bool,

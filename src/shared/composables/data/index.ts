@@ -6,4 +6,3 @@
  */
 
 export * from './useVersionedData'
-export * from './useAutoVersionCheck'

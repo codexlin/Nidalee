@@ -30,4 +30,5 @@
 
 ## 更多项目约定
 
-架构、命令与数据分层见 [`CLAUDE.md`](./CLAUDE.md)。
+- 架构、命令与数据分层见 [`CLAUDE.md`](./CLAUDE.md)
+- UI 设计语言见 [`DESIGN.md`](./DESIGN.md)（浮钮 `rounded-2xl` / 主卡 `rounded-xl`）

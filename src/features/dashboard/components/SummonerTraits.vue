@@ -1,48 +1,28 @@
 <template>
   <div v-if="featuredCards.length || minorCards.length" class="space-y-3">
-    <div class="flex items-center justify-between gap-2">
-      <h4 class="font-semibold flex items-center">
+    <div class="space-y-1">
+      <h4 class="text-base font-semibold flex items-center">
         <UserCheck class="h-4 w-4 mr-2 text-muted-foreground" />
         召唤师特征
       </h4>
-      <span class="text-xs text-muted-foreground">{{ sectionHint }}</span>
+      <p class="text-xs text-muted-foreground">{{ sectionHint }}</p>
     </div>
 
     <div class="space-y-2">
-      <div
-        v-for="card in featuredCards"
-        :key="card.key"
-        class="flex items-center gap-3 rounded-xl border px-3 py-2.5"
-        :class="
-          card.key === primaryKey
-            ? 'border-primary/45 bg-primary/5'
-            : 'border-border/70 bg-muted/10'
-        "
-      >
+      <div v-for="card in featuredCards" :key="card.key" class="surface-inset flex items-center gap-3 px-3 py-2.5">
         <div
-          class="h-10 w-10 shrink-0 rounded-lg flex items-center justify-center text-sm font-bold"
-          :class="
-            card.key === primaryKey
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-muted-foreground'
-          "
+          class="h-10 w-10 shrink-0 rounded-lg flex items-center justify-center text-sm font-bold bg-muted text-muted-foreground overflow-hidden"
         >
-          {{ card.iconText }}
+          <img v-if="card.iconUrl" :src="card.iconUrl" :alt="card.name" class="h-6 w-6 object-contain" />
+          <template v-else>{{ card.iconText }}</template>
         </div>
 
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-1.5 min-w-0">
-            <span
-              class="truncate"
-              :class="card.key === primaryKey ? 'text-sm font-semibold' : 'text-sm font-medium'"
-            >
+            <span class="truncate text-sm font-medium">
               {{ card.name }}
             </span>
-            <Badge
-              v-if="card.key === primaryKey"
-              variant="secondary"
-              class="text-[10px] px-1.5 py-0 h-4 shrink-0"
-            >
+            <Badge v-if="card.key === primaryKey" variant="secondary" class="text-xs px-1.5 py-0 h-5 shrink-0">
               主要
             </Badge>
           </div>
@@ -65,12 +45,12 @@
 
         <div class="shrink-0 text-right pl-1 min-w-[3.25rem]">
           <div
-            class="text-xl font-semibold tabular-nums leading-none tracking-tight"
+            class="text-lg font-semibold tabular-nums leading-none tracking-tight"
             :class="winRateClass(card.winRate)"
           >
             {{ card.winRate.toFixed(0) }}%
           </div>
-          <div class="text-[10px] text-muted-foreground mt-1">胜率</div>
+          <div class="text-xs text-muted-foreground mt-1">胜率</div>
         </div>
       </div>
     </div>
@@ -80,9 +60,7 @@
       <span v-for="(card, idx) in minorCards" :key="card.key">
         <span v-if="idx > 0"> · </span>
         {{ card.name }} {{ card.games }}场
-        <span class="tabular-nums" :class="winRateClass(card.winRate)">
-          ({{ card.winRate.toFixed(0) }}%)
-        </span>
+        <span class="tabular-nums" :class="winRateClass(card.winRate)"> ({{ card.winRate.toFixed(0) }}%) </span>
       </span>
     </p>
   </div>
@@ -92,6 +70,7 @@
 import { UserCheck } from 'lucide-vue-next'
 import { getPositionLabel } from '@/common/positionLabels'
 import { isMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
+import { getRoleIconUrl } from '@/lib'
 
 /** 少于该场数不当完整身份卡（1–2 场波动太大） */
 const MIN_FEATURED_GAMES = 3
@@ -100,6 +79,7 @@ interface IdentityCard {
   key: string
   name: string
   iconText: string
+  iconUrl?: string
   games: number
   wins: number
   losses: number
@@ -117,33 +97,29 @@ const props = defineProps<{
   filterMode?: string | null
 }>()
 
-/** 排位筛选才用分路身份；娱乐 / 全部 / 未知分路走模式身份 */
+const hasPositionStats = computed(() =>
+  (props.positionStats || []).some((p) => p.position !== 'UNKNOWN' && p.games > 0)
+)
+
+/** 排位筛选用分路；搜索页未传 mode 且有分路数据时也用分路；其余走模式身份 */
 const usePositionIdentity = computed(() => {
   const mode = props.filterMode
-  if (!mode || !isMatchModeKey(mode)) return false
+  if (!mode || !isMatchModeKey(mode)) {
+    return hasPositionStats.value
+  }
   const key = mode as MatchModeKey
   return key === 'mixedRanked' || key === '420' || key === '440'
 })
 
-const sectionHint = computed(() => (usePositionIdentity.value ? '分路近况' : '模式近况'))
+const sectionHint = computed(() =>
+  usePositionIdentity.value ? '按分路近况归纳主要身份' : '按当前模式近况归纳主要身份'
+)
 
 /** 胜率以 50% 为界：正绿负红，刚好 50 用正文色 */
 const winRateClass = (rate: number): string => {
   if (rate > 50) return 'text-emerald-600 dark:text-emerald-400'
   if (rate < 50) return 'text-rose-600 dark:text-rose-400'
   return 'text-foreground'
-}
-
-const positionIcon = (code: string): string => {
-  const icons: Record<string, string> = {
-    TOP: '上',
-    JUNGLE: '野',
-    MID: '中',
-    ADC: '下',
-    SUPPORT: '辅',
-    UNKNOWN: '?'
-  }
-  return icons[code] || getPositionLabel(code).slice(0, 1)
 }
 
 const modeIcon = (key: string, name: string): string => {
@@ -171,7 +147,8 @@ const positionCards = computed((): IdentityCard[] => {
     return {
       key: `pos_${pos.position}`,
       name: getPositionLabel(pos.position),
-      iconText: positionIcon(pos.position),
+      iconText: getPositionLabel(pos.position).slice(0, 1),
+      iconUrl: getRoleIconUrl(pos.position) || undefined,
       games: pos.games,
       wins: pos.wins,
       losses: pos.games - pos.wins,
@@ -190,10 +167,7 @@ const positionCards = computed((): IdentityCard[] => {
 const modeIdentityCards = computed((): IdentityCard[] => {
   if (positionCards.value.length) return []
   const traits = (props.analysisTraits || []).filter(
-    (t) =>
-      t.supportsConclusion &&
-      t.key.startsWith('mode_affinity') &&
-      t.key !== 'mode_affinity_ranked'
+    (t) => t.supportsConclusion && t.key.startsWith('mode_affinity') && t.key !== 'mode_affinity_ranked'
   )
   const stats = props.matchStatistics
   const total = stats?.totalGames || 0
@@ -219,9 +193,7 @@ const modeIdentityCards = computed((): IdentityCard[] => {
   })
 })
 
-const identityCards = computed(() =>
-  positionCards.value.length ? positionCards.value : modeIdentityCards.value
-)
+const identityCards = computed(() => (positionCards.value.length ? positionCards.value : modeIdentityCards.value))
 
 const primaryKey = computed(() => {
   if (usePositionIdentity.value && props.mainPosition && props.mainPosition !== 'UNKNOWN') {

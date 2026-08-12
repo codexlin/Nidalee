@@ -6,8 +6,8 @@
 //! - 通用枚举
 
 // 包含类型模块
+#[allow(clippy::module_inception)] // Preserve the established `shared::types::*` API.
 pub mod types;
-pub mod types_api;
 
 // Re-export commonly used types
 pub use types::*;

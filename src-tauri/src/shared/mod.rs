@@ -8,11 +8,9 @@
 //! - 性能优化
 
 pub mod errors;
-pub mod optimized_polling;
 pub mod request;
 pub mod types;
 pub mod utils;
 
 // Re-export commonly used items
 pub use errors::{NidaleeError, Result};
-pub use types::*;

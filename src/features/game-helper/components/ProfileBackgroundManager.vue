@@ -1,199 +1,192 @@
 <template>
-  <div class="space-y-6">
-    <Card>
-      <CardHeader>
-        <CardTitle class="flex items-center gap-2">
-          <Users class="h-5 w-5" />
-          生涯背景设置
-          <span class="text-muted-foreground">选择英雄并设置皮肤为生涯背景</span>
+  <component :is="embedded ? 'div' : Card" :class="embedded ? 'space-y-3' : 'gap-0 py-0'">
+    <template v-if="!embedded">
+      <CardHeader class="gap-1 px-4 py-3 sm:px-5">
+        <CardTitle class="flex items-center gap-2 text-base font-medium">
+          <Users class="size-4 shrink-0 text-muted-foreground" />
+          生涯背景
         </CardTitle>
+        <p class="text-xs text-muted-foreground">选择英雄并设置皮肤为生涯背景</p>
       </CardHeader>
-      <CardContent>
-        <div v-if="!selectedChampion">
-          <div class="relative mb-4">
-            <Search class="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              v-model="searchText"
-              placeholder="搜索英雄名称或别名..."
-              class="pl-12 h-12 text-base bg-background/50 border-border/50 focus:border-primary/50 focus:bg-background transition-all duration-200 shadow-sm focus:shadow-md"
-            />
-            <div v-if="searchText" class="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <button
-                @click="searchText = ''"
-                class="h-7 w-7 rounded-full bg-secondary hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-all duration-200 border border-border hover:border-destructive/30 group"
-                title="清除搜索"
-              >
-                <X class="h-4 w-4 text-muted-foreground group-hover:text-destructive transition-colors duration-200" />
-              </button>
-            </div>
-          </div>
-          <ScrollArea class="h-[min(600px,calc(85vh-200px))] w-full rounded-lg border border-border bg-muted/20">
-            <div class="p-6">
-              <div v-if="loadingChampions" class="flex flex-col items-center justify-center py-16 text-center">
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full max-w-3xl mx-auto">
-                  <Skeleton
-                    v-for="i in 12"
-                    :key="i"
-                    class="h-24 rounded-xl bg-gradient-to-br from-muted/60 to-muted/30 animate-pulse shadow-md"
-                  />
-                </div>
+    </template>
+
+    <component :is="embedded ? 'div' : CardContent" :class="embedded ? '' : 'px-4 pb-4 sm:px-5'">
+      <div v-if="!selectedChampion" class="space-y-3">
+        <div class="relative">
+          <Search
+            class="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            v-model="searchText"
+            class="h-9 pl-8 text-sm"
+            placeholder="搜索英雄名称或别名…"
+            aria-label="搜索英雄"
+          />
+          <button
+            v-if="searchText"
+            type="button"
+            class="absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="清除搜索"
+            @click="searchText = ''"
+          >
+            <X class="size-3.5" />
+          </button>
+        </div>
+
+        <div class="overflow-hidden rounded-xl surface-inset">
+          <ScrollArea class="h-[min(520px,calc(85vh-240px))] w-full">
+            <div class="p-2">
+              <div v-if="loadingChampions" class="grid grid-cols-[repeat(auto-fill,3.25rem)] justify-start gap-1">
+                <Skeleton v-for="i in 40" :key="i" class="size-[3.25rem] rounded-lg" />
               </div>
-              <div v-else-if="championsError" class="flex flex-col items-center justify-center py-16 text-center">
-                <div
-                  class="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mb-6 border border-destructive/20"
-                >
-                  <Search class="h-8 w-8 text-destructive" />
+
+              <div v-else-if="championsError" class="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                <div class="flex size-12 items-center justify-center rounded-xl bg-destructive/10">
+                  <Search class="size-5 text-destructive" />
                 </div>
-                <p class="text-destructive font-semibold text-lg mb-2">加载失败</p>
-                <p class="text-sm text-muted-foreground mb-6 max-w-md">{{ championsError }}</p>
-                <button
-                  @click="() => reloadChampions()"
-                  class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
-                >
-                  重新加载
-                </button>
+                <div class="space-y-1">
+                  <p class="text-base font-medium text-destructive">加载失败</p>
+                  <p class="max-w-md text-sm text-muted-foreground">{{ championsError.message }}</p>
+                </div>
+                <Button size="sm" class="h-9" @click="() => reloadChampions()">重新加载</Button>
               </div>
-              <div v-else>
-                <div class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2">
-                  <div
+
+              <template v-else>
+                <div class="grid grid-cols-[repeat(auto-fill,3.25rem)] justify-start gap-1">
+                  <button
                     v-for="champion in filteredChampions"
                     :key="champion.id"
-                    class="card-hover flex flex-col items-center p-2 rounded-lg cursor-pointer bg-muted"
+                    type="button"
+                    class="flex w-[3.25rem] flex-col items-center gap-0.5 rounded-lg p-0.5 text-center transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    :title="champion.name"
                     @click="handleChampionSelect(champion)"
                   >
-                    <div class="relative overflow-hidden rounded-full">
-                      <img
-                        :src="getChampionIconUrlByAlias(champion.alias)"
-                        :alt="champion.name"
-                        class="w-12 h-12 rounded-full object-cover transition-transform duration-300 ease-in-out"
-                        loading="lazy"
-                      />
-                    </div>
-                    <span class="text-xs font-normal text-foreground tracking-tight mt-1 duration-200">
-                      {{ champion.name }}
-                    </span>
-                  </div>
+                    <img
+                      :src="getChampionIconUrl(champion.id)"
+                      :alt="champion.name"
+                      class="size-10 rounded-lg object-cover ring-1 ring-border/50"
+                      loading="lazy"
+                    />
+                    <span class="w-full truncate text-[10px] leading-tight text-muted-foreground">{{
+                      champion.name
+                    }}</span>
+                  </button>
                 </div>
+
                 <div
-                  v-if="!loadingChampions && !championsError && filteredChampions.length === 0"
-                  class="flex flex-col items-center justify-center py-20 text-center"
+                  v-if="!filteredChampions.length"
+                  class="flex flex-col items-center justify-center gap-2 py-16 text-center"
                 >
-                  <div
-                    class="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-6 border-2 border-dashed border-muted-foreground/30"
-                  >
-                    <Search class="h-10 w-10 text-muted-foreground/50" />
+                  <div class="flex size-12 items-center justify-center rounded-xl bg-muted/40">
+                    <Search class="size-5 text-muted-foreground" />
                   </div>
-                  <p class="text-muted-foreground font-semibold text-lg mb-2">没有找到匹配的英雄</p>
-                  <p class="text-sm text-muted-foreground">尝试使用不同的关键词搜索，如英雄名称或别名</p>
+                  <p class="text-base font-medium">没有找到匹配的英雄</p>
+                  <p class="text-sm text-muted-foreground">试试名称或英文别名</p>
                 </div>
-              </div>
+              </template>
             </div>
           </ScrollArea>
         </div>
-        <div v-else>
-          <div class="flex items-center mb-4">
-            <button @click="clearChampion" class="cursor-pointer flex items-center gap-1 text-primary hover:underline">
-              <ArrowLeft class="h-4 w-4" /> 返回英雄列表
-            </button>
-            <span class="ml-4 font-semibold text-2xl tracking-wide">{{ selectedChampion.name }}</span>
-          </div>
-          <div>
-            <div v-if="loadingSkins" class="flex flex-col items-center justify-center py-16 text-center">
-              <div class="columns-1 sm:columns-1 md:columns-2 lg:columns-2 gap-10 w-full">
-                <Skeleton
-                  v-for="i in 6"
-                  :key="i"
-                  class="aspect-[1.7] rounded-3xl mb-10 w-full bg-gradient-to-br from-muted/60 to-muted/30 animate-pulse shadow-xl"
-                />
-              </div>
-              <p class="text-muted-foreground font-medium text-lg mt-8">正在加载皮肤数据...</p>
-            </div>
-            <div v-else-if="skinsError" class="flex flex-col items-center justify-center py-16 text-center">
-              <div
-                class="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mb-6 border border-destructive/20"
-              >
-                <X class="h-8 w-8 text-destructive" />
-              </div>
-              <p class="text-destructive font-semibold text-lg mb-2">加载失败</p>
-              <p class="text-sm text-muted-foreground mb-6 max-w-md">{{ skinsError }}</p>
-              <button
-                @click="() => reloadSkins()"
-                class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
-              >
-                重新加载
-              </button>
-            </div>
-            <div v-else>
-              <!-- Masonry 瀑布流皮肤卡片区，每排更少，卡片更大 -->
-              <div class="columns-1 sm:columns-1 md:columns-2 lg:columns-2 gap-10">
-                <div
-                  v-for="(skin, idx) in championSkins"
-                  :key="skin.id"
-                  :style="getCard3DStyle(idx)"
-                  class="mb-10 break-inside-avoid relative rounded-3xl overflow-hidden border-2 border-transparent cursor-pointer group shadow-2xl transition-all duration-300 bg-gradient-to-br from-background/80 to-background/60 hover:scale-105 hover:shadow-2xl hover:border-primary/80 hover:z-20 transform-gpu group-hover:[transform:perspective(800px)_rotateX(8deg)_rotateY(8deg)_scale3d(1.04,1.04,1.04)] hover:tw-animate-tilt hover:tw-animate-glow"
-                  :class="[
-                    { 'pointer-events-none opacity-70': applyingSkinId === skin.id },
-                    shakeSkinId === skin.id ? 'animate-shake' : ''
-                  ]"
-                  @click="applySkinBackground(skin)"
-                  :id="'skin-card-' + skin.id"
-                >
-                  <img
-                    :src="getSkinImageUrl(skin)"
-                    :alt="skin.name"
-                    class="w-full aspect-[1.7] object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div
-                    class="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors duration-300 z-10"
-                  ></div>
+      </div>
 
-                  <div
-                    v-if="applyingSkinId === skin.id"
-                    class="absolute inset-0 bg-primary/80 flex items-center justify-center z-30 rounded-3xl"
-                  >
-                    <LoadingSpinner />
-                    <span class="text-sm font-medium text-white ml-3">正在应用...</span>
-                  </div>
-
-                  <div class="absolute bottom-0 left-0 right-0 px-4 py-2 flex flex-col items-start z-20">
-                    <span class="text-base font-bold text-white drop-shadow-lg">{{ skin.name }}</span>
-                    <span
-                      v-if="skin.isBase"
-                      class="mt-1 px-3 py-0.5 rounded-full bg-primary/80 text-xs text-white font-semibold shadow"
-                      >经典</span
-                    >
-                  </div>
-                  <div
-                    class="absolute inset-0 pointer-events-none group-hover:ring-4 group-hover:ring-primary/40 rounded-3xl transition-all duration-300"
-                  ></div>
-                </div>
-              </div>
-              <div
-                v-if="!loadingSkins && !skinsError && championSkins.length === 0"
-                class="flex flex-col items-center justify-center py-20 text-center"
-              >
-                <div
-                  class="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-6 border-2 border-dashed border-muted-foreground/30"
-                >
-                  <Users class="h-10 w-10 text-muted-foreground/50" />
-                </div>
-                <p class="text-muted-foreground font-semibold text-lg mb-2">暂无皮肤数据</p>
-                <p class="text-sm text-muted-foreground">该英雄暂时没有可用的皮肤数据</p>
-              </div>
-            </div>
-          </div>
+      <div v-else class="space-y-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <Button variant="outline" size="sm" class="h-8" @click="clearChampion">
+            <ArrowLeft class="size-3.5" />
+            返回列表
+          </Button>
+          <h2 class="text-lg font-medium">{{ selectedChampion.name }}</h2>
         </div>
-      </CardContent>
-    </Card>
-  </div>
+
+        <div v-if="loadingSkins" class="space-y-3">
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Skeleton v-for="i in 6" :key="i" class="aspect-[1.7] w-full rounded-xl" />
+          </div>
+          <p class="text-center text-sm text-muted-foreground">正在加载皮肤数据…</p>
+        </div>
+
+        <div v-else-if="skinsError" class="flex flex-col items-center justify-center gap-3 py-16 text-center">
+          <div class="flex size-12 items-center justify-center rounded-xl bg-destructive/10">
+            <X class="size-5 text-destructive" />
+          </div>
+          <div class="space-y-1">
+            <p class="text-base font-medium text-destructive">加载失败</p>
+            <p class="max-w-md text-sm text-muted-foreground">{{ skinsError.message }}</p>
+          </div>
+          <Button size="sm" class="h-9" @click="() => reloadSkins()">重新加载</Button>
+        </div>
+
+        <template v-else>
+          <div class="columns-1 gap-10 md:columns-2">
+            <div
+              v-for="(skin, idx) in championSkins"
+              :id="'skin-card-' + skin.id"
+              :key="skin.id"
+              :style="getCard3DStyle(idx)"
+              class="group relative mb-10 break-inside-avoid cursor-pointer overflow-hidden rounded-3xl border-2 border-transparent bg-gradient-to-br from-background/80 to-background/60 shadow-2xl transition-all duration-300 hover:z-20 hover:scale-105 hover:border-primary/80 hover:shadow-2xl hover:tw-animate-tilt hover:tw-animate-glow transform-gpu group-hover:[transform:perspective(800px)_rotateX(8deg)_rotateY(8deg)_scale3d(1.04,1.04,1.04)]"
+              :class="[
+                { 'pointer-events-none opacity-70': applyingSkinId === skin.id },
+                shakeSkinId === skin.id ? 'animate-shake' : ''
+              ]"
+              @click="applySkinBackground(skin)"
+            >
+              <img
+                :src="getSkinImageUrl(skin)"
+                :alt="skin.name"
+                class="aspect-[1.7] w-full object-cover transition-transform duration-500 group-hover:scale-110"
+              />
+              <div class="absolute inset-0 z-10 bg-black/40 transition-colors duration-300 group-hover:bg-black/20" />
+
+              <div
+                v-if="applyingSkinId === skin.id"
+                class="absolute inset-0 z-30 flex items-center justify-center rounded-3xl bg-primary/80"
+              >
+                <LoadingSpinner />
+                <span class="ml-3 text-sm font-medium text-white">正在应用…</span>
+              </div>
+
+              <div class="absolute right-0 bottom-0 left-0 z-20 flex flex-col items-start px-4 py-2">
+                <span class="text-base font-bold text-white drop-shadow-lg">{{ skin.name }}</span>
+                <span
+                  v-if="skin.isBase"
+                  class="mt-1 rounded-full bg-primary/80 px-3 py-0.5 text-xs font-medium text-white shadow"
+                >
+                  经典
+                </span>
+              </div>
+              <div
+                class="pointer-events-none absolute inset-0 rounded-3xl transition-all duration-300 group-hover:ring-4 group-hover:ring-primary/40"
+              />
+            </div>
+          </div>
+
+          <div v-if="!championSkins.length" class="flex flex-col items-center justify-center gap-2 py-16 text-center">
+            <div class="flex size-12 items-center justify-center rounded-xl surface-inset">
+              <Users class="size-5 text-muted-foreground" />
+            </div>
+            <p class="text-base font-medium">暂无皮肤数据</p>
+            <p class="text-sm text-muted-foreground">该英雄暂时没有可用的皮肤数据</p>
+          </div>
+        </template>
+      </div>
+    </component>
+  </component>
 </template>
 
 <script setup lang="ts">
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useGameHelper } from '../composables/useGameHelper'
-import { getChampionIconUrlByAlias } from '@/lib'
+import { getChampionIconUrl, isStandardChampion } from '@/lib'
 import type { CommunityDragonSkin } from '@/lib/dataApi'
 import { ArrowLeft, Search, Users, X } from 'lucide-vue-next'
 import { debounce } from 'radash'
+
+withDefaults(
+  defineProps<{
+    embedded?: boolean
+  }>(),
+  { embedded: false }
+)
 
 const { setSummonerBackgroundSkin } = useGameHelper()
 const searchText = ref('')
@@ -203,12 +196,10 @@ const {
   isLoading: loadingChampions,
   error: championsError,
   refetch: reloadChampions
-} = useChampionSummaryQuery()
+} = useChampions()
 const champions = computed<ChampionInfo[]>(() =>
   championsData.value
-    ? championsData.value
-        .filter((c) => c.id > 0 && !c.alias.includes('Ruby_'))
-        .sort((a, b) => a.name.localeCompare(b.name))
+    ? championsData.value.filter(isStandardChampion).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
     : []
 )
 const selectedChampion = ref<ChampionInfo | null>(null)
@@ -218,9 +209,9 @@ const {
   isLoading: loadingSkins,
   error: skinsError,
   refetch: reloadSkins
-} = useChampionDetailsQuery(selectedChampionId)
+} = useChampionDetails(selectedChampionId)
 const championSkins = computed<CommunityDragonSkin[]>(() => championDetails.value?.skins ?? [])
-const applyingSkinId = ref<number | null>(null) // 跟踪正在应用的皮肤ID
+const applyingSkinId = ref<number | null>(null)
 const shakeSkinId = ref<number | null>(null)
 
 const debouncedUpdateSearch = debounce({ delay: 300 }, (value: string) => {
@@ -234,25 +225,18 @@ watch(searchText, (newValue) => {
 const filteredChampions = computed(() => {
   if (!debouncedSearchText.value.trim()) return champions.value
   const search = debouncedSearchText.value.toLowerCase()
-  return champions.value.filter(
-    (c) => c.name.toLowerCase().includes(search) || c.alias.toLowerCase().includes(search)
-  )
+  return champions.value.filter((c) => c.name.toLowerCase().includes(search) || c.alias.toLowerCase().includes(search))
 })
 
 const handleChampionSelect = (champion: ChampionInfo) => {
   selectedChampion.value = champion
-  // 选中后自动触发 useChampionDetailsQuery
-  reloadSkins()
 }
 
 const clearChampion = () => {
   selectedChampion.value = null
 }
 
-// champions 和 championSkins 由 useQuery 自动管理，无需手动加载函数
-
 const getSkinImageUrl = (skin: CommunityDragonSkin): string => {
-  // 皮肤ID一般为 英雄ID*1000+皮肤编号
   if (!selectedChampion.value?.alias) return ''
   const skinNum = skin.id % 1000
   return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${selectedChampion.value.alias}_${skinNum}.jpg`
@@ -261,36 +245,32 @@ const getSkinImageUrl = (skin: CommunityDragonSkin): string => {
 const applySkinBackground = async (skin: CommunityDragonSkin) => {
   try {
     applyingSkinId.value = skin.id
-    shakeSkinId.value = skin.id // 触发抖动
+    shakeSkinId.value = skin.id
     await setSummonerBackgroundSkin(skin.id, skin.name)
   } finally {
     setTimeout(() => {
-      shakeSkinId.value = null // 抖动动画结束后移除
+      shakeSkinId.value = null
       applyingSkinId.value = null
     }, 600)
   }
 }
 
-// 生成每张卡片不同的初始3D角度
 const getCard3DStyle = (idx: number) => {
-  // 让角度有规律但不重复，视觉更丰富
-  const rotateX = ((idx % 4) - 1.5) * 6 // -9, -3, 3, 9
-  const rotateY = ((idx % 6) - 2.5) * 5 // -12.5, -7.5, -2.5, 2.5, 7.5, 12.5
+  const rotateX = ((idx % 4) - 1.5) * 6
+  const rotateY = ((idx % 6) - 2.5) * 5
   return {
     willChange: 'transform, opacity',
     transform: `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1,1,1)`
   }
 }
 
-// Loading 动画组件
 const LoadingSpinner = defineComponent({
   name: 'LoadingSpinner',
   setup() {
     return () =>
       h('div', { class: 'flex items-center justify-center' }, [
         h('span', {
-          class:
-            'inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin animate__animated animate__fadeIn'
+          class: 'inline-block size-8 animate-spin rounded-full border-4 border-primary border-t-transparent'
         })
       ])
   }

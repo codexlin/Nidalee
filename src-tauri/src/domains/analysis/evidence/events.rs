@@ -32,12 +32,26 @@ pub fn extract_event_evidence(frames: &[Value], ctx: EventExtractContext) -> Eve
 
     let target_frames: Vec<(i64, FrameSnapshot)> = ordered
         .iter()
-        .filter_map(|frame| {
-            frame_snapshot(frame, ctx.target_participant_id).map(|snap| (snap.timestamp_ms, snap))
-        })
+        .filter_map(|frame| frame_snapshot(frame, ctx.target_participant_id).map(|snap| (snap.timestamp_ms, snap)))
         .collect();
 
+    let opponent_frames: Vec<(i64, FrameSnapshot)> = ctx
+        .opponent_participant_id
+        .map(|opp_id| {
+            ordered
+                .iter()
+                .filter_map(|frame| frame_snapshot(frame, opp_id).map(|snap| (snap.timestamp_ms, snap)))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let opponent_team_id = ctx
+        .opponent_participant_id
+        .and_then(team_of_participant)
+        .unwrap_or(if ctx.target_team_id == 100 { 200 } else { 100 });
+
     let mut last_death_ms: Option<i64> = None;
+    let mut last_opponent_death_ms: Option<i64> = None;
 
     for frame in &ordered {
         let Some(events) = frame.get("events").and_then(Value::as_array) else {
@@ -50,7 +64,10 @@ pub fn extract_event_evidence(frames: &[Value], ctx: EventExtractContext) -> Eve
                 event,
                 ctx,
                 &target_frames,
+                &opponent_frames,
+                opponent_team_id,
                 &mut last_death_ms,
+                &mut last_opponent_death_ms,
             );
         }
     }
@@ -71,13 +88,17 @@ pub fn extract_event_evidence(frames: &[Value], ctx: EventExtractContext) -> Eve
     evidence
 }
 
+#[allow(clippy::too_many_arguments)] // All accumulators belong to one ordered timeline pass.
 fn accumulate_event(
     evidence: &mut EventEvidence,
     unknown_counts: &mut BTreeMap<(String, i64), u32>,
     event: &Value,
     ctx: EventExtractContext,
     target_frames: &[(i64, FrameSnapshot)],
+    opponent_frames: &[(i64, FrameSnapshot)],
+    opponent_team_id: i32,
     last_death_ms: &mut Option<i64>,
+    last_opponent_death_ms: &mut Option<i64>,
 ) {
     let Some(event_type) = event.get("type").and_then(Value::as_str) else {
         return;
@@ -106,11 +127,18 @@ fn accumulate_event(
                 ke.bounty = read_i32(event, "bounty");
                 ke.kill_streak_length = read_i32(event, "killStreakLength");
                 ke.victim_damage_received_count = damage_count(event, "victimDamageReceived");
+                if ctx.opponent_participant_id.is_some_and(|opp| victim_id == opp) {
+                    ke.opponent_activity_context = Some(activity_at(
+                        opponent_frames,
+                        opponent_team_id,
+                        *last_opponent_death_ms,
+                        timestamp_ms,
+                    ));
+                }
                 evidence.key_events.push(ke);
             }
             if victim_id == ctx.target_participant_id {
                 evidence.deaths += 1;
-                *last_death_ms = Some(timestamp_ms);
                 let cause = death_cause(killer_id, assistants.len());
                 match cause {
                     DeathCause::Solo => evidence.deaths_solo += 1,
@@ -133,7 +161,18 @@ fn accumulate_event(
                 ke.position_y = pos_y;
                 ke.bounty = read_i32(event, "bounty");
                 ke.victim_damage_received_count = damage_count(event, "victimDamageReceived");
+                // 阵亡点看邻近帧位置；不吃「近期死亡态」（否则永远显示死亡状态）
+                ke.activity_context = Some(activity_at(target_frames, ctx.target_team_id, None, timestamp_ms));
+                if ctx.opponent_participant_id.is_some() {
+                    ke.opponent_activity_context = Some(activity_at(
+                        opponent_frames,
+                        opponent_team_id,
+                        *last_opponent_death_ms,
+                        timestamp_ms,
+                    ));
+                }
                 evidence.key_events.push(ke);
+                *last_death_ms = Some(timestamp_ms);
             }
             if assisted {
                 evidence.assists += 1;
@@ -146,6 +185,9 @@ fn accumulate_event(
                 ke.killer_participant_id = if killer_id != 0 { Some(killer_id) } else { None };
                 ke.assistant_count = assistants.len() as u32;
                 evidence.key_events.push(ke);
+            }
+            if ctx.opponent_participant_id.is_some_and(|opp| victim_id == opp) {
+                *last_opponent_death_ms = Some(timestamp_ms);
             }
         }
         "CHAMPION_SPECIAL_KILL" => {
@@ -160,10 +202,7 @@ fn accumulate_event(
                     EvidenceEventKind::ChampionSpecialKill,
                     timestamp_ms,
                     EventInvolvement::Actor,
-                    event
-                        .get("killType")
-                        .and_then(Value::as_str)
-                        .map(str::to_string),
+                    event.get("killType").and_then(Value::as_str).map(str::to_string),
                 );
                 ke.actor_participant_id = Some(actor);
                 ke.position_x = pos_x;
@@ -239,6 +278,16 @@ fn accumulate_event(
             } else {
                 None
             };
+            let opponent_activity = if !involved && ctx.opponent_participant_id.is_some() {
+                Some(activity_at(
+                    opponent_frames,
+                    opponent_team_id,
+                    *last_opponent_death_ms,
+                    timestamp_ms,
+                ))
+            } else {
+                None
+            };
 
             let mut ke = KeyEventEvidence::basic(
                 kind,
@@ -255,6 +304,7 @@ fn accumulate_event(
             ke.killer_team_id = killer_team_id;
             ke.allied_side = allied;
             ke.activity_context = activity;
+            ke.opponent_activity_context = opponent_activity;
             ke.position_x = pos_x;
             ke.position_y = pos_y;
             evidence.key_events.push(ke);
@@ -282,6 +332,16 @@ fn accumulate_event(
             } else {
                 None
             };
+            let opponent_activity = if !involved && ctx.opponent_participant_id.is_some() {
+                Some(activity_at(
+                    opponent_frames,
+                    opponent_team_id,
+                    *last_opponent_death_ms,
+                    timestamp_ms,
+                ))
+            } else {
+                None
+            };
             let mut ke = KeyEventEvidence::basic(
                 EvidenceEventKind::Building,
                 timestamp_ms,
@@ -293,10 +353,8 @@ fn accumulate_event(
                     .map(str::to_string),
             );
             ke.activity_context = activity;
-            ke.killer_team_id = event
-                .get("teamId")
-                .and_then(Value::as_i64)
-                .map(|v| v as i32);
+            ke.opponent_activity_context = opponent_activity;
+            ke.killer_team_id = event.get("teamId").and_then(Value::as_i64).map(|v| v as i32);
             evidence.key_events.push(ke);
         }
         "TURRET_PLATE_DESTROYED" => {
@@ -317,10 +375,7 @@ fn accumulate_event(
                 EvidenceEventKind::TurretPlate,
                 timestamp_ms,
                 involvement,
-                event
-                    .get("laneType")
-                    .and_then(Value::as_str)
-                    .map(str::to_string),
+                event.get("laneType").and_then(Value::as_str).map(str::to_string),
             );
             ke.actor_participant_id = if actor != 0 { Some(actor) } else { None };
             evidence.key_events.push(ke);
@@ -337,10 +392,7 @@ fn accumulate_event(
                     EvidenceEventKind::WardPlaced,
                     timestamp_ms,
                     EventInvolvement::Actor,
-                    event
-                        .get("wardType")
-                        .and_then(Value::as_str)
-                        .map(str::to_string),
+                    event.get("wardType").and_then(Value::as_str).map(str::to_string),
                 );
                 ke.actor_participant_id = Some(creator);
                 evidence.key_events.push(ke);
@@ -354,10 +406,7 @@ fn accumulate_event(
                     EvidenceEventKind::WardKill,
                     timestamp_ms,
                     EventInvolvement::Killer,
-                    event
-                        .get("wardType")
-                        .and_then(Value::as_str)
-                        .map(str::to_string),
+                    event.get("wardType").and_then(Value::as_str).map(str::to_string),
                 );
                 ke.killer_participant_id = Some(killer);
                 evidence.key_events.push(ke);
@@ -408,20 +457,14 @@ fn accumulate_event(
             }
         }
         "SKILL_LEVEL_UP" => {
-            let pid = event
-                .get("participantId")
-                .and_then(Value::as_i64)
-                .unwrap_or(0) as i32;
+            let pid = event.get("participantId").and_then(Value::as_i64).unwrap_or(0) as i32;
             if pid == ctx.target_participant_id {
                 evidence.skill_level_ups += 1;
                 let mut ke = KeyEventEvidence::basic(
                     EvidenceEventKind::SkillLevelUp,
                     timestamp_ms,
                     EventInvolvement::Actor,
-                    event
-                        .get("levelUpType")
-                        .and_then(Value::as_str)
-                        .map(str::to_string),
+                    event.get("levelUpType").and_then(Value::as_str).map(str::to_string),
                 );
                 ke.actor_participant_id = Some(pid);
                 ke.skill_slot = read_i32(event, "skillSlot");
@@ -429,18 +472,11 @@ fn accumulate_event(
             }
         }
         "LEVEL_UP" => {
-            let pid = event
-                .get("participantId")
-                .and_then(Value::as_i64)
-                .unwrap_or(0) as i32;
+            let pid = event.get("participantId").and_then(Value::as_i64).unwrap_or(0) as i32;
             if pid == ctx.target_participant_id {
                 evidence.level_ups += 1;
-                let mut ke = KeyEventEvidence::basic(
-                    EvidenceEventKind::LevelUp,
-                    timestamp_ms,
-                    EventInvolvement::Actor,
-                    None,
-                );
+                let mut ke =
+                    KeyEventEvidence::basic(EvidenceEventKind::LevelUp, timestamp_ms, EventInvolvement::Actor, None);
                 ke.actor_participant_id = Some(pid);
                 evidence.key_events.push(ke);
             }
@@ -471,9 +507,7 @@ fn accumulate_event(
                 EvidenceEventKind::GameEnd,
                 timestamp_ms,
                 EventInvolvement::Uninvolved,
-                event
-                    .get("winningTeam")
-                    .map(|v| v.to_string()),
+                event.get("winningTeam").map(|v| v.to_string()),
             ));
         }
         "PAUSE_END" => {
@@ -485,9 +519,7 @@ fn accumulate_event(
             ));
         }
         other => {
-            *unknown_counts
-                .entry((other.to_string(), timestamp_ms))
-                .or_insert(0) += 1;
+            *unknown_counts.entry((other.to_string(), timestamp_ms)).or_insert(0) += 1;
             evidence.key_events.push(KeyEventEvidence::basic(
                 EvidenceEventKind::Unknown,
                 timestamp_ms,
@@ -505,10 +537,7 @@ fn push_item_event(
     timestamp_ms: i64,
     kind: EvidenceEventKind,
 ) -> bool {
-    let pid = event
-        .get("participantId")
-        .and_then(Value::as_i64)
-        .unwrap_or(0) as i32;
+    let pid = event.get("participantId").and_then(Value::as_i64).unwrap_or(0) as i32;
     if pid != target_id {
         return false;
     }
@@ -573,8 +602,5 @@ fn read_i32(value: &Value, key: &str) -> Option<i32> {
 }
 
 fn damage_count(event: &Value, key: &str) -> Option<u32> {
-    event
-        .get(key)
-        .and_then(Value::as_array)
-        .map(|arr| arr.len() as u32)
+    event.get(key).and_then(Value::as_array).map(|arr| arr.len() as u32)
 }

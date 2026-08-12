@@ -23,20 +23,6 @@ pub struct StatsSummary {
 }
 
 /// 阈值分析结果
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ThresholdAnalysisResult {
-    pub queue_id: i32,
-    pub queue_name: String,
-    pub total_participants: usize,
-    pub kda_stats: StatsSummary,
-    pub dpm_stats: StatsSummary,
-    pub cspm_stats: StatsSummary,
-    pub vspm_stats: StatsSummary,
-    pub win_rate_stats: StatsSummary,
-    pub position_distribution: HashMap<String, usize>,
-    pub recommendations: HashMap<String, String>,
-}
-
 /// 分析原始数据文件，生成阈值建议
 #[tauri::command]
 pub async fn analyze_thresholds_from_raw_data(file_path: String) -> Result<String, String> {
@@ -72,7 +58,7 @@ pub async fn analyze_thresholds_from_raw_data(file_path: String) -> Result<Strin
 
                 for participant in participants {
                     if let Some(stats) = extract_participant_stats(participant, game_duration_mins) {
-                        queue_stats.entry(queue_id).or_insert_with(Vec::new).push(stats);
+                        queue_stats.entry(queue_id).or_default().push(stats);
                     }
                 }
             }
@@ -150,25 +136,25 @@ pub async fn analyze_thresholds_from_raw_data(file_path: String) -> Result<Strin
 
         // 生成阈值建议
         report.push_str("💡 建议的阈值设置:\n");
-        report.push_str(&format!("  KDA:\n"));
+        report.push_str("  KDA:\n");
         report.push_str(&format!("    优秀: {:.1} (90%分位)\n", kda_stats.p90));
         report.push_str(&format!("    良好: {:.1} (75%分位)\n", kda_stats.p75));
         report.push_str(&format!("    一般: {:.1} (中位数)\n", kda_stats.median));
         report.push_str(&format!("    较差: {:.1} (25%分位)\n\n", kda_stats.p25));
 
-        report.push_str(&format!("  DPM:\n"));
+        report.push_str("  DPM:\n");
         report.push_str(&format!("    优秀: {:.0} (90%分位)\n", dpm_stats.p90));
         report.push_str(&format!("    良好: {:.0} (75%分位)\n", dpm_stats.p75));
         report.push_str(&format!("    一般: {:.0} (中位数)\n", dpm_stats.median));
         report.push_str(&format!("    较差: {:.0} (25%分位)\n\n", dpm_stats.p25));
 
-        report.push_str(&format!("  CSPM:\n"));
+        report.push_str("  CSPM:\n");
         report.push_str(&format!("    优秀: {:.1} (90%分位)\n", cspm_stats.p90));
         report.push_str(&format!("    良好: {:.1} (75%分位)\n", cspm_stats.p75));
         report.push_str(&format!("    一般: {:.1} (中位数)\n", cspm_stats.median));
         report.push_str(&format!("    较差: {:.1} (25%分位)\n\n", cspm_stats.p25));
 
-        report.push_str(&format!("  VSPM:\n"));
+        report.push_str("  VSPM:\n");
         report.push_str(&format!("    优秀: {:.2} (90%分位)\n", vspm_stats.p90));
         report.push_str(&format!("    良好: {:.2} (75%分位)\n", vspm_stats.p75));
         report.push_str(&format!("    一般: {:.2} (中位数)\n", vspm_stats.median));
@@ -185,7 +171,6 @@ struct ParticipantStats {
     dpm: f64,
     cspm: f64,
     vspm: f64,
-    win: bool,
 }
 
 /// 从参与者数据中提取统计信息
@@ -195,8 +180,6 @@ fn extract_participant_stats(participant: &Value, game_duration_mins: f64) -> Op
     let kills = stats.get("kills")?.as_i64()? as f64;
     let deaths = stats.get("deaths")?.as_i64()? as f64;
     let assists = stats.get("assists")?.as_i64()? as f64;
-    let win = stats.get("win")?.as_bool()?;
-
     // KDA计算
     let kda = if deaths > 0.0 {
         (kills + assists) / deaths
@@ -217,13 +200,7 @@ fn extract_participant_stats(participant: &Value, game_duration_mins: f64) -> Op
     let vision_score = stats.get("visionScore")?.as_i64()? as f64;
     let vspm = vision_score / game_duration_mins;
 
-    Some(ParticipantStats {
-        kda,
-        dpm,
-        cspm,
-        vspm,
-        win,
-    })
+    Some(ParticipantStats { kda, dpm, cspm, vspm })
 }
 
 /// 计算统计摘要
@@ -244,7 +221,7 @@ fn calculate_stats(values: &[f64]) -> StatsSummary {
     }
 
     let mut sorted = values.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(f64::total_cmp);
 
     let count = sorted.len();
     let sum: f64 = sorted.iter().sum();

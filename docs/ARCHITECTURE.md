@@ -99,7 +99,7 @@ UI 自动响应
 
 | 层级 | 职责 | 示例 |
 |------|------|------|
-| **views/** | 路由页面，负责布局与功能组合 | `DashboardView.vue` 组合多个功能模块 |
+| **views/** | 路由页面，负责布局与功能组合 | `OverviewView.vue` 组合多个功能模块 |
 | **features/** | 功能实现，专注业务逻辑 | `match-analysis/` 实现对局分析 |
 
 **形象比喻**：
@@ -143,7 +143,7 @@ UI 自动响应
 - 功能入口：`FeatureName.vue`（如 `MatchAnalysis.vue`）
 - 功能状态：`store.ts`
 - Composable：`useXxx.ts`
-- 页面视图：`XxxView.vue`（如 `MatchAnalysisView.vue`）
+- 页面视图：`XxxView.vue`（如 `LiveAnalysisView.vue`）
 
 ---
 

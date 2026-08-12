@@ -11,7 +11,7 @@
 //!
 //! 阈值集中在本文件顶部，改口径只需要改一处。
 
-use crate::domains::analysis::evidence::{EvidenceConfidence, GamePhase, MatchEvidence, MIN_SAMPLE_FOR_CONCLUSION};
+use crate::domains::analysis::evidence::{EvidenceConfidence, GamePhase, MatchEvidence};
 use crate::shared::types::{AdviceCategory, AdvicePerspective};
 
 use super::types::{DeterministicAdvice, DeterministicTrait, TraitSentiment};
@@ -194,12 +194,7 @@ static OBJECTIVES: MetricSpec = MetricSpec {
     direction: MetricDirection::HigherIsBetter,
     good_threshold: OBJECTIVE_GOOD_PER_GAME,
     bad_threshold: OBJECTIVE_BAD_PER_GAME,
-    describe: |value| {
-        format!(
-            "场均大约参与 {:.1} 次龙/峡谷这类大型资源。",
-            round1(value)
-        )
-    },
+    describe: |value| format!("场均大约参与 {:.1} 次龙/峡谷这类大型资源。", round1(value)),
 };
 
 static WIN_RATE: MetricSpec = MetricSpec {

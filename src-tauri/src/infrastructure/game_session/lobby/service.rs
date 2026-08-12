@@ -32,15 +32,6 @@ pub async fn send_chat_message(client: &Client, chat_id: &str, message: &str) ->
     Ok(())
 }
 
-/// 从 Lobby 信息中提取聊天室 ID
-pub fn get_chat_id_from_lobby(lobby: &LobbyInfo) -> Option<String> {
-    if lobby.multi_user_chat_id.is_empty() {
-        None
-    } else {
-        Some(lobby.multi_user_chat_id.clone())
-    }
-}
-
 /// 发送房间系统通知（带格式的消息）
 pub async fn send_formatted_message(client: &Client, chat_id: &str, prefix: &str, content: &str) -> Result<(), String> {
     let message = format!("[{}] {}", prefix, content);

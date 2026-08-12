@@ -45,20 +45,13 @@ pub fn run() {
         .setup(app::setup_app)
         .invoke_handler(tauri::generate_handler![
             // 认证 / 连接
+            #[cfg(debug_assertions)]
             infrastructure::game_session::auth::commands::get_auth_info,
+            #[cfg(debug_assertions)]
             infrastructure::game_session::auth::commands::verify_lockfile_vs_cmdline,
-            infrastructure::game_session::connection::commands::get_connection_state,
-            infrastructure::game_session::connection::commands::force_refresh_connection,
             infrastructure::game_session::connection::commands::check_connection_state_command,
             // 游戏流程 / 英雄选择 / 匹配
-            infrastructure::game_session::gameflow::commands::get_game_version,
-            infrastructure::game_session::gameflow::commands::get_live_player_list,
-            infrastructure::game_session::gameflow::commands::get_live_events,
-            infrastructure::game_session::gameflow::commands::get_game_stats,
-            infrastructure::game_session::gameflow::commands::is_liveclient_available,
-            infrastructure::champion_selection::champ_select::commands::get_champselect_team_players_info,
-            infrastructure::champion_selection::champ_select::commands::get_champ_select_session,
-            infrastructure::champion_selection::champ_select::commands::get_champ_select_session_typed,
+            // LiveClient 数据
             infrastructure::champion_selection::champ_select::commands::pick_champion,
             infrastructure::champion_selection::champ_select::commands::ban_champion,
             infrastructure::match_management::matchmaking::commands::start_matchmaking,
@@ -68,26 +61,22 @@ pub fn run() {
             // 比赛记录（个人战绩主路径仅 analyze_matches）
             infrastructure::match_management::matches::commands::analyze_matches,
             infrastructure::match_management::matches::commands::get_game_detail,
-            infrastructure::match_management::matches::commands::get_player_tactical_advice,
+            infrastructure::match_management::matches::commands::get_game_process_review,
             // 召唤师
             infrastructure::data_services::summoner::commands::get_current_summoner,
-            infrastructure::data_services::summoner::commands::get_summoner_by_id,
             infrastructure::data_services::summoner::commands::get_recent_matches_by_puuid,
             infrastructure::data_services::summoner::commands::get_summoners_and_histories,
             infrastructure::data_services::summoner::commands::set_summoner_chat_profile,
             infrastructure::data_services::summoner::commands::set_summoner_background_skin,
             // 召唤师符文
-            infrastructure::champion_selection::perks::commands::get_lcu_rune_styles,
-            infrastructure::champion_selection::perks::commands::get_lcu_perks,
-            infrastructure::champion_selection::perks::commands::get_lcu_perk_icon,
             infrastructure::champion_selection::perks::commands::get_current_rune_page,
-            infrastructure::champion_selection::perks::commands::apply_custom_runes,
+            infrastructure::champion_selection::perks::commands::apply_rune_selection,
             // OPGG 相关
             infrastructure::data_services::external::opgg::commands::get_opgg_champion_build,
-            infrastructure::data_services::external::opgg::commands::get_opgg_champion_build_raw,
             infrastructure::data_services::external::opgg::commands::get_opgg_tier_list,
-            infrastructure::data_services::external::opgg::commands::get_opgg_champion_positions,
-            infrastructure::data_services::external::opgg::commands::apply_opgg_runes,
+            // 海克斯（dtodo aramgg）
+            infrastructure::data_services::external::hextech::commands::get_hextech_tier_list,
+            infrastructure::data_services::external::hextech::commands::get_hextech_champion_detail,
             // OpenAI-compatible BYOK
             infrastructure::data_services::external::ai::commands::get_ai_settings,
             infrastructure::data_services::external::ai::commands::set_ai_settings,
@@ -101,39 +90,38 @@ pub fn run() {
             infrastructure::real_time::websocket::commands::stop_lcu_ws,
             // 分析数据命令
             infrastructure::match_management::analysis_data::commands::get_cached_analysis_data,
+            infrastructure::match_management::analysis_data::commands::retry_player_analysis,
+            // 静态目录（版本化英雄/技能）
+            infrastructure::data_services::static_catalog::commands::get_static_catalog_meta,
+            infrastructure::data_services::static_catalog::commands::refresh_static_catalogs,
             // 英雄数据命令
-            infrastructure::data_services::champion_data::commands::init_champion_data,
             infrastructure::data_services::champion_data::commands::get_all_champion_data,
-            infrastructure::data_services::champion_data::commands::get_champion_by_id,
-            infrastructure::data_services::champion_data::commands::get_champion_by_alias,
-            infrastructure::data_services::champion_data::commands::get_champion_by_name,
-            infrastructure::data_services::champion_data::commands::is_champion_data_loaded,
-            infrastructure::data_services::champion_data::commands::get_champion_count_cmd,
             // 召唤师技能数据命令
-            infrastructure::champion_selection::summoner_spells::commands::init_summoner_spell_data,
             infrastructure::champion_selection::summoner_spells::commands::get_all_summoner_spell_data,
-            infrastructure::champion_selection::summoner_spells::commands::get_summoner_spell_by_id,
-            infrastructure::champion_selection::summoner_spells::commands::get_summoner_spell_by_name,
-            infrastructure::champion_selection::summoner_spells::commands::is_summoner_spell_data_loaded,
-            infrastructure::champion_selection::summoner_spells::commands::get_summoner_spell_count,
             // 房间和聊天命令
             infrastructure::game_session::lobby::commands::get_current_lobby,
             infrastructure::game_session::lobby::commands::send_lobby_chat_message,
             infrastructure::game_session::lobby::commands::send_lobby_formatted_message,
             common::commands::machine::get_machine_hash,
-            common::commands::builds::get_champions_list,
-            common::commands::builds::get_champion_build_new,
             common::commands::game::launch_game,
             common::commands::game::detect_game_path,
             common::commands::game::select_game_path,
             common::commands::game::save_game_path,
             common::commands::game::get_saved_game_path,
+            common::commands::export::save_png_file,
+            common::commands::export::copy_png_to_clipboard,
             // 数据收集测试命令
+            #[cfg(debug_assertions)]
             common::commands::data_collection::generate_test_data_file,
+            #[cfg(debug_assertions)]
             common::commands::data_collection::analyze_data_file,
+            #[cfg(debug_assertions)]
             common::commands::threshold_analyzer::analyze_thresholds_from_raw_data,
+            #[cfg(debug_assertions)]
             common::commands::data_collection::collect_raw_match_data,
+            #[cfg(debug_assertions)]
             common::commands::data_collection::analyze_raw_match_timeline,
+            #[cfg(debug_assertions)]
             common::commands::data_collection::show_raw_json_structure,
             // 分页探针仅用于调试验证 begIndex；生产构建不注册
             #[cfg(debug_assertions)]

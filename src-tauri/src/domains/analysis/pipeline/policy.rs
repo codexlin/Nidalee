@@ -18,8 +18,17 @@ use super::types::{
 
 /// 解析分析策略（请求 → 策略）
 pub fn resolve_analysis_policy(request: &MatchAnalysisRequest) -> AnalysisPolicy {
-    let selected_queue_ids = request.requested_queue_ids();
-    let queue_scope = AnalysisQueueScope::from_queue_ids(&selected_queue_ids);
+    let exclude_ranked = request.mode.excludes_ranked();
+    let selected_queue_ids = if exclude_ranked {
+        Vec::new()
+    } else {
+        request.requested_queue_ids()
+    };
+    let queue_scope = if exclude_ranked {
+        AnalysisQueueScope::NonRankedOnly
+    } else {
+        AnalysisQueueScope::from_queue_ids(&selected_queue_ids)
+    };
     let effective_game_count = request.effective_game_count();
 
     let mut diagnostics = Vec::new();
@@ -48,6 +57,7 @@ pub fn resolve_analysis_policy(request: &MatchAnalysisRequest) -> AnalysisPolicy
             requested_depth: request.depth,
             effective_depth: AnalysisDepth::Simple,
             selected_queue_ids,
+            exclude_ranked,
             queue_scope,
             effective_game_count,
             basic_only: true,
@@ -78,13 +88,18 @@ pub fn resolve_analysis_policy(request: &MatchAnalysisRequest) -> AnalysisPolicy
         AnalysisDepth::Deep => match queue_scope {
             // 娱乐/匹配等非排位队列没有稳定的深度证据，降级为简单分析
             AnalysisQueueScope::NonRankedOnly => {
-                diagnostics.push(AnalysisDiagnostic::with_feature(
-                    AnalysisDegradationCode::FunModeDeepUnsupported,
-                    AnalysisFeature::DeepAnalysis,
+                let detail = if exclude_ranked {
+                    "普通模式（非排位）缺少可靠的深度分析依据，已降级为简单分析".to_string()
+                } else {
                     format!(
                         "队列 {:?} 属于娱乐/非排位模式，缺少可靠的深度分析依据，已降级为简单分析",
                         selected_queue_ids
-                    ),
+                    )
+                };
+                diagnostics.push(AnalysisDiagnostic::with_feature(
+                    AnalysisDegradationCode::FunModeDeepUnsupported,
+                    AnalysisFeature::DeepAnalysis,
+                    detail,
                 ));
                 (AnalysisDepth::Simple, true, false)
             }
@@ -125,6 +140,7 @@ pub fn resolve_analysis_policy(request: &MatchAnalysisRequest) -> AnalysisPolicy
         requested_depth: request.depth,
         effective_depth,
         selected_queue_ids,
+        exclude_ranked,
         queue_scope,
         effective_game_count,
         basic_only,

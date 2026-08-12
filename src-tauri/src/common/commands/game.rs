@@ -1,5 +1,33 @@
 use std::path::{Path, PathBuf};
 
+fn validate_game_executable(path: impl AsRef<Path>) -> Result<PathBuf, String> {
+    let canonical = std::fs::canonicalize(path.as_ref()).map_err(|error| format!("游戏路径无效或不可访问: {error}"))?;
+    if !canonical.is_file() {
+        return Err("游戏路径必须指向客户端可执行文件".to_string());
+    }
+
+    let file_name = canonical
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "游戏可执行文件名无效".to_string())?;
+    let parent_name = canonical
+        .parent()
+        .and_then(Path::file_name)
+        .and_then(|name| name.to_str())
+        .unwrap_or_default();
+
+    let known_launcher = file_name.eq_ignore_ascii_case("LeagueClient.exe")
+        || (file_name.eq_ignore_ascii_case("Client.exe") && parent_name.eq_ignore_ascii_case("Launcher"))
+        || (file_name.eq_ignore_ascii_case("launcher.exe") && parent_name.eq_ignore_ascii_case("WeGameLauncher"))
+        || (file_name.eq_ignore_ascii_case("client.exe") && parent_name.eq_ignore_ascii_case("TCLS"));
+
+    if !known_launcher {
+        return Err("只能选择英雄联盟或 WeGame 的官方启动程序".to_string());
+    }
+
+    Ok(canonical)
+}
+
 #[tauri::command]
 pub async fn launch_game(custom_path: Option<String>) -> Result<bool, String> {
     let game_path = if let Some(path) = custom_path {
@@ -13,10 +41,7 @@ pub async fn launch_game(custom_path: Option<String>) -> Result<bool, String> {
             },
         }
     };
-    let path = PathBuf::from(&game_path);
-    if !path.exists() {
-        return Err("游戏路径不存在".to_string());
-    }
+    let path = validate_game_executable(&game_path)?;
 
     // WeGame Client.exe 清单含 requireAdministrator。
     // 普通 CreateProcess/Command::spawn 会直接报 os error 740；
@@ -24,7 +49,7 @@ pub async fn launch_game(custom_path: Option<String>) -> Result<bool, String> {
     #[cfg(target_os = "windows")]
     {
         shell_execute_open(&path)?;
-        return Ok(true);
+        Ok(true)
     }
 
     #[cfg(not(target_os = "windows"))]
@@ -90,6 +115,12 @@ fn shell_execute_open(path: &Path) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn detect_game_path() -> Result<String, String> {
+    tokio::task::spawn_blocking(detect_game_path_sync)
+        .await
+        .map_err(|error| format!("游戏路径检测任务失败: {error}"))?
+}
+
+fn detect_game_path_sync() -> Result<String, String> {
     // 1) WeGame：扫描各盘符 WeGameApps 下名称包含「英雄联盟」的目录
     #[cfg(target_os = "windows")]
     if let Some(path) = detect_wegame_lol_path() {
@@ -300,7 +331,7 @@ pub async fn select_game_path(window: tauri::Window) -> Result<String, String> {
         });
     match rx.await {
         Ok(Some(path)) => match path.as_path() {
-            Some(p) => Ok(p.to_string_lossy().to_string()),
+            Some(p) => validate_game_executable(p).map(|path| path.to_string_lossy().to_string()),
             None => Err("文件路径无效".to_string()),
         },
         Ok(None) => Err("未选择文件".to_string()),
@@ -310,15 +341,22 @@ pub async fn select_game_path(window: tauri::Window) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn save_game_path(path: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || save_game_path_sync(path))
+        .await
+        .map_err(|error| format!("保存游戏路径任务失败: {error}"))?
+}
+
+fn save_game_path_sync(path: String) -> Result<(), String> {
     use serde_json::json;
     use std::fs;
+    let path = validate_game_executable(path)?;
     let config_dir = dirs::config_dir().ok_or("无法获取配置目录")?.join("nidalee");
     if !config_dir.exists() {
         fs::create_dir_all(&config_dir).map_err(|e| format!("创建配置目录失败: {}", e))?;
     }
     let config_file = config_dir.join("game_config.json");
     let config = json!({
-        "game_path": path
+        "game_path": path.to_string_lossy()
     });
     fs::write(&config_file, config.to_string()).map_err(|e| format!("保存配置失败: {}", e))?;
     Ok(())
@@ -326,6 +364,12 @@ pub async fn save_game_path(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn get_saved_game_path() -> Result<String, String> {
+    tokio::task::spawn_blocking(get_saved_game_path_sync)
+        .await
+        .map_err(|error| format!("读取游戏路径任务失败: {error}"))?
+}
+
+fn get_saved_game_path_sync() -> Result<String, String> {
     use serde_json::Value;
     use std::fs;
     let config_dir = dirs::config_dir().ok_or("无法获取配置目录")?.join("nidalee");
@@ -335,5 +379,8 @@ pub async fn get_saved_game_path() -> Result<String, String> {
     }
     let config_content = fs::read_to_string(&config_file).map_err(|e| format!("读取配置失败: {}", e))?;
     let config: Value = serde_json::from_str(&config_content).map_err(|e| format!("解析配置失败: {}", e))?;
-    Ok(config["game_path"].as_str().unwrap_or("").to_string())
+    let Some(path) = config["game_path"].as_str() else {
+        return Ok(String::new());
+    };
+    validate_game_executable(path).map(|path| path.to_string_lossy().to_string())
 }

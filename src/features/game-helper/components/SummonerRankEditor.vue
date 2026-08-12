@@ -1,17 +1,67 @@
 <template>
-  <Card>
-    <CardHeader>
-      <CardTitle class="flex items-center gap-2">
-        <Users class="h-5 w-5" />
+  <div v-if="embedded" class="space-y-2">
+    <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <Select v-model="rankQueue">
+        <SelectTrigger class="h-9 w-full text-sm sm:w-[8.5rem]">
+          <SelectValue placeholder="队列" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem v-for="q in rankQueues" :key="q.value" :value="q.value">
+            {{ q.label }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select v-model="rankTier">
+        <SelectTrigger class="h-9 w-full text-sm sm:w-[11rem]">
+          <span class="flex min-w-0 items-center gap-2">
+            <img v-if="getTierIconUrl(rankTier)" :src="getTierIconUrl(rankTier)" alt="" class="size-5 shrink-0" />
+            <span class="truncate">{{ tierLabelMap[rankTier] || rankTier }}</span>
+          </span>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem v-for="t in rankTiers" :key="t" :value="t">
+            <div class="flex items-center gap-2">
+              <img v-if="getTierIconUrl(t)" :src="getTierIconUrl(t)" alt="" class="size-5" />
+              <span>{{ tierLabelMap[t] || t }}</span>
+            </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select v-model="rankDivision" :disabled="noDivisionTiers.includes(rankTier)">
+        <SelectTrigger class="h-9 w-full text-sm sm:w-[5.5rem]">
+          <SelectValue placeholder="小段" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem v-for="d in rankDivisions" :key="d" :value="d">
+            {{ d }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Button class="h-9 shrink-0" :disabled="updatingRank" @click="handleSave">
+        {{ updatingRank ? '保存中…' : '保存段位' }}
+      </Button>
+    </div>
+    <p v-if="noDivisionTiers.includes(rankTier)" class="text-xs text-muted-foreground">
+      大师、宗师、王者无小段位，自动设为 I
+    </p>
+  </div>
+
+  <Card v-else class="gap-0 py-0">
+    <CardHeader class="gap-1 px-4 py-3 sm:px-5">
+      <CardTitle class="flex items-center gap-2 text-base font-medium">
+        <Trophy class="size-4 shrink-0 text-muted-foreground" />
         段位设置
-        <span class="text-muted-foreground">自定义你的段位信息</span>
       </CardTitle>
+      <p class="text-xs text-muted-foreground">自定义你的段位信息</p>
     </CardHeader>
-    <CardContent>
-      <div class="flex flex-col md:flex-row items-center gap-4">
+    <CardContent class="space-y-2 px-4 pb-4 sm:px-5">
+      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <Select v-model="rankQueue">
-          <SelectTrigger class="h-12 px-4 rounded border border-border bg-background/50 min-w-[120px]">
-            <span>{{ rankQueues.find((q) => q.value === rankQueue)?.label }}</span>
+          <SelectTrigger class="h-9 w-full text-sm sm:w-[8.5rem]">
+            <SelectValue placeholder="队列" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem v-for="q in rankQueues" :key="q.value" :value="q.value">
@@ -20,28 +70,24 @@
           </SelectContent>
         </Select>
         <Select v-model="rankTier">
-          <SelectTrigger
-            class="h-12 px-4 rounded border border-border bg-background/50 min-w-[160px] flex items-center"
-          >
-            <img
-              v-if="getTierIconUrl(rankTier)"
-              :src="getTierIconUrl(rankTier)"
-              class="w-6 h-6 mr-2 inline-block align-middle"
-            />
-            <span>{{ tierLabelMap[rankTier] || rankTier }}</span>
+          <SelectTrigger class="h-9 w-full text-sm sm:w-[11rem]">
+            <span class="flex min-w-0 items-center gap-2">
+              <img v-if="getTierIconUrl(rankTier)" :src="getTierIconUrl(rankTier)" alt="" class="size-5 shrink-0" />
+              <span class="truncate">{{ tierLabelMap[rankTier] || rankTier }}</span>
+            </span>
           </SelectTrigger>
           <SelectContent>
             <SelectItem v-for="t in rankTiers" :key="t" :value="t">
-              <div class="flex items-center">
-                <img v-if="getTierIconUrl(t)" :src="getTierIconUrl(t)" class="w-6 h-6 mr-2" />
+              <div class="flex items-center gap-2">
+                <img v-if="getTierIconUrl(t)" :src="getTierIconUrl(t)" alt="" class="size-5" />
                 <span>{{ tierLabelMap[t] || t }}</span>
               </div>
             </SelectItem>
           </SelectContent>
         </Select>
         <Select v-model="rankDivision" :disabled="noDivisionTiers.includes(rankTier)">
-          <SelectTrigger class="h-12 px-4 rounded border border-border bg-background/50 min-w-[80px]">
-            <span>{{ rankDivision }}</span>
+          <SelectTrigger class="h-9 w-full text-sm sm:w-[5.5rem]">
+            <SelectValue placeholder="小段" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem v-for="d in rankDivisions" :key="d" :value="d">
@@ -49,25 +95,28 @@
             </SelectItem>
           </SelectContent>
         </Select>
-        <button
-          @click="handleSave"
-          :disabled="updatingRank"
-          class="px-6 py-2 bg-primary/80 text-primary-foreground rounded-lg hover:bg-primary/90 transition-all duration-200 text-base font-medium shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {{ updatingRank ? '保存中...' : '保存段位' }}
-        </button>
+        <Button class="h-9 shrink-0" :disabled="updatingRank" @click="handleSave">
+          {{ updatingRank ? '保存中…' : '保存段位' }}
+        </Button>
       </div>
-      <div v-if="noDivisionTiers.includes(rankTier)" class="text-xs text-muted-foreground mt-2">
+      <p v-if="noDivisionTiers.includes(rankTier)" class="text-xs text-muted-foreground">
         大师、宗师、王者无小段位，自动设为 I
-      </div>
+      </p>
     </CardContent>
   </Card>
 </template>
 
 <script setup lang="ts">
-import { Users } from 'lucide-vue-next'
-import { useGameHelper } from '../composables/useGameHelper'
+import { Trophy } from 'lucide-vue-next'
 import { getTierIconUrl } from '@/lib'
+import { useGameHelper } from '../composables/useGameHelper'
+
+withDefaults(
+  defineProps<{
+    embedded?: boolean
+  }>(),
+  { embedded: false }
+)
 
 const rankQueues = [
   { label: '单双排', value: 'RANKED_SOLO_5x5' },

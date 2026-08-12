@@ -1,5 +1,4 @@
-import { getLatestVersion } from '@/lib'
-import { useQueues } from '@/shared/composables/data/useVersionedData'
+import { useBootstrapStaticData } from '@/shared/composables/data/useVersionedData'
 
 /**
  * 应用初始化组合式函数
@@ -15,51 +14,39 @@ export function useAppInitialization() {
   const isInitialized = ref(false)
   const initializationError = ref<string | null>(null)
 
-  const initializeGameVersion = async () => {
-    try {
-      console.log('[AppInit] 获取游戏版本...')
-      const latestVersion = await getLatestVersion()
+  // 启动 hydrate：Rust 静态包元信息 + 英雄/技能 IPC + 队列（按版本缓存）
+  const { metaQuery, isReady: staticReady } = useBootstrapStaticData()
 
-      if (latestVersion !== dataStore.gameVersion) {
-        dataStore.setGameVersion(latestVersion)
-        console.log('[AppInit] 游戏版本已更新:', latestVersion)
-      }
-    } catch (error) {
-      console.error('[AppInit] 获取游戏版本失败:', error)
-      activityStore.addActivity('error', '获取游戏版本失败', 'error')
+  watchEffect(() => {
+    const version = metaQuery.data.value?.version
+    if (version && version !== dataStore.gameVersion) {
+      dataStore.setGameVersion(version)
     }
-  }
+  })
 
   const initializeConnection = async () => {
     try {
       console.log('[AppInit] 初始化连接状态...')
-      // 启动时强制检查一次连接，以更新持久化的陈旧状态
       await connectionStore.checkConnection()
-
-      // 连接成功后的数据更新统一由 connectionStore.updateConnectionState('Connected') 触发，避免重复调用
     } catch (error) {
       console.error('[AppInit] 初始化连接状态失败:', error)
     }
   }
 
-  // 预加载 CDragon 队列中文名（不依赖 LCU）
-  useQueues()
-
   const initializeApp = async () => {
     try {
       console.log('[AppInit] 开始应用初始化...')
 
-      // 1. 初始化主题
       settingsStore.initTheme()
 
-      // 2. 初始化游戏版本
-      await initializeGameVersion()
-
-      // 3. 初始化连接状态
+      // 静态目录由 useBootstrapStaticData 后台拉取；此处只等连接
       await initializeConnection()
 
       isInitialized.value = true
-      console.log('[AppInit] 应用初始化完成')
+      console.log('[AppInit] 应用初始化完成', {
+        staticReady: staticReady.value,
+        version: metaQuery.data.value?.version
+      })
       activityStore.addActivity('success', '应用初始化完成', 'system')
     } catch (error) {
       console.error('[AppInit] 应用初始化失败:', error)
@@ -81,11 +68,8 @@ export function useAppInitialization() {
   }
 
   return {
-    // 状态
     isInitialized,
     initializationError,
-
-    // 方法
     initializeApp,
     cleanup,
     reinitialize

@@ -6,10 +6,10 @@
 // biome-ignore lint: disable
 export {}
 declare global {
-  const AnalysisDepth: typeof import('../src/shared/stores/features/analysisSettingsStore')['AnalysisDepth']
-  const AnalysisMode: typeof import('../src/shared/stores/features/analysisSettingsStore')['AnalysisMode']
   const EffectScope: typeof import('vue')['EffectScope']
+  const POST_GAME_REFRESH_DELAYS_MS: typeof import('../src/shared/composables/game/postGameMatchRefresh')['POST_GAME_REFRESH_DELAYS_MS']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
+  const cancelPendingMatchAnalysis: typeof import('../src/shared/composables/game/useMatchAnalysis')['cancelPendingMatchAnalysis']
   const computed: typeof import('vue')['computed']
   const createApp: typeof import('vue')['createApp']
   const createPinia: typeof import('pinia')['createPinia']
@@ -21,6 +21,7 @@ declare global {
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
+  const getLatestMatchId: typeof import('../src/shared/composables/game/postGameMatchRefresh')['getLatestMatchId']
   const h: typeof import('vue')['h']
   const inject: typeof import('vue')['inject']
   const isProxy: typeof import('vue')['isProxy']
@@ -54,7 +55,11 @@ declare global {
   const reactive: typeof import('vue')['reactive']
   const readonly: typeof import('vue')['readonly']
   const ref: typeof import('vue')['ref']
+  const refreshStaticCatalogsOnVersionChange: typeof import('../src/shared/composables/data/useVersionedData')['refreshStaticCatalogsOnVersionChange']
   const resolveComponent: typeof import('vue')['resolveComponent']
+  const runPostGameRefresh: typeof import('../src/shared/composables/game/postGameMatchRefresh')['runPostGameRefresh']
+  const runeSelectionFromOpgg: typeof import('../src/shared/composables/game/useBuildApplication')['runeSelectionFromOpgg']
+  const runeSnapshotFromOpgg: typeof import('../src/shared/composables/game/useBuildApplication')['runeSnapshotFromOpgg']
   const setActivePinia: typeof import('pinia')['setActivePinia']
   const setMapStoreSuffix: typeof import('pinia')['setMapStoreSuffix']
   const shallowReactive: typeof import('vue')['shallowReactive']
@@ -72,90 +77,62 @@ declare global {
   const useActivityStore: typeof import('../src/shared/stores/core/activityStore')['useActivityStore']
   const useAiAnalysis: typeof import('../src/shared/composables/game/useAiAnalysis')['useAiAnalysis']
   const useAiSettingsStore: typeof import('../src/shared/stores/features/aiSettingsStore')['useAiSettingsStore']
-  const useAllRunesQuery: typeof import('../src/shared/composables/useLolApiQuery')['useAllRunesQuery']
-  const useAnalysisCacheStore: typeof import('../src/shared/stores/features/analysisCacheStore')['useAnalysisCacheStore']
-  const useAnalysisSettingsStore: typeof import('../src/shared/stores/features/analysisSettingsStore')['useAnalysisSettingsStore']
   const useApp: typeof import('../src/shared/composables/app/useApp')['useApp']
   const useAppEvents: typeof import('../src/shared/composables/app/useAppEvents')['useAppEvents']
   const useAppInitialization: typeof import('../src/shared/composables/app/useAppInitialization')['useAppInitialization']
   const useAttrs: typeof import('vue')['useAttrs']
-  const useAutoFunctionManager: typeof import('../src/shared/composables/game/useAutoFunctionManager')['useAutoFunctionManager']
+  const useAutoBuild: typeof import('../src/shared/composables/game/useAutoBuild')['useAutoBuild']
   const useAutoFunctionStore: typeof import('../src/shared/stores/features/autoFunctionStore')['useAutoFunctionStore']
-  const useAutoPerformanceMonitor: typeof import('../src/shared/composables/utils/usePerformanceMonitor')['useAutoPerformanceMonitor']
-  const useAutoRune: typeof import('../src/shared/composables/game/useAutoRune')['useAutoRune']
-  const useAutoVersionCheck: typeof import('../src/shared/composables/data/useAutoVersionCheck')['useAutoVersionCheck']
-  const useBuildsByAliasQuery: typeof import('../src/shared/composables/useLolApiQuery')['useBuildsByAliasQuery']
+  const useBootstrapStaticData: typeof import('../src/shared/composables/data/useVersionedData')['useBootstrapStaticData']
+  const useBuildApplication: typeof import('../src/shared/composables/game/useBuildApplication')['useBuildApplication']
+  const useBuildPresetStore: typeof import('../src/shared/stores/features/buildPresetStore')['useBuildPresetStore']
   const useChampSelect: typeof import('../src/shared/composables/game/useChampSelect')['useChampSelect']
+  const useChampSelectAutomation: typeof import('../src/shared/composables/game/useChampSelectAutomation')['useChampSelectAutomation']
   const useChampSelectManager: typeof import('../src/shared/composables/game/useChampSelectManager')['useChampSelectManager']
-  const useChampSelectSession: typeof import('../src/shared/composables/game/useChampSelectSession')['useChampSelectSession']
-  const useChampionById: typeof import('../src/shared/composables/data/useVersionedData')['useChampionById']
-  const useChampionByName: typeof import('../src/shared/composables/data/useVersionedData')['useChampionByName']
-  const useChampionDetailsQuery: typeof import('../src/shared/composables/game/useChampionQuery')['useChampionDetailsQuery']
-  const useChampionSummaryQuery: typeof import('../src/shared/composables/game/useChampionQuery')['useChampionSummaryQuery']
+  const useChampionDetails: typeof import('../src/shared/composables/data/useVersionedData')['useChampionDetails']
   const useChampions: typeof import('../src/shared/composables/data/useVersionedData')['useChampions']
-  const useChampionsQuery: typeof import('../src/shared/composables/useLolApiQuery')['useChampionsQuery']
   const useCommunityDragonPerksQuery: typeof import('../src/shared/composables/data/useVersionedData')['useCommunityDragonPerksQuery']
   const useConnection: typeof import('../src/shared/composables/connection/useConnection')['useConnection']
   const useConnectionStore: typeof import('../src/shared/stores/core/connectionStore')['useConnectionStore']
   const useCssModule: typeof import('vue')['useCssModule']
   const useCssVars: typeof import('vue')['useCssVars']
-  const useCurrentRunePage: typeof import('../src/shared/composables/data/useVersionedData')['useCurrentRunePage']
   const useDataStore: typeof import('../src/shared/stores/core/dataStore')['useDataStore']
-  const useDebouncedModel: typeof import('../src/shared/composables/utils/useDebouncedModel')['useDebouncedModel']
   const useDebouncedNumberModel: typeof import('../src/shared/composables/utils/useDebouncedNumberModel')['useDebouncedNumberModel']
-  const useDeepseekSuggestion: typeof import('../src/shared/composables/game/useDeepseekSuggestion')['useDeepseekSuggestion']
   const useDeviceWebSocket: typeof import('../src/shared/composables/app/useDeviceWebSocket')['useDeviceWebSocket']
   const useErrorHandler: typeof import('../src/shared/composables/utils/useErrorHandler')['useErrorHandler']
   const useEventBus: typeof import('../src/shared/composables/utils/useEventBus')['useEventBus']
   const useFormatters: typeof import('../src/shared/composables/utils/useFormatters')['useFormatters']
   const useGameAssets: typeof import('../src/shared/composables/game/useGameAssets')['useGameAssets']
   const useGameEvents: typeof import('../src/shared/composables/utils/useEventBus')['useGameEvents']
-  const useGameModesQuery: typeof import('../src/shared/composables/useLolApiQuery')['useGameModesQuery']
   const useGamePhaseManager: typeof import('../src/shared/composables/game/useGamePhaseManager')['useGamePhaseManager']
   const useGameStore: typeof import('../src/shared/stores/features/gameStore')['useGameStore']
-  const useGameTypesQuery: typeof import('../src/shared/composables/useLolApiQuery')['useGameTypesQuery']
   const useGameVersion: typeof import('../src/shared/composables/data/useVersionedData')['useGameVersion']
   const useId: typeof import('vue')['useId']
-  const useItemsQuery: typeof import('../src/shared/composables/useLolApiQuery')['useItemsQuery']
+  const useItems: typeof import('../src/shared/composables/data/useVersionedData')['useItems']
   const useLink: typeof import('vue-router')['useLink']
   const useLoading: typeof import('../src/shared/composables/utils/useLoading')['useLoading']
-  const useLobbyManager: typeof import('../src/shared/composables/game/useChampSelectManager')['useLobbyManager']
-  const useManualVersionCheck: typeof import('../src/shared/composables/data/useAutoVersionCheck')['useManualVersionCheck']
-  const useMapsQuery: typeof import('../src/shared/composables/useLolApiQuery')['useMapsQuery']
   const useMatchAnalysis: typeof import('../src/shared/composables/game/useMatchAnalysis')['useMatchAnalysis']
   const useMatchFilter: typeof import('../src/shared/composables/game/useMatchFilter')['useMatchFilter']
-  const useMatchHistoryFetcher: typeof import('../src/shared/composables/game/useMatchHistoryFetcher')['useMatchHistoryFetcher']
   const useMatchmaking: typeof import('../src/shared/composables/game/useMatchmaking')['useMatchmaking']
   const useMatchmakingStore: typeof import('../src/shared/stores/features/matchmakingStore')['useMatchmakingStore']
   const useModel: typeof import('vue')['useModel']
-  const useOpggBuild: typeof import('../src/shared/composables/data/useVersionedData')['useOpggBuild']
-  const useOpggTierList: typeof import('../src/shared/composables/data/useVersionedData')['useOpggTierList']
-  const usePerformanceMonitor: typeof import('../src/shared/composables/utils/usePerformanceMonitor')['usePerformanceMonitor']
-  const usePerkIcons: typeof import('../src/shared/composables/data/useVersionedData')['usePerkIcons']
-  const usePerks: typeof import('../src/shared/composables/data/useVersionedData')['usePerks']
   const usePersonalMatchAnalysisStore: typeof import('../src/shared/stores/features/personalMatchAnalysisStore')['usePersonalMatchAnalysisStore']
-  const usePlayerListQuery: typeof import('../src/shared/composables/useLolApiQuery')['usePlayerListQuery']
   const usePositionAnalysis: typeof import('../src/shared/composables/game/usePositionAnalysis')['usePositionAnalysis']
   const useQueues: typeof import('../src/shared/composables/data/useVersionedData')['useQueues']
-  const useQueuesQuery: typeof import('../src/shared/composables/useLolApiQuery')['useQueuesQuery']
   const useReactiveEvent: typeof import('../src/shared/composables/utils/useEventBus')['useReactiveEvent']
-  const useRefreshStaticData: typeof import('../src/shared/composables/data/useVersionedData')['useRefreshStaticData']
   const useRoute: typeof import('vue-router')['useRoute']
   const useRouter: typeof import('vue-router')['useRouter']
   const useRuneData: typeof import('../src/shared/composables/game/useRuneData')['useRuneData']
-  const useRuneStyles: typeof import('../src/shared/composables/data/useVersionedData')['useRuneStyles']
-  const useRunesQuery: typeof import('../src/shared/composables/useLolApiQuery')['useRunesQuery']
+  const useSearchHistoryStore: typeof import('../src/shared/stores/features/searchHistoryStore')['useSearchHistoryStore']
   const useSearchMatches: typeof import('../src/shared/composables/game/useSearchMatches')['useSearchMatches']
   const useSessionStore: typeof import('../src/shared/stores/features/sessionStore')['useSessionStore']
   const useSettingsStore: typeof import('../src/shared/stores/ui/settingsStore')['useSettingsStore']
-  const useSkinsQuery: typeof import('../src/shared/composables/useLolApiQuery')['useSkinsQuery']
   const useSlots: typeof import('vue')['useSlots']
+  const useStaticCatalogMeta: typeof import('../src/shared/composables/data/useVersionedData')['useStaticCatalogMeta']
   const useStaticData: typeof import('../src/shared/composables/data/useVersionedData')['useStaticData']
   const useSummonerAndMatchUpdater: typeof import('../src/shared/composables/game/useSummonerAndMatchUpdater')['useSummonerAndMatchUpdater']
   const useSummonerSpells: typeof import('../src/shared/composables/data/useVersionedData')['useSummonerSpells']
   const useTemplateRef: typeof import('vue')['useTemplateRef']
-  const useUserRuneStore: typeof import('../src/shared/stores/features/userRuneStore')['useUserRuneStore']
-  const useVersionChange: typeof import('../src/shared/composables/data/useAutoVersionCheck')['useVersionChange']
   const watch: typeof import('vue')['watch']
   const watchEffect: typeof import('vue')['watchEffect']
   const watchPostEffect: typeof import('vue')['watchPostEffect']
@@ -166,6 +143,12 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { PostGameRefreshOutcome } from '../src/shared/composables/game/postGameMatchRefresh'
+  import('../src/shared/composables/game/postGameMatchRefresh')
+  // @ts-ignore
+  export type { RecommendationContext } from '../src/shared/composables/game/useBuildApplication'
+  import('../src/shared/composables/game/useBuildApplication')
   // @ts-ignore
   export type { PerkStyle, PerkSlot, Perk } from '../src/shared/composables/game/useRuneData'
   import('../src/shared/composables/game/useRuneData')
@@ -179,12 +162,9 @@ declare global {
   export type { AiSettingsPublic } from '../src/shared/stores/features/aiSettingsStore'
   import('../src/shared/stores/features/aiSettingsStore')
   // @ts-ignore
-  export type { AnalysisDepth, AnalysisMode, AnalysisConfig } from '../src/shared/stores/features/analysisSettingsStore'
-  import('../src/shared/stores/features/analysisSettingsStore')
-  // @ts-ignore
   export type { AutoFunctions, AutoFunctionConfig, AutoSelectConfig, AutoBanConfig } from '../src/shared/stores/features/autoFunctionStore'
   import('../src/shared/stores/features/autoFunctionStore')
   // @ts-ignore
-  export type { RuneConfig, AutoApplyConfig } from '../src/shared/stores/features/userRuneStore'
-  import('../src/shared/stores/features/userRuneStore')
+  export type { AutoBuildPolicy } from '../src/shared/stores/features/buildPresetStore'
+  import('../src/shared/stores/features/buildPresetStore')
 }

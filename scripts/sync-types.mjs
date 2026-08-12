@@ -1,6 +1,6 @@
-import fs from 'fs/promises'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // --- 配置 ---
 const __filename = fileURLToPath(import.meta.url)
@@ -17,22 +17,23 @@ const header = `/**
  * *                                               *
  * *************************************************
  *
- * 如需更新，请运行 'odescripts/sync-types.mjs'
+ * 如需更新，请运行 'pnpm types'
  */
 
 `
 // --- 主逻辑 --
 async function syncTypes() {
   try {
-    console.log('🚀 开始同步型定义...')
+    console.log('🚀 开始同步类型定义...')
     console.log(`- 源目录: ${sourceDir}`)
     console.log(`- 目标文件: ${targetFile}`)
 
     const files = await fs.readdir(sourceDir)
-    const tsFiles = files.filter((file) => file.endsWith('.ts') && !file.endsWith('.d.ts') && file !== 'index.ts')
+    const tsFiles = files
+      .filter((file) => file.endsWith('.ts') && !file.endsWith('.d.ts') && file !== 'index.ts')
+      .sort()
     if (tsFiles.length === 0) {
-      console.warn('⚠️ 在源目录中未找到需要同步的 .ts 文件。')
-      return
+      throw new Error('生成目录中没有可同步的 TypeScript 类型')
     }
 
     let combinedContent = header
@@ -45,15 +46,18 @@ async function syncTypes() {
       const lines = content.split(/\r?\n/)
       const contentWithoutImports = lines.filter((line) => !line.trim().startsWith('import')).join('\n')
 
-      // 移除 'export' 关键字
-      const contentWithoutExports = contentWithoutImports.replace(/export /g, '')
+      // 合并为全局声明时，只移除声明行开头的 export 关键字。
+      const contentWithoutExports = contentWithoutImports
+        .replace(/^export\s+/gm, '')
+        .replace(/[ \t]+$/gm, '')
+        .trim()
 
       combinedContent += `// --- 从 ${file} 同步 ---\n`
       combinedContent += contentWithoutExports
       combinedContent += '\n\n'
     }
 
-    await fs.writeFile(targetFile, combinedContent)
+    await fs.writeFile(targetFile, `${combinedContent.trimEnd()}\n`)
 
     console.log(`✅ 类型同步成功！ ${tsFiles.length} 个文件的内容已合并到 global.d.ts。`)
   } catch (error) {

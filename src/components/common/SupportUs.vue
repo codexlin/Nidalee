@@ -14,9 +14,7 @@ function openLink(url: string) {
 </script>
 
 <template>
-  <div
-    class="mt-8 p-8 rounded-2xl shadow-xl bg-gradient-to-br from-white/80 to-muted/60 dark:from-background/80 dark:to-muted/40 border border-border"
-  >
+  <div class="mt-8 p-8">
     <div class="space-y-6">
       <div>
         <h2 class="text-xl font-bold text-primary flex items-center">

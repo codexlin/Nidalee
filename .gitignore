@@ -1,5 +1,10 @@
 # Local debug dumps
 tmp/
+raw_match_data_*.json
+
+# Root-level Rust tooling/build cache
+/target/
+/.pnpm-store/
 
 # Logs
 logs
@@ -15,6 +20,7 @@ dist
 dist-ssr
 *.local
 *.yaml
+!pnpm-lock.yaml
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -37,3 +43,7 @@ tsconfig.node.tsbuildinfo
 # Vite generated files
 vite.config.js
 vite.config.d.ts
+
+# Agent/local cargo target dirs
+src-tauri/target-agent/
+

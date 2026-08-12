@@ -1,0 +1,28 @@
+/*
+ * HarmonyOS Sans SC — Regular / Medium / Bold (woff2)
+ * Regular: swap（通常在挂载前就绪；慢设备超时后先显示回退字体）
+ * Medium/Bold: swap（后台加载，就绪前先用 Regular 顶上，避免标题空白）
+ */
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('../assets/fonts/harmonyos-sans-sc/HarmonyOS_Sans_SC_Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('../assets/fonts/harmonyos-sans-sc/HarmonyOS_Sans_SC_Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  src: url('../assets/fonts/harmonyos-sans-sc/HarmonyOS_Sans_SC_Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

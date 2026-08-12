@@ -1,12 +1,13 @@
-import { AnalysisMode } from '@/shared/stores/features/analysisSettingsStore'
-
 /**
  * 统一战绩模式 key：
  * - all: 全部模式
- * - mixedRanked: 单双+灵活
- * - 数字字符串: 具体 queueId
+ * - normals: 普通模式（非排位）
+ * - mixedRanked: 排位（单双+灵活）
+ * - 数字字符串: 具体 queueId（单双/灵活）
+ *
+ * AnalysisMode 来自 Rust → global.d.ts（IPC 契约），勿再维护前端枚举副本。
  */
-export type MatchModeKey = 'all' | 'mixedRanked' | `${number}`
+export type MatchModeKey = 'all' | 'normals' | 'mixedRanked' | `${number}`
 
 export interface MatchModeOption {
   key: MatchModeKey
@@ -14,59 +15,70 @@ export interface MatchModeOption {
   fallbackLabel: string
   queueIds: number[]
   analysisMode: AnalysisMode
+  /** 排除排位（普通模式） */
+  excludeRanked?: boolean
 }
 
-/** 仪表盘 / 游戏设置共用的模式目录 */
+/** 排位队列 */
+export const RANKED_QUEUE_IDS = [420, 440] as const
+
+/**
+ * 仪表盘模式目录（5 项）：
+ * 全部 → 普通 → 排位混合 → 单双 → 灵活
+ */
 export const MATCH_MODE_OPTIONS: MatchModeOption[] = [
   {
     key: 'all',
     fallbackLabel: '全部模式',
     queueIds: [],
-    analysisMode: AnalysisMode.AllModes
+    analysisMode: 'allModes'
+  },
+  {
+    key: 'normals',
+    fallbackLabel: '普通模式',
+    queueIds: [],
+    analysisMode: 'normals',
+    excludeRanked: true
   },
   {
     key: 'mixedRanked',
-    fallbackLabel: '排位赛（单双+灵活）',
+    fallbackLabel: '排位模式',
     queueIds: [420, 440],
-    analysisMode: AnalysisMode.MixedRanked
+    analysisMode: 'mixedRanked'
   },
   {
     key: '420',
     fallbackLabel: '单双排',
     queueIds: [420],
-    analysisMode: AnalysisMode.SoloRanked
+    analysisMode: 'soloRanked'
   },
   {
     key: '440',
     fallbackLabel: '灵活组排',
     queueIds: [440],
-    analysisMode: AnalysisMode.FlexRanked
-  },
-  {
-    key: '450',
-    fallbackLabel: '极地大乱斗',
-    queueIds: [450],
-    analysisMode: AnalysisMode.Aram
-  },
-  {
-    key: '2400',
-    fallbackLabel: '海克斯大乱斗',
-    queueIds: [2400],
-    analysisMode: AnalysisMode.AllModes
-  },
-  {
-    key: '1700',
-    fallbackLabel: '斗魂竞技场',
-    queueIds: [1700],
-    analysisMode: AnalysisMode.AllModes
-  },
-  {
-    key: '900',
-    fallbackLabel: '无限火力',
-    queueIds: [900],
-    analysisMode: AnalysisMode.AllModes
+    analysisMode: 'flexRanked'
   }
 ]
+
+const SELECTABLE_MATCH_MODE_KEYS = new Set<string>(MATCH_MODE_OPTIONS.map((o) => o.key))
+
+/** 是否仍在 Dashboard 下拉里可选 */
+export function isSelectableMatchMode(key: string): key is MatchModeKey {
+  return SELECTABLE_MATCH_MODE_KEYS.has(key)
+}
+
+/** 旧偏好迁移：大乱斗等娱乐单项 → 普通；未知 → 全部 */
+export function normalizeMatchModeKey(key: string): MatchModeKey {
+  if (isSelectableMatchMode(key)) return key
+  if (key === '450' || key === 'aram') return 'normals'
+  if (key === '900' || key === '1700' || key === '2400' || key === '1900') return 'normals'
+  if (/^\d+$/.test(key)) {
+    const id = Number(key)
+    if (id === 420 || id === 440) return String(id) as MatchModeKey
+    return 'normals'
+  }
+  return 'all'
+}
 
 const FALLBACK_QUEUE_NAMES: Record<number, string> = {
   0: '自定义',
@@ -83,7 +95,9 @@ const FALLBACK_QUEUE_NAMES: Record<number, string> = {
   1700: '斗魂竞技场',
   1900: '无限火力',
   2300: '神木之门',
-  2400: '海克斯大乱斗'
+  2400: '海克斯大乱斗',
+  3110: '自定义游戏',
+  4310: '经典模式'
 }
 
 /** CDragon 队列中文名缓存 */
@@ -101,8 +115,13 @@ export function getQueueDisplayName(queueId: number): string {
   return cdragonQueueNames.get(queueId) || FALLBACK_QUEUE_NAMES[queueId] || `未知队列(${queueId})`
 }
 
+/** 紧凑卡片使用短模式名，避免 CDragon 名称携带地图前缀后挤占内容。 */
+export function getCompactQueueDisplayName(queueId: number): string {
+  return FALLBACK_QUEUE_NAMES[queueId] || getQueueDisplayName(queueId)
+}
+
 export function isMatchModeKey(value: string): value is MatchModeKey {
-  return value === 'all' || value === 'mixedRanked' || /^\d+$/.test(value)
+  return value === 'all' || value === 'normals' || value === 'mixedRanked' || /^\d+$/.test(value)
 }
 
 export function getMatchModeOption(key: MatchModeKey): MatchModeOption {
@@ -110,8 +129,8 @@ export function getMatchModeOption(key: MatchModeKey): MatchModeOption {
     MATCH_MODE_OPTIONS.find((option) => option.key === key) || {
       key,
       fallbackLabel: getQueueDisplayName(Number(key)),
-      queueIds: key === 'all' || key === 'mixedRanked' ? [] : [Number(key)],
-      analysisMode: AnalysisMode.AllModes
+      queueIds: key === 'all' || key === 'normals' || key === 'mixedRanked' ? [] : [Number(key)],
+      analysisMode: 'allModes'
     }
   )
 }
@@ -124,12 +143,12 @@ export function getMatchModeLabel(key: MatchModeKey): string {
   return option.fallbackLabel
 }
 
-export function matchModeToAnalysisMode(key: MatchModeKey): AnalysisMode {
-  return getMatchModeOption(key).analysisMode
-}
-
 export function matchModeToQueueIds(key: MatchModeKey): number[] {
   return [...getMatchModeOption(key).queueIds]
+}
+
+export function matchModeExcludesRanked(key: MatchModeKey): boolean {
+  return !!getMatchModeOption(key).excludeRanked
 }
 
 /** 传给 analyze_matches / MatchAnalysisRequest：单队列用 queueId，预设模式用 analysisMode */
@@ -138,7 +157,7 @@ export function matchModeToInvokeArgs(key: MatchModeKey): {
   analysisMode: AnalysisMode
 } {
   const option = getMatchModeOption(key)
-  if (key === 'all' || key === 'mixedRanked' || option.queueIds.length !== 1) {
+  if (key === 'all' || key === 'normals' || key === 'mixedRanked' || option.queueIds.length !== 1) {
     return { queueId: null, analysisMode: option.analysisMode }
   }
   return { queueId: option.queueIds[0], analysisMode: option.analysisMode }

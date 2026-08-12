@@ -146,16 +146,77 @@ pub struct OpggPerk {
     pub pick_rate: f64,
 }
 
-/// OP.GG API 响应
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// 强度榜对抗样本
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/OpggTierCounter.ts",
+    rename_all = "camelCase"
+)]
 #[serde(rename_all = "camelCase")]
-pub struct OpggApiResponse<T> {
-    pub success: bool,
-    pub data: Option<T>,
-    pub error: Option<String>,
+pub struct OpggTierCounter {
+    pub champion_id: i32,
+    pub play: i32,
+    pub win: i32,
 }
 
-/// 层级列表项
+/// 强度榜统计（全英雄或某分路）
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/OpggTierStats.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct OpggTierStats {
+    pub play: i32,
+    /// 排位/ARAM/URF: 胜率；Arena: 吃鸡率（first_place / play）
+    pub win_rate: f64,
+    pub pick_rate: f64,
+    /// ARAM/URF 常为 0（现网 null）
+    pub ban_rate: f64,
+    pub kda: f64,
+    /// OP.GG tier 数字（1=OP …）
+    pub tier: i32,
+    pub rank: i32,
+    /// Arena: 吃鸡场次
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_place: Option<i32>,
+    /// Arena: 排名总和
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_place: Option<i32>,
+}
+
+/// ARAM 等模式的英雄定位占比
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/OpggTierRole.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct OpggTierRole {
+    pub name: String,
+    pub win_rate: f64,
+    pub role_rate: f64,
+    pub play: i32,
+}
+
+/// 强度榜分路行
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/OpggTierPosition.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct OpggTierPosition {
+    pub name: String,
+    pub stats: OpggTierStats,
+    pub counters: Vec<OpggTierCounter>,
+}
+
+/// 层级列表项（对齐现网 lol-api-champion 结构）
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(
     export,
@@ -165,12 +226,11 @@ pub struct OpggApiResponse<T> {
 #[serde(rename_all = "camelCase")]
 pub struct OpggTierListItem {
     pub champion_id: i32,
-    pub name: String,
-    pub tier: String,
-    pub rank: i32,
-    pub win_rate: f64,
-    pub pick_rate: f64,
-    pub ban_rate: f64,
+    pub average_stats: OpggTierStats,
+    /// 排位有分路；ARAM/URF/Arena 为空
+    pub positions: Vec<OpggTierPosition>,
+    /// ARAM 常见；其它模式多为空
+    pub roles: Vec<OpggTierRole>,
 }
 
 /// 层级列表

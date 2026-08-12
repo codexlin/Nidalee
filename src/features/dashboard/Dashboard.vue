@@ -21,7 +21,11 @@
             </Button>
             <span v-if="aiError" class="text-xs text-destructive">{{ aiError }}</span>
           </div>
-          <div v-if="aiInsight" class="space-y-2" :class="showAiAction ? 'pt-1 border-t border-dashed border-border' : ''">
+          <div
+            v-if="aiInsight"
+            class="space-y-2"
+            :class="showAiAction ? 'pt-1 border-t border-dashed border-border' : ''"
+          >
             <p class="font-medium text-foreground">{{ aiInsight.summary }}</p>
             <p class="text-xs text-muted-foreground">置信度 {{ Math.round(aiInsight.confidence * 100) }}%</p>
             <ul v-if="aiInsight.findings?.length" class="list-disc pl-4 space-y-1 text-muted-foreground">
@@ -43,6 +47,8 @@
         :is-connected="isConnected"
         :match-history-loading="matchHistoryLoading"
         :match-statistics="matchStatistics"
+        :ranked-stats="personalAnalysis.rankedStats"
+        :other-stats="personalAnalysis.otherStats"
         :analysis-traits="personalAnalysis.traits"
         :position-stats="positionAnalysis?.positionStats"
         :main-position="positionAnalysis?.mainPosition"
@@ -52,21 +58,50 @@
         :scanned-games="selectedMatchCount"
         :ai-ready="aiReady"
         :display-games="displayGames"
+        :can-export-poster="canExportPoster"
+        :poster-exporting="posterExporting"
         @fetch-match-history="handleFetchMatchHistory"
         @mode-change="handleModeChange"
         @count-change="handleCountChange"
         @remember-change="handleRememberChange"
+        @export-poster="handleExportPoster"
       />
+
+      <!-- 离屏海报稿：固定宽 720，不截整页 -->
+      <div
+        v-if="canExportPoster"
+        class="pointer-events-none fixed top-0 -left-[10000px] z-[-1] w-[720px]"
+        aria-hidden="true"
+      >
+        <DashboardPoster
+          ref="posterRef"
+          :summoner-info="summonerInfo"
+          :today-matches="todayMatches"
+          :solo-rank="soloRank"
+          :flex-rank="flexRank"
+          :match-statistics="matchStatistics"
+          :analysis-traits="personalAnalysis.traits"
+          :position-stats="positionAnalysis?.positionStats"
+          :main-position="positionAnalysis?.mainPosition"
+          :selected-match-mode="selectedMatchMode"
+          :match-count="selectedMatchCount"
+          :recent-limit="10"
+        />
+      </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import CompactProfileHeader from './components/CompactProfileHeader.vue'
-import type { MatchModeKey } from '@/common/queueCatalog'
+import DashboardPoster from './components/DashboardPoster.vue'
+import GameStats from './components/GameStats.vue'
+import { normalizeMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
 import { useMatchAnalysis } from '@/shared/composables/game/useMatchAnalysis'
 import { useAiAnalysis } from '@/shared/composables/game/useAiAnalysis'
 import { usePersonalMatchAnalysisStore } from '@/shared/stores/features/personalMatchAnalysisStore'
+import { useDashboardPosterExport } from './composables/useDashboardPosterExport'
+import { buildSummonerRankPresentation } from '@/shared/utils/summonerRankPresentation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
@@ -82,33 +117,30 @@ const {
   aiSettings,
   aiInsight
 } = useAiAnalysis()
+const { exporting: posterExporting, exportPoster } = useDashboardPosterExport()
+
+const posterRef = ref<{ getRoot: () => HTMLElement | null } | null>(null)
 
 const soloRank = computed(() => {
-  const tier = summonerInfo.value?.soloRankTier
-  const wins = summonerInfo.value?.soloRankWins || 0
-  const losses = summonerInfo.value?.soloRankLosses || 0
-  const totalGames = wins + losses
-
-  return {
-    tier: tier || 'UNRANKED',
-    rank: summonerInfo.value?.soloRankDivision || '',
-    leaguePoints: summonerInfo.value?.soloRankLp || 0,
-    winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0
-  }
+  const info = summonerInfo.value
+  return buildSummonerRankPresentation({
+    tier: info?.soloRankTier,
+    division: info?.soloRankDivision,
+    leaguePoints: info?.soloRankLp,
+    wins: info?.soloRankWins,
+    losses: info?.soloRankLosses
+  })
 })
 
 const flexRank = computed(() => {
-  const tier = summonerInfo.value?.flexRankTier
-  const wins = summonerInfo.value?.flexRankWins || 0
-  const losses = summonerInfo.value?.flexRankLosses || 0
-  const totalGames = wins + losses
-
-  return {
-    tier: tier || 'UNRANKED',
-    rank: summonerInfo.value?.flexRankDivision || '',
-    leaguePoints: summonerInfo.value?.flexRankLp || 0,
-    winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0
-  }
+  const info = summonerInfo.value
+  return buildSummonerRankPresentation({
+    tier: info?.flexRankTier,
+    division: info?.flexRankDivision,
+    leaguePoints: info?.flexRankLp,
+    wins: info?.flexRankWins,
+    losses: info?.flexRankLosses
+  })
 })
 
 const dataStore = useDataStore()
@@ -118,8 +150,10 @@ const activityLogger = useActivityLogger()
 const { summonerInfo, matchStatistics, isDataLoading } = storeToRefs(dataStore)
 const { isConnected } = storeToRefs(connectionStore)
 
-const resolveInitialMode = (): MatchModeKey =>
-  settingsStore.rememberMatchPreferences ? settingsStore.lastMatchMode : 'all'
+const resolveInitialMode = (): MatchModeKey => {
+  if (!settingsStore.rememberMatchPreferences) return 'all'
+  return normalizeMatchModeKey(settingsStore.lastMatchMode)
+}
 
 const resolveInitialCount = (): number => {
   const raw = settingsStore.rememberMatchPreferences ? settingsStore.lastMatchCount : 20
@@ -136,15 +170,11 @@ const capabilities = computed(() => personalAnalysis.capabilities)
 const displayGames = computed(() => personalAnalysis.result?.displayGames ?? 0)
 
 /** 后端可跑 AI + 用户已开启并填过 Key，才算真正就绪 */
-const aiReady = computed(
-  () => !!capabilities.value?.localAi && aiSettings.enabled && aiSettings.hasApiKey
-)
+const aiReady = computed(() => !!capabilities.value?.localAi && aiSettings.enabled && aiSettings.hasApiKey)
 
 const showAiAction = computed(() => displayGames.value > 0 && aiReady.value)
 
-const showAiPanel = computed(
-  () => displayGames.value > 0 && (showAiAction.value || !!aiInsight.value)
-)
+const showAiPanel = computed(() => displayGames.value > 0 && (showAiAction.value || !!aiInsight.value))
 
 const todayMatches = computed(() => {
   const total = matchStatistics.value?.todayGames || 0
@@ -164,7 +194,7 @@ const syncFetchPreferences = () => {
 
 const refreshAnalysis = async () => {
   syncFetchPreferences()
-  await analyzeMatches(selectedMatchMode.value, selectedMatchCount.value)
+  await analyzeMatches({ mode: selectedMatchMode.value, count: selectedMatchCount.value })
 }
 
 const handleFetchMatchHistory = async () => {
@@ -198,6 +228,24 @@ const handleRememberChange = (enabled: boolean) => {
 
 const matchHistoryLoading = computed(() => isDataLoading.value || personalAnalysis.loading)
 
+const canExportPoster = computed(
+  () => !!matchStatistics.value && (matchStatistics.value.totalGames || 0) > 0 && !matchHistoryLoading.value
+)
+
+const posterFileStem = computed(() => {
+  const name = summonerInfo.value?.gameName || summonerInfo.value?.displayName || 'summoner'
+  const tag = summonerInfo.value?.tagLine ? `-${summonerInfo.value.tagLine}` : ''
+  const safe = `${name}${tag}`.replace(/[<>:"/\\|?*\s]+/g, '_')
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `nidalee-${safe}-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
+})
+
+const handleExportPoster = async () => {
+  activityLogger.log.info('导出 Dashboard 战绩海报', 'data')
+  await exportPoster(posterRef.value?.getRoot() ?? null, posterFileStem.value)
+}
+
 const runAiInsight = async () => {
   await analyzeWithAi()
 }
@@ -205,16 +253,4 @@ const runAiInsight = async () => {
 onMounted(() => {
   void ensureAiSynced()
 })
-
-watch(
-  () => isConnected.value,
-  async (connected) => {
-    if (connected && !personalAnalysis.result) {
-      selectedMatchMode.value = resolveInitialMode()
-      selectedMatchCount.value = resolveInitialCount()
-      await refreshAnalysis()
-    }
-  },
-  { immediate: true }
-)
 </script>

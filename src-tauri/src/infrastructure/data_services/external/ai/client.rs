@@ -1,12 +1,11 @@
 use reqwest::Client;
 use serde_json::Value;
+use std::time::Duration;
 
 use crate::domains::ai_analysis::{AiInsight, AiPromptBundle};
 
 use super::credentials::load_api_key;
-use super::types::{
-    AiProviderConfig, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ResponseFormat,
-};
+use super::types::{AiProviderConfig, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ResponseFormat};
 
 pub struct AiClient {
     http: Client,
@@ -17,8 +16,15 @@ impl AiClient {
     pub fn from_public(base_url: &str, model: &str) -> Result<Self, String> {
         let api_key = load_api_key()?;
         let base_url = normalize_ai_base_url(base_url)?;
+        let http = Client::builder()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(60))
+            .redirect(reqwest::redirect::Policy::none())
+            .user_agent("Nidalee/1.0")
+            .build()
+            .map_err(|e| format!("创建 AI HTTP 客户端失败: {e}"))?;
         Ok(Self {
-            http: Client::new(),
+            http,
             config: AiProviderConfig {
                 base_url,
                 model: model.to_string(),
@@ -57,10 +63,7 @@ impl AiClient {
             .map_err(|e| format!("AI 请求失败: {e}"))?;
 
         let status = response.status();
-        let text = response
-            .text()
-            .await
-            .map_err(|e| format!("读取 AI 响应失败: {e}"))?;
+        let text = response.text().await.map_err(|e| format!("读取 AI 响应失败: {e}"))?;
 
         if !status.is_success() {
             // 绝不把 Key 打进错误
@@ -97,26 +100,36 @@ impl AiClient {
 pub async fn test_connection(base_url: &str, model: &str) -> Result<String, String> {
     let client = AiClient::from_public(base_url, model)?;
     let content = client
-        .complete_json(
-            "Reply with a tiny JSON object {\"ok\":true}.",
-            "ping",
-        )
+        .complete_json("Reply with a tiny JSON object {\"ok\":true}.", "ping")
         .await?;
     Ok(format!("连接成功，模型返回 {} 字符", content.len()))
 }
 
-/// 校验 BYOK Base URL：必须带 http(s) scheme 与主机名，降低误配/SSRF 面
+/// 校验 BYOK Base URL：公网端点必须使用 HTTPS，仅本机开发端点允许 HTTP。
 pub fn normalize_ai_base_url(base_url: &str) -> Result<String, String> {
     let trimmed = base_url.trim().trim_end_matches('/');
     let Ok(url) = reqwest::Url::parse(trimmed) else {
         return Err("Base URL 无法解析，请使用 https://api.example.com/v1 形式".to_string());
     };
-    let scheme = url.scheme();
-    if scheme != "https" && scheme != "http" {
-        return Err("Base URL 仅支持 http:// 或 https://".to_string());
-    }
-    if url.host_str().map(|h| h.is_empty()).unwrap_or(true) {
+    let Some(host) = url.host_str() else {
         return Err("Base URL 缺少有效主机名".to_string());
+    };
+    let is_local_development_host = matches!(host, "localhost" | "127.0.0.1");
+    match url.scheme() {
+        "https" => {}
+        "http" if is_local_development_host => {}
+        "http" => {
+            return Err("公网 Base URL 必须使用 HTTPS；仅 localhost 或 127.0.0.1 可使用 HTTP".to_string());
+        }
+        _ => {
+            return Err("Base URL 仅支持 HTTPS；本机开发可使用 HTTP".to_string());
+        }
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err("Base URL 不得包含用户名或密码".to_string());
+    }
+    if url.query().is_some() || url.fragment().is_some() {
+        return Err("Base URL 不得包含查询参数或片段".to_string());
     }
     Ok(trimmed.to_string())
 }
@@ -125,10 +138,8 @@ pub fn normalize_ai_base_url(base_url: &str) -> Result<String, String> {
 pub fn parse_ai_insight_response(raw: &str) -> Result<AiInsight, String> {
     let trimmed = raw.trim();
     let json_slice = extract_json_object(trimmed).ok_or_else(|| "响应中未找到 JSON 对象".to_string())?;
-    let value: Value =
-        serde_json::from_str(json_slice).map_err(|e| format!("JSON 解析失败: {e}"))?;
-    let insight: AiInsight =
-        serde_json::from_value(value).map_err(|e| format!("AiInsight schema 校验失败: {e}"))?;
+    let value: Value = serde_json::from_str(json_slice).map_err(|e| format!("JSON 解析失败: {e}"))?;
+    let insight: AiInsight = serde_json::from_value(value).map_err(|e| format!("AiInsight schema 校验失败: {e}"))?;
 
     if insight.summary.trim().is_empty() {
         return Err("summary 不能为空".to_string());
@@ -168,9 +179,30 @@ mod tests {
     }
 
     #[test]
+    fn accepts_http_only_for_explicit_local_development_hosts() {
+        assert_eq!(
+            normalize_ai_base_url("http://localhost:11434/v1/").unwrap(),
+            "http://localhost:11434/v1"
+        );
+        assert_eq!(
+            normalize_ai_base_url("http://127.0.0.1:8080/v1").unwrap(),
+            "http://127.0.0.1:8080/v1"
+        );
+    }
+
+    #[test]
+    fn rejects_insecure_remote_and_lookalike_hosts() {
+        assert!(normalize_ai_base_url("http://api.example.com/v1").is_err());
+        assert!(normalize_ai_base_url("http://localhost.example.com/v1").is_err());
+        assert!(normalize_ai_base_url("http://127.0.0.1.example.com/v1").is_err());
+    }
+
+    #[test]
     fn rejects_missing_scheme_and_host() {
         assert!(normalize_ai_base_url("api.openai.com/v1").is_err());
         assert!(normalize_ai_base_url("https://").is_err());
         assert!(normalize_ai_base_url("ftp://example.com/v1").is_err());
+        assert!(normalize_ai_base_url("https://user:pass@example.com/v1").is_err());
+        assert!(normalize_ai_base_url("https://example.com/v1?tenant=1").is_err());
     }
 }

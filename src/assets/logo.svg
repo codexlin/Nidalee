@@ -1,106 +1,33 @@
-<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- 背景圆环 -->
-  <circle cx="60" cy="60" r="55" fill="url(#bgGradient)" stroke="url(#strokeGradient)" stroke-width="2" />
-
-  <!-- 豹头轮廓 -->
-  <path
-    d="M45 35 C35 35, 30 42, 30 50 C30 58, 35 65, 45 67 L50 72 C52 75, 55 77, 60 77 C65 77, 68 75, 70 72 L75 67 C85 65, 90 58, 90 50 C90 42, 85 35, 75 35 C70 35, 65 37, 60 40 C55 37, 50 35, 45 35 Z"
-    fill="url(#headGradient)" stroke="url(#accentGradient)" stroke-width="1.5" />
-
-  <!-- 豹耳 -->
-  <path d="M45 35 C42 30, 38 28, 35 32 C38 35, 42 37, 45 35 Z" fill="url(#earGradient)" />
-  <path d="M75 35 C78 30, 82 28, 85 32 C82 35, 78 37, 75 35 Z" fill="url(#earGradient)" />
-
-  <!-- 豹眼 -->
-  <ellipse cx="50" cy="50" rx="4" ry="6" fill="url(#eyeGradient)" />
-  <ellipse cx="70" cy="50" rx="4" ry="6" fill="url(#eyeGradient)" />
-  <circle cx="50" cy="48" r="1.5" fill="#FFD700" />
-  <circle cx="70" cy="48" r="1.5" fill="#FFD700" />
-
-  <!-- 鼻子 -->
-  <path d="M58 58 L62 58 L60 62 Z" fill="url(#noseGradient)" />
-
-  <!-- 胡须 -->
-  <line x1="35" y1="52" x2="45" y2="54" stroke="url(#whiskerGradient)" stroke-width="1.5" stroke-linecap="round" />
-  <line x1="35" y1="58" x2="45" y2="58" stroke="url(#whiskerGradient)" stroke-width="1.5" stroke-linecap="round" />
-  <line x1="75" y1="54" x2="85" y2="52" stroke="url(#whiskerGradient)" stroke-width="1.5" stroke-linecap="round" />
-  <line x1="75" y1="58" x2="85" y2="58" stroke="url(#whiskerGradient)" stroke-width="1.5" stroke-linecap="round" />
-
-  <!-- 游戏助手符号 -->
-  <g transform="translate(60,85)">
-    <!-- 游戏控制器图标 -->
-    <rect x="-8" y="-4" width="16" height="8" rx="4" fill="url(#controllerGradient)" stroke="url(#accentGradient)"
-      stroke-width="1" />
-    <circle cx="-4" cy="0" r="1.5" fill="url(#buttonGradient)" />
-    <circle cx="4" cy="0" r="1.5" fill="url(#buttonGradient)" />
-    <rect x="-2" y="-6" width="4" height="2" rx="1" fill="url(#accentGradient)" />
-  </g>
-
-  <!-- 装饰性豹纹 -->
-  <g opacity="0.3">
-    <circle cx="25" cy="25" r="2" fill="url(#spotGradient)" />
-    <circle cx="95" cy="25" r="2" fill="url(#spotGradient)" />
-    <circle cx="25" cy="95" r="2" fill="url(#spotGradient)" />
-    <circle cx="95" cy="95" r="2" fill="url(#spotGradient)" />
-  </g>
-
-  <!-- 渐变定义 -->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="512"
+  height="512"
+  viewBox="0 0 512 512"
+  fill="none"
+>
+  <title>Nidalee</title>
   <defs>
-    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    <linearGradient id="tile" x1="82" y1="64" x2="430" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111C27" />
+      <stop offset="1" stop-color="#081018" />
     </linearGradient>
-
-    <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4ade80;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#06b6d4;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    <linearGradient id="mark" x1="112" y1="88" x2="404" y2="424" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4BE8BC" />
+      <stop offset="1" stop-color="#32D6A3" />
     </linearGradient>
-
-    <radialGradient id="headGradient" cx="50%" cy="40%" r="60%">
-      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
-      <stop offset="70%" style="stop-color:#f59e0b;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
-    </radialGradient>
-
-    <linearGradient id="earGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
-    </linearGradient>
-
-    <radialGradient id="eyeGradient" cx="50%" cy="30%" r="70%">
-      <stop offset="0%" style="stop-color:#065f46;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#047857;stop-opacity:1" />
-    </radialGradient>
-
-    <linearGradient id="noseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1f2937;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#374151;stop-opacity:1" />
-    </linearGradient>
-
-    <linearGradient id="whiskerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#6b7280;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#9ca3af;stop-opacity:1" />
-    </linearGradient>
-
-    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
-    </linearGradient>
-
-    <linearGradient id="controllerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#374151;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1f2937;stop-opacity:1" />
-    </linearGradient>
-
-    <radialGradient id="buttonGradient" cx="50%" cy="30%" r="70%">
-      <stop offset="0%" style="stop-color:#4ade80;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
-    </radialGradient>
-
-    <radialGradient id="spotGradient" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" style="stop-color:#d97706;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#92400e;stop-opacity:1" />
-    </radialGradient>
   </defs>
+
+  <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#tile)" />
+
+  <g fill="url(#mark)">
+    <!-- Left and right hunter strokes. Their angled terminals form the outer spear silhouette. -->
+    <path d="M112 96 176 160v208l-64 64V96Z" />
+    <path d="m336 160 64-64v336l-64-64V160Z" />
+
+    <!-- The descending stroke keeps the mark unmistakably readable as an N. -->
+    <path d="m112 128 32-48 256 256v48h-32L112 128Z" />
+
+    <!-- A short, widened hunter pupil: visible at 24 px without becoming a drawn eye. -->
+    <path d="m256 296 13 15v34l-13 15-13-15v-34l13-15Z" />
+  </g>
 </svg>

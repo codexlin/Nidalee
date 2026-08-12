@@ -1,29 +1,50 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import './styles/theme-oklch.css';
+@import './styles/fonts.css';
+@import './styles/theme.css';
+
 @plugin 'tailwind-scrollbar' {
   nocompatible: true;
   preferredstrategy: 'pseudoelements';
 }
 /* * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--border)) transparent;
+  scrollbar-color: var(--border) transparent;
 } */
 @custom-variant dark (&:is(.dark *));
 
 /* Base theme configuration */
 @theme {
   --radius: 0.5rem;
+  --radius-float: 1rem;
+  --radius-raised: 0.75rem;
+  /* 覆盖 Tailwind 默认系统栈；与 theme.css --font-display 保持同栈 */
+  --font-sans: 'HarmonyOS Sans SC', 'Microsoft YaHei', sans-serif;
+
+  /*
+   * 嵌入 400 / 500 / 700（官方无 600 / 800 / 未嵌 Black）：
+   * 缺档映射到真字重，避免假粗。
+   */
+  --font-weight-thin: 400;
+  --font-weight-extralight: 400;
+  --font-weight-light: 400;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 700;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 700;
+  --font-weight-black: 700;
 }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background-color: var(--background);
+  color: var(--foreground);
   font-feature-settings:
     'rlig' 1,
     'calt' 1;
   margin: 0;
-  font-family: var(--font-display);
+  font-family: var(--font-display, var(--font-sans));
+  font-synthesis: none;
 }
 
 #app {
@@ -156,4 +177,88 @@ body {
   will-change: transform;
   backface-visibility: hidden;
   @apply transition-transform  duration-300 ease-in-out  hover:-translate-y-1;
+}
+
+/* —— Design language surfaces (see DESIGN.md) —— */
+@layer components {
+  .surface-float {
+    border-radius: var(--radius-float);
+    border: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+    background: linear-gradient(
+      to bottom right,
+      color-mix(in oklch, var(--background) 80%, transparent),
+      color-mix(in oklch, var(--muted) 60%, transparent)
+    );
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shadow-float);
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease,
+      color 200ms ease;
+  }
+
+  .surface-float:hover {
+    border-color: var(--border);
+    box-shadow: var(--shadow-float-hover);
+  }
+
+  /* Header 状态胶囊：与 float 同材料 + 同静息阴影，但无 hover 抬升 */
+  .surface-chip {
+    border-radius: var(--radius-raised);
+    border: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+    background: linear-gradient(
+      to bottom right,
+      color-mix(in oklch, var(--background) 80%, transparent),
+      color-mix(in oklch, var(--muted) 60%, transparent)
+    );
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shadow-float);
+  }
+
+  .surface-raised {
+    border-radius: var(--radius-raised);
+    border: 1px solid var(--border);
+    background: linear-gradient(
+      to bottom right,
+      color-mix(in oklch, var(--background) 88%, var(--muted)),
+      color-mix(in oklch, var(--muted) 55%, var(--background))
+    );
+    box-shadow: var(--shadow-raised);
+  }
+
+  .surface-overlay {
+    border-radius: var(--radius-float);
+    border: 1px solid color-mix(in oklch, var(--border) 40%, transparent);
+    background: color-mix(in oklch, var(--background) 95%, transparent);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--shadow-overlay);
+  }
+
+  /* 主卡内部的分区：无 blur、无强阴影，靠淡边 + 略透底分层 */
+  .surface-inset {
+    border-radius: var(--radius-raised);
+    border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+    background: color-mix(in oklch, var(--card) 55%, transparent);
+    box-shadow: none;
+  }
+
+  /* 可点子卡：弱于 surface-float 的 hover */
+  .surface-inset-interactive {
+    border-radius: var(--radius-raised);
+    border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+    background: color-mix(in oklch, var(--card) 55%, transparent);
+    box-shadow: none;
+    transition:
+      transform 150ms ease,
+      box-shadow 150ms ease,
+      border-color 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .surface-inset-interactive:hover {
+    border-color: var(--border);
+    background: color-mix(in oklch, var(--muted) 35%, var(--card));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px -6px oklch(0 0 0 / 0.35);
+  }
 }

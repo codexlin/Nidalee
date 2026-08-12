@@ -1,89 +1,28 @@
-# 领域层 (Domain Layer)
+# 领域层
 
-> DDD架构 - 核心业务逻辑层
+领域层只包含与 UI、Tauri 命令和网络传输无关的业务规则。外部数据由
+`infrastructure` 获取并转换后，再交给领域层处理。
 
-## 📁 目录结构
+## 模块
 
-### `analysis/` - 对局分析领域
-核心职责：解析对局数据、计算统计指标、分析玩家特征
+- `analysis/`：对局证据提取、分析策略、分析管线和结果模型。
+- `ai_analysis/`：发送给 AI 的分析上下文和结果模型。
 
-```
-analysis/
-├─ analyzers/
-│  ├─ core/          # 核心分析
-│  │  ├─ parser.rs   - LCU数据解析
-│  │  ├─ stats.rs    - 统计指标计算
-│  │  └─ strategy.rs - 分析策略选择
-│  └─ traits/        # 特征分析
-│     ├─ basic.rs        - 基础特征（胜率、KDA）
-│     ├─ advanced.rs     - 深度特征（参团率、伤害）
-│     ├─ role.rs         - 位置特征
-│     ├─ distribution.rs - 分布特征（高光、崩盘）
-│     ├─ timeline.rs     - 时间线特征（对线、发育）
-│     └─ merger.rs       - 智能去重
-├─ thresholds.rs     - 阈值配置
-└─ docs/             - 设计文档（17个.md）
+## 对局分析主链路
+
+```text
+Tauri command
+  -> matches::analysis_service
+  -> MatchFetcher
+  -> MatchBundle / evidence
+  -> analysis::pipeline::orchestrate_analysis
+  -> MatchAnalysisResult
+  -> frontend store / UI
 ```
 
-### `tactical_advice/` - 战术建议领域
-核心职责：基于分析结果生成智能建议
+约束：
 
-```
-tactical_advice/
-├─ analyzers/        # 问题分析器（责任链）
-│  ├─ laning.rs      - 对线期问题
-│  ├─ farming.rs     - 发育问题
-│  ├─ teamfight.rs   - 团战问题
-│  ├─ vision.rs      - 视野问题
-│  └─ champion.rs    - 英雄池问题
-├─ strategies/       # 建议策略（策略模式）
-│  ├─ self_improvement.rs  - 自我提升视角
-│  ├─ targeting.rs         - 针对敌人视角
-│  └─ collaboration.rs     - 团队协作视角
-├─ builder.rs        - 建造者模式
-├─ chain.rs          - 责任链管理
-├─ factory.rs        - 工厂模式
-└─ context.rs        - 分析上下文
-```
-
-## 🎯 设计原则
-
-### DDD分层
-- **Domain** (领域层): 核心业务逻辑，不依赖外部
-- **Application** (应用层): 用例编排 → 在 `lcu/matches/service.rs`
-- **Infrastructure** (基础设施): LCU API调用 → 在 `lcu/*/`
-
-### 依赖方向
-```
-Infrastructure → Application → Domain
-```
-
-## 🚀 使用示例
-
-```rust
-// 1. 对局分析
-use crate::domains::analysis::*;
-
-let games = parse_games(raw_data, puuid);
-let stats = analyze_player_stats(&games, puuid, context);
-let traits = analyze_traits(&stats);
-
-// 2. 战术建议
-use crate::domains::tactical_advice::*;
-
-let advice = generate_advice(
-    &stats, 
-    &games, 
-    "上单",
-    AdvicePerspective::Targeting,
-    Some("敌方玩家"),
-    &strategy
-);
-```
-
-## 📊 重构成果
-
-- ✅ 代码和文档分离
-- ✅ 领域逻辑清晰
-- ✅ 分组结构合理
-- ✅ 便于维护扩展
+- `domains` 不直接请求 LCU 或公网 API。
+- `infrastructure` 负责认证、缓存、重试和 DTO 转换。
+- 同一次分析只允许一条抓取链路，避免重复获取战绩与时间线。
+- 新分析能力优先扩展 evidence 和 pipeline，不再创建平行的旧式分析器。

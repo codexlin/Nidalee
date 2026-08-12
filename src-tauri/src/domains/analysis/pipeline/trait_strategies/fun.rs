@@ -15,10 +15,6 @@ const DAMAGE_SHARE_BAD: f64 = 0.12;
 pub struct FunModeTraitStrategy;
 
 impl TraitStrategy for FunModeTraitStrategy {
-    fn id(&self) -> &'static str {
-        "fun_mode"
-    }
-
     fn analyze(&self, ctx: &TraitAnalysisContext<'_>) -> Vec<DeterministicTrait> {
         let fun_games: Vec<&ParsedGame> = ctx
             .display_games
@@ -44,10 +40,7 @@ impl TraitStrategy for FunModeTraitStrategy {
 }
 
 fn death_trait(games: &[&ParsedGame]) -> Option<DeterministicTrait> {
-    let values: Vec<(u64, f64)> = games
-        .iter()
-        .map(|g| (g.game_id, g.player_data.deaths as f64))
-        .collect();
+    let values: Vec<(u64, f64)> = games.iter().map(|g| (g.game_id, g.player_data.deaths as f64)).collect();
     let avg = mean(&values)?;
     let sentiment = if avg <= DEATHS_GOOD {
         TraitSentiment::Good
@@ -114,10 +107,7 @@ fn damage_share_trait(games: &[&ParsedGame]) -> Option<DeterministicTrait> {
             if team <= 0 {
                 return None;
             }
-            Some((
-                g.game_id,
-                g.player_data.damage_to_champions as f64 / team as f64,
-            ))
+            Some((g.game_id, g.player_data.damage_to_champions as f64 / team as f64))
         })
         .collect();
     if values.len() < MIN_SAMPLE_FOR_CONCLUSION as usize {
@@ -135,26 +125,17 @@ fn damage_share_trait(games: &[&ParsedGame]) -> Option<DeterministicTrait> {
         TraitSentiment::Good => (
             "乱斗输出机器",
             "fun_damage_share",
-            format!(
-                "娱乐局里你很能打，队内伤害大约占 {:.0}%。",
-                round1(avg * 100.0)
-            ),
+            format!("娱乐局里你很能打，队内伤害大约占 {:.0}%。", round1(avg * 100.0)),
         ),
         TraitSentiment::Bad => (
             "乱斗输出偏少",
             "fun_damage_share",
-            format!(
-                "娱乐局里输出份额偏低，大约只占队内 {:.0}%。",
-                round1(avg * 100.0)
-            ),
+            format!("娱乐局里输出份额偏低，大约只占队内 {:.0}%。", round1(avg * 100.0)),
         ),
         TraitSentiment::Neutral => (
             "乱斗输出中规中矩",
             "fun_damage_share",
-            format!(
-                "娱乐局输出份额中规中矩，大约占队内 {:.0}%。",
-                round1(avg * 100.0)
-            ),
+            format!("娱乐局输出份额中规中矩，大约占队内 {:.0}%。", round1(avg * 100.0)),
         ),
     };
     Some(make_trait(key, name, blurb, sentiment, &values))
@@ -178,10 +159,7 @@ fn make_trait(
     let description = if supports_conclusion {
         fact
     } else {
-        format!(
-            "{}（娱乐局还只有 {} 场，多玩几把再下结论）",
-            fact, sample_count
-        )
+        format!("{}（娱乐局还只有 {} 场，多玩几把再下结论）", fact, sample_count)
     };
     let mut ids: Vec<u64> = values.iter().map(|(id, _)| *id).collect();
     ids.sort_unstable();

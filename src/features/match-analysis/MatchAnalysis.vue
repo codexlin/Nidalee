@@ -3,10 +3,16 @@
     <!-- 使用 Transition 实现平滑切换 -->
     <Transition name="fade" mode="out-in">
       <!-- Main Analysis View -->
-      <div v-if="shouldShowAnalysis && hasMyTeamData && isDataReady" key="analysis" class="w-full max-w-full mx-auto">
-        <div class="flex gap-1 h-screen max-h-screen overflow-hidden">
+      <div
+        v-if="shouldShowAnalysis && hasMyTeamData && isDataReady"
+        key="analysis"
+        class="mx-auto h-[calc(100dvh-8.5rem)] min-h-[600px] w-full max-w-full overflow-hidden"
+      >
+        <div class="flex h-full min-h-0 flex-col gap-1">
           <!-- Ally Team -->
-          <div class="flex-1 flex flex-col min-w-0">
+          <section
+            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-blue-500/15 bg-blue-500/[0.02]"
+          >
             <AnalysisHeader
               team-type="ally"
               :phase="currentPhase"
@@ -14,20 +20,22 @@
               :has-data="hasMyTeamData"
               :loading="isLoading"
             />
-            <div class="flex-1 overflow-y-auto">
+            <div class="min-h-0 flex-1 p-1.5">
               <TeamAnalysisCard
                 :team-data="myTeamData!"
                 :team-stats="myTeamStats"
                 team-type="ally"
+                :is-player-retrying="isPlayerRetrying"
                 @select-player="handlePlayerDetails"
+                @retry-player="retryPlayer"
               />
             </div>
-          </div>
-
-          <div class="w-px bg-border/50"></div>
+          </section>
 
           <!-- Enemy Team -->
-          <div class="flex-1 flex flex-col min-w-0">
+          <section
+            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-red-500/15 bg-red-500/[0.02]"
+          >
             <AnalysisHeader
               team-type="enemy"
               :phase="currentPhase"
@@ -35,46 +43,45 @@
               :has-data="hasEnemyTeamData"
               :loading="isEnemyTeamLoading"
             />
-            <div class="flex-1 overflow-y-auto">
+            <div class="min-h-0 flex-1 p-1.5">
               <TeamAnalysisCard
                 :team-data="enemyTeamData!"
                 :team-stats="enemyTeamStats"
                 team-type="enemy"
+                :is-player-retrying="isPlayerRetrying"
                 @select-player="handlePlayerDetails"
+                @retry-player="retryPlayer"
               />
             </div>
-          </div>
+          </section>
         </div>
       </div>
 
-      <!-- Pre-Analysis Status Hub -->
-      <GameStatusHub v-else key="status" />
+      <!-- Pre-Analysis Status Hub：包一层元素，避免 Transition 对组件根节点告警导致切换卡住 -->
+      <div v-else key="status" class="w-full">
+        <GameStatusHub />
+      </div>
     </Transition>
 
-    <!-- Summoner Details Dialog -->
-    <SummonerDetailsDialog
-      v-if="selectedPlayer"
-      :open="showPlayerDetails"
-      :summoner="selectedPlayer"
-      :summoner-result="currentRestult ?? undefined"
+    <SummonerDetailSheet
+      v-model:open="showPlayerDetails"
+      :selected-player="selectedPlayer"
+      :current-result="currentResult"
       :loading="summonerLoading"
-      @close="closePlayerDetails"
+      @refresh="refreshSummoner"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { useMatchAnalysisStore } from './store'
-import { useUserRuneStore } from '@/shared/stores/features/userRuneStore'
 import type { UIPlayerData } from '@/types/match-analysis'
+import { useSummonerDetailSheet } from '@/features/dashboard/composables/useSummonerDetailSheet'
+import SummonerDetailSheet from '@/features/dashboard/components/detail/SummonerDetailSheet.vue'
+import { usePlayerAnalysisRetry } from './composables/usePlayerAnalysisRetry'
 
 // Use Pinia Store
 const matchAnalysisStore = useMatchAnalysisStore()
-const userRuneStore = useUserRuneStore()
-
-// 自动符文逻辑
-const autoRune = useAutoRune()
 const {
   currentPhase,
   isLoading,
@@ -96,13 +103,14 @@ const isDataReady = ref(false)
 
 watch(
   () => shouldShowAnalysis.value && hasMyTeamData.value,
-  (shouldShow) => {
+  (shouldShow, _previousValue, onCleanup) => {
     if (shouldShow) {
       // 数据加载完成后，延迟 150ms 再显示，避免闪烁
       isDataReady.value = false
-      setTimeout(() => {
+      const readyTimer = setTimeout(() => {
         isDataReady.value = true
       }, 150)
+      onCleanup(() => clearTimeout(readyTimer))
     } else {
       isDataReady.value = false
     }
@@ -110,65 +118,18 @@ watch(
   { immediate: true }
 )
 
-onMounted(async () => {
-  console.log('[MatchAnalysis] Component mounted')
+const {
+  isOpen: showPlayerDetails,
+  selectedPlayer,
+  currentResult,
+  loading: summonerLoading,
+  openByDisplayName,
+  refresh: refreshSummoner
+} = useSummonerDetailSheet()
+const { isRetrying: isPlayerRetrying, retryPlayer } = usePlayerAnalysisRetry()
 
-  // 初始化用户符文配置
-  if (!userRuneStore.isLoaded) {
-    console.log('[MatchAnalysis] 加载用户符文配置...')
-    try {
-      await userRuneStore.loadFromStore()
-      console.log('[MatchAnalysis] 用户符文配置加载成功')
-    } catch (error) {
-      console.error('[MatchAnalysis] 加载用户符文配置失败:', error)
-    }
-  }
-
-  // 启动自动符文监听
-  autoRune.startAutoRuneWatch()
-  console.log('[MatchAnalysis] 自动符文监听已启动')
-
-  // 如果 store 中没有数据，尝试从后端缓存恢复
-  if (!matchAnalysisStore.hasMyTeamData && !matchAnalysisStore.hasEnemyTeamData) {
-    console.log('[MatchAnalysis] Store empty, attempting to restore from backend cache')
-
-    try {
-      const cachedData = await invoke<TeamAnalysisData | null>('get_cached_analysis_data')
-      if (cachedData) {
-        console.log('[MatchAnalysis] Successfully restored cached data')
-        matchAnalysisStore.setTeamAnalysisData(cachedData)
-      } else {
-        console.log('[MatchAnalysis] No cached data, waiting for WebSocket events')
-      }
-    } catch (error) {
-      console.error('[MatchAnalysis] Failed to restore cached data:', error)
-    }
-  } else {
-    console.log('[MatchAnalysis] Store already has data, skipping restore')
-  }
-})
-
-onBeforeUnmount(() => {
-  console.log('[MatchAnalysisViewV2] 🔴 组件即将卸载，清理数据')
-  // matchAnalysisStore.clearAllData()
-})
-
-// Summoner details logic
-const { fetchSummonerInfo, currentRestult, loading: summonerLoading } = useSearchMatches()
-const selectedPlayer = ref<UIPlayerData | null>(null)
-const showPlayerDetails = ref(false)
-
-const handlePlayerDetails = async (player: UIPlayerData) => {
-  selectedPlayer.value = player
-  showPlayerDetails.value = true
-  if (player.displayName && player.displayName !== '未知召唤师') {
-    await fetchSummonerInfo([player.displayName])
-  }
-}
-
-const closePlayerDetails = () => {
-  selectedPlayer.value = null
-  showPlayerDetails.value = false
+function handlePlayerDetails(player: UIPlayerData): void {
+  void openByDisplayName(player.displayName)
 }
 </script>
 

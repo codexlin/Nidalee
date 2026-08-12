@@ -1,35 +1,51 @@
 <template>
-  <Card>
-    <CardHeader>
-      <CardTitle class="flex items-center gap-2">
-        <Users class="h-5 w-5" />
-        个人签名设置
-        <span class="text-muted-foreground">自定义你的个性签名</span>
+  <div v-if="embedded" class="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <Input
+      v-model="note"
+      placeholder="输入新的召唤师签名…"
+      maxlength="60"
+      class="h-9 flex-1 text-sm"
+      aria-label="召唤师签名"
+    />
+    <Button class="h-9 shrink-0" :disabled="!note.trim() || updatingNote" @click="handleSave">
+      {{ updatingNote ? '保存中…' : '保存签名' }}
+    </Button>
+  </div>
+  <Card v-else class="gap-0 py-0">
+    <CardHeader class="gap-1 px-4 py-3 sm:px-5">
+      <CardTitle class="flex items-center gap-2 text-base font-medium">
+        <MessageSquareText class="size-4 shrink-0 text-muted-foreground" />
+        个人签名
       </CardTitle>
+      <p class="text-xs text-muted-foreground">自定义你的个性签名</p>
     </CardHeader>
-    <CardContent>
-      <div class="flex flex-col md:flex-row items-center gap-4">
+    <CardContent class="px-4 pb-4 sm:px-5">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input
           v-model="note"
-          placeholder="输入新的召唤师签名..."
+          placeholder="输入新的召唤师签名…"
           maxlength="60"
-          class="flex-1 h-12 text-base bg-background/50 border-border/50 focus:border-primary/50 focus:bg-background transition-all duration-200 shadow-sm focus:shadow-md"
+          class="h-9 flex-1 text-sm"
+          aria-label="召唤师签名"
         />
-        <button
-          @click="handleSave"
-          :disabled="!note.trim() || updatingNote"
-          class="px-6 py-2 bg-primary/80 text-primary-foreground rounded-lg hover:bg-primary/90 transition-all duration-200 text-base font-medium shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {{ updatingNote ? '保存中...' : '保存签名' }}
-        </button>
+        <Button class="h-9 shrink-0" :disabled="!note.trim() || updatingNote" @click="handleSave">
+          {{ updatingNote ? '保存中…' : '保存签名' }}
+        </Button>
       </div>
     </CardContent>
   </Card>
 </template>
 
 <script setup lang="ts">
-import { Users } from 'lucide-vue-next'
+import { MessageSquareText } from 'lucide-vue-next'
 import { useGameHelper } from '../composables/useGameHelper'
+
+withDefaults(
+  defineProps<{
+    embedded?: boolean
+  }>(),
+  { embedded: false }
+)
 
 const note = ref('')
 const { setSummonerChatProfile, updatingNote } = useGameHelper()

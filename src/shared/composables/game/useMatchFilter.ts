@@ -1,18 +1,20 @@
 // 战绩过滤 composable
 export function useMatchFilter() {
-  // 过滤战绩数据
+  // 过滤战绩数据；exclude=true 时表示「排除这些队列」（普通模式用）
   const filterMatchesByQueueTypes = (
     matchStatistics: PlayerMatchStats | null,
-    selectedQueueTypes: number[]
+    selectedQueueTypes: number[],
+    options?: { exclude?: boolean }
   ): PlayerMatchStats | null => {
     if (!matchStatistics || selectedQueueTypes.length === 0) {
       return matchStatistics
     }
 
-    // 过滤最近战绩
-    const filteredRecentPerformance = matchStatistics.recentPerformance.filter((game) =>
-      selectedQueueTypes.includes(Number(game.queueId))
-    )
+    const exclude = !!options?.exclude
+    const filteredRecentPerformance = matchStatistics.recentPerformance.filter((game) => {
+      const id = Number(game.queueId)
+      return exclude ? !selectedQueueTypes.includes(id) : selectedQueueTypes.includes(id)
+    })
 
     // 重新计算统计数据
     const totalGames = filteredRecentPerformance.length
@@ -70,14 +72,15 @@ export function useMatchFilter() {
   // 过滤多个玩家的战绩数据
   const filterMultipleMatchesByQueueTypes = (
     matchStatisticsArray: PlayerMatchStats[] | null,
-    selectedQueueTypes: number[]
+    selectedQueueTypes: number[],
+    options?: { exclude?: boolean }
   ): PlayerMatchStats[] | null => {
     if (!matchStatisticsArray || selectedQueueTypes.length === 0) {
       return matchStatisticsArray
     }
 
     return matchStatisticsArray
-      .map((stats) => filterMatchesByQueueTypes(stats, selectedQueueTypes))
+      .map((stats) => filterMatchesByQueueTypes(stats, selectedQueueTypes, options))
       .filter(Boolean) as PlayerMatchStats[]
   }
 

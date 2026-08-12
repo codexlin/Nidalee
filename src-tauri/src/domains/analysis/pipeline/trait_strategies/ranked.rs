@@ -7,10 +7,6 @@ use crate::domains::analysis::pipeline::types::DeterministicTrait;
 pub struct RankedEvidenceTraitStrategy;
 
 impl TraitStrategy for RankedEvidenceTraitStrategy {
-    fn id(&self) -> &'static str {
-        "ranked_evidence"
-    }
-
     fn analyze(&self, ctx: &TraitAnalysisContext<'_>) -> Vec<DeterministicTrait> {
         if ctx.evidence_matches.is_empty() {
             return Vec::new();

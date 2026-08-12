@@ -1,68 +1,85 @@
 use super::service;
 use crate::http_client;
-use crate::shared::types::{Perk, RunePage, RuneStyle};
+use crate::shared::types::RunePage;
+use serde::Deserialize;
+use std::collections::HashSet;
 
-#[tauri::command]
-pub async fn get_lcu_rune_styles() -> Result<Vec<RuneStyle>, String> {
-    let client = http_client::get_lcu_client();
-    service::list_all_styles(&client).await
-}
-
-#[tauri::command]
-pub async fn get_lcu_perks() -> Result<Vec<Perk>, String> {
-    let client = http_client::get_lcu_client();
-    service::list_all_perks(&client).await
-}
-
-#[tauri::command]
-pub async fn get_lcu_perk_icon(icon_path: String) -> Result<Vec<u8>, String> {
-    let client = http_client::get_lcu_client();
-    service::get_perk_icon(&client, &icon_path).await
-}
-
-/// 获取当前活跃的符文页面
 #[tauri::command]
 pub async fn get_current_rune_page() -> Result<Option<RunePage>, String> {
-    let client = http_client::get_lcu_client();
-    service::get_current_rune_page(&client).await
+    service::get_current_rune_page(http_client::get_lcu_client()).await
 }
 
-/// 应用用户自定义符文配置
-///
-/// 参数：
-/// - champion_name: 英雄名称（用于符文页命名）
-/// - primary_style_id: 主系符文 ID (8000, 8100, 8200, 8300, 8400)
-/// - sub_style_id: 副系符文 ID
-/// - selected_perk_ids: 选中的符文 ID 数组（9个）
-#[tauri::command]
-pub async fn apply_custom_runes(
-    champion_name: String,
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuneSelectionInput {
     primary_style_id: i32,
     sub_style_id: i32,
     selected_perk_ids: Vec<i32>,
-) -> Result<String, String> {
-    log::info!("🔮 应用用户自定义符文配置");
-    log::info!("🔮 英雄: {}", champion_name);
-    log::info!("🔮 主系: {}, 副系: {}", primary_style_id, sub_style_id);
-    log::info!("🔮 符文IDs: {:?}", selected_perk_ids);
+}
 
-    // 验证符文数量
-    if selected_perk_ids.len() != 9 {
-        return Err(format!("符文数量错误：期望 9 个，实际 {} 个", selected_perk_ids.len()));
+impl RuneSelectionInput {
+    fn validate(&self) -> Result<(), String> {
+        if self.primary_style_id <= 0 || self.sub_style_id <= 0 {
+            return Err("主系或副系无效".to_string());
+        }
+        if self.primary_style_id == self.sub_style_id {
+            return Err("主系与副系不能相同".to_string());
+        }
+        if self.selected_perk_ids.len() != 9 {
+            return Err(format!(
+                "符文数量错误：需要 9 个，实际 {} 个",
+                self.selected_perk_ids.len()
+            ));
+        }
+        if self.selected_perk_ids.iter().any(|perk_id| *perk_id <= 0) {
+            return Err("符文 ID 无效".to_string());
+        }
+        if self.selected_perk_ids.iter().collect::<HashSet<_>>().len() != 9 {
+            return Err("符文中存在重复项".to_string());
+        }
+        Ok(())
     }
+}
 
-    let client = http_client::get_lcu_client();
+#[tauri::command]
+pub async fn apply_rune_selection(page_label: String, selection: RuneSelectionInput) -> Result<String, String> {
+    let page_label = page_label.trim();
+    if page_label.is_empty() {
+        return Err("符文页名称不能为空".to_string());
+    }
+    selection.validate()?;
 
-    match service::apply_rune_build(
-        &client,
-        &champion_name,
-        primary_style_id,
-        sub_style_id,
-        selected_perk_ids,
+    service::apply_rune_build(
+        http_client::get_lcu_client(),
+        page_label,
+        selection.primary_style_id,
+        selection.sub_style_id,
+        selection.selected_perk_ids,
     )
     .await
-    {
-        Ok(message) => Ok(format!("✨ 用户自定义符文应用成功！{}", message)),
-        Err(e) => Err(format!("用户自定义符文应用失败: {}", e)),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RuneSelectionInput;
+
+    fn valid_selection() -> RuneSelectionInput {
+        RuneSelectionInput {
+            primary_style_id: 8000,
+            sub_style_id: 8200,
+            selected_perk_ids: vec![8005, 9111, 9104, 8014, 8233, 8236, 5005, 5008, 5001],
+        }
+    }
+
+    #[test]
+    fn validates_complete_unique_selection() {
+        assert!(valid_selection().validate().is_ok());
+    }
+
+    #[test]
+    fn rejects_duplicate_perks() {
+        let mut selection = valid_selection();
+        selection.selected_perk_ids[8] = selection.selected_perk_ids[0];
+        assert!(selection.validate().is_err());
     }
 }

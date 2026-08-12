@@ -7,7 +7,6 @@
 /// - 识别位置信息
 /// - 集成时间线数据解析
 use serde_json::Value;
-use std::collections::HashMap;
 
 /// 时间线数据（分阶段统计）
 #[derive(Debug, Clone, Default)]
@@ -287,35 +286,4 @@ fn parse_game(game: &Value, target_puuid: &str) -> Option<ParsedGame> {
 /// 解析游戏列表
 pub fn parse_games(games: &[Value], target_puuid: &str) -> Vec<ParsedGame> {
     games.iter().filter_map(|game| parse_game(game, target_puuid)).collect()
-}
-
-/// 识别主要位置
-pub fn identify_main_role(games: &[ParsedGame]) -> String {
-    let mut role_counts: HashMap<String, usize> = HashMap::new();
-
-    for game in games {
-        let role = &game.player_data.role;
-        if role != "NONE" {
-            *role_counts.entry(role.clone()).or_insert(0) += 1;
-        }
-    }
-
-    role_counts
-        .into_iter()
-        .max_by_key(|(_, count)| *count)
-        .map(|(role, _)| role)
-        .unwrap_or_else(|| "UNKNOWN".to_string())
-}
-
-/// 从游戏数据识别位置
-pub fn identify_position_from_game(role: &str, lane: &str, queue_id: i64) -> String {
-    match (role, lane) {
-        ("SOLO", "TOP") => "TOP".to_string(),
-        ("SOLO", "MIDDLE") => "MID".to_string(),
-        ("JUNGLE", _) => "JUNGLE".to_string(),
-        ("DUO_CARRY", "BOTTOM") => "ADC".to_string(),
-        ("DUO_SUPPORT", "BOTTOM") => "SUPPORT".to_string(),
-        ("NONE", _) if queue_id == 450 => "ARAM".to_string(), // ARAM模式
-        _ => "UNKNOWN".to_string(),
-    }
 }

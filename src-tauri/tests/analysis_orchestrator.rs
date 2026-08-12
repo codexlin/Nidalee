@@ -363,6 +363,15 @@ async fn test_all_modes_keeps_fun_games_in_stats_but_deep_evidence_is_ranked_onl
     let (result, calls) = analyze(MockSource::from_specs(&specs), &request).await;
 
     assert_eq!(result.overall_stats.total_games, 4, "全部模式的基础统计包含娱乐局");
+    let ranked = result.ranked_stats.as_ref().expect("全部模式必须拆出排位桶");
+    let other = result.other_stats.as_ref().expect("全部模式必须拆出其他桶");
+    assert_eq!(ranked.total_games, 2, "排位桶仅含 420/440");
+    assert_eq!(other.total_games, 2, "其他桶含非排位局");
+    assert_eq!(
+        ranked.total_games + other.total_games,
+        result.overall_stats.total_games,
+        "双桶场次之和应等于展示场次"
+    );
     let evidence = result.evidence.as_ref().expect("混合模式仍有排位深度证据");
     let queues: Vec<i64> = evidence.matches.iter().map(|m| m.queue_id).collect();
     assert_eq!(queues, vec![420, 440], "深度证据只允许来自排位队列");
@@ -498,7 +507,10 @@ async fn test_traits_carry_evidence_and_sufficient_sample_supports_conclusion() 
             top.stats.traits.first()
         });
     assert!(
-        top.stats.traits.iter().any(|t| t.description.contains("补刀") || t.name.contains("补刀")),
+        top.stats
+            .traits
+            .iter()
+            .any(|t| t.description.contains("补刀") || t.name.contains("补刀")),
         "TOP 位置维度必须产出补刀特征，实际 {:?}",
         top.stats.traits
     );
@@ -579,7 +591,10 @@ async fn test_advice_is_evidence_backed_and_respects_perspective() {
         .find(|p| p.position == "TOP")
         .expect("TOP 位置分组必须存在");
     assert!(
-        top.stats.advice.iter().any(|a| a.title.contains("补刀") || a.problem.contains("补刀")),
+        top.stats
+            .advice
+            .iter()
+            .any(|a| a.title.contains("补刀") || a.problem.contains("补刀")),
         "TOP 位置维度必须产出补刀建议，实际 {:?}",
         top.stats.advice
     );
@@ -605,6 +620,16 @@ async fn test_legacy_views_are_lossless_projections_of_the_single_result() {
         multi_position.overall_stats.recent_performance.len(),
         result.matches.len(),
         "旧的 recent_performance 与新的 matches 是同一批展示对局"
+    );
+    assert_eq!(
+        multi_position.ranked_stats.as_ref().map(|s| s.total_games),
+        result.ranked_stats.as_ref().map(|s| s.total_games),
+        "投影必须保留排位桶"
+    );
+    assert_eq!(
+        multi_position.other_stats.as_ref().map(|s| s.total_games),
+        result.other_stats.as_ref().map(|s| s.total_games),
+        "投影必须保留其他桶"
     );
 }
 
@@ -867,7 +892,10 @@ async fn test_mixed_modes_position_stats_only_count_ranked() {
     assert_eq!(total_position_games, 2, "位置统计只计入两场排位");
     assert!(result.capabilities.position_breakdown);
     assert_eq!(result.main_position, "TOP");
-    assert!(result.position_stats.iter().all(|p| p.position == "TOP" || p.position == "UNKNOWN"));
+    assert!(result
+        .position_stats
+        .iter()
+        .all(|p| p.position == "TOP" || p.position == "UNKNOWN"));
 }
 
 // === 13. 诊断去重 + capabilities 收敛 ===
@@ -889,7 +917,10 @@ async fn test_timeline_failures_dedupe_to_single_diagnostic() {
         "3 局时间线失败只能有 1 条诊断，实际 {:?}",
         result.diagnostics
     );
-    assert!(!result.capabilities.timeline, "无完整时间线时 timeline 能力必须为 false");
+    assert!(
+        !result.capabilities.timeline,
+        "无完整时间线时 timeline 能力必须为 false"
+    );
 }
 
 #[tokio::test]
@@ -931,9 +962,7 @@ fn test_overview_request_is_simple_with_timeline_disabled() {
 
 #[test]
 fn test_domains_analysis_must_not_import_infrastructure() {
-    let roots = [
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/domains"),
-    ];
+    let roots = [std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/domains")];
     let mut offenders = Vec::new();
     for root in roots {
         for entry in walkdir_rs(&root) {

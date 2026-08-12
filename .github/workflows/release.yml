@@ -1,120 +1,237 @@
-name: "🚀 Release (自动构建发布)"
+name: 🚀 Release (自动构建发布)
 
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag，例如 v2.1.0'
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  NODE_VERSION: '22.23.2'
+  PNPM_VERSION: '10.34.5'
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
+  verify:
+    name: ✅ Verify release
+    runs-on: windows-latest
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🏷️ Validate release tag
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+            throw "Release tag '$env:RELEASE_TAG' must use a semantic version such as v2.1.0"
+          }
+
+      - name: 📥 Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: 🦀 Setup Rust
+        uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          components: rustfmt
+          targets: x86_64-pc-windows-msvc
+
+      - name: 🗄️ Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: 📦 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 🔍 Lint code
+        run: pnpm run lint
+
+      - name: 🎨 Check formatting
+        run: pnpm run format:check
+
+      - name: 🧩 Type check
+        run: pnpm run type-check
+
+      - name: 🧪 Frontend tests
+        run: pnpm run test
+
+      - name: 🏗️ Build frontend
+        run: pnpm run build-only
+
+      - name: 🎨 Check Rust formatting
+        working-directory: src-tauri
+        run: cargo fmt --all -- --check
+
+      - name: ✅ Cargo check
+        working-directory: src-tauri
+        run: cargo check --all-targets --locked
+
+      - name: 🧹 Prepare generated TypeScript contracts
+        run: node scripts/prepare-types.mjs
+
+      - name: 🧪 Cargo test
+        working-directory: src-tauri
+        run: |
+          cargo test --lib --locked
+          cargo test --test '*' --locked
+
+      - name: 🔄 Sync generated TypeScript contracts
+        run: node scripts/sync-types.mjs
+
+      - name: 🧾 Verify generated TypeScript contracts
+        run: git diff --exit-code -- src/types/global.d.ts
+
   release:
-    name: "Build & Release (Win) (构建发布)"
+    name: Build & Release (Windows)
+    needs: verify
     permissions:
       contents: write
     runs-on: windows-latest
     steps:
-      - name: 📦 Checkout repository (检出代码)
+      - name: 📦 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🦀 Setup Rust (安装Rust)
-        uses: dtolnay/rust-toolchain@stable
+      - name: 📥 Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: 🦀 Setup Rust
+        uses: dtolnay/rust-toolchain@1.97.1
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: 🗄️ Rust cache (Rust缓存)
+      - name: 🗄️ Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: 🟢 Setup Node.js (安装Node.js)
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
+      - name: 📦 Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: 📥 Setup pnpm (安装pnpm)
-        uses: pnpm/action-setup@v4
-
-      - name: 📦 Install dependencies (安装依赖)
-        run: pnpm install --no-frozen-lockfile
-
-      - name: 🔧 Update version in tauri.conf.json (更新版本号)
+      - name: 🔧 Apply release version
+        shell: bash
         run: |
-          $version = "${{ github.ref_name }}".Replace("v", "")
-          $content = Get-Content "src-tauri/tauri.conf.json" -Raw
-          $content = $content -replace '"version": "2\.0\.0"', "`"version`": `"$version`""
-          Set-Content "src-tauri/tauri.conf.json" $content
-          Write-Host "Updated version to $version in tauri.conf.json"
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const version = process.env.RELEASE_TAG.replace(/^v/, "");
+            const packagePath = "package.json";
+            const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+            packageJson.version = version;
+            fs.writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+            const configPath = "src-tauri/tauri.conf.json";
+            const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+            config.version = version;
+            fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+            const cargoPath = "src-tauri/Cargo.toml";
+            const cargo = fs.readFileSync(cargoPath, "utf8");
+            const updatedCargo = cargo.replace(/^version\s*=\s*"[^"]+"/m, `version = "${version}"`);
+            if (updatedCargo === cargo) throw new Error("Cargo package version was not found");
+            fs.writeFileSync(cargoPath, updatedCargo);
+          '
 
-      - name: 🔧 Update version in Cargo.toml (更新Cargo版本)
-        run: |
-          $version = "${{ github.ref_name }}".Replace("v", "")
-          $content = Get-Content "src-tauri/Cargo.toml" -Raw
-          $content = $content -replace 'version = "2\.0\.0"', "version = `"$version`""
-          Set-Content "src-tauri/Cargo.toml" $content
-          Write-Host "Updated version to $version in Cargo.toml"
-
-      - name: 🏗️ Build and Release (构建发布)
+      - name: 🏗️ Build and Release
         uses: tauri-apps/tauri-action@v0
         env:
           NODE_ENV: production
           VITE_WS_BASE_URL: ${{ vars.WS_BASE_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-           # 使用之前配置的私钥
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          # 使用之前配置的私钥密码
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
-          # 传递版本号给 Tauri
-          TAURI_VERSION: ${{ github.ref_name }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Nidalee ${{ github.ref_name }}'
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: 'Nidalee ${{ env.RELEASE_TAG }}'
           releaseDraft: true
-          prerelease: false
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
           args: ''
 
   release-mac:
-    name: "Build & Release (macOS) (构建发布)"
+    name: Build & Release (macOS)
+    needs: verify
     permissions:
       contents: write
     runs-on: macos-latest
     steps:
-      - name: 📦 Checkout repository (检出代码)
+      - name: 📦 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🦀 Setup Rust (安装Rust)
-        uses: dtolnay/rust-toolchain@stable
+      - name: 📥 Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: 🦀 Setup Rust
+        uses: dtolnay/rust-toolchain@1.97.1
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      - name: 🗄️ Rust cache (Rust缓存)
+      - name: 🗄️ Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: 🟢 Setup Node.js (安装Node.js)
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
+      - name: 📦 Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: 📥 Setup pnpm (安装pnpm)
-        uses: pnpm/action-setup@v4
-
-      - name: 📦 Install dependencies (安装依赖)
-        run: pnpm install --no-frozen-lockfile
-
-      - name: 🔧 Update version in tauri.conf.json (更新版本号)
+      - name: 🔧 Apply release version
+        shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          sed -i '' 's/"version": "2\.0\.0"/"version": "'$VERSION'"/g' src-tauri/tauri.conf.json
-          echo "Updated version to $VERSION in tauri.conf.json"
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const version = process.env.RELEASE_TAG.replace(/^v/, "");
+            const packagePath = "package.json";
+            const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+            packageJson.version = version;
+            fs.writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+            const configPath = "src-tauri/tauri.conf.json";
+            const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+            config.version = version;
+            fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+            const cargoPath = "src-tauri/Cargo.toml";
+            const cargo = fs.readFileSync(cargoPath, "utf8");
+            const updatedCargo = cargo.replace(/^version\s*=\s*"[^"]+"/m, `version = "${version}"`);
+            if (updatedCargo === cargo) throw new Error("Cargo package version was not found");
+            fs.writeFileSync(cargoPath, updatedCargo);
+          '
 
-      - name: 🔧 Update version in Cargo.toml (更新Cargo版本)
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          sed -i '' 's/version = "2\.0\.0"/version = "'$VERSION'"/g' src-tauri/Cargo.toml
-          echo "Updated version to $VERSION in Cargo.toml"
-
-      - name: 🏗️ Build and Release (构建发布)
+      - name: 🏗️ Build and Release
         uses: tauri-apps/tauri-action@v0
         env:
           NODE_ENV: production
@@ -122,12 +239,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
-          # 传递版本号给 Tauri
-          TAURI_VERSION: ${{ github.ref_name }}
-
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Nidalee ${{ github.ref_name }}'
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: 'Nidalee ${{ env.RELEASE_TAG }}'
           releaseDraft: true
-          prerelease: false
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
           args: ''

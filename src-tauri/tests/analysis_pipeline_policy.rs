@@ -63,6 +63,7 @@ fn test_simple_depth_is_basic_for_all_modes() {
         AnalysisMode::FlexRanked,
         AnalysisMode::MixedRanked,
         AnalysisMode::Aram,
+        AnalysisMode::Normals,
         AnalysisMode::AllModes,
     ];
 
@@ -144,10 +145,27 @@ fn test_deep_mixed_ranked_420_440() {
 // === Deep + 娱乐模式降级 ===
 
 #[test]
+fn test_deep_normals_excludes_ranked_and_downgrades() {
+    let policy = resolve_analysis_policy(&request(AnalysisMode::Normals, AnalysisDepth::Deep));
+
+    assert!(policy.selected_queue_ids.is_empty());
+    assert!(policy.exclude_ranked);
+    assert_eq!(policy.queue_scope, AnalysisQueueScope::NonRankedOnly);
+    assert_eq!(policy.effective_depth, AnalysisDepth::Simple);
+    assert!(policy.basic_only);
+    assert!(policy.includes_queue(430));
+    assert!(policy.includes_queue(450));
+    assert!(!policy.includes_queue(420));
+    assert!(!policy.includes_queue(440));
+    assert!(policy.has_diagnostic(AnalysisDegradationCode::FunModeDeepUnsupported));
+}
+
+#[test]
 fn test_deep_aram_450_downgrades_to_simple() {
     let policy = resolve_analysis_policy(&request(AnalysisMode::Aram, AnalysisDepth::Deep));
 
     assert_eq!(policy.selected_queue_ids, vec![450]);
+    assert!(!policy.exclude_ranked);
     assert_eq!(policy.queue_scope, AnalysisQueueScope::NonRankedOnly);
     assert_eq!(policy.requested_depth, AnalysisDepth::Deep);
     assert_eq!(

@@ -18,7 +18,7 @@ use crate::shared::types::{
 // 复用现有分析模式/深度枚举，避免出现第二套语义；同时对外暴露给 pipeline 使用方
 pub use crate::domains::analysis::analyzers::core::strategy::{AnalysisDepth, AnalysisMode};
 
-/// 默认分析对局数（与前端 analysisSettingsStore 默认值保持一致）
+/// 默认分析对局数（与前端仪表盘默认场数保持一致）
 pub const DEFAULT_ANALYSIS_GAME_COUNT: u32 = 20;
 
 /// 位置未知时的占位码（与 EvidencePosition::Unknown 一致；中文展示由前端负责）
@@ -31,7 +31,7 @@ pub fn is_ranked_queue(queue_id: i64) -> bool {
     QueueType::from_queue_id(queue_id as i32).is_ranked()
 }
 
-/// 分析功能开关（对应前端 AnalysisConfig 的开关项）
+/// 分析功能开关（IPC `MatchAnalysisRequest.features`）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(
     export,
@@ -340,9 +340,13 @@ pub struct AnalysisPolicy {
     /// 实际生效的深度（可能因娱乐模式/开关而降级）
     pub effective_depth: AnalysisDepth,
 
-    /// 最终选中的队列集合；空表示不过滤
+    /// 最终选中的队列集合；空表示不过滤（除非 `exclude_ranked`）
     #[ts(type = "number[]")]
     pub selected_queue_ids: Vec<i64>,
+
+    /// 普通模式：排除排位队列（420/440），与 allowlist 互斥使用
+    #[serde(default)]
+    pub exclude_ranked: bool,
 
     /// 队列范围
     pub queue_scope: AnalysisQueueScope,
@@ -377,8 +381,16 @@ impl AnalysisPolicy {
         self.diagnostics.iter().any(|d| d.code == code)
     }
 
+    /// 是否启用了队列过滤（allowlist 或排除排位）
+    pub fn has_queue_filter(&self) -> bool {
+        self.exclude_ranked || !self.selected_queue_ids.is_empty()
+    }
+
     /// 该队列是否参与分析
     pub fn includes_queue(&self, queue_id: i64) -> bool {
+        if self.exclude_ranked {
+            return !is_ranked_queue(queue_id);
+        }
         self.selected_queue_ids.is_empty() || self.selected_queue_ids.contains(&queue_id)
     }
 
@@ -599,8 +611,18 @@ impl DeterministicAdvice {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct MatchAnalysisResult {
-    /// 总览统计（所有参与分析的对局合计）
+    /// 总览统计（所有参与分析的对局合计；全部模式下为混合合计，供列表/兼容）
     pub overall_stats: PlayerMatchStats,
+
+    /// 排位桶统计（420/440）；无排位样本时为 None
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub ranked_stats: Option<PlayerMatchStats>,
+
+    /// 非排位桶统计（匹配/乱斗/娱乐等）；无样本时为 None
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub other_stats: Option<PlayerMatchStats>,
 
     /// 分位置统计
     pub position_stats: Vec<PositionStats>,
@@ -659,6 +681,8 @@ impl MatchAnalysisResult {
 
         Self {
             overall_stats: PlayerMatchStats::default(),
+            ranked_stats: None,
+            other_stats: None,
             position_stats: Vec::new(),
             main_position: UNKNOWN_POSITION.to_string(),
             analyzed_games: 0,

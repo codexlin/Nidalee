@@ -13,10 +13,6 @@ const AFFINITY_MIN_GAMES: u32 = 3;
 pub struct ModeAffinityTraitStrategy;
 
 impl TraitStrategy for ModeAffinityTraitStrategy {
-    fn id(&self) -> &'static str {
-        "mode_affinity"
-    }
-
     fn analyze(&self, ctx: &TraitAnalysisContext<'_>) -> Vec<DeterministicTrait> {
         let games = ctx.display_games;
         let total = games.len() as u32;
@@ -38,9 +34,7 @@ impl TraitStrategy for ModeAffinityTraitStrategy {
             total,
             games,
             |g| g.queue_id == 2400,
-            |count, total, pct| {
-                format!("最近 {count}/{total} 场都在海克斯大乱斗（{pct:.0}%），已经玩出肌肉记忆了。")
-            },
+            |count, total, pct| format!("最近 {count}/{total} 场都在海克斯大乱斗（{pct:.0}%），已经玩出肌肉记忆了。"),
         ) {
             out.push(trait_);
         } else if let Some(trait_) = affinity_trait(
@@ -50,9 +44,7 @@ impl TraitStrategy for ModeAffinityTraitStrategy {
             total,
             games,
             |g| g.queue_id == 450,
-            |count, total, pct| {
-                format!("最近 {count}/{total} 场泡在极地大乱斗（{pct:.0}%），乱斗魂拉满。")
-            },
+            |count, total, pct| format!("最近 {count}/{total} 场泡在极地大乱斗（{pct:.0}%），乱斗魂拉满。"),
         ) {
             out.push(trait_);
         } else if fun as f64 / total as f64 >= AFFINITY_RATIO && fun >= AFFINITY_MIN_GAMES {
@@ -63,9 +55,7 @@ impl TraitStrategy for ModeAffinityTraitStrategy {
                 total,
                 games,
                 |g| !is_ranked_queue(g.queue_id),
-                |count, total, pct| {
-                    format!("最近 {count}/{total} 场都是娱乐局（{pct:.0}%），排位可以先放一放。")
-                },
+                |count, total, pct| format!("最近 {count}/{total} 场都是娱乐局（{pct:.0}%），排位可以先放一放。"),
             ) {
                 out.push(trait_);
             }
@@ -77,9 +67,7 @@ impl TraitStrategy for ModeAffinityTraitStrategy {
                 total,
                 games,
                 |g| is_ranked_queue(g.queue_id),
-                |count, total, pct| {
-                    format!("最近 {count}/{total} 场在打排位（{pct:.0}%），认真上分的状态。")
-                },
+                |count, total, pct| format!("最近 {count}/{total} 场在打排位（{pct:.0}%），认真上分的状态。"),
             ) {
                 out.push(trait_);
             }
@@ -151,8 +139,6 @@ fn dominant_named_queue(games: &[ParsedGame], total: u32) -> Option<Deterministi
         total,
         games,
         |g| g.queue_id == queue_id,
-        move |count, total, pct| {
-            format!("最近 {count}/{total} 场都在玩{label}（{pct:.0}%），算半个常驻了。")
-        },
+        move |count, total, pct| format!("最近 {count}/{total} 场都在玩{label}（{pct:.0}%），算半个常驻了。"),
     )
 }

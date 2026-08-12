@@ -16,7 +16,7 @@ pub mod types;
 
 pub use orchestrator::{dedupe_diagnostics, orchestrate_analysis, DeepMatchInput, OrchestratorInput};
 pub use policy::resolve_analysis_policy;
-pub use trait_strategies::{analyze_traits, TraitAnalysisContext};
+pub use process_insights::{build_key_moments, build_opponent_compare, build_single_match_process_insight};
 pub use types::{
     is_ranked_queue, AnalysisCapabilities, AnalysisDegradationCode, AnalysisDepth, AnalysisDiagnostic, AnalysisFeature,
     AnalysisFeatureFlags, AnalysisMode, AnalysisPolicy, AnalysisQueueScope, DeterministicAdvice, DeterministicTrait,

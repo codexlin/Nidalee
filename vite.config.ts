@@ -81,11 +81,11 @@ export default defineConfig({
   clearScreen: false,
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
   build: {
-    target: process.env.TAURI_ENV_PLATFORM == 'windows' ? 'chrome105' : 'safari13',
+    target: 'esnext',
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
-    minify: 'esbuild',
+    minify: 'oxc',
     rollupOptions: {
       output: {
         manualChunks(id) {

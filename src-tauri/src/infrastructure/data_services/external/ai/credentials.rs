@@ -38,9 +38,7 @@ pub fn has_api_key() -> bool {
 
 /// 仅供后端 HTTP 客户端使用；禁止日志打印返回值
 pub(crate) fn load_api_key() -> Result<String, String> {
-    let key = entry()?
-        .get_password()
-        .map_err(|e| format!("读取 API Key 失败: {e}"))?;
+    let key = entry()?.get_password().map_err(|e| format!("读取 API Key 失败: {e}"))?;
     let trimmed = key.trim().to_string();
     if trimmed.is_empty() {
         return Err("尚未配置 API Key".to_string());

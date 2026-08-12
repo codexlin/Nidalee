@@ -1,30 +1,39 @@
 <template>
-  <div class="px-4">
-    <div class="flex items-center space-x-2">
-      <NotificationHoverCard title="系统活动" side="bottom" align="end" />
+  <div class="flex items-center gap-1.5">
+    <NotificationHoverCard title="系统活动" side="bottom" align="end" />
 
-      <button
-        class="cursor-pointer p-3 rounded-xl bg-gradient-to-br from-background/80 to-muted/60 backdrop-blur-sm border border-border/50 hover:border-border transition-all duration-200 focus:outline-none shadow-lg hover:shadow-xl group"
-        @click="refreshData"
-        title="刷新数据"
-      >
-        <RefreshCw :size="17" class="text-muted-foreground group-hover:text-foreground transition-colors" />
-      </button>
-    </div>
+    <FloatIconButton
+      class="p-2"
+      :title="settingsStore.isDark ? '切换浅色模式' : '切换深色模式'"
+      @click="settingsStore.toggleTheme(!settingsStore.isDark)"
+    >
+      <Sun v-if="settingsStore.isDark" :size="16" />
+      <Moon v-else :size="16" />
+    </FloatIconButton>
+
+    <FloatIconButton class="p-2" title="刷新数据" @click="refreshData">
+      <RefreshCw :size="16" />
+    </FloatIconButton>
+
+    <FloatIconButton class="p-2" title="给项目点个 Star" aria-label="GitHub Star" @click="openGithub">
+      <Github :size="16" />
+    </FloatIconButton>
   </div>
 </template>
 
 <script setup lang="ts">
-import { RefreshCw } from 'lucide-vue-next'
+import { Github, Moon, RefreshCw, Sun } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
+import FloatIconButton from '@/components/common/FloatIconButton.vue'
 
 const activityLogger = useActivityLogger()
 const connectionStore = useConnectionStore()
+const settingsStore = useSettingsStore()
 
 const { isConnected } = storeToRefs(connectionStore)
 const { updateSummonerAndMatches } = useSummonerAndMatchUpdater()
 
 const refreshData = async () => {
-  console.log('刷新数据')
   try {
     if (isConnected.value) {
       updateSummonerAndMatches()
@@ -34,6 +43,14 @@ const refreshData = async () => {
     activityLogger.logError.apiError('数据刷新失败')
   }
 }
-</script>
 
-<style></style>
+const openGithub = () => {
+  window.open('https://github.com/codexlin/Nidalee', '_blank', 'noopener,noreferrer')
+  setTimeout(() => {
+    toast.success('谢谢你的⭐！', {
+      description: '开发者收到了你的鼓励，超级开心 🥳',
+      duration: 3000
+    })
+  }, 200)
+}
+</script>

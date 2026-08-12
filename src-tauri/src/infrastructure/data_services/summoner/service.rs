@@ -1,5 +1,6 @@
 use crate::shared::types::{RankInfo, SummonerInfo};
 use crate::shared::utils::{lcu_get, lcu_post, lcu_put};
+use futures_util::stream::{self, StreamExt};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{to_value, Value};
@@ -15,12 +16,10 @@ pub struct ProfileUpdateRequest {
 
 pub async fn get_current_summoner(client: &Client) -> Result<SummonerInfo, String> {
     let mut summoner_info: SummonerInfo = lcu_get(client, "/lol-summoner/v1/current-summoner").await?;
-    // 获取段位信息
-    fill_summoner_extra_info(client, &mut summoner_info).await;
+    fill_current_summoner_extra_info(client, &mut summoner_info).await;
     Ok(summoner_info)
 }
-// 补全信息
-pub async fn fill_summoner_extra_info(client: &Client, summoner_info: &mut SummonerInfo) {
+pub(crate) async fn fill_rank_info(client: &Client, summoner_info: &mut SummonerInfo) {
     if let Ok(rank_info) = get_rank_info(client, &summoner_info.puuid).await {
         summoner_info.solo_rank_tier = rank_info.solo_tier;
         summoner_info.solo_rank_division = rank_info.solo_division;
@@ -34,11 +33,14 @@ pub async fn fill_summoner_extra_info(client: &Client, summoner_info: &mut Summo
         summoner_info.flex_rank_losses = rank_info.flex_losses;
     }
 
-    fill_challenge_info(client, summoner_info).await;
-
     if let (Some(game_name), Some(tag_line)) = (summoner_info.game_name.clone(), summoner_info.tag_line.clone()) {
         summoner_info.display_name = format!("{}#{}", game_name, tag_line);
     }
+}
+
+async fn fill_current_summoner_extra_info(client: &Client, summoner_info: &mut SummonerInfo) {
+    fill_rank_info(client, summoner_info).await;
+    fill_challenge_info(client, summoner_info).await;
 }
 
 /// 挑战积分 / 水晶等级：current-summoner 不含这些字段，需另取。
@@ -46,7 +48,10 @@ pub async fn fill_summoner_extra_info(client: &Client, summoner_info: &mut Summo
 async fn fill_challenge_info(client: &Client, summoner_info: &mut SummonerInfo) {
     if let Ok(summary) = lcu_get::<Value>(client, "/lol-challenges/v1/summary-player-data/local-player").await {
         if let Some(total) = summary.get("totalPoints") {
-            if let Some(current) = total.get("current").and_then(|v| v.as_i64().or_else(|| v.as_u64().map(|u| u as i64))) {
+            if let Some(current) = total
+                .get("current")
+                .and_then(|v| v.as_i64().or_else(|| v.as_u64().map(|u| u as i64)))
+            {
                 summoner_info.challenge_points = Some(current.to_string());
             }
             if let Some(level) = total.get("level").and_then(|v| v.as_str()) {
@@ -66,17 +71,21 @@ async fn fill_challenge_info(client: &Client, summoner_info: &mut SummonerInfo) 
     if let Ok(me) = lcu_get::<Value>(client, "/lol-chat/v1/me").await {
         let lol = me.get("lol");
         if summoner_info.challenge_points.is_none() {
-            if let Some(points) = lol
-                .and_then(|l| l.get("challengePoints"))
-                .and_then(|v| v.as_str().map(|s| s.to_string()).or_else(|| v.as_i64().map(|n| n.to_string())))
-            {
+            if let Some(points) = lol.and_then(|l| l.get("challengePoints")).and_then(|v| {
+                v.as_str()
+                    .map(|s| s.to_string())
+                    .or_else(|| v.as_i64().map(|n| n.to_string()))
+            }) {
                 if !points.is_empty() {
                     summoner_info.challenge_points = Some(points);
                 }
             }
         }
         if summoner_info.challenge_crystal_level.is_none() {
-            if let Some(level) = lol.and_then(|l| l.get("challengeCrystalLevel")).and_then(|v| v.as_str()) {
+            if let Some(level) = lol
+                .and_then(|l| l.get("challengeCrystalLevel"))
+                .and_then(|v| v.as_str())
+            {
                 if !level.is_empty() {
                     summoner_info.challenge_crystal_level = Some(level.to_string());
                 }
@@ -98,21 +107,29 @@ pub async fn get_rank_info(client: &Client, puuid: &str) -> Result<RankInfo, Str
     let path = &format!("/lol-ranked/v1/ranked-stats/{}", puuid);
     let rank_data: Value = lcu_get(client, path).await?;
 
+    Ok(parse_rank_info(&rank_data))
+}
+
+fn parse_rank_info(rank_data: &Value) -> RankInfo {
     let mut rank_info = RankInfo::default();
     if let Some(queues) = rank_data.get("queues").and_then(|q| q.as_array()) {
         for queue in queues {
             let queue_type = queue.get("queueType").and_then(|q| q.as_str()).unwrap_or("");
+            let tier = queue
+                .get("tier")
+                .and_then(Value::as_str)
+                .filter(|tier| is_ranked_tier(tier));
             match queue_type {
-                "RANKED_SOLO_5x5" => {
-                    rank_info.solo_tier = queue.get("tier").and_then(|t| t.as_str()).map(String::from);
-                    rank_info.solo_division = queue.get("division").and_then(|d| d.as_str()).map(String::from);
+                "RANKED_SOLO_5x5" if tier.is_some() => {
+                    rank_info.solo_tier = tier.map(String::from);
+                    rank_info.solo_division = queue.get("division").and_then(Value::as_str).and_then(rank_text);
                     rank_info.solo_lp = queue.get("leaguePoints").and_then(|l| l.as_i64()).map(|l| l as i32);
                     rank_info.solo_wins = queue.get("wins").and_then(|w| w.as_i64()).map(|w| w as i32);
                     rank_info.solo_losses = queue.get("losses").and_then(|l| l.as_i64()).map(|l| l as i32);
                 }
-                "RANKED_FLEX_SR" => {
-                    rank_info.flex_tier = queue.get("tier").and_then(|t| t.as_str()).map(String::from);
-                    rank_info.flex_division = queue.get("division").and_then(|d| d.as_str()).map(String::from);
+                "RANKED_FLEX_SR" if tier.is_some() => {
+                    rank_info.flex_tier = tier.map(String::from);
+                    rank_info.flex_division = queue.get("division").and_then(Value::as_str).and_then(rank_text);
                     rank_info.flex_lp = queue.get("leaguePoints").and_then(|l| l.as_i64()).map(|l| l as i32);
                     rank_info.flex_wins = queue.get("wins").and_then(|w| w.as_i64()).map(|w| w as i32);
                     rank_info.flex_losses = queue.get("losses").and_then(|l| l.as_i64()).map(|l| l as i32);
@@ -121,7 +138,82 @@ pub async fn get_rank_info(client: &Client, puuid: &str) -> Result<RankInfo, Str
             }
         }
     }
-    Ok(rank_info)
+    rank_info
+}
+
+fn is_ranked_tier(tier: &str) -> bool {
+    !tier.trim().is_empty() && !matches!(tier.to_ascii_uppercase().as_str(), "NA" | "NONE" | "UNRANKED")
+}
+
+fn rank_text(value: &str) -> Option<String> {
+    is_ranked_tier(value).then(|| value.to_owned())
+}
+
+#[cfg(test)]
+mod rank_tests {
+    use super::parse_rank_info;
+    use serde_json::json;
+
+    #[test]
+    fn unranked_lcu_sentinels_do_not_become_rank_badges() {
+        let rank = parse_rank_info(&json!({
+            "queues": [
+                {
+                    "queueType": "RANKED_SOLO_5x5",
+                    "tier": "NA",
+                    "division": "NA",
+                    "leaguePoints": 0
+                },
+                {
+                    "queueType": "RANKED_FLEX_SR",
+                    "tier": "UNRANKED",
+                    "division": "NA",
+                    "leaguePoints": 0
+                }
+            ]
+        }));
+
+        assert_eq!(rank.solo_tier, None);
+        assert_eq!(rank.solo_lp, None);
+        assert_eq!(rank.flex_tier, None);
+        assert_eq!(rank.flex_lp, None);
+    }
+
+    #[test]
+    fn ranked_queue_keeps_real_tier_details() {
+        let rank = parse_rank_info(&json!({
+            "queues": [{
+                "queueType": "RANKED_FLEX_SR",
+                "tier": "EMERALD",
+                "division": "II",
+                "leaguePoints": 42,
+                "wins": 12,
+                "losses": 8
+            }]
+        }));
+
+        assert_eq!(rank.flex_tier.as_deref(), Some("EMERALD"));
+        assert_eq!(rank.flex_division.as_deref(), Some("II"));
+        assert_eq!(rank.flex_lp, Some(42));
+        assert_eq!(rank.flex_wins, Some(12));
+        assert_eq!(rank.flex_losses, Some(8));
+    }
+
+    #[test]
+    fn apex_rank_omits_na_division() {
+        let rank = parse_rank_info(&json!({
+            "queues": [{
+                "queueType": "RANKED_SOLO_5x5",
+                "tier": "MASTER",
+                "division": "NA",
+                "leaguePoints": 120
+            }]
+        }));
+
+        assert_eq!(rank.solo_tier.as_deref(), Some("MASTER"));
+        assert_eq!(rank.solo_division, None);
+        assert_eq!(rank.solo_lp, Some(120));
+    }
 }
 
 // 获取指定ID的召唤师
@@ -129,17 +221,33 @@ pub async fn get_summoner_by_id(client: &Client, summoner_id: u64) -> Result<Sum
     let path = &format!("/lol-summoner/v1/summoners/{}", summoner_id);
     let mut summoner_info: SummonerInfo = lcu_get(client, path).await?;
 
-    // 获取段位信息
-    fill_summoner_extra_info(client, &mut summoner_info).await;
+    // Local-only challenge/chat endpoints describe the current account, not this player.
+    fill_rank_info(client, &mut summoner_info).await;
 
     Ok(summoner_info)
 }
 
 // 批量获取召唤师信息
 pub async fn get_summoners_by_names(client: &Client, names: Vec<String>) -> Result<Vec<SummonerInfo>, String> {
-    let path = &format!("/lol-summoner/v2/summoners/names");
+    let path = "/lol-summoner/v2/summoners/names";
     let summoners: Vec<SummonerInfo> = lcu_post(client, path, names.into()).await?;
     Ok(summoners)
+}
+
+/// LiveClient 只提供玩家名；批量解析身份后，以受限并发补齐各玩家排位资料。
+pub async fn get_summoners_by_names_with_rank(
+    client: &Client,
+    names: Vec<String>,
+) -> Result<Vec<SummonerInfo>, String> {
+    let summoners = get_summoners_by_names(client, names).await?;
+    let enriched = stream::iter(summoners.into_iter().map(|mut summoner| async move {
+        fill_rank_info(client, &mut summoner).await;
+        summoner
+    }))
+    .buffered(4)
+    .collect()
+    .await;
+    Ok(enriched)
 }
 
 // 设置生涯背景皮肤（使用正确的API - POST请求）
@@ -181,17 +289,21 @@ pub async fn set_summoner_background(client: &Client, skin_id: u64) -> Result<()
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ChatProfileLolInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rankedLeagueQueue: Option<String>,
+    #[serde(rename = "rankedLeagueQueue")]
+    pub ranked_league_queue: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rankedLeagueTier: Option<String>,
+    #[serde(rename = "rankedLeagueTier")]
+    pub ranked_league_tier: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rankedLeagueDivision: Option<String>,
+    #[serde(rename = "rankedLeagueDivision")]
+    pub ranked_league_division: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ChatProfileUpdateRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub statusMessage: Option<String>,
+    #[serde(rename = "statusMessage")]
+    pub status_message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lol: Option<ChatProfileLolInfo>,
 }
@@ -207,18 +319,14 @@ pub async fn set_summoner_chat_profile(
     let path = "/lol-chat/v1/me";
     let lol = if queue.is_some() || tier.is_some() || division.is_some() {
         Some(ChatProfileLolInfo {
-            rankedLeagueQueue: queue,
-            rankedLeagueTier: tier,
-            rankedLeagueDivision: division,
+            ranked_league_queue: queue,
+            ranked_league_tier: tier,
+            ranked_league_division: division,
         })
     } else {
         None
     };
-    let body = ChatProfileUpdateRequest {
-        statusMessage: status_message,
-        lol,
-    };
-    lcu_put::<serde_json::Value>(client, path, to_value(body).unwrap())
-        .await
-        .map(|_| ())
+    let body = ChatProfileUpdateRequest { status_message, lol };
+    let body = to_value(body).map_err(|error| format!("序列化聊天资料失败: {error}"))?;
+    lcu_put::<serde_json::Value>(client, path, body).await.map(|_| ())
 }

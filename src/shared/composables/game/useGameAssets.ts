@@ -16,11 +16,12 @@ export function useGameAssets() {
     return `https://ddragon.leagueoflegends.com/cdn/${gameVersion.value}/img/item/${itemId}.png`
   }
 
-  // 移除 RankTier 类型，避免找不到类型错误
   const getRankIconUrl = (tier: string): string => {
     if (!tier) return ''
-    const tierLower = tier.toLowerCase()
-    return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-leagues/global/default/images/${tierLower}.png`
+    const tierLower = tier.toLowerCase().trim()
+    if (tierLower === 'none') return ''
+    const file = tierLower === 'unranked' ? 'unranked-tft.svg' : `${tierLower}_tft.svg`
+    return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${file}`
   }
 
   const getPerkStyleIconUrl = (styleId: number | undefined): string => {

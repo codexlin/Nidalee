@@ -15,7 +15,7 @@ use serde_json::{json, Value};
 use nidalee_lib::analysis_evidence::{
     advantage_to_percent, build_evidence_bundle, build_process_insight, extract_match_evidence, is_aram_queue,
     laning_opponent_diff, position_from_role_lane, resolve_lane_opponent, ActivityContext, DeathCause,
-    EvidenceConfidence, EvidenceEventKind, EventInvolvement, EvidenceIssue, EvidencePosition, EvidenceQuality,
+    EventInvolvement, EvidenceConfidence, EvidenceEventKind, EvidenceIssue, EvidencePosition, EvidenceQuality,
     GamePhase, MatchEvidence, MatchEvidenceInput, OpponentMatchMethod, ADVANTAGE_PERCENT_SCALE,
     MIN_SAMPLE_FOR_CONCLUSION,
 };
@@ -50,7 +50,7 @@ fn approx(actual: Option<f64>, expected: f64, what: &str) {
     );
 }
 
-fn phase<'a>(evidence: &'a MatchEvidence, phase: GamePhase) -> &'a nidalee_lib::analysis_evidence::PhaseEvidence {
+fn phase(evidence: &MatchEvidence, phase: GamePhase) -> &nidalee_lib::analysis_evidence::PhaseEvidence {
     evidence
         .phase(phase)
         .unwrap_or_else(|| panic!("缺少阶段 {phase:?}，实际阶段: {:?}", evidence.phases))
@@ -513,6 +513,106 @@ fn test_never_picks_first_enemy_as_lane_opponent() {
     assert_eq!(opponent.participant_id, 7, "必须匹配同位置敌人，而不是第一个敌人");
 }
 
+#[test]
+fn test_jungle_opponent_by_smite_when_lane_missing() {
+    // 排位字段糊掉时：双方带惩戒仍应对上打野（含浮点 spellId）
+    let game = json!({
+        "gameId": 1000000201,
+        "queueId": 420,
+        "gameDuration": 1800,
+        "participants": [
+            {
+                "participantId": 1, "championId": 76, "teamId": 100,
+                "spell1Id": 4.0, "spell2Id": 11.0,
+                "stats": { "neutralMinionsKilled": 120 },
+                "timeline": { "role": "NONE", "lane": "NONE" }
+            },
+            {
+                "participantId": 2, "championId": 86, "teamId": 100,
+                "spell1Id": 4, "spell2Id": 12,
+                "stats": { "neutralMinionsKilled": 8 },
+                "timeline": { "role": "SOLO", "lane": "TOP" }
+            },
+            {
+                "participantId": 6, "championId": 64, "teamId": 200,
+                "spell1Id": 4.0, "spell2Id": 11.0,
+                "stats": { "neutralMinionsKilled": 110 },
+                "timeline": { "role": "NONE", "lane": "NONE" }
+            },
+            {
+                "participantId": 7, "championId": 103, "teamId": 200,
+                "spell1Id": 4, "spell2Id": 14,
+                "stats": { "neutralMinionsKilled": 4 },
+                "timeline": { "role": "SOLO", "lane": "MIDDLE" }
+            }
+        ]
+    });
+
+    let opponent = resolve_lane_opponent(&game, None, 1, 420).expect("打野应对上敌方惩戒");
+    assert_eq!(opponent.participant_id, 6);
+    assert_eq!(opponent.position, EvidencePosition::Jungle);
+}
+
+#[test]
+fn test_jungle_opponent_disambiguates_dual_smite_by_jungle_cs() {
+    // 敌方双惩戒（辅助偶发带惩戒）：野刀领先者才是对位打野
+    let game = json!({
+        "gameId": 1000000202,
+        "queueId": 420,
+        "gameDuration": 1800,
+        "participants": [
+            {
+                "participantId": 1, "championId": 76, "teamId": 100,
+                "spell1Id": 4, "spell2Id": 11,
+                "stats": { "neutralMinionsKilled": 130 },
+                "timeline": { "role": "NONE", "lane": "JUNGLE" }
+            },
+            {
+                "participantId": 6, "championId": 64, "teamId": 200,
+                "spell1Id": 4, "spell2Id": 11,
+                "stats": { "neutralMinionsKilled": 125 },
+                "timeline": { "role": "NONE", "lane": "JUNGLE" }
+            },
+            {
+                "participantId": 7, "championId": 412, "teamId": 200,
+                "spell1Id": 4, "spell2Id": 11,
+                "stats": { "neutralMinionsKilled": 12 },
+                "timeline": { "role": "DUO_SUPPORT", "lane": "BOTTOM" }
+            }
+        ]
+    });
+
+    let opponent = resolve_lane_opponent(&game, None, 1, 420).expect("双惩戒应靠野刀消歧");
+    assert_eq!(opponent.participant_id, 6, "应对上野刀更高的敌方打野");
+}
+
+#[test]
+fn test_matchup_skipped_for_normal_draft() {
+    // 匹配/娱乐局不做对位与过程复盘
+    let game = json!({
+        "gameId": 1000000203,
+        "queueId": 400,
+        "gameDuration": 1600,
+        "participants": [
+            {
+                "participantId": 1, "championId": 76, "teamId": 100,
+                "spell1Id": 4, "spell2Id": 11,
+                "timeline": { "role": "NONE", "lane": "JUNGLE" }
+            },
+            {
+                "participantId": 6, "championId": 64, "teamId": 200,
+                "spell1Id": 4, "spell2Id": 11,
+                "timeline": { "role": "NONE", "lane": "JUNGLE" }
+            }
+        ]
+    });
+
+    assert!(
+        resolve_lane_opponent(&game, None, 1, 400).is_none(),
+        "非排位不得产生对位"
+    );
+}
+
 // === 4.1 空间邻近的鲁棒性（泉水 / t0 / 死亡尖峰）===
 
 /// 蓝方泉水中心（召唤师峡谷）
@@ -634,7 +734,13 @@ fn test_jungle_and_unknown_positions_do_not_use_spatial_fallback() {
     // 打野满地图游走，空间邻近对它没有对线语义
     let jungler = extract_match_evidence(&game, Some(&timeline), TARGET_JUNGLE).expect("打野提取失败");
     assert_eq!(jungler.position, EvidencePosition::Jungle);
-    assert!(jungler.opponent.is_none(), "打野不得用空间邻近编出对线对手");
+    assert!(
+        jungler
+            .opponent
+            .as_ref()
+            .is_none_or(|opponent| opponent.method != OpponentMatchMethod::SpatialProximity),
+        "打野不得用空间邻近编出对线对手"
+    );
 
     // 目标自己的 role/lane 也不可用 → 位置 UNKNOWN → 同样禁止回退
     let mut unknown_game = game.clone();
@@ -984,7 +1090,7 @@ fn test_single_game_cannot_support_strong_conclusion() {
     assert_eq!(summary.sample_size, 1);
     assert_eq!(summary.confidence, EvidenceConfidence::Insufficient);
     assert!(!summary.supports_conclusion, "单场不得触发全局强结论");
-    assert!(MIN_SAMPLE_FOR_CONCLUSION >= 3, "最小样本阈值必须 >= 3");
+    const { assert!(MIN_SAMPLE_FOR_CONCLUSION >= 3, "最小样本阈值必须 >= 3") };
 }
 
 #[test]
@@ -1073,10 +1179,7 @@ fn test_timeline_extracts_all_known_event_kinds() {
         events.unknown_events
     );
     assert!(
-        events
-            .key_events
-            .iter()
-            .any(|e| e.kind == EvidenceEventKind::Unknown),
+        events.key_events.iter().any(|e| e.kind == EvidenceEventKind::Unknown),
         "未知事件应进入 key_events"
     );
 

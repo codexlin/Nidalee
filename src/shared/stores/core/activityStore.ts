@@ -135,7 +135,7 @@ export const useActivityStore = defineStore(
 
     return {
       // 状态
-      activities: readonly(activities),
+      activities,
 
       // 计算属性
       recentActivities,

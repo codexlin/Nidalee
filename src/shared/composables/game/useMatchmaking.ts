@@ -32,6 +32,7 @@ export function useMatchmaking() {
       await invoke('accept_match')
     } catch (error) {
       console.error('接受对局失败:', error)
+      throw error
     }
   }
 
