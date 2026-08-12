@@ -41,12 +41,15 @@
 | Rust WS 事件职责拆分 | `541b759` | 保留 `WsEventHandler` 稳定门面，按分发、生命周期、Gameflow、Champ Select、上下文和基础状态拆分 |
 | Rust 分析类型拆分 | `0805309` | 34 个公共类型及 `ts-rs` 导出路径保持不变，按实时分析、统计、位置和过程复盘拆分 |
 | Rust 战绩服务拆分 | `a5cace4` | 保留 6 个服务入口，分离概览、详情 DTO 映射和过程复盘编排 |
+| Rust 实时富化职责拆分 | `a9e5aa6` | 将身份映射、玩家分析、敌方回填和整局恢复分离，保持 generation、锁与事件时序不变 |
+| Rust 对局详情映射测试 | `b416d4e` | 用 6 项确定性测试覆盖身份关联、名称回退、队伍聚合、关键玩家与缺失字段 |
+| Rust 开发工具隔离 | `7d3e26c` | 数据采集与阈值分析收敛到 Debug-only `dev_tools`，Release 不注册也不编译 |
 
 ### 当前执行位置
 
-阶段 0 至阶段 3 已完成；**静态目录所有权重构已闭环**（含并发刷新回归测试、旧 `init_*` 入口移除）。阶段 5 的三个核心 Rust 大模块已完成纯结构拆分；阶段 6 的契约/格式门禁已完成。
+阶段 0 至阶段 3 已完成；**静态目录所有权重构已闭环**（含并发刷新回归测试、旧 `init_*` 入口移除）。阶段 5 的 Rust 大模块与开发数据工具隔离均已完成；阶段 6 的契约/格式门禁已完成。
 
-下一批建议：在真实 LCU 流程复验本轮结构拆分后，评估 `common/commands/data_collection.rs` 的开发工具隔离。阶段 8 发布平台决策在非公开发布阶段保持 P2。
+下一批建议：继续按模块清理现存 Clippy/dead-code 警告，并为真实外部数据边界逐步补 fixture；阶段 8 发布平台决策在非公开发布阶段保持 P2。
 
 本轮静态目录已知可接受遗留：Windows `replace_file` 为备份—替换—回滚，非严格系统级 crash-atomic（缓存可重拉）。
 
@@ -247,7 +250,7 @@ refactor(static-catalog): centralize versioned game metadata
 
 ## 阶段 5：Rust 大模块结构治理
 
-**优先级：P2；核心模块已完成，开发数据采集隔离待处理**
+**状态：已完成**
 
 ### 候选模块
 
@@ -259,7 +262,7 @@ refactor(static-catalog): centralize versioned game metadata
    - 通过 `pub use` 保持外部接口稳定，避免一次性修改所有调用方。
 3. [x] `matches/service.rs`
    - 分离原始 LCU 拉取、数据规范化、详情组装和分析证据构建。
-4. [ ] `common/commands/data_collection.rs`
+4. [x] `common/commands/dev_tools/data_collection.rs`
    - 明确其开发测试性质，移到 dev tooling 或通过开发特性/构建条件隔离。
 
 ### 实施约束
