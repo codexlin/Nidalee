@@ -58,6 +58,7 @@ declare global {
   const refreshStaticCatalogsOnVersionChange: typeof import('../src/shared/composables/data/useVersionedData')['refreshStaticCatalogsOnVersionChange']
   const resolveComponent: typeof import('vue')['resolveComponent']
   const runPostGameRefresh: typeof import('../src/shared/composables/game/postGameMatchRefresh')['runPostGameRefresh']
+  const runeSelectionFromOpgg: typeof import('../src/shared/composables/game/useBuildApplication')['runeSelectionFromOpgg']
   const runeSnapshotFromOpgg: typeof import('../src/shared/composables/game/useBuildApplication')['runeSnapshotFromOpgg']
   const setActivePinia: typeof import('pinia')['setActivePinia']
   const setMapStoreSuffix: typeof import('pinia')['setMapStoreSuffix']

@@ -90,7 +90,13 @@
 
           <RateColumns :win-rate="safeRate(rune.win, rune.play)" :pick-rate="rune.pickRate" :games="rune.play">
             <div class="flex items-center gap-1">
-              <Button size="sm" variant="outline" class="h-7 px-2 text-xs" @click="emit('save-runes', index)">
+              <Button
+                v-if="canSaveRunes"
+                size="sm"
+                variant="outline"
+                class="h-7 px-2 text-xs"
+                @click="emit('save-runes', index)"
+              >
                 <BookmarkPlus class="size-3" />
                 保存
               </Button>
@@ -102,7 +108,10 @@
           </RateColumns>
         </div>
       </div>
-      <p v-else class="py-4 text-center text-sm text-muted-foreground">
+      <p v-if="build.perks?.length && !canSaveRunes" class="pt-2 text-xs text-muted-foreground">
+        当前模式支持直接应用，但不参与自动方案匹配。
+      </p>
+      <p v-if="!build.perks?.length" class="py-4 text-center text-sm text-muted-foreground">
         {{ mode === 'arena' ? '竞技场模式无符文方案，请看下方出装与强化相关数据' : '暂无符文数据' }}
       </p>
     </WorkbenchSection>
@@ -110,6 +119,8 @@
     <div>
       <button
         type="button"
+        :aria-expanded="detailOpen"
+        aria-controls="build-detail-sections"
         class="flex w-full items-center justify-between gap-2 border-b border-border/50 px-4 py-2.5 text-left hover:bg-muted/25 sm:px-5"
         @click="detailOpen = !detailOpen"
       >
@@ -120,7 +131,7 @@
         </span>
       </button>
 
-      <div v-show="detailOpen" class="space-y-3 px-4 py-3 sm:px-5">
+      <div id="build-detail-sections" v-show="detailOpen" class="space-y-3 px-4 py-3 sm:px-5">
         <div class="grid gap-3 lg:grid-cols-2">
           <div class="surface-inset rounded-xl p-3">
             <div class="mb-2 flex items-center justify-between">
@@ -272,8 +283,9 @@ const props = withDefaults(
   defineProps<{
     build: OpggChampionBuild
     mode?: string
+    canSaveRunes?: boolean
   }>(),
-  { mode: 'ranked' }
+  { mode: 'ranked', canSaveRunes: true }
 )
 
 const emit = defineEmits<{

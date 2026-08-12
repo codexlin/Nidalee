@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildTargetKey,
   createPresetFromRecommendation,
   normalizeBuildPosition,
-  selectMatchingPreset,
-  validateBuildApplicability,
+  rankedPositionFromScenario,
+  rankedScenarioFromPosition,
+  sameBuildTarget,
+  scenarioLabel,
+  selectAutoPreset,
+  validateBuildTarget,
   validateRuneSelection,
   type BuildPreset,
   type RecommendedRuneSnapshot
@@ -20,10 +25,10 @@ function preset(overrides: Partial<BuildPreset> & Pick<BuildPreset, 'id'>): Buil
   return {
     id,
     name: id,
-    applicability: { scope: 'champion-all', championId: 59, championName: '德玛西亚皇子', position: null },
+    target: { championId: 59, championName: '德玛西亚皇子', scenario: 'ranked-jungle' },
     components: { runes: selection },
     source: { kind: 'custom' },
-    isDefault: false,
+    autoUse: false,
     createdAt: 1,
     updatedAt: 1,
     usageCount: 0,
@@ -42,51 +47,51 @@ describe('buildPreset', () => {
     expect(validateRuneSelection(selection)).toBeNull()
   })
 
-  it('requires applicability fields to agree with the selected scope', () => {
+  it('requires a complete champion and supported scenario', () => {
+    expect(validateBuildTarget({ championId: 59, championName: '德玛西亚皇子', scenario: 'ranked-jungle' })).toBeNull()
     expect(
-      validateBuildApplicability({
-        scope: 'champion-position',
-        championId: 59,
-        championName: '德玛西亚皇子',
-        position: null
-      })
+      validateBuildTarget({ championId: 0, championName: '德玛西亚皇子', scenario: 'ranked-jungle' })
     ).not.toBeNull()
-    expect(
-      validateBuildApplicability({
-        scope: 'position-all',
-        championId: null,
-        championName: null,
-        position: 'JUNGLE'
-      })
-    ).toBeNull()
+    expect(validateBuildTarget({ championId: 59, championName: '', scenario: 'ranked-jungle' })).not.toBeNull()
   })
 
-  it('matches exact champion and position before broader scopes', () => {
-    const positionWide = preset({
-      id: 'position',
-      applicability: { scope: 'position-all', championId: null, championName: null, position: 'JUNGLE' }
-    })
-    const championWide = preset({ id: 'champion' })
-    const exact = preset({
-      id: 'exact',
-      applicability: { scope: 'champion-position', championId: 59, championName: '德玛西亚皇子', position: 'JUNGLE' }
-    })
-
-    expect(selectMatchingPreset([positionWide, championWide, exact], 59, 'jungle')?.id).toBe('exact')
+  it('maps ranked positions and scenario labels deterministically', () => {
     expect(normalizeBuildPosition('middle')).toBe('MID')
+    expect(rankedScenarioFromPosition('utility')).toBe('ranked-support')
+    expect(rankedPositionFromScenario('ranked-adc')).toBe('ADC')
+    expect(rankedPositionFromScenario('aram')).toBeNull()
+    expect(scenarioLabel('ranked-jungle')).toBe('排位打野')
+    expect(scenarioLabel('normal-sr')).toBe('普通峡谷')
   })
 
-  it('uses default then latest update as deterministic tie breakers', () => {
-    const olderDefault = preset({ id: 'default', isDefault: true, updatedAt: 1 })
-    const newer = preset({ id: 'newer', updatedAt: 9 })
-    expect(selectMatchingPreset([newer, olderDefault], 59, 'TOP')?.id).toBe('default')
+  it('uses champion and scenario as the exact target key', () => {
+    const jungle = { championId: 59, championName: '德玛西亚皇子', scenario: 'ranked-jungle' as const }
+    const jungleRenamed = { ...jungle, championName: 'Jarvan IV' }
+    const normal = { ...jungle, scenario: 'normal-sr' as const }
+
+    expect(buildTargetKey(jungle)).toBe('59:ranked-jungle')
+    expect(sameBuildTarget(jungle, jungleRenamed)).toBe(true)
+    expect(sameBuildTarget(jungle, normal)).toBe(false)
   })
 
-  it('creates an owned snapshot without sharing the recommendation array', () => {
+  it('selects only the auto-enabled preset for an exact target', () => {
+    const manual = preset({ id: 'manual' })
+    const auto = preset({ id: 'auto', autoUse: true })
+    const otherScenario = preset({
+      id: 'normal',
+      target: { championId: 59, championName: '德玛西亚皇子', scenario: 'normal-sr' },
+      autoUse: true
+    })
+
+    expect(selectAutoPreset([manual, otherScenario, auto], 59, 'ranked-jungle')?.id).toBe('auto')
+    expect(selectAutoPreset([manual], 59, 'ranked-jungle')).toBeNull()
+    expect(selectAutoPreset([auto], 59, 'normal-sr')).toBeNull()
+    expect(selectAutoPreset([auto], 64, 'ranked-jungle')).toBeNull()
+  })
+
+  it('creates an owned manual snapshot without sharing nested data', () => {
     const snapshot: RecommendedRuneSnapshot = {
-      championId: 59,
-      championName: '德玛西亚皇子',
-      position: 'JUNGLE',
+      target: { championId: 59, championName: '德玛西亚皇子', scenario: 'ranked-jungle' },
       selection,
       source: {
         kind: 'opgg',
@@ -99,7 +104,11 @@ describe('buildPreset', () => {
     }
     const created = createPresetFromRecommendation(snapshot)
     snapshot.selection.selectedPerkIds[0] = 1
+    snapshot.target.championName = 'changed'
+
     expect(created.components.runes.selectedPerkIds[0]).toBe(8005)
-    expect(created.applicability.scope).toBe('champion-position')
+    expect(created.target.championName).toBe('德玛西亚皇子')
+    expect(created.target.scenario).toBe('ranked-jungle')
+    expect(created.autoUse).toBe(false)
   })
 })

@@ -50,7 +50,7 @@ pub async fn get_champion_build(
     tier: &str,
 ) -> Result<OpggChampionBuild, String> {
     validate_request(region, mode, Some(champion_id), tier)?;
-    let pos = resolve_build_position(mode, position.as_deref());
+    let pos = resolve_build_position(mode, position.as_deref())?;
     let raw_data = OPGG_CLIENT
         .get_champion_build(region, mode, champion_id, &pos, tier)
         .await?;

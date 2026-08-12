@@ -57,22 +57,25 @@ impl OpggClient {
     }
 }
 
-pub fn resolve_build_position(mode: &str, position: Option<&str>) -> String {
+pub fn resolve_build_position(mode: &str, position: Option<&str>) -> Result<String, String> {
     match mode {
-        "aram" | "urf" => "none".to_string(),
-        "arena" => String::new(),
+        "aram" | "urf" => Ok("none".to_string()),
+        "arena" => Ok(String::new()),
         _ => {
             let position = position
                 .filter(|position| !position.trim().is_empty() && !position.eq_ignore_ascii_case("none"))
-                .unwrap_or("MID")
+                .ok_or_else(|| "排位推荐必须指定有效位置".to_string())?
                 .trim()
                 .to_ascii_uppercase();
-            match position.as_str() {
-                "MIDDLE" => "MID".to_string(),
-                "BOTTOM" => "ADC".to_string(),
-                "UTILITY" => "SUPPORT".to_string(),
-                _ => position,
-            }
+            let canonical = match position.as_str() {
+                "MIDDLE" => "MID",
+                "BOTTOM" => "ADC",
+                "UTILITY" => "SUPPORT",
+                value => value,
+            };
+            matches!(canonical, "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT")
+                .then(|| canonical.to_string())
+                .ok_or_else(|| format!("不支持的排位位置: {canonical}"))
         }
     }
 }
@@ -87,13 +90,10 @@ fn champion_build_url(region: &str, mode: &str, champion_id: i32, position: &str
             "https://lol-api-champion.op.gg/api/{}/champions/{}/{}/none",
             region, mode, champion_id
         ),
-        _ => {
-            let pos = if position.is_empty() { "MID" } else { position };
-            format!(
-                "https://lol-api-champion.op.gg/api/{}/champions/{}/{}/{}?tier={}",
-                region, mode, champion_id, pos, tier
-            )
-        }
+        _ => format!(
+            "https://lol-api-champion.op.gg/api/{}/champions/{}/{}/{}?tier={}",
+            region, mode, champion_id, position, tier
+        ),
     }
 }
 
@@ -156,14 +156,35 @@ mod tests {
 
     #[test]
     fn resolve_position_by_mode() {
-        assert_eq!(resolve_build_position("aram", Some("MID")), "none");
-        assert_eq!(resolve_build_position("urf", None), "none");
-        assert_eq!(resolve_build_position("arena", Some("MID")), "");
-        assert_eq!(resolve_build_position("ranked", Some("TOP")), "TOP");
-        assert_eq!(resolve_build_position("ranked", Some("jungle")), "JUNGLE");
-        assert_eq!(resolve_build_position("ranked", Some("middle")), "MID");
-        assert_eq!(resolve_build_position("ranked", Some("bottom")), "ADC");
-        assert_eq!(resolve_build_position("ranked", Some("utility")), "SUPPORT");
-        assert_eq!(resolve_build_position("ranked", None), "MID");
+        assert_eq!(resolve_build_position("aram", Some("MID")).as_deref(), Ok("none"));
+        assert_eq!(resolve_build_position("urf", None).as_deref(), Ok("none"));
+        assert_eq!(resolve_build_position("arena", Some("MID")).as_deref(), Ok(""));
+        assert_eq!(resolve_build_position("ranked", Some("TOP")).as_deref(), Ok("TOP"));
+        assert_eq!(
+            resolve_build_position("ranked", Some("jungle")).as_deref(),
+            Ok("JUNGLE")
+        );
+        assert_eq!(resolve_build_position("ranked", Some("middle")).as_deref(), Ok("MID"));
+        assert_eq!(resolve_build_position("ranked", Some("bottom")).as_deref(), Ok("ADC"));
+        assert_eq!(
+            resolve_build_position("ranked", Some("utility")).as_deref(),
+            Ok("SUPPORT")
+        );
+    }
+
+    #[test]
+    fn ranked_position_is_required() {
+        assert_eq!(
+            resolve_build_position("ranked", None),
+            Err("排位推荐必须指定有效位置".to_string())
+        );
+    }
+
+    #[test]
+    fn ranked_position_rejects_unknown_value() {
+        assert_eq!(
+            resolve_build_position("ranked", Some("FLEX")),
+            Err("不支持的排位位置: FLEX".to_string())
+        );
     }
 }

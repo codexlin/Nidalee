@@ -272,4 +272,4 @@ export async function refreshStaticCatalogsOnVersionChange(queryClient: ReturnTy
   return { refreshed, meta }
 }
 
-/** OP.GG / 海克斯查询请用 `src/features/opgg/composables`（key 含 region/mode/tier） */
+/** OP.GG / 海克斯查询请用 `src/features/build-center/composables`（key 含 region/mode/tier） */

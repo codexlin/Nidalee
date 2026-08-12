@@ -3,22 +3,21 @@ import { getChampionName } from '@/lib'
 import { useBuildPresetStore } from '@/shared/stores/features/buildPresetStore'
 import {
   cloneRuneSelection,
-  normalizeBuildPosition,
   validateRuneSelection,
   type BuildPreset,
+  type BuildTarget,
   type RecommendedRuneSnapshot,
   type RuneSelection
 } from '@/shared/models/buildPreset'
 
 export interface RecommendationContext {
-  championId: number
-  position?: string | null
+  target: BuildTarget
   region: string
   mode: string
   tier: string
 }
 
-export function runeSnapshotFromOpgg(perk: OpggPerk, context: RecommendationContext): RecommendedRuneSnapshot {
+export function runeSelectionFromOpgg(perk: OpggPerk): RuneSelection {
   const selection: RuneSelection = {
     primaryStyleId: perk.primaryId,
     subStyleId: perk.secondaryId,
@@ -27,10 +26,17 @@ export function runeSnapshotFromOpgg(perk: OpggPerk, context: RecommendationCont
   const validationError = validateRuneSelection(selection)
   if (validationError) throw new Error(`推荐符文不完整：${validationError}`)
 
+  return selection
+}
+
+export function runeSnapshotFromOpgg(perk: OpggPerk, context: RecommendationContext): RecommendedRuneSnapshot {
+  const selection = runeSelectionFromOpgg(perk)
+
   return {
-    championId: context.championId,
-    championName: getChampionName(context.championId),
-    position: normalizeBuildPosition(context.position),
+    target: {
+      ...context.target,
+      championName: context.target.championName || getChampionName(context.target.championId)
+    },
     selection,
     source: {
       kind: 'opgg',
@@ -81,7 +87,7 @@ export function useBuildApplication() {
   }
 
   async function applyRecommendation(snapshot: RecommendedRuneSnapshot): Promise<string> {
-    return applyRuneSelection(snapshot.championName, snapshot.selection)
+    return applyRuneSelection(snapshot.target.championName, snapshot.selection)
   }
 
   return {

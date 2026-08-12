@@ -1,7 +1,17 @@
 export const BUILD_POSITIONS = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'] as const
 
+export const BUILD_SCENARIOS = [
+  'ranked-top',
+  'ranked-jungle',
+  'ranked-mid',
+  'ranked-adc',
+  'ranked-support',
+  'normal-sr',
+  'aram'
+] as const
+
 export type BuildPosition = (typeof BUILD_POSITIONS)[number]
-export type BuildPresetScope = 'champion-position' | 'champion-all' | 'position-all'
+export type BuildScenario = (typeof BUILD_SCENARIOS)[number]
 export type BuildPresetSourceKind = 'custom' | 'opgg' | 'client' | 'import'
 
 export interface RuneSelection {
@@ -10,11 +20,10 @@ export interface RuneSelection {
   selectedPerkIds: number[]
 }
 
-export interface BuildApplicability {
-  scope: BuildPresetScope
-  championId: number | null
-  championName: string | null
-  position: BuildPosition | null
+export interface BuildTarget {
+  championId: number
+  championName: string
+  scenario: BuildScenario
 }
 
 export interface BuildPresetSource {
@@ -29,27 +38,28 @@ export interface BuildPresetSource {
 /**
  * 用户拥有的构建方案。
  *
+ * `target` 使用“英雄 + 场景”的精确键。只有 `autoUse` 方案参与自动匹配；
+ * 同一个 target 最多有一套自动方案，其余方案只供手动使用。
+ *
  * `components` 是后续装备、召唤师技能和加点方案的唯一扩展点；当前只支持符文，
  * 因而保存时必须包含完整的 `runes`，不创建不可应用的半成品方案。
  */
 export interface BuildPreset {
   id: string
   name: string
-  applicability: BuildApplicability
+  target: BuildTarget
   components: {
     runes: RuneSelection
   }
   source: BuildPresetSource
-  isDefault: boolean
+  autoUse: boolean
   createdAt: number
   updatedAt: number
   usageCount: number
 }
 
 export interface RecommendedRuneSnapshot {
-  championId: number
-  championName: string
-  position: BuildPosition | null
+  target: BuildTarget
   selection: RuneSelection
   source: Required<Pick<BuildPresetSource, 'kind' | 'provider' | 'region' | 'mode' | 'tier' | 'capturedAt'>>
 }
@@ -74,24 +84,43 @@ export function normalizeBuildPosition(value: unknown): BuildPosition | null {
   return aliases[normalized] ?? null
 }
 
+export function isBuildScenario(value: unknown): value is BuildScenario {
+  return typeof value === 'string' && BUILD_SCENARIOS.includes(value as BuildScenario)
+}
+
+export function rankedScenarioFromPosition(position: unknown): BuildScenario | null {
+  const normalized = normalizeBuildPosition(position)
+  if (!normalized) return null
+  const scenarios: Record<BuildPosition, BuildScenario> = {
+    TOP: 'ranked-top',
+    JUNGLE: 'ranked-jungle',
+    MID: 'ranked-mid',
+    ADC: 'ranked-adc',
+    SUPPORT: 'ranked-support'
+  }
+  return scenarios[normalized]
+}
+
+export function rankedPositionFromScenario(scenario: BuildScenario): BuildPosition | null {
+  const positions: Partial<Record<BuildScenario, BuildPosition>> = {
+    'ranked-top': 'TOP',
+    'ranked-jungle': 'JUNGLE',
+    'ranked-mid': 'MID',
+    'ranked-adc': 'ADC',
+    'ranked-support': 'SUPPORT'
+  }
+  return positions[scenario] ?? null
+}
+
 export function isBuildPresetSourceKind(value: unknown): value is BuildPresetSourceKind {
   return ['custom', 'opgg', 'client', 'import'].includes(value as BuildPresetSourceKind)
 }
 
-export function validateBuildApplicability(applicability: BuildApplicability): string | null {
-  const hasChampion = Number.isInteger(applicability.championId) && (applicability.championId ?? 0) > 0
-  const hasPosition = isBuildPosition(applicability.position)
-
-  if (applicability.scope === 'champion-position') {
-    return hasChampion && hasPosition ? null : '英雄 + 位置方案必须指定英雄和位置'
-  }
-  if (applicability.scope === 'champion-all') {
-    return hasChampion && applicability.position === null ? null : '英雄通用方案只能指定英雄'
-  }
-  if (applicability.scope === 'position-all') {
-    return applicability.championId === null && hasPosition ? null : '位置通用方案只能指定位置'
-  }
-  return '方案适用范围无效'
+export function validateBuildTarget(target: BuildTarget): string | null {
+  if (!Number.isInteger(target.championId) || target.championId <= 0) return '方案必须指定有效英雄'
+  if (!target.championName.trim()) return '方案必须包含英雄名称'
+  if (!isBuildScenario(target.scenario)) return '方案场景无效'
+  return null
 }
 
 export function validateRuneSelection(selection: RuneSelection): string | null {
@@ -104,52 +133,39 @@ export function validateRuneSelection(selection: RuneSelection): string | null {
   return null
 }
 
+export function buildTargetKey(target: Pick<BuildTarget, 'championId' | 'scenario'>): string {
+  return `${target.championId}:${target.scenario}`
+}
+
+export function sameBuildTarget(left: BuildTarget, right: BuildTarget): boolean {
+  return left.championId === right.championId && left.scenario === right.scenario
+}
+
 export function createPresetFromRecommendation(snapshot: RecommendedRuneSnapshot, name?: string): BuildPreset {
   const now = Date.now()
   return {
     id: crypto.randomUUID(),
-    name: name?.trim() || `${snapshot.championName}${positionLabel(snapshot.position)}推荐`,
-    applicability: {
-      scope: snapshot.position ? 'champion-position' : 'champion-all',
-      championId: snapshot.championId,
-      championName: snapshot.championName,
-      position: snapshot.position
-    },
+    name: name?.trim() || `${snapshot.target.championName}${scenarioLabel(snapshot.target.scenario)}推荐`,
+    target: { ...snapshot.target },
     components: { runes: cloneRuneSelection(snapshot.selection) },
     source: { ...snapshot.source },
-    isDefault: false,
+    autoUse: false,
     createdAt: now,
     updatedAt: now,
     usageCount: 0
   }
 }
 
-export function selectMatchingPreset(
+export function selectAutoPreset(
   presets: readonly BuildPreset[],
   championId: number,
-  position?: string
+  scenario: BuildScenario
 ): BuildPreset | null {
-  const normalizedPosition = normalizeBuildPosition(position)
-  const ranked = presets
-    .map((preset) => ({ preset, score: matchScore(preset, championId, normalizedPosition) }))
-    .filter((candidate) => candidate.score >= 0)
-    .sort((left, right) => {
-      if (left.score !== right.score) return right.score - left.score
-      if (left.preset.isDefault !== right.preset.isDefault) return left.preset.isDefault ? -1 : 1
-      if (left.preset.updatedAt !== right.preset.updatedAt) return right.preset.updatedAt - left.preset.updatedAt
-      return left.preset.id.localeCompare(right.preset.id)
-    })
-
-  return ranked[0]?.preset ?? null
-}
-
-function matchScore(preset: BuildPreset, championId: number, position: BuildPosition | null): number {
-  const target = preset.applicability
-  if (target.scope === 'champion-position') {
-    return target.championId === championId && target.position === position ? 300 : -1
-  }
-  if (target.scope === 'champion-all') return target.championId === championId ? 200 : -1
-  return position !== null && target.position === position ? 100 : -1
+  return (
+    presets.find(
+      (preset) => preset.autoUse && preset.target.championId === championId && preset.target.scenario === scenario
+    ) ?? null
+  )
 }
 
 export function cloneRuneSelection(selection: RuneSelection): RuneSelection {
@@ -158,6 +174,15 @@ export function cloneRuneSelection(selection: RuneSelection): RuneSelection {
     subStyleId: selection.subStyleId,
     selectedPerkIds: [...selection.selectedPerkIds]
   }
+}
+
+export function sameRuneSelection(left: RuneSelection, right: RuneSelection): boolean {
+  return (
+    left.primaryStyleId === right.primaryStyleId &&
+    left.subStyleId === right.subStyleId &&
+    left.selectedPerkIds.length === right.selectedPerkIds.length &&
+    left.selectedPerkIds.every((perkId, index) => perkId === right.selectedPerkIds[index])
+  )
 }
 
 export function positionLabel(position: BuildPosition | null): string {
@@ -169,4 +194,10 @@ export function positionLabel(position: BuildPosition | null): string {
     SUPPORT: '辅助'
   }
   return position ? labels[position] : '通用'
+}
+
+export function scenarioLabel(scenario: BuildScenario): string {
+  const position = rankedPositionFromScenario(scenario)
+  if (position) return `排位${positionLabel(position)}`
+  return scenario === 'normal-sr' ? '普通峡谷' : '极地大乱斗'
 }

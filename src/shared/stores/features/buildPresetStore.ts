@@ -1,43 +1,45 @@
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import { load } from '@tauri-apps/plugin-store'
 import { isOpggTier, type OpggTier } from '@/shared/utils/opggTier'
 import {
   cloneRuneSelection,
+  createPresetFromRecommendation,
   isBuildPresetSourceKind,
-  selectMatchingPreset,
-  validateBuildApplicability,
+  isBuildScenario,
+  sameRuneSelection,
+  sameBuildTarget,
+  selectAutoPreset,
+  validateBuildTarget,
   validateRuneSelection,
   type BuildPreset,
+  type BuildScenario,
   type RecommendedRuneSnapshot
 } from '@/shared/models/buildPreset'
-import { createPresetFromRecommendation } from '@/shared/models/buildPreset'
 
 export interface AutoBuildPolicy {
   enabled: boolean
-  strategy: 'smart' | 'recommended-only' | 'saved-only'
   opggTier: OpggTier
   showToast: boolean
 }
 
 interface PersistedBuildPresetState {
-  version: 1
+  version: 2
   presets: BuildPreset[]
   autoBuild: AutoBuildPolicy
 }
 
 interface BuildPresetExport {
-  version: 1
+  version: 2
   presets: BuildPreset[]
 }
 
-const STORE_FILE = 'build-presets.json'
+const STORE_FILE = 'build-presets-v2.json'
 const STATE_KEY = 'state'
 
 function defaultAutoBuildPolicy(): AutoBuildPolicy {
   return {
     enabled: false,
-    strategy: 'smart',
     opggTier: 'diamond_plus',
     showToast: true
   }
@@ -46,12 +48,8 @@ function defaultAutoBuildPolicy(): AutoBuildPolicy {
 function normalizePolicy(value: unknown): AutoBuildPolicy {
   if (!value || typeof value !== 'object') return defaultAutoBuildPolicy()
   const candidate = value as Partial<AutoBuildPolicy>
-  const strategy = ['smart', 'recommended-only', 'saved-only'].includes(candidate.strategy ?? '')
-    ? (candidate.strategy as AutoBuildPolicy['strategy'])
-    : 'smart'
   return {
     enabled: candidate.enabled === true,
-    strategy,
     opggTier: isOpggTier(candidate.opggTier) ? candidate.opggTier : 'diamond_plus',
     showToast: candidate.showToast !== false
   }
@@ -61,11 +59,9 @@ function parsePersistedPolicy(value: unknown): AutoBuildPolicy | null {
   if (!value || typeof value !== 'object') return null
   const candidate = value as Partial<AutoBuildPolicy>
   if (typeof candidate.enabled !== 'boolean' || typeof candidate.showToast !== 'boolean') return null
-  if (!['smart', 'recommended-only', 'saved-only'].includes(candidate.strategy ?? '')) return null
   if (!isOpggTier(candidate.opggTier)) return null
   return {
     enabled: candidate.enabled,
-    strategy: candidate.strategy as AutoBuildPolicy['strategy'],
     opggTier: candidate.opggTier,
     showToast: candidate.showToast
   }
@@ -75,17 +71,17 @@ function normalizePreset(value: unknown): BuildPreset | null {
   if (!value || typeof value !== 'object') return null
   const preset = value as BuildPreset
   const runes = preset.components?.runes
-  if (!preset.id || !preset.name?.trim() || !preset.applicability || !runes) return null
-  if (validateBuildApplicability(preset.applicability)) return null
+  if (!preset.id || !preset.name?.trim() || !preset.target || !runes) return null
+  if (validateBuildTarget(preset.target)) return null
   if (!isBuildPresetSourceKind(preset.source?.kind)) return null
   if (validateRuneSelection(runes)) return null
-  if (typeof preset.isDefault !== 'boolean') return null
+  if (typeof preset.autoUse !== 'boolean') return null
   if (!Number.isFinite(preset.createdAt) || !Number.isFinite(preset.updatedAt)) return null
   if (!Number.isInteger(preset.usageCount) || preset.usageCount < 0) return null
   return {
     ...preset,
     name: preset.name.trim(),
-    applicability: { ...preset.applicability },
+    target: { ...preset.target, championName: preset.target.championName.trim() },
     components: { runes: cloneRuneSelection(runes) },
     source: { ...preset.source }
   }
@@ -98,7 +94,7 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
 
   const presets = ref<BuildPreset[]>([])
   const autoBuild = ref<AutoBuildPolicy>(defaultAutoBuildPolicy())
-  const isLoaded = ref(false)
+  const isLoaded = shallowRef(false)
   const presetCount = computed(() => presets.value.length)
 
   async function store() {
@@ -108,13 +104,23 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
 
   async function writeState(nextPresets: readonly BuildPreset[], nextAutoBuild: AutoBuildPolicy): Promise<void> {
     const target = await store()
+    const previousState = await target.get<unknown>(STATE_KEY)
     const state: PersistedBuildPresetState = {
-      version: 1,
+      version: 2,
       presets: [...nextPresets],
       autoBuild: nextAutoBuild
     }
-    await target.set(STATE_KEY, state)
-    await target.save()
+    try {
+      await target.set(STATE_KEY, state)
+      await target.save()
+    } catch (error) {
+      if (previousState === null || previousState === undefined) {
+        await target.delete(STATE_KEY)
+      } else {
+        await target.set(STATE_KEY, previousState)
+      }
+      throw error
+    }
   }
 
   function loadFromStore(): Promise<void> {
@@ -128,12 +134,13 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
         if (stored !== null && stored !== undefined) {
           if (!stored || typeof stored !== 'object') throw new Error('构建方案存储格式无效')
           const state = stored as Partial<PersistedBuildPresetState>
-          if (state.version !== 1 || !Array.isArray(state.presets)) throw new Error('不支持的构建方案存储版本')
+          if (state.version !== 2 || !Array.isArray(state.presets)) throw new Error('不支持的构建方案存储版本')
           const loadedPresets = state.presets.map(normalizePreset).filter((item): item is BuildPreset => item !== null)
           const loadedPolicy = parsePersistedPolicy(state.autoBuild)
           if (loadedPresets.length !== state.presets.length || !loadedPolicy) {
             throw new Error('构建方案存储包含无效或不完整的数据')
           }
+          assertUniqueAutoUse(loadedPresets)
           presets.value = loadedPresets
           autoBuild.value = loadedPolicy
         }
@@ -153,15 +160,26 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
     if (!normalized) throw new Error('方案数据不完整')
     await mutate((currentPresets, currentPolicy) => {
       if (currentPresets.some((item) => item.id === normalized.id)) throw new Error('方案 ID 已存在')
-      const existing = normalized.isDefault ? clearCompetingDefaults(currentPresets, normalized) : [...currentPresets]
-      return { presets: [...existing, normalized], policy: currentPolicy }
+      if (findEquivalentPreset(currentPresets, normalized)) throw new Error('相同英雄、场景和符文的方案已存在')
+      return {
+        presets: enforceUniqueAutoUse([...currentPresets, normalized], normalized),
+        policy: currentPolicy
+      }
     })
   }
 
   async function saveRecommendation(snapshot: RecommendedRuneSnapshot, name?: string): Promise<BuildPreset> {
     const preset = createPresetFromRecommendation(snapshot, name)
-    await addPreset(preset)
-    return preset
+    let savedPreset = preset
+    await mutate((currentPresets, currentPolicy) => {
+      const existing = findEquivalentPreset(currentPresets, preset)
+      if (existing) {
+        savedPreset = existing
+        return { presets: [...currentPresets], policy: currentPolicy }
+      }
+      return { presets: [...currentPresets, preset], policy: currentPolicy }
+    })
+    return savedPreset
   }
 
   async function updatePreset(id: string, next: BuildPreset): Promise<void> {
@@ -175,9 +193,11 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
         updatedAt: Date.now()
       })
       if (!normalized) throw new Error('方案数据不完整')
-      const updated = normalized.isDefault ? clearCompetingDefaults(currentPresets, normalized) : [...currentPresets]
-      updated[index] = normalized
-      return { presets: updated, policy: currentPolicy }
+      if (findEquivalentPreset(currentPresets, normalized, id)) {
+        throw new Error('相同英雄、场景和符文的方案已存在')
+      }
+      const updated = currentPresets.map((preset, presetIndex) => (presetIndex === index ? normalized : preset))
+      return { presets: enforceUniqueAutoUse(updated, normalized), policy: currentPolicy }
     })
   }
 
@@ -188,17 +208,15 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
     })
   }
 
-  async function setDefault(id: string): Promise<void> {
+  async function setAutoUse(id: string, enabled: boolean): Promise<void> {
     await mutate((currentPresets, currentPolicy) => {
       const selected = currentPresets.find((preset) => preset.id === id)
       if (!selected) throw new Error('方案不存在')
-      const now = Date.now()
+      const updatedAt = Date.now()
+      const selectedPreset = { ...selected, autoUse: enabled, updatedAt }
+      const updated = currentPresets.map((preset) => (preset.id === id ? selectedPreset : preset))
       return {
-        presets: currentPresets.map((preset) =>
-          sameApplicability(preset, selected)
-            ? { ...preset, isDefault: preset.id === id, updatedAt: preset.id === id ? now : preset.updatedAt }
-            : preset
-        ),
+        presets: enabled ? enforceUniqueAutoUse(updated, selectedPreset) : updated,
         policy: currentPolicy
       }
     })
@@ -213,8 +231,8 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
     }))
   }
 
-  function findMatchingPreset(championId: number, position?: string): BuildPreset | null {
-    return selectMatchingPreset(presets.value, championId, position)
+  function findAutoPreset(championId: number, scenario: BuildScenario): BuildPreset | null {
+    return selectAutoPreset(presets.value, championId, scenario)
   }
 
   async function updateAutoBuild(updates: Partial<AutoBuildPolicy>): Promise<void> {
@@ -225,13 +243,13 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
   }
 
   function exportPresets(): string {
-    const exported: BuildPresetExport = { version: 1, presets: presets.value }
+    const exported: BuildPresetExport = { version: 2, presets: presets.value }
     return JSON.stringify(exported, null, 2)
   }
 
   async function importPresets(json: string): Promise<number> {
     const parsed = JSON.parse(json) as Partial<BuildPresetExport>
-    if (parsed.version !== 1 || !Array.isArray(parsed.presets)) throw new Error('不支持的方案文件')
+    if (parsed.version !== 2 || !Array.isArray(parsed.presets)) throw new Error('不支持的方案文件')
     const imported = parsed.presets.map(normalizePreset).filter((item): item is BuildPreset => item !== null)
     if (imported.length !== parsed.presets.length) throw new Error('方案文件包含无效或不完整的数据')
     const now = Date.now()
@@ -242,13 +260,19 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
       createdAt: now,
       updatedAt: now,
       usageCount: 0,
-      isDefault: false
+      autoUse: false
     }))
-    await mutate((currentPresets, currentPolicy) => ({
-      presets: [...currentPresets, ...importedCopies],
-      policy: currentPolicy
-    }))
-    return imported.length
+    let importedCount = 0
+    await mutate((currentPresets, currentPolicy) => {
+      const nextPresets = [...currentPresets]
+      for (const preset of importedCopies) {
+        if (findEquivalentPreset(nextPresets, preset)) continue
+        nextPresets.push(preset)
+        importedCount += 1
+      }
+      return { presets: nextPresets, policy: currentPolicy }
+    })
+    return importedCount
   }
 
   function mutate(
@@ -260,6 +284,7 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
     const operation = mutationQueue.then(async () => {
       await loadFromStore()
       const next = transform(presets.value, autoBuild.value)
+      assertUniqueAutoUse(next.presets)
       await writeState(next.presets, next.policy)
       presets.value = next.presets
       autoBuild.value = next.policy
@@ -278,27 +303,46 @@ export const useBuildPresetStore = defineStore('buildPreset', () => {
     saveRecommendation,
     updatePreset,
     deletePreset,
-    setDefault,
+    setAutoUse,
     recordUsage,
-    findMatchingPreset,
+    findAutoPreset,
     updateAutoBuild,
     exportPresets,
     importPresets
   }
 })
 
-function sameApplicability(left: BuildPreset, right: BuildPreset): boolean {
-  return (
-    left.applicability.scope === right.applicability.scope &&
-    left.applicability.championId === right.applicability.championId &&
-    left.applicability.position === right.applicability.position
+function enforceUniqueAutoUse(presets: readonly BuildPreset[], selected: BuildPreset): BuildPreset[] {
+  if (!selected.autoUse) return [...presets]
+  return presets.map((preset) =>
+    preset.id !== selected.id && preset.autoUse && sameBuildTarget(preset.target, selected.target)
+      ? { ...preset, autoUse: false }
+      : preset
   )
 }
 
-function clearCompetingDefaults(presets: readonly BuildPreset[], selected: BuildPreset): BuildPreset[] {
-  return presets.map((preset) =>
-    preset.id !== selected.id && preset.isDefault && sameApplicability(preset, selected)
-      ? { ...preset, isDefault: false }
-      : preset
+function findEquivalentPreset(
+  presets: readonly BuildPreset[],
+  candidate: BuildPreset,
+  excludedId?: string
+): BuildPreset | null {
+  return (
+    presets.find(
+      (preset) =>
+        preset.id !== excludedId &&
+        sameBuildTarget(preset.target, candidate.target) &&
+        sameRuneSelection(preset.components.runes, candidate.components.runes)
+    ) ?? null
   )
+}
+
+function assertUniqueAutoUse(presets: readonly BuildPreset[]): void {
+  const targets = new Set<string>()
+  for (const preset of presets) {
+    if (!preset.autoUse) continue
+    if (!isBuildScenario(preset.target.scenario)) throw new Error('方案场景无效')
+    const key = `${preset.target.championId}:${preset.target.scenario}`
+    if (targets.has(key)) throw new Error('同一英雄和场景只能有一套自动方案')
+    targets.add(key)
+  }
 }

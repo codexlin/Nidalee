@@ -23,25 +23,17 @@
             </p>
           </div>
           <div class="flex flex-wrap items-center justify-end gap-2">
-            <div class="flex gap-0.5 rounded-full surface-inset p-0.5">
-              <button
-                v-for="tab in buildTabs"
-                :key="tab.value"
-                type="button"
-                class="rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
-                :class="
-                  activeTab === tab.value ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
-                "
-                @click="setActiveTab(tab.value)"
-              >
-                {{ tab.label }}
-              </button>
-            </div>
-            <div v-if="activeTab === 'recommended'" class="flex gap-0.5 rounded-full surface-inset p-0.5">
+            <div
+              v-if="activeTab === 'recommended'"
+              class="flex gap-0.5 rounded-full surface-inset p-0.5"
+              role="group"
+              aria-label="推荐数据源"
+            >
               <button
                 v-for="p in BUILD_PROVIDERS"
                 :key="p.id"
                 type="button"
+                :aria-pressed="providerId === p.id"
                 class="rounded-full px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40"
                 :class="
                   providerId === p.id ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
@@ -51,6 +43,22 @@
                 @click="switchProvider(p.id)"
               >
                 {{ p.label }}
+              </button>
+            </div>
+            <div class="flex gap-0.5 rounded-full surface-inset p-0.5" role="tablist" aria-label="构建中心内容">
+              <button
+                v-for="tab in buildTabs"
+                :key="tab.value"
+                type="button"
+                role="tab"
+                :aria-selected="activeTab === tab.value"
+                class="rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
+                :class="
+                  activeTab === tab.value ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
+                "
+                @click="setActiveTab(tab.value)"
+              >
+                {{ tab.label }}
               </button>
             </div>
           </div>
@@ -126,6 +134,7 @@
         v-else-if="!isHextech && opggData.championBuild.value"
         :build="opggData.championBuild.value"
         :mode="opggData.config.value.mode"
+        :can-save-runes="canSaveCurrentRecommendation"
         @back="goBack"
         @apply-runes="handleApplySpecificRunes"
         @save-runes="handleSaveSpecificRunes"
@@ -145,10 +154,15 @@ import { AlertCircle, RefreshCw, Wand2 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { useOpggData, type OpggConfig } from './composables/useOpggData'
 import { useHextechData } from './composables/useHextechData'
-import { runeSnapshotFromOpgg, useBuildApplication } from '@/shared/composables/game/useBuildApplication'
+import {
+  runeSelectionFromOpgg,
+  runeSnapshotFromOpgg,
+  useBuildApplication
+} from '@/shared/composables/game/useBuildApplication'
 import { useBuildPresetStore } from '@/shared/stores/features/buildPresetStore'
 import { BUILD_PROVIDERS, providerSupports, type BuildProviderId } from './types/buildProvider'
 import { buildRequestPosition, usesLanePosition } from './types/modes'
+import { rankedScenarioFromPosition, type BuildScenario } from '@/shared/models/buildPreset'
 import TierListPanel from './components/TierListPanel.vue'
 import OpggConfigPanel from './components/OpggConfigPanel.vue'
 import BuildDetailPanel from './components/BuildDetailPanel.vue'
@@ -175,12 +189,16 @@ const opggData = useOpggData({
   tierListEnabled: computed(() => activeTab.value === 'recommended' && !isHextech.value && browseMode.value),
   buildEnabled: computed(() => activeTab.value === 'recommended' && !isHextech.value && showingDetail.value)
 })
+const canSaveCurrentRecommendation = computed(() => {
+  const config = opggData.config.value
+  return config.mode === 'aram' || (config.mode === 'ranked' && rankedScenarioFromPosition(config.position) !== null)
+})
 const hextechData = useHextechData({
   tierListEnabled: computed(() => activeTab.value === 'recommended' && isHextech.value && browseMode.value),
   detailEnabled: computed(() => activeTab.value === 'recommended' && isHextech.value && showingDetail.value)
 })
 const presetStore = useBuildPresetStore()
-const { applying, applyRecommendation } = useBuildApplication()
+const { applying, applyRuneSelection } = useBuildApplication()
 
 const setActiveTab = (tab: BuildCenterTab) => {
   showingDetail.value = false
@@ -283,7 +301,7 @@ const handleRefresh = () => {
 
 const handleApplyBestRunes = async () => {
   try {
-    await applyRecommendation(resolveRecommendation(0))
+    await applyProviderRunes(0)
     toast.success('已套用最佳符文')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '应用符文失败')
@@ -292,17 +310,29 @@ const handleApplyBestRunes = async () => {
 
 const handleApplySpecificRunes = async (runeIndex: number) => {
   try {
-    await applyRecommendation(resolveRecommendation(runeIndex))
+    await applyProviderRunes(runeIndex)
     toast.success(`已套用方案 ${runeIndex + 1}`)
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '应用符文失败')
   }
 }
 
+const applyProviderRunes = async (runeIndex: number) => {
+  const build = opggData.championBuild.value
+  const perk = build?.perks?.[runeIndex]
+  if (!build || !perk) throw new Error('推荐符文尚未准备完成')
+  await applyRuneSelection(build.summary.name, runeSelectionFromOpgg(perk))
+}
+
 const handleSaveSpecificRunes = async (runeIndex: number) => {
   try {
+    const previousCount = presetStore.presetCount
     const saved = await presetStore.saveRecommendation(resolveRecommendation(runeIndex))
-    toast.success(`已保存「${saved.name}」`, { description: '可在“我的方案”中编辑适用条件' })
+    if (presetStore.presetCount === previousCount) {
+      toast.info('相同方案已存在', { description: `已保留“我的方案”中的「${saved.name}」` })
+    } else {
+      toast.success(`已保存「${saved.name}」`, { description: '可在“我的方案”中启用自动使用' })
+    }
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '保存方案失败')
   }
@@ -314,12 +344,24 @@ const resolveRecommendation = (runeIndex: number) => {
   const config = opggData.config.value
   if (!build || !perk || !config.championId) throw new Error('推荐符文尚未准备完成')
   return runeSnapshotFromOpgg(perk, {
-    championId: config.championId,
-    position: buildRequestPosition(config.mode, config.position),
+    target: {
+      championId: config.championId,
+      championName: build.summary.name,
+      scenario: recommendationScenario(config.mode, config.position)
+    },
     region: config.region,
     mode: config.mode,
     tier: config.tier
   })
+}
+
+const recommendationScenario = (mode: string, position: string): BuildScenario => {
+  if (mode === 'aram') return 'aram'
+  if (mode === 'ranked') {
+    const scenario = rankedScenarioFromPosition(position)
+    if (scenario) return scenario
+  }
+  throw new Error('当前模式只支持直接应用，不能保存为自动方案')
 }
 
 onMounted(async () => {
