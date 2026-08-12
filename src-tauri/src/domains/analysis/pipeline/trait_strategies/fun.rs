@@ -15,10 +15,6 @@ const DAMAGE_SHARE_BAD: f64 = 0.12;
 pub struct FunModeTraitStrategy;
 
 impl TraitStrategy for FunModeTraitStrategy {
-    fn id(&self) -> &'static str {
-        "fun_mode"
-    }
-
     fn analyze(&self, ctx: &TraitAnalysisContext<'_>) -> Vec<DeterministicTrait> {
         let fun_games: Vec<&ParsedGame> = ctx
             .display_games

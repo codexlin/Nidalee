@@ -11,7 +11,7 @@ fn format_precision(value: f64, decimals: usize) -> f64 {
 }
 
 /// 分析上下文
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct AnalysisContext {
     /// 当前队列ID（用于过滤相关对局）
     pub current_queue_id: Option<i32>,
@@ -19,23 +19,9 @@ pub struct AnalysisContext {
     pub ranked_only: bool,
 }
 
-impl Default for AnalysisContext {
-    fn default() -> Self {
-        Self {
-            current_queue_id: None,
-            ranked_only: false,
-        }
-    }
-}
-
 impl AnalysisContext {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub fn with_queue_id(mut self, queue_id: i32) -> Self {
-        self.current_queue_id = Some(queue_id);
-        self
     }
 
     #[allow(dead_code)]
@@ -48,9 +34,32 @@ impl AnalysisContext {
 /// 英雄名解析端口（领域层不认识静态数据来源）
 pub type ChampionNameResolver<'a> = &'a dyn Fn(i32) -> Option<String>;
 
-/// 通用玩家战绩分析器（无英雄名解析器时用占位名）
-pub fn analyze_player_stats(games: &[ParsedGame], puuid: &str, context: AnalysisContext) -> PlayerMatchStats {
-    analyze_player_stats_with_resolver(games, puuid, context, None)
+/// 将一场已解析对局转换为前端展示模型。
+pub fn match_performance_from_game(
+    game: &ParsedGame,
+    champion_name: Option<ChampionNameResolver<'_>>,
+) -> MatchPerformance {
+    let player = &game.player_data;
+    MatchPerformance {
+        game_id: Some(game.game_id),
+        win: player.win,
+        champion_id: player.champion_id,
+        champion_name: resolve_champion_name(champion_name, player.champion_id),
+        kills: player.kills,
+        deaths: player.deaths,
+        assists: player.assists,
+        kda: player.kda,
+        grade: crate::domains::analysis::thresholds::kda::grade_from_kda(player.kda).to_string(),
+        game_duration: Some(game.game_duration),
+        game_creation: Some(game.game_creation),
+        queue_id: Some(game.queue_id),
+        game_mode: None,
+        role: player.role.clone(),
+        lane: player.lane.clone(),
+        position: position_from_role_lane(&player.role, &player.lane, game.queue_id)
+            .as_str()
+            .to_string(),
+    }
 }
 
 /// 通用玩家战绩分析器（可注入英雄名解析）
@@ -67,7 +76,7 @@ pub fn analyze_player_stats_with_resolver(
     champion_name: Option<ChampionNameResolver<'_>>,
 ) -> PlayerMatchStats {
     let now = SystemTime::now();
-    let since_epoch = now.duration_since(UNIX_EPOCH).unwrap();
+    let since_epoch = now.duration_since(UNIX_EPOCH).unwrap_or_default();
     let current_ms = since_epoch.as_millis() as i64;
     let today_start_ms = (current_ms / 86400000) * 86400000;
 
@@ -137,29 +146,7 @@ pub fn analyze_player_stats_with_resolver(
             entry.1 += 1;
         }
 
-        let position = position_from_role_lane(&player.role, &player.lane, game.queue_id)
-            .as_str()
-            .to_string();
-        let champion_name_resolved = resolve_champion_name(champion_name, player.champion_id);
-
-        recent_performance.push(MatchPerformance {
-            game_id: Some(game.game_id),
-            win,
-            champion_id: player.champion_id,
-            champion_name: champion_name_resolved,
-            kills: kills as i32,
-            deaths: deaths as i32,
-            assists: assists as i32,
-            kda: player.kda,
-            grade: crate::domains::analysis::thresholds::kda::grade_from_kda(player.kda).to_string(),
-            game_duration: Some(game_duration as i32),
-            game_creation: Some(game.game_creation),
-            queue_id: Some(game.queue_id),
-            game_mode: None,
-            role: player.role.clone(),
-            lane: player.lane.clone(),
-            position,
-        });
+        recent_performance.push(match_performance_from_game(game, champion_name));
     }
 
     let total_duration_mins = if total_duration_secs > 0.0 {
@@ -196,7 +183,7 @@ pub fn analyze_player_stats_with_resolver(
         })
         .collect();
 
-    favorite_champions.sort_by(|a, b| b.games.cmp(&a.games));
+    favorite_champions.sort_by_key(|champion| std::cmp::Reverse(champion.games));
 
     PlayerMatchStats {
         total_games,

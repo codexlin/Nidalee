@@ -88,6 +88,7 @@ pub fn extract_event_evidence(frames: &[Value], ctx: EventExtractContext) -> Eve
     evidence
 }
 
+#[allow(clippy::too_many_arguments)] // All accumulators belong to one ordered timeline pass.
 fn accumulate_event(
     evidence: &mut EventEvidence,
     unknown_counts: &mut BTreeMap<(String, i64), u32>,

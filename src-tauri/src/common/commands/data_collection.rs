@@ -244,8 +244,8 @@ pub async fn generate_test_data_file(
     let mut data_points = Vec::new();
 
     // 尝试收集多个队列的数据
-    let queues_to_test = if queue_id.is_some() {
-        vec![queue_id.unwrap()]
+    let queues_to_test = if let Some(queue_id) = queue_id {
+        vec![queue_id]
     } else {
         vec![420, 440, 450, 700] // 单排、灵活、大乱斗、排位
     };
@@ -360,9 +360,9 @@ fn generate_data_summary(data_points: &[AnalysisDataPoint]) -> DataSummary {
     let mut games: Vec<f64> = data_points.iter().map(|dp| dp.total_games as f64).collect();
 
     // 排序用于计算分位数
-    win_rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    kdas.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    games.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    win_rates.sort_by(f64::total_cmp);
+    kdas.sort_by(f64::total_cmp);
+    games.sort_by(f64::total_cmp);
 
     // 计算统计信息
     let win_rate_dist = calculate_distribution_stats(&win_rates);
@@ -375,7 +375,7 @@ fn generate_data_summary(data_points: &[AnalysisDataPoint]) -> DataSummary {
 
     for dp in data_points {
         if let Some(qid) = dp.queue_id {
-            queue_groups.entry(qid).or_insert_with(Vec::new).push(dp);
+            queue_groups.entry(qid).or_default().push(dp);
         }
     }
 
@@ -466,7 +466,7 @@ pub async fn analyze_data_file(file_path: String) -> Result<String, String> {
 
     // 生成分析报告
     let mut report = String::new();
-    report.push_str(&format!("📊 数据文件分析报告\n"));
+    report.push_str("📊 数据文件分析报告\n");
     report.push_str(&format!("文件: {}\n", file_path));
     report.push_str(&format!("收集时间: {}\n", result.collection_time));
     report.push_str(&format!("数据点数量: {}\n\n", result.total_points));
@@ -923,9 +923,9 @@ fn analyze_timeline_data(raw_matches: &[RawMatchData], report: &mut String) {
         }
     }
 
-    report.push_str(&format!("\n⏰ 时间线数据分析:\n"));
+    report.push_str("\n⏰ 时间线数据分析:\n");
     report.push_str(&format!("  有详情数据的参与者: {} 个\n", timeline_available_count));
-    report.push_str(&format!("\n🔥 时间线API数据:\n"));
+    report.push_str("\n🔥 时间线API数据:\n");
     report.push_str(&format!("  时间线帧数: {} 个\n", timeline_frames_count));
     report.push_str(&format!("  游戏事件数: {} 个\n", timeline_events_count));
     report.push_str(&format!("  位置数据点: {} 个\n", has_position_data));
@@ -950,21 +950,21 @@ fn analyze_timeline_data(raw_matches: &[RawMatchData], report: &mut String) {
         // 时间线统计
         if !total_creeps_per_min.is_empty() {
             let avg_creeps = total_creeps_per_min.iter().sum::<f64>() / total_creeps_per_min.len() as f64;
-            report.push_str(&format!("\n📊 补刀数据:\n"));
+            report.push_str("\n📊 补刀数据:\n");
             report.push_str(&format!("  平均每分钟补刀: {:.2}\n", avg_creeps));
             report.push_str(&format!("  数据点数量: {}\n", total_creeps_per_min.len()));
         }
 
         if !total_gold_per_min.is_empty() {
             let avg_gold = total_gold_per_min.iter().sum::<f64>() / total_gold_per_min.len() as f64;
-            report.push_str(&format!("\n💰 金币数据:\n"));
+            report.push_str("\n💰 金币数据:\n");
             report.push_str(&format!("  平均每分钟金币: {:.2}\n", avg_gold));
             report.push_str(&format!("  数据点数量: {}\n", total_gold_per_min.len()));
         }
 
         if !total_xp_per_min.is_empty() {
             let avg_xp = total_xp_per_min.iter().sum::<f64>() / total_xp_per_min.len() as f64;
-            report.push_str(&format!("\n⭐ 经验数据:\n"));
+            report.push_str("\n⭐ 经验数据:\n");
             report.push_str(&format!("  平均每分钟经验: {:.2}\n", avg_xp));
             report.push_str(&format!("  数据点数量: {}\n", total_xp_per_min.len()));
         }

@@ -1,7 +1,46 @@
 use super::client::{resolve_build_position, OpggClient};
 use super::parser::parse_champion_build;
 use super::types::*;
+use once_cell::sync::Lazy;
 use serde_json::Value;
+
+static OPGG_CLIENT: Lazy<OpggClient> =
+    Lazy::new(|| OpggClient::with_client(crate::http_client::get_public_client().clone()));
+
+const REGIONS: &[&str] = &["global", "kr", "na"];
+const MODES: &[&str] = &["ranked", "aram", "urf", "arena"];
+const TIERS: &[&str] = &[
+    "emerald_plus",
+    "platinum_plus",
+    "diamond_plus",
+    "all",
+    "iron",
+    "bronze",
+    "silver",
+    "gold",
+    "platinum",
+    "emerald",
+    "diamond",
+    "master",
+    "grandmaster",
+    "challenger",
+];
+
+fn validate_request(region: &str, mode: &str, champion_id: Option<i32>, tier: &str) -> Result<(), String> {
+    if !REGIONS.contains(&region) {
+        return Err(format!("不支持的 OP.GG 区域: {region}"));
+    }
+    if !MODES.contains(&mode) {
+        return Err(format!("不支持的 OP.GG 模式: {mode}"));
+    }
+    if champion_id.is_some_and(|id| id <= 0) {
+        return Err("英雄 ID 必须大于 0".to_string());
+    }
+    if mode == "ranked" && !TIERS.contains(&tier) {
+        return Err(format!("不支持的 OP.GG 段位筛选: {tier}"));
+    }
+    Ok(())
+}
 
 pub async fn get_champion_build(
     region: &str,
@@ -10,28 +49,18 @@ pub async fn get_champion_build(
     position: Option<String>,
     tier: &str,
 ) -> Result<OpggChampionBuild, String> {
-    let client = OpggClient::new();
+    validate_request(region, mode, Some(champion_id), tier)?;
     let pos = resolve_build_position(mode, position.as_deref());
-    let raw_data = client.get_champion_build(region, mode, champion_id, &pos, tier).await?;
+    let raw_data = OPGG_CLIENT
+        .get_champion_build(region, mode, champion_id, &pos, tier)
+        .await?;
     let label = if pos.is_empty() { mode } else { pos.as_str() };
     parse_champion_build(raw_data, label).map_err(|e| e.to_string())
 }
 
-pub async fn get_champion_build_raw(
-    region: &str,
-    mode: &str,
-    champion_id: i32,
-    position: Option<String>,
-    tier: &str,
-) -> Result<Value, String> {
-    let client = OpggClient::new();
-    let pos = resolve_build_position(mode, position.as_deref());
-    client.get_champion_build(region, mode, champion_id, &pos, tier).await
-}
-
 pub async fn get_tier_list(region: &str, mode: &str, tier: &str) -> Result<OpggTierList, String> {
-    let client = OpggClient::new();
-    let raw_data = client.get_tier_list(region, mode, tier).await?;
+    validate_request(region, mode, None, tier)?;
+    let raw_data = OPGG_CLIENT.get_tier_list(region, mode, tier).await?;
     let meta = raw_data.get("meta").ok_or("无法获取元数据")?;
     let data = raw_data
         .get("data")
@@ -179,15 +208,20 @@ fn parse_tier_list_item(item: &Value) -> Option<OpggTierListItem> {
     })
 }
 
-pub async fn get_champion_positions(region: &str, champion_id: i32, tier: &str) -> Result<Vec<String>, String> {
-    let client = OpggClient::new();
-    client.get_champion_positions(region, champion_id, tier).await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn canonical_tier_is_accepted() {
+        assert!(validate_request("kr", "ranked", Some(67), "diamond_plus").is_ok());
+    }
+
+    #[test]
+    fn non_canonical_tier_is_rejected() {
+        assert!(validate_request("kr", "ranked", Some(67), "DIAMOND+").is_err());
+    }
 
     #[test]
     fn parse_ranked_item() {

@@ -100,7 +100,7 @@ fn parse_summoner_spells(content: &Value) -> Result<Vec<OpggSummonerSpell>, Stri
         let play = spell_data.get("play").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
         let pick_rate = spell_data.get("pick_rate").and_then(|v| v.as_f64()).unwrap_or(0.0);
         // 取第一个id为主id
-        let spell_id = ids.get(0).copied().unwrap_or(0);
+        let spell_id = ids.first().copied().unwrap_or(0);
         spells.push(OpggSummonerSpell {
             spell_id,
             ids,
@@ -135,7 +135,7 @@ fn parse_item_category(content: &Value, category: &str) -> Result<Vec<OpggItem>,
             .and_then(|v| v.as_array())
             .map(|arr| arr.iter().filter_map(|v| v.as_i64().map(|i| i as i32)).collect())
             .unwrap_or_default();
-        let id = ids.get(0).copied().unwrap_or(0);
+        let id = ids.first().copied().unwrap_or(0);
         let icons = Vec::new(); // OP.GG未直接提供icon
         let win = item_data.get("win").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
         let play = item_data.get("play").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
@@ -220,7 +220,7 @@ fn parse_perks(content: &Value) -> Result<Vec<OpggPerk>, String> {
 fn parse_champion_skills(content: &Value) -> Result<OpggSkills, String> {
     // 优先解析 skill_masteries
     if let Some(skill_masteries) = content.get("skill_masteries").and_then(|v| v.as_array()) {
-        if let Some(main) = skill_masteries.get(0) {
+        if let Some(main) = skill_masteries.first() {
             let masteries = main
                 .get("ids")
                 .and_then(|v| v.as_array())
@@ -232,7 +232,7 @@ fn parse_champion_skills(content: &Value) -> Result<OpggSkills, String> {
             let order = main
                 .get("builds")
                 .and_then(|v| v.as_array())
-                .and_then(|arr| arr.get(0))
+                .and_then(|arr| arr.first())
                 .and_then(|build| build.get("order"))
                 .and_then(|v| v.as_array())
                 .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
@@ -254,7 +254,7 @@ fn parse_champion_skills(content: &Value) -> Result<OpggSkills, String> {
     let mut play = 0;
     let mut win = 0;
     let mut pick_rate = 0.0;
-    if let Some(skill) = skills_array.get(0) {
+    if let Some(skill) = skills_array.first() {
         order = skill
             .get("order")
             .and_then(|v| v.as_array())

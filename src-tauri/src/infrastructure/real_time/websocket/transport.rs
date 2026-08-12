@@ -5,7 +5,7 @@ use crate::shared::types::LcuAuthInfo;
 use crate::shared::{NidaleeError, Result};
 use base64::{engine::general_purpose, Engine};
 use futures_util::{SinkExt, StreamExt};
-use serde_json::{json, Value};
+use serde_json::json;
 use std::collections::HashSet;
 use std::time::Duration;
 use tokio::net::TcpStream;
@@ -76,7 +76,7 @@ impl SnapshotMergeState {
         let phase_conflicts = self
             .observed_phase
             .as_deref()
-            .is_some_and(|observed| snapshot.phase.as_deref().map_or(true, |fetched| observed != fetched));
+            .is_some_and(|observed| snapshot.phase.as_deref() != Some(observed));
 
         if phase_conflicts {
             snapshot.entries.iter().map(|entry| entry.uri.to_string()).collect()
@@ -108,6 +108,7 @@ fn phase_health_requires_full_snapshot(
     fetched_phase.is_some() && fetched_phase != current_phase
 }
 
+#[allow(clippy::result_large_err)] // Keep the native transport error for reconnect diagnostics.
 pub(super) fn classify_incoming(
     incoming: Option<std::result::Result<Message, TungsteniteError>>,
 ) -> std::result::Result<IncomingMessage, TungsteniteError> {
@@ -122,18 +123,11 @@ pub(super) fn classify_incoming(
 }
 
 fn event_metadata(text: &str) -> Option<(String, Option<String>)> {
-    let event = serde_json::from_str::<Value>(text).ok()?;
-    let event = event.as_array()?;
-    if event.len() < 3 || event[0].as_u64() != Some(8) || event[1].as_str() != Some("OnJsonApiEvent") {
-        return None;
-    }
-
-    let payload = event[2].as_object()?;
-    let uri = payload.get("uri")?.as_str()?.to_string();
-    let phase = (uri == PHASE_URI)
-        .then(|| payload.get("data").and_then(Value::as_str).map(ToOwned::to_owned))
+    let event = super::decoder::decode_json_api_event(text).ok()??;
+    let phase = (event.uri == PHASE_URI)
+        .then(|| event.data.as_str().map(ToOwned::to_owned))
         .flatten();
-    Some((uri, phase))
+    Some((event.uri, phase))
 }
 
 fn phase_from_event(text: &str) -> Option<String> {
@@ -260,8 +254,7 @@ pub(super) async fn connect_and_run_ws(
     let (mut ws_stream, _) = connect_result
         .map_err(|error| NidaleeError::LcuWebSocket(format!("LCU WebSocket connection failed: {error}")))?;
 
-    log::info!("[lcu-ws] WebSocket connection successful.");
-    let _connected_guard = ConnectedFlagGuard::new();
+    log::info!("[lcu-ws] WebSocket connection successful; registering base subscriptions.");
     let mut subscribed = HashSet::new();
 
     for path in [PHASE_URI, SESSION_URI, SUMMONER_URI] {
@@ -270,6 +263,10 @@ pub(super) async fn connect_and_run_ws(
             return Ok(());
         }
     }
+
+    // Consumers may treat Connected as a readiness signal, so publish it only after all
+    // mandatory subscriptions have been accepted by the socket.
+    let _connected_guard = ConnectedFlagGuard::new();
 
     let result = run_session(&mut ws_stream, event_handler, &mut subscribed, cancel).await;
     best_effort_close(&mut ws_stream).await;

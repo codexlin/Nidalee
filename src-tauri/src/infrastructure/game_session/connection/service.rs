@@ -1,5 +1,4 @@
-use crate::infrastructure::game_session::auth::service::invalidate_auth_info;
-use crate::infrastructure::real_time::websocket::service::{is_ws_connected, subscribe_ws_connection_state};
+use crate::infrastructure::real_time::websocket::service::subscribe_ws_connection_state;
 use crate::shared::types::{ConnectionState, LcuAuthInfo};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -81,20 +80,6 @@ impl ConnectionManager {
     /// an HTTP validation request.
     pub async fn check_connection_state(&self) -> ConnectionState {
         self.info.read().await.state.clone()
-    }
-
-    pub async fn get_connection_info(&self) -> ConnectionInfo {
-        self.info.read().await.clone()
-    }
-
-    /// Kept for command compatibility. A healthy WebSocket already proves connectivity, so a
-    /// manual refresh must not invalidate its stable credentials. When disconnected, clearing
-    /// the cache lets the next coordinated discovery start from a clean session.
-    pub async fn force_refresh(&self) {
-        if !is_ws_connected() {
-            invalidate_auth_info();
-        }
-        project_transport_state(&self.info, &self.app, is_ws_connected()).await;
     }
 }
 

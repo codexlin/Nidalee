@@ -146,15 +146,6 @@ pub struct OpggPerk {
     pub pick_rate: f64,
 }
 
-/// OP.GG API 响应
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OpggApiResponse<T> {
-    pub success: bool,
-    pub data: Option<T>,
-    pub error: Option<String>,
-}
-
 /// 强度榜对抗样本
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(

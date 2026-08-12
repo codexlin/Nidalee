@@ -7,8 +7,8 @@ pub struct OpggClient {
 }
 
 impl OpggClient {
-    pub fn new() -> Self {
-        Self { client: Client::new() }
+    pub fn with_client(client: Client) -> Self {
+        Self { client }
     }
 
     /// 获取英雄详细数据（按模式拼不同路径）
@@ -40,31 +40,6 @@ impl OpggClient {
     }
 
     /// 获取英雄可用位置列表（排位用）
-    pub async fn get_champion_positions(
-        &self,
-        region: &str,
-        champion_id: i32,
-        tier: &str,
-    ) -> Result<Vec<String>, String> {
-        let url = format!(
-            "https://lol-api-champion.op.gg/api/{}/champions/{}/positions?tier={}",
-            region, champion_id, tier
-        );
-
-        log::info!("🌐 请求英雄位置列表: {}", url);
-        let data = self.get_json(&url).await?;
-
-        let positions = data
-            .as_array()
-            .ok_or("无法解析位置数据")?
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect();
-
-        log::info!("✅ 成功获取英雄位置列表");
-        Ok(positions)
-    }
-
     async fn get_json(&self, url: &str) -> Result<Value, String> {
         let response = self
             .client
@@ -86,10 +61,19 @@ pub fn resolve_build_position(mode: &str, position: Option<&str>) -> String {
     match mode {
         "aram" | "urf" => "none".to_string(),
         "arena" => String::new(),
-        _ => position
-            .filter(|p| !p.is_empty() && !p.eq_ignore_ascii_case("none"))
-            .unwrap_or("MID")
-            .to_string(),
+        _ => {
+            let position = position
+                .filter(|position| !position.trim().is_empty() && !position.eq_ignore_ascii_case("none"))
+                .unwrap_or("MID")
+                .trim()
+                .to_ascii_uppercase();
+            match position.as_str() {
+                "MIDDLE" => "MID".to_string(),
+                "BOTTOM" => "ADC".to_string(),
+                "UTILITY" => "SUPPORT".to_string(),
+                _ => position,
+            }
+        }
     }
 }
 
@@ -176,6 +160,10 @@ mod tests {
         assert_eq!(resolve_build_position("urf", None), "none");
         assert_eq!(resolve_build_position("arena", Some("MID")), "");
         assert_eq!(resolve_build_position("ranked", Some("TOP")), "TOP");
+        assert_eq!(resolve_build_position("ranked", Some("jungle")), "JUNGLE");
+        assert_eq!(resolve_build_position("ranked", Some("middle")), "MID");
+        assert_eq!(resolve_build_position("ranked", Some("bottom")), "ADC");
+        assert_eq!(resolve_build_position("ranked", Some("utility")), "SUPPORT");
         assert_eq!(resolve_build_position("ranked", None), "MID");
     }
 }

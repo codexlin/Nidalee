@@ -59,16 +59,6 @@ fn shared_event_handler(app: tauri::AppHandle) -> Arc<WsEventHandler> {
     get_or_init_shared(&WS_EVENT_HANDLER, || WsEventHandler::new(app))
 }
 
-/// Returns whether the WebSocket supervisor is running (it may still be reconnecting).
-pub fn is_ws_running() -> bool {
-    WS_RUNNING.load(Ordering::SeqCst)
-}
-
-/// Returns whether a WebSocket transport is currently connected.
-pub fn is_ws_connected() -> bool {
-    WS_CONNECTED.load(Ordering::SeqCst)
-}
-
 /// Gets the process-long event handler and its cache.
 pub fn get_event_handler() -> Option<Arc<WsEventHandler>> {
     WS_EVENT_HANDLER.get().cloned()

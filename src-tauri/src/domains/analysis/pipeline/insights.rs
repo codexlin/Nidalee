@@ -11,7 +11,7 @@
 //!
 //! 阈值集中在本文件顶部，改口径只需要改一处。
 
-use crate::domains::analysis::evidence::{EvidenceConfidence, GamePhase, MatchEvidence, MIN_SAMPLE_FOR_CONCLUSION};
+use crate::domains::analysis::evidence::{EvidenceConfidence, GamePhase, MatchEvidence};
 use crate::shared::types::{AdviceCategory, AdvicePerspective};
 
 use super::types::{DeterministicAdvice, DeterministicTrait, TraitSentiment};

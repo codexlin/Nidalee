@@ -217,6 +217,20 @@ fn find_newest_disk_bundle() -> Option<(String, Vec<ChampionInfo>, Vec<SummonerS
     best
 }
 
+async fn load_disk_version(version: String) -> Option<(Vec<ChampionInfo>, Vec<SummonerSpellInfo>, i64)> {
+    tokio::task::spawn_blocking(move || try_load_from_disk(&version))
+        .await
+        .ok()
+        .flatten()
+}
+
+async fn load_newest_disk_bundle() -> Option<(String, Vec<ChampionInfo>, Vec<SummonerSpellInfo>, i64)> {
+    tokio::task::spawn_blocking(find_newest_disk_bundle)
+        .await
+        .ok()
+        .flatten()
+}
+
 fn persist_to_disk(version: &str, champions: &[ChampionInfo], spells: &[SummonerSpellInfo]) -> Result<i64, String> {
     let dir = version_dir(version);
     let loaded_at = now_ms();
@@ -287,7 +301,14 @@ async fn load_from_network(version: &str) -> Result<(), Box<dyn std::error::Erro
         fetch_champion_data_from_network(),
         fetch_summoner_spell_data_from_network()
     )?;
-    let loaded_at = persist_to_disk(version, &champions, &spells).unwrap_or_else(|e| {
+    let disk_version = version.to_string();
+    let (loaded_at, champions, spells) = tokio::task::spawn_blocking(move || {
+        let loaded_at = persist_to_disk(&disk_version, &champions, &spells);
+        (loaded_at, champions, spells)
+    })
+    .await
+    .map_err(|error| format!("静态目录落盘任务失败: {error}"))?;
+    let loaded_at = loaded_at.unwrap_or_else(|e| {
         log::warn!("[StaticCatalog] 落盘失败（仍将 hydrate 内存）: {e}");
         now_ms()
     });
@@ -299,7 +320,7 @@ async fn load_from_network(version: &str) -> Result<(), Box<dyn std::error::Erro
 async fn init_inner() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match fetch_ddragon_version().await {
         Some(version) => {
-            if let Some((champions, spells, loaded_at)) = try_load_from_disk(&version) {
+            if let Some((champions, spells, loaded_at)) = load_disk_version(version.clone()).await {
                 install_disk_bundle(&version, champions, spells, loaded_at, "disk")?;
                 return Ok(());
             }
@@ -309,7 +330,7 @@ async fn init_inner() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 Ok(()) => Ok(()),
                 Err(net_err) => {
                     log::warn!("[StaticCatalog] 网络拉取失败，尝试磁盘回退: {net_err}");
-                    if let Some((v, champions, spells, loaded_at)) = find_newest_disk_bundle() {
+                    if let Some((v, champions, spells, loaded_at)) = load_newest_disk_bundle().await {
                         install_disk_bundle(&v, champions, spells, loaded_at, "disk-stale")?;
                         Ok(())
                     } else {
@@ -320,7 +341,7 @@ async fn init_inner() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         None => {
             log::warn!("[StaticCatalog] 无法探测版本，尝试加载磁盘最新缓存");
-            if let Some((v, champions, spells, loaded_at)) = find_newest_disk_bundle() {
+            if let Some((v, champions, spells, loaded_at)) = load_newest_disk_bundle().await {
                 install_disk_bundle(&v, champions, spells, loaded_at, "disk-offline")?;
                 Ok(())
             } else {
@@ -343,7 +364,7 @@ async fn refresh_static_catalogs_inner() -> RefreshResult {
             log::info!("[StaticCatalog] 离线且内存目录已就绪，跳过刷新");
             return Ok(false);
         }
-        if let Some((v, champions, spells, loaded_at)) = find_newest_disk_bundle() {
+        if let Some((v, champions, spells, loaded_at)) = load_newest_disk_bundle().await {
             install_disk_bundle(&v, champions, spells, loaded_at, "disk-offline")?;
             return Ok(true);
         }
@@ -358,7 +379,7 @@ async fn refresh_static_catalogs_inner() -> RefreshResult {
 
     log::info!("[StaticCatalog] 版本变化 {:?} → {}，刷新静态目录", current, latest);
 
-    if let Some((champions, spells, loaded_at)) = try_load_from_disk(&latest) {
+    if let Some((champions, spells, loaded_at)) = load_disk_version(latest.clone()).await {
         install_disk_bundle(&latest, champions, spells, loaded_at, "disk")?;
         return Ok(true);
     }
@@ -369,7 +390,7 @@ async fn refresh_static_catalogs_inner() -> RefreshResult {
             if champions_loaded() && spells_loaded() {
                 log::warn!("[StaticCatalog] 刷新失败但保留旧内存目录: {e}");
                 Ok(false)
-            } else if let Some((v, champions, spells, loaded_at)) = find_newest_disk_bundle() {
+            } else if let Some((v, champions, spells, loaded_at)) = load_newest_disk_bundle().await {
                 install_disk_bundle(&v, champions, spells, loaded_at, "disk-stale")?;
                 Ok(true)
             } else {

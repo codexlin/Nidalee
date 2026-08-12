@@ -42,10 +42,13 @@ pub const MAX_CONCURRENT_MATCH_FETCHES: usize = 4;
 
 /// 时间线会话缓存的默认存活时间
 pub const DEFAULT_TIMELINE_CACHE_TTL: Duration = Duration::from_secs(600);
+pub const DEFAULT_DETAIL_CACHE_TTL: Duration = Duration::from_secs(300);
 
 /// 进程内共享的时间线缓存：只在内存中，不落盘，也不持有任何 LCU 认证信息
 static SHARED_TIMELINE_CACHE: Lazy<Arc<TimelineCache>> =
     Lazy::new(|| Arc::new(TimelineCache::new(DEFAULT_TIMELINE_CACHE_TTL)));
+static SHARED_DETAIL_CACHE: Lazy<Arc<TimelineCache>> =
+    Lazy::new(|| Arc::new(TimelineCache::new(DEFAULT_DETAIL_CACHE_TTL)));
 
 /// 原始数据源：只负责发请求，不做任何策略判断与数据整形
 pub trait MatchDataSource {
@@ -108,18 +111,32 @@ enum TimelineOrigin {
 /// 统一数据获取层
 pub struct MatchFetcher<S: MatchDataSource> {
     source: S,
+    detail_cache: Arc<TimelineCache>,
     timeline_cache: Arc<TimelineCache>,
     concurrency: usize,
 }
 
 impl<S: MatchDataSource> MatchFetcher<S> {
     pub fn new(source: S) -> Self {
-        Self::with_timeline_cache(source, Arc::new(TimelineCache::new(DEFAULT_TIMELINE_CACHE_TTL)))
+        Self::with_caches(
+            source,
+            Arc::new(TimelineCache::new(DEFAULT_DETAIL_CACHE_TTL)),
+            Arc::new(TimelineCache::new(DEFAULT_TIMELINE_CACHE_TTL)),
+        )
     }
 
     pub fn with_timeline_cache(source: S, timeline_cache: Arc<TimelineCache>) -> Self {
+        Self::with_caches(
+            source,
+            Arc::new(TimelineCache::new(DEFAULT_DETAIL_CACHE_TTL)),
+            timeline_cache,
+        )
+    }
+
+    fn with_caches(source: S, detail_cache: Arc<TimelineCache>, timeline_cache: Arc<TimelineCache>) -> Self {
         Self {
             source,
+            detail_cache,
             timeline_cache,
             concurrency: MAX_CONCURRENT_MATCH_FETCHES,
         }
@@ -154,7 +171,12 @@ impl<S: MatchDataSource> MatchFetcher<S> {
     ///
     /// 批量流程默认复用列表内的完整对局，只有列表数据残缺时才会走到这里。
     pub async fn fetch_game_detail(&self, game_id: u64) -> Result<Value, String> {
-        self.source.fetch_game_detail_raw(game_id).await
+        if let Some(cached) = self.detail_cache.get(game_id) {
+            return Ok(cached);
+        }
+        let detail = self.source.fetch_game_detail_raw(game_id).await?;
+        self.detail_cache.insert(game_id, detail.clone());
+        Ok(detail)
     }
 
     /// 获取单局时间线（成功响应会写入会话缓存）
@@ -257,7 +279,11 @@ impl<S: MatchDataSource> MatchFetcher<S> {
 
 /// 基于真实 LCU 客户端的获取层（复用进程内共享的时间线缓存）
 pub fn lcu_fetcher(client: &Client) -> MatchFetcher<LcuMatchDataSource<'_>> {
-    MatchFetcher::with_timeline_cache(LcuMatchDataSource::new(client), SHARED_TIMELINE_CACHE.clone())
+    MatchFetcher::with_caches(
+        LcuMatchDataSource::new(client),
+        SHARED_DETAIL_CACHE.clone(),
+        SHARED_TIMELINE_CACHE.clone(),
+    )
 }
 
 /// 单次请求战绩列表（面向既有调用方的自由函数入口）

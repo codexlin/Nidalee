@@ -7,7 +7,6 @@ use std::sync::RwLock;
 use crate::http_client;
 
 struct ChampionStore {
-    alias_to_id: HashMap<String, i32>,
     name_to_id: HashMap<String, i32>,
     data: HashMap<i32, ChampionInfo>,
 }
@@ -68,14 +67,10 @@ fn build_champion_maps(champions: Vec<ChampionInfo>) -> ChampionMaps {
 
 /// 安装/替换内存中的英雄目录（供 static_catalog 编排）
 pub fn install_champion_maps(champions: Vec<ChampionInfo>) -> Result<(), String> {
-    let (alias_to_id, name_to_id, data) = build_champion_maps(champions);
+    let (_alias_to_id, name_to_id, data) = build_champion_maps(champions);
     let count = data.len();
     let mut guard = CHAMPION_STORE.write().map_err(|e| format!("英雄目录锁中毒: {e}"))?;
-    *guard = Some(ChampionStore {
-        alias_to_id,
-        name_to_id,
-        data,
-    });
+    *guard = Some(ChampionStore { name_to_id, data });
     log::info!("[ChampionData] ✅ 英雄目录已安装，共 {count} 个");
     Ok(())
 }
@@ -95,24 +90,6 @@ pub async fn fetch_champion_data_from_network() -> Result<Vec<ChampionInfo>, Box
     Ok(champions)
 }
 
-/// 从 Community Dragon 获取英雄摘要数据并构建映射（兼容旧入口）
-pub async fn load_champion_data() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    if is_loaded() {
-        log::info!("[ChampionData] ✅ 英雄数据已加载，跳过重复加载");
-        return Ok(());
-    }
-
-    let champions = fetch_champion_data_from_network().await?;
-    install_champion_maps(champions)?;
-    Ok(())
-}
-
-/// 根据别名获取英雄 ID（英文名，不区分大小写）
-pub fn get_champion_id_by_alias(alias: &str) -> Option<i32> {
-    let guard = CHAMPION_STORE.read().ok()?;
-    guard.as_ref()?.alias_to_id.get(&alias.to_lowercase()).copied()
-}
-
 /// 根据中文名称获取英雄 ID（支持完整名称或称号）
 pub fn get_champion_id_by_name(name: &str) -> Option<i32> {
     let guard = CHAMPION_STORE.read().ok()?;
@@ -123,18 +100,6 @@ pub fn get_champion_id_by_name(name: &str) -> Option<i32> {
 pub fn get_champion_info(id: i32) -> Option<ChampionInfo> {
     let guard = CHAMPION_STORE.read().ok()?;
     guard.as_ref()?.data.get(&id).cloned()
-}
-
-/// 根据别名获取英雄信息（英文名，不区分大小写）
-pub fn get_champion_info_by_alias(alias: &str) -> Option<ChampionInfo> {
-    let id = get_champion_id_by_alias(alias)?;
-    get_champion_info(id)
-}
-
-/// 根据中文名称获取英雄信息（支持完整名称或称号）
-pub fn get_champion_info_by_name(name: &str) -> Option<ChampionInfo> {
-    let id = get_champion_id_by_name(name)?;
-    get_champion_info(id)
 }
 
 /// 获取所有英雄数据（按 ID 排序）

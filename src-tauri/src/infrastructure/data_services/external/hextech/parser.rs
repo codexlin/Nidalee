@@ -240,10 +240,6 @@ pub fn parse_tier_list(raw: Value) -> Result<HextechTierList, String> {
 }
 
 /// 解析英雄详情 JSON（可附带 augments 目录补全描述）
-pub fn parse_champion_detail(raw: Value) -> Result<HextechChampionDetail, String> {
-    parse_champion_detail_with_catalog(raw, &HashMap::new())
-}
-
 /// 详情 + augments.json 合并（补全三连名称/图标）
 pub fn parse_champion_detail_merging_catalog(
     detail: Value,

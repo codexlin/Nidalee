@@ -170,73 +170,12 @@ pub async fn lcu_delete<T: DeserializeOwned>(client: &Client, path: &str) -> Res
 pub async fn lcu_post_no_content(client: &Client, path: &str, body: Value) -> Result<(), String> {
     // 只关心成功，不需要反序列化
     let response = lcu_request_raw(client, Method::POST, path, Some(body)).await?;
-    if response.status() == reqwest::StatusCode::NO_CONTENT {
-        Ok(())
-    } else if response.status().is_success() {
-        Ok(())
-    } else {
-        Err(format!("服务器返回错误: {}", response.status()))
-    }
-}
-pub async fn lcu_patch_no_content(client: &Client, path: &str, body: Value) -> Result<(), String> {
-    let response = lcu_request_raw(client, Method::PATCH, path, Some(body)).await?;
     if response.status().is_success() {
         Ok(())
     } else {
         Err(format!("服务器返回错误: {}", response.status()))
     }
 }
-
-/// 通用 champ-r HTTP 请求，返回反序列化后的数据
-pub async fn forin_request_json<T: DeserializeOwned>(
-    client: &Client,
-    method: Method,
-    path: &str,
-    body: Option<Value>,
-) -> Result<T, String> {
-    const FORIN_API_URL: &str = "https://c.lbj.moe";
-    let url = format!("{}{}", FORIN_API_URL, path);
-
-    let start = Instant::now();
-    log::info!("[CHAMPR] {} {}", method, url);
-
-    let builder = client.request(method.clone(), &url);
-
-    let builder = if let Some(ref body) = body {
-        log::debug!("[CHAMPR] 请求体: {}", body);
-        builder.json(body)
-    } else {
-        builder
-    };
-
-    let response = builder.send().await.map_err(|e| {
-        log::error!("[CHAMPR] {} {} 发送失败: {}", method, url, e);
-        format!("请求失败: {}", e)
-    })?;
-
-    let duration = start.elapsed();
-    log::info!(
-        "[CHAMPR] {} {} -> {} (耗时: {}ms)",
-        method,
-        url,
-        response.status(),
-        duration.as_millis()
-    );
-
-    if !response.status().is_success() {
-        log::warn!(
-            "[CHAMPR] {} {} 返回非成功状态: {} (耗时: {}ms)",
-            method,
-            url,
-            response.status(),
-            duration.as_millis()
-        );
-        return Err(format!("服务器返回错误: {}", response.status()));
-    }
-
-    response.json::<T>().await.map_err(|e| format!("解析响应失败: {}", e))
-}
-
 #[cfg(test)]
 mod tests {
     use super::{execute_with_auth_retry, LcuAttempt};

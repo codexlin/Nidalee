@@ -4,4 +4,4 @@ pub mod commands;
 pub mod service;
 
 // 重新导出常用类型和函数
-pub use service::{get_champion_count, get_champion_id_by_name, load_champion_data};
+pub use service::{get_champion_count, get_champion_id_by_name};

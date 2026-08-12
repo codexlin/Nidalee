@@ -50,7 +50,7 @@ fn approx(actual: Option<f64>, expected: f64, what: &str) {
     );
 }
 
-fn phase<'a>(evidence: &'a MatchEvidence, phase: GamePhase) -> &'a nidalee_lib::analysis_evidence::PhaseEvidence {
+fn phase(evidence: &MatchEvidence, phase: GamePhase) -> &nidalee_lib::analysis_evidence::PhaseEvidence {
     evidence
         .phase(phase)
         .unwrap_or_else(|| panic!("缺少阶段 {phase:?}，实际阶段: {:?}", evidence.phases))
@@ -1090,7 +1090,7 @@ fn test_single_game_cannot_support_strong_conclusion() {
     assert_eq!(summary.sample_size, 1);
     assert_eq!(summary.confidence, EvidenceConfidence::Insufficient);
     assert!(!summary.supports_conclusion, "单场不得触发全局强结论");
-    assert!(MIN_SAMPLE_FOR_CONCLUSION >= 3, "最小样本阈值必须 >= 3");
+    const { assert!(MIN_SAMPLE_FOR_CONCLUSION >= 3, "最小样本阈值必须 >= 3") };
 }
 
 #[test]

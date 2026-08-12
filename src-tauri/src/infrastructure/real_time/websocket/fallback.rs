@@ -61,9 +61,13 @@ pub(super) async fn fetch_phase_snapshot() -> Result<SnapshotBatch, String> {
 
 async fn fetch_snapshot_inner(phase_hint: Option<String>) -> SnapshotBatch {
     let client = crate::http_client::get_lcu_client();
-    let (phase_result, session_result) = tokio::join!(
+    let (phase_result, session_result, summoner_result) = tokio::join!(
         crate::infrastructure::game_session::gameflow::service::get_gameflow_phase(client),
         crate::infrastructure::game_session::gameflow::service::get_gameflow_session(client),
+        crate::shared::utils::lcu_get::<crate::shared::types::SummonerInfo>(
+            client,
+            "/lol-summoner/v1/current-summoner",
+        ),
     );
 
     let mut batch = SnapshotBatch::default();
@@ -83,6 +87,13 @@ async fn fetch_snapshot_inner(phase_hint: Option<String>) -> SnapshotBatch {
             data,
         }),
         Err(error) => log::debug!("[lcu-ws] Fallback session fetch failed: {}", error),
+    }
+    match summoner_result.and_then(|summoner| serde_json::to_value(summoner).map_err(|error| error.to_string())) {
+        Ok(data) => batch.entries.push(SnapshotEntry {
+            uri: "/lol-summoner/v1/current-summoner",
+            data,
+        }),
+        Err(error) => log::debug!("[lcu-ws] Fallback current summoner fetch failed: {}", error),
     }
 
     let effective_phase = batch.phase.clone().or(phase_hint);

@@ -13,10 +13,6 @@ const AFFINITY_MIN_GAMES: u32 = 3;
 pub struct ModeAffinityTraitStrategy;
 
 impl TraitStrategy for ModeAffinityTraitStrategy {
-    fn id(&self) -> &'static str {
-        "mode_affinity"
-    }
-
     fn analyze(&self, ctx: &TraitAnalysisContext<'_>) -> Vec<DeterministicTrait> {
         let games = ctx.display_games;
         let total = games.len() as u32;

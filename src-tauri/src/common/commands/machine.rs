@@ -5,7 +5,7 @@ pub async fn get_machine_hash() -> Result<String, String> {
     #[cfg(target_os = "windows")]
     fn get_board_sn() -> Option<String> {
         let output = Command::new("wmic")
-            .args(&["baseboard", "get", "serialnumber"])
+            .args(["baseboard", "get", "serialnumber"])
             .output()
             .ok()?;
         String::from_utf8(output.stdout)

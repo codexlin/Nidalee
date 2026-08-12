@@ -82,7 +82,6 @@ src-tauri/                    # Rust backend
 ├── src/
 │   ├── domains/              # DDD domain layer (pure business logic)
 │   │   ├── analysis/         # Pipeline, evidence, traits, analyzers
-│   │   ├── tactical_advice/  # Laning/farming/vision/teamfight strategies
 │   │   └── ai_analysis/      # AI prompt construction, insight types
 │   ├── infrastructure/       # Adapters: LCU API, WebSocket, caching
 │   │   ├── champion_selection/  # champ_select, perks, summoner_spells
@@ -229,7 +228,7 @@ Understanding the data lifecycle helps optimize caching and reduce unnecessary A
 ### Dynamic Data (WS-主, HTTP-snapshot 兜底)
 **Definition**: Data that changes frequently during gameplay.
 
-**Cache Strategy**: WebSocket events drive UI updates in real time; HTTP snapshot fetches serve as a periodic health check (e.g. every 10s when the WS is quiet) and as the source of truth on reconnect.
+**Cache Strategy**: WebSocket events drive UI updates in real time. After 90 seconds without WS traffic, the backend performs a lightweight phase health check; it fetches a full HTTP snapshot only when the phase diverges. A full snapshot is also the source of truth on reconnect.
 
 The WebSocket supervisor (in `infrastructure/real_time/websocket/service.rs`) owns connection lifecycle and reconnection. The HTTP fallback (in the same module) feeds snapshots through the same reducer as WS events so the two paths share one state machine.
 
@@ -247,8 +246,8 @@ The WebSocket supervisor (in `infrastructure/real_time/websocket/service.rs`) ow
 | `champ-select-session-changed` | `/lol-champ-select/v1/session` | Champ select updates | `handleChampSelectChange()` |
 | `matchmaking-state-changed` | `/lol-matchmaking/v1/search` | Matchmaking status | `matchmakingStore.updateState()` |
 | `connection-state-changed` | - | Connection status | `connectionStore.updateConnectionState()` |
-| `game-finished` | - | Game ends | `matchAnalysisStore.clearAllData()` |
-| `team-analysis-data` | - | Analysis complete | `matchAnalysisStore.setTeamAnalysisData()` |
+| `summoner-change` | `/lol-summoner/v1/current-summoner` | Current account changes | ordered account hydration |
+| `team-analysis-data` | - | Analysis complete or cleared (`null`) | `matchAnalysisStore.setTeamAnalysisData()` |
 
 **WebSocket Subscription** (managed by supervisor):
 ```rust
@@ -289,7 +288,7 @@ await queryClient.invalidateQueries({ queryKey: ['static', 'champions'] })
 
 ### WebSocket (LCU)
 - LCU WebSocket connection is owned by the **supervisor** (`infrastructure/real_time/websocket/service.rs`). It manages authentication recovery, subscription lifecycle, and reconnects with a small backoff.
-- Commands: `start_lcu_ws`, `stop_lcu_ws` (registered in `lib.rs` as test/admin commands)
+- Commands: `start_lcu_ws`, `stop_lcu_ws`; the frontend starts the producer only after all event listeners are registered.
 - Event handling in `event_handler.rs` — generation counters + `AbortHandle` ensure stale tasks cannot overwrite newer data.
 - HTTP fallback snapshots are routed through `WsEventHandler::handle_snapshot` so they share the same reducer.
 

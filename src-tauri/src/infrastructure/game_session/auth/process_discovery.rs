@@ -7,6 +7,13 @@ use crate::shared::types::LcuAuthInfo;
 use crate::shared::{NidaleeError, Result};
 
 static SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| Mutex::new(System::new()));
+static RIOTCLIENT_TOKEN_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"--riotclient-auth-token=([^\s]+)").expect("valid auth token regex"));
+static RIOTCLIENT_PORT_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"--riotclient-app-port=([^\s]+)").expect("valid auth port regex"));
+static REMOTING_TOKEN_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"--remoting-auth-token=([^\s]+)").expect("valid remoting token regex"));
+static APP_PORT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"--app-port=([^\s]+)").expect("valid app port regex"));
 
 pub(super) fn discover_auth_info() -> Result<LcuAuthInfo> {
     log::info!("[LCU] 开始强制刷新 AuthInfo");
@@ -18,24 +25,19 @@ pub(super) fn discover_auth_info() -> Result<LcuAuthInfo> {
         }
     };
 
-    let riotclient_token_re = Regex::new(r"--riotclient-auth-token=([^\s]+)").unwrap();
-    let riotclient_port_re = Regex::new(r"--riotclient-app-port=([^\s]+)").unwrap();
-    let remoting_token_re = Regex::new(r"--remoting-auth-token=([^\s]+)").unwrap();
-    let app_port_re = Regex::new(r"--app-port=([^\s]+)").unwrap();
-
-    let riotclient_auth_token = riotclient_token_re
+    let riotclient_auth_token = RIOTCLIENT_TOKEN_RE
         .captures(&cmdline)
         .and_then(|captures| captures.get(1))
         .map(|value| value.as_str().to_string());
-    let riotclient_app_port = riotclient_port_re
+    let riotclient_app_port = RIOTCLIENT_PORT_RE
         .captures(&cmdline)
         .and_then(|captures| captures.get(1))
         .and_then(|value| value.as_str().parse::<u16>().ok());
-    let remoting_auth_token = remoting_token_re
+    let remoting_auth_token = REMOTING_TOKEN_RE
         .captures(&cmdline)
         .and_then(|captures| captures.get(1))
         .map(|value| value.as_str().to_string());
-    let app_port = app_port_re
+    let app_port = APP_PORT_RE
         .captures(&cmdline)
         .and_then(|captures| captures.get(1))
         .and_then(|value| value.as_str().parse::<u16>().ok());
@@ -76,7 +78,10 @@ fn get_lcu_cmdline() -> Option<String> {
 
 #[cfg(target_os = "windows")]
 fn get_lcu_cmdline_windows() -> Option<String> {
-    let mut system = SYSTEM.lock().unwrap();
+    let mut system = SYSTEM.lock().unwrap_or_else(|poisoned| {
+        log::warn!("[LCU] process cache mutex was poisoned; recovering cached state");
+        poisoned.into_inner()
+    });
     system.refresh_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::everything()));
 
     let mut ux_cmdline = None;
@@ -125,7 +130,10 @@ fn get_lcu_cmdline_windows() -> Option<String> {
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn get_lcu_cmdline_unix() -> Option<String> {
-    let mut system = SYSTEM.lock().unwrap();
+    let mut system = SYSTEM.lock().unwrap_or_else(|poisoned| {
+        log::warn!("[LCU] process cache mutex was poisoned; recovering cached state");
+        poisoned.into_inner()
+    });
     system.refresh_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::everything()));
 
     system.processes().values().find_map(|process| {

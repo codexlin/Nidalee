@@ -9,28 +9,13 @@ pub async fn get_recent_matches_by_puuid(puuid: String, count: Option<usize>) ->
     let client = http_client::get_lcu_client();
     let count = count.unwrap_or(20);
     // 用户主动查询，不过滤队列类型
-    matches_service::get_recent_matches_by_puuid(&client, &puuid, count, None).await
+    matches_service::get_recent_matches_by_puuid(client, &puuid, count, None).await
 }
 
 #[tauri::command]
 pub async fn get_current_summoner() -> Result<SummonerInfo, String> {
     let client = http_client::get_lcu_client();
     service::get_current_summoner(client).await
-}
-
-#[tauri::command]
-pub async fn get_summoner_by_id(id: u64) -> Result<Option<SummonerInfo>, String> {
-    let client = http_client::get_lcu_client();
-    match service::get_summoner_by_id(client, id).await {
-        Ok(info) => Ok(Some(info)),
-        Err(e) => {
-            if e.contains("404") {
-                Ok(None)
-            } else {
-                Err(e)
-            }
-        }
-    }
 }
 
 #[tauri::command]
@@ -46,7 +31,7 @@ pub async fn get_summoners_and_histories(
     for summoner in &mut summoners {
         let puuid = summoner.puuid.clone();
         if !puuid.is_empty() {
-            service::fill_summoner_extra_info(client, summoner).await;
+            service::fill_rank_info(client, summoner).await;
             // 一次 analyze：同时投影基础统计与位置分组，避免搜索页二次拉 LCU
             let game_count = count.unwrap_or(20) as u32;
             let request = analysis_service::legacy_overview_request(game_count, None, None);

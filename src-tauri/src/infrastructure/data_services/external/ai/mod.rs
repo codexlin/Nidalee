@@ -10,4 +10,4 @@ pub mod types;
 
 pub use client::{parse_ai_insight_response, test_connection, AiClient};
 pub use credentials::{clear_api_key, has_api_key, set_api_key};
-pub use types::{AiProviderConfig, AiPublicSettings};
+pub use types::AiPublicSettings;

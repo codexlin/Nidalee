@@ -94,24 +94,6 @@ pub async fn fetch_summoner_spell_data_from_network(
     Ok(spells)
 }
 
-/// 从 Community Dragon 获取召唤师技能数据并构建映射（兼容旧入口）
-pub async fn load_summoner_spell_data() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    if is_loaded() {
-        log::info!("[SummonerSpells] ✅ 召唤师技能数据已加载，跳过重复加载");
-        return Ok(());
-    }
-
-    let spells = fetch_summoner_spell_data_from_network().await?;
-    install_summoner_spell_maps(spells)?;
-    Ok(())
-}
-
-/// 根据 ID 获取召唤师技能信息
-pub fn get_summoner_spell_info(id: i64) -> Option<SummonerSpellInfo> {
-    let guard = SPELL_STORE.read().ok()?;
-    guard.as_ref()?.data.get(&id).cloned()
-}
-
 /// 获取所有召唤师技能数据（按 ID 排序）
 pub fn get_all_summoner_spells() -> Option<Vec<SummonerSpellInfo>> {
     let guard = SPELL_STORE.read().ok()?;
@@ -139,12 +121,6 @@ pub fn get_spell_count() -> usize {
 pub fn get_spell_id_by_name(name: &str) -> Option<i64> {
     let guard = SPELL_STORE.read().ok()?;
     guard.as_ref()?.name_to_id.get(name).copied()
-}
-
-/// 根据名称查找召唤师技能（支持中文）
-pub fn get_spell_by_name(name: &str) -> Option<SummonerSpellInfo> {
-    let id = get_spell_id_by_name(name)?;
-    get_summoner_spell_info(id)
 }
 
 #[cfg(test)]

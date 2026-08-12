@@ -4,4 +4,4 @@ pub mod commands;
 pub mod service;
 
 // 重新导出常用类型和函数
-pub use service::{get_spell_count, get_spell_id_by_name, load_summoner_spell_data};
+pub use service::get_spell_id_by_name;

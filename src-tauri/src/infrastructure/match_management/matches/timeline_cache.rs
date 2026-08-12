@@ -117,8 +117,8 @@ impl TimelineCache {
         let stored_at_ms = self.clock.now_ms();
         let mut state = self.lock();
 
-        if state.entries.contains_key(&game_id) {
-            state.entries.insert(game_id, CacheEntry { timeline, stored_at_ms });
+        if let Some(entry) = state.entries.get_mut(&game_id) {
+            *entry = CacheEntry { timeline, stored_at_ms };
             touch_order(&mut state.order, game_id);
             return;
         }

@@ -7,6 +7,4 @@
 pub mod commands;
 pub mod service;
 
-pub use service::{
-    ensure_static_catalogs, fetch_ddragon_version, get_static_meta, refresh_static_catalogs_if_stale, StaticCatalogMeta,
-};
+pub use service::{ensure_static_catalogs, get_static_meta};

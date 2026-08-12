@@ -19,8 +19,12 @@ pub struct HextechClient {
 
 impl HextechClient {
     pub fn new() -> Self {
+        Self::with_client(crate::http_client::get_public_client().clone())
+    }
+
+    pub fn with_client(client: Client) -> Self {
         Self {
-            client: Client::new(),
+            client,
             version_cache: RwLock::new(None),
         }
     }

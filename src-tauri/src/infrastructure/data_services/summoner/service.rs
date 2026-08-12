@@ -1,5 +1,6 @@
 use crate::shared::types::{RankInfo, SummonerInfo};
 use crate::shared::utils::{lcu_get, lcu_post, lcu_put};
+use futures_util::stream::{self, StreamExt};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{to_value, Value};
@@ -15,12 +16,10 @@ pub struct ProfileUpdateRequest {
 
 pub async fn get_current_summoner(client: &Client) -> Result<SummonerInfo, String> {
     let mut summoner_info: SummonerInfo = lcu_get(client, "/lol-summoner/v1/current-summoner").await?;
-    // 获取段位信息
-    fill_summoner_extra_info(client, &mut summoner_info).await;
+    fill_current_summoner_extra_info(client, &mut summoner_info).await;
     Ok(summoner_info)
 }
-// 补全信息
-pub async fn fill_summoner_extra_info(client: &Client, summoner_info: &mut SummonerInfo) {
+pub(crate) async fn fill_rank_info(client: &Client, summoner_info: &mut SummonerInfo) {
     if let Ok(rank_info) = get_rank_info(client, &summoner_info.puuid).await {
         summoner_info.solo_rank_tier = rank_info.solo_tier;
         summoner_info.solo_rank_division = rank_info.solo_division;
@@ -34,11 +33,14 @@ pub async fn fill_summoner_extra_info(client: &Client, summoner_info: &mut Summo
         summoner_info.flex_rank_losses = rank_info.flex_losses;
     }
 
-    fill_challenge_info(client, summoner_info).await;
-
     if let (Some(game_name), Some(tag_line)) = (summoner_info.game_name.clone(), summoner_info.tag_line.clone()) {
         summoner_info.display_name = format!("{}#{}", game_name, tag_line);
     }
+}
+
+async fn fill_current_summoner_extra_info(client: &Client, summoner_info: &mut SummonerInfo) {
+    fill_rank_info(client, summoner_info).await;
+    fill_challenge_info(client, summoner_info).await;
 }
 
 /// 挑战积分 / 水晶等级：current-summoner 不含这些字段，需另取。
@@ -136,17 +138,33 @@ pub async fn get_summoner_by_id(client: &Client, summoner_id: u64) -> Result<Sum
     let path = &format!("/lol-summoner/v1/summoners/{}", summoner_id);
     let mut summoner_info: SummonerInfo = lcu_get(client, path).await?;
 
-    // 获取段位信息
-    fill_summoner_extra_info(client, &mut summoner_info).await;
+    // Local-only challenge/chat endpoints describe the current account, not this player.
+    fill_rank_info(client, &mut summoner_info).await;
 
     Ok(summoner_info)
 }
 
 // 批量获取召唤师信息
 pub async fn get_summoners_by_names(client: &Client, names: Vec<String>) -> Result<Vec<SummonerInfo>, String> {
-    let path = &format!("/lol-summoner/v2/summoners/names");
+    let path = "/lol-summoner/v2/summoners/names";
     let summoners: Vec<SummonerInfo> = lcu_post(client, path, names.into()).await?;
     Ok(summoners)
+}
+
+/// LiveClient 只提供玩家名；批量解析身份后，以受限并发补齐各玩家排位资料。
+pub async fn get_summoners_by_names_with_rank(
+    client: &Client,
+    names: Vec<String>,
+) -> Result<Vec<SummonerInfo>, String> {
+    let summoners = get_summoners_by_names(client, names).await?;
+    let enriched = stream::iter(summoners.into_iter().map(|mut summoner| async move {
+        fill_rank_info(client, &mut summoner).await;
+        summoner
+    }))
+    .buffered(4)
+    .collect()
+    .await;
+    Ok(enriched)
 }
 
 // 设置生涯背景皮肤（使用正确的API - POST请求）
@@ -188,17 +206,21 @@ pub async fn set_summoner_background(client: &Client, skin_id: u64) -> Result<()
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ChatProfileLolInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rankedLeagueQueue: Option<String>,
+    #[serde(rename = "rankedLeagueQueue")]
+    pub ranked_league_queue: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rankedLeagueTier: Option<String>,
+    #[serde(rename = "rankedLeagueTier")]
+    pub ranked_league_tier: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rankedLeagueDivision: Option<String>,
+    #[serde(rename = "rankedLeagueDivision")]
+    pub ranked_league_division: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ChatProfileUpdateRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub statusMessage: Option<String>,
+    #[serde(rename = "statusMessage")]
+    pub status_message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lol: Option<ChatProfileLolInfo>,
 }
@@ -214,18 +236,14 @@ pub async fn set_summoner_chat_profile(
     let path = "/lol-chat/v1/me";
     let lol = if queue.is_some() || tier.is_some() || division.is_some() {
         Some(ChatProfileLolInfo {
-            rankedLeagueQueue: queue,
-            rankedLeagueTier: tier,
-            rankedLeagueDivision: division,
+            ranked_league_queue: queue,
+            ranked_league_tier: tier,
+            ranked_league_division: division,
         })
     } else {
         None
     };
-    let body = ChatProfileUpdateRequest {
-        statusMessage: status_message,
-        lol,
-    };
-    lcu_put::<serde_json::Value>(client, path, to_value(body).unwrap())
-        .await
-        .map(|_| ())
+    let body = ChatProfileUpdateRequest { status_message, lol };
+    let body = to_value(body).map_err(|error| format!("序列化聊天资料失败: {error}"))?;
+    lcu_put::<serde_json::Value>(client, path, body).await.map(|_| ())
 }
