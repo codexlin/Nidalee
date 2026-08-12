@@ -55,6 +55,7 @@
 import { LayoutDashboard, Search, Settings, Sparkles, Swords, Wrench } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import RightToolbars from '@/components/common/RightToolbars.vue'
+import { APP_ROUTES } from '@/router/appRoutes'
 
 const route = useRoute()
 const router = useRouter()
@@ -62,11 +63,11 @@ const isDev = import.meta.env.DEV
 const devMenuOpen = ref(false)
 
 const navItems = [
-  { title: '仪表盘', url: '/', icon: LayoutDashboard },
-  { title: '对局分析', url: '/match-analysis', icon: Swords },
-  { title: '战绩查询', url: '/match-search', icon: Search },
-  { title: '构建中心', url: '/opgg', icon: Sparkles },
-  { title: '设置', url: '/settings', icon: Settings }
+  { title: '概览', url: APP_ROUTES.overview.path, icon: LayoutDashboard },
+  { title: '实时分析', url: APP_ROUTES.liveAnalysis.path, icon: Swords },
+  { title: '战绩查询', url: APP_ROUTES.matchSearch.path, icon: Search },
+  { title: '构建中心', url: APP_ROUTES.buildCenter.path, icon: Sparkles },
+  { title: '设置', url: APP_ROUTES.settings.path, icon: Settings }
 ] as const
 
 const devToolsItems = [

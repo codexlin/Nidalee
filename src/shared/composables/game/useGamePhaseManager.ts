@@ -1,3 +1,5 @@
+import { APP_ROUTES } from '@/router/appRoutes'
+
 // 专门处理游戏阶段变化的逻辑
 export function useGamePhaseManager() {
   const gameStore = useGameStore()
@@ -42,9 +44,9 @@ export function useGamePhaseManager() {
       case 'Matchmaking':
         activityLogger.log.info('进入队列匹配中', 'game')
         gameStore.clearChampSelect()
-        if (router.currentRoute.value.name !== 'match-analysis') {
+        if (router.currentRoute.value.name !== APP_ROUTES.liveAnalysis.name) {
           console.log('[🎮 GamePhaseManager] 开始匹配，自动跳转到对局分析页面')
-          void router.push({ name: 'match-analysis' })
+          void router.push({ name: APP_ROUTES.liveAnalysis.name })
         }
         break
       case 'ReadyCheck':

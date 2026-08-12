@@ -1,39 +1,36 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { APP_ROUTES } from './appRoutes'
 
 const productionRoutes: RouteRecordRaw[] = [
   {
     path: '/forbidden',
-    name: 'Forbidden',
+    name: 'forbidden',
     component: () => import('@/views/ForbiddenView.vue')
   },
   {
-    path: '/',
-    name: 'dashboard',
-    component: () => import('../views/DashboardView.vue')
+    path: APP_ROUTES.overview.path,
+    name: APP_ROUTES.overview.name,
+    component: () => import('../views/OverviewView.vue')
   },
   {
-    path: '/game-helper',
-    redirect: { path: '/settings', query: { tab: 'game' } }
+    path: APP_ROUTES.liveAnalysis.path,
+    name: APP_ROUTES.liveAnalysis.name,
+    component: () => import('../views/LiveAnalysisView.vue')
   },
   {
-    path: '/match-analysis',
-    name: 'match-analysis',
-    component: () => import('../views/MatchAnalysisView.vue')
-  },
-  {
-    path: '/match-search',
-    name: 'match-search',
+    path: APP_ROUTES.matchSearch.path,
+    name: APP_ROUTES.matchSearch.name,
     component: () => import('../views/MatchSearchView.vue')
   },
   {
-    path: '/settings',
-    name: 'settings',
-    component: () => import('../views/SettingsView.vue')
+    path: APP_ROUTES.buildCenter.path,
+    name: APP_ROUTES.buildCenter.name,
+    component: () => import('../views/BuildCenterView.vue')
   },
   {
-    path: '/opgg',
-    name: 'opgg',
-    component: () => import('../views/OpggView.vue')
+    path: APP_ROUTES.settings.path,
+    name: APP_ROUTES.settings.name,
+    component: () => import('../views/SettingsView.vue')
   }
 ]
 

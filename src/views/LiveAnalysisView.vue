@@ -5,5 +5,5 @@
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: 'MatchAnalysisView' })
+defineOptions({ name: 'LiveAnalysisView' })
 </script>

@@ -4,7 +4,7 @@
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton size="lg" asChild>
-            <router-link to="/">
+            <router-link :to="APP_ROUTES.overview.path">
               <div class="flex items-center gap-3 py-2 select-none">
                 <div
                   class="relative isolate overflow-hidden rounded-xl p-[1px] bg-gradient-to-br from-white/70 to-black/10"
@@ -38,10 +38,20 @@
       <SidebarGroup>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton class="text-md" asChild tooltip="个人仪表盘" :is-active="isActiveRoute('/')">
-              <router-link to="/">
-                <Trophy :size="18" :stroke-width="2" class="shrink-0" :class="{ 'text-primary': isActiveRoute('/') }" />
-                <span>个人仪表盘</span>
+            <SidebarMenuButton
+              class="text-md"
+              asChild
+              tooltip="概览"
+              :is-active="isActiveRoute(APP_ROUTES.overview.path)"
+            >
+              <router-link :to="APP_ROUTES.overview.path">
+                <Trophy
+                  :size="18"
+                  :stroke-width="2"
+                  class="shrink-0"
+                  :class="{ 'text-primary': isActiveRoute(APP_ROUTES.overview.path) }"
+                />
+                <span>概览</span>
               </router-link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -110,13 +120,18 @@
         </SidebarGroupLabel>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton class="text-md" asChild tooltip="客户端设置" :is-active="isActiveRoute('/settings')">
-              <router-link to="/settings">
+            <SidebarMenuButton
+              class="text-md"
+              asChild
+              tooltip="客户端设置"
+              :is-active="isActiveRoute(APP_ROUTES.settings.path)"
+            >
+              <router-link :to="APP_ROUTES.settings.path">
                 <Settings
                   :size="18"
                   :stroke-width="2"
                   class="shrink-0"
-                  :class="{ 'text-primary': isActiveRoute('/settings') }"
+                  :class="{ 'text-primary': isActiveRoute(APP_ROUTES.settings.path) }"
                 />
                 <span>客户端设置</span>
               </router-link>
@@ -174,6 +189,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { getVersion } from '@tauri-apps/api/app'
+import { APP_ROUTES } from '@/router/appRoutes'
 import {
   Radar,
   BarChart3,
@@ -213,13 +229,13 @@ const toggleDevTools = () => {
 // 数据分析
 const analysisItems = [
   {
-    title: '战绩查询器',
-    url: '/match-search',
+    title: '战绩查询',
+    url: APP_ROUTES.matchSearch.path,
     icon: Radar
   },
   {
-    title: '对局分析报',
-    url: '/match-analysis',
+    title: '实时分析',
+    url: APP_ROUTES.liveAnalysis.path,
     icon: Swords
   }
 ]
@@ -228,7 +244,7 @@ const analysisItems = [
 const gameAssistItems = [
   {
     title: '构建中心',
-    url: '/opgg',
+    url: APP_ROUTES.buildCenter.path,
     icon: BarChart3
   }
 ]

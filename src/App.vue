@@ -5,6 +5,7 @@ import { appContextKey } from './types'
 import ClientDisconnected from './components/common/ClientDisconnected.vue'
 import TitleBar from './components/layout/TitleBar.vue'
 import AppTopNav from './components/layout/AppTopNav.vue'
+import { APP_ROUTES } from './router/appRoutes'
 
 const { isDark, checkConnection, isConnected, fetchMatchHistory } = useApp()
 const theme = computed(() => (isDark.value ? 'dark' : 'light'))
@@ -30,8 +31,8 @@ const router = useRouter()
 watch(
   isConnected,
   () => {
-    if (route.name !== 'dashboard') {
-      void router.replace({ name: 'dashboard' })
+    if (route.name !== APP_ROUTES.overview.name) {
+      void router.replace({ name: APP_ROUTES.overview.name })
     }
   },
   { immediate: true }
@@ -59,7 +60,7 @@ watch(
             >
               <router-view v-slot="{ Component }">
                 <transition :name="currentTransition" mode="out-in" @before-leave="handleRouteChange">
-                  <KeepAlive :include="['DashboardView', 'MatchAnalysisView', 'OpggView']">
+                  <KeepAlive :include="['OverviewView', 'LiveAnalysisView', 'BuildCenterView']">
                     <component :is="isConnected ? Component : ClientDisconnected" />
                   </KeepAlive>
                 </transition>
