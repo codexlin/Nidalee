@@ -38,12 +38,15 @@
 | Rust 静态目录权威化 | `a5d6d8b` 等 | 英雄/技能由 `static_catalog` 按版本落盘；离线回退、Windows 覆盖、singleflight、前端禁止 `unknown` 版本兜底 |
 | 特殊模式英雄身份 | `7446470` | Jade 等变体身份解析与元数据支持 |
 | 匿名玩家 vs bot | `40890b4` | 选人隐名与自定义局机器人分类边界 |
+| Rust WS 事件职责拆分 | `541b759` | 保留 `WsEventHandler` 稳定门面，按分发、生命周期、Gameflow、Champ Select、上下文和基础状态拆分 |
+| Rust 分析类型拆分 | `0805309` | 34 个公共类型及 `ts-rs` 导出路径保持不变，按实时分析、统计、位置和过程复盘拆分 |
+| Rust 战绩服务拆分 | `a5cace4` | 保留 6 个服务入口，分离概览、详情 DTO 映射和过程复盘编排 |
 
 ### 当前执行位置
 
-阶段 0 至阶段 3 已完成；**静态目录所有权重构已闭环**（含并发刷新回归测试、旧 `init_*` 入口移除）。阶段 6 的契约/格式门禁已完成。
+阶段 0 至阶段 3 已完成；**静态目录所有权重构已闭环**（含并发刷新回归测试、旧 `init_*` 入口移除）。阶段 5 的三个核心 Rust 大模块已完成纯结构拆分；阶段 6 的契约/格式门禁已完成。
 
-下一批建议：从 `GameDetailDialog.vue` 开始阶段 4 前端职责拆分。阶段 5 的 Rust 大模块拆分仍暂缓；阶段 8 发布平台决策在非公开发布阶段保持 P2。
+下一批建议：在真实 LCU 流程复验本轮结构拆分后，评估 `common/commands/data_collection.rs` 的开发工具隔离。阶段 8 发布平台决策在非公开发布阶段保持 P2。
 
 本轮静态目录已知可接受遗留：Windows `replace_file` 为备份—替换—回滚，非严格系统级 crash-atomic（缓存可重拉）。
 
@@ -244,19 +247,19 @@ refactor(static-catalog): centralize versioned game metadata
 
 ## 阶段 5：Rust 大模块结构治理
 
-**优先级：P2；实时链路真实验证稳定后再做**
+**优先级：P2；核心模块已完成，开发数据采集隔离待处理**
 
 ### 候选模块
 
-1. `websocket/event_handler.rs`
+1. [x] `websocket/event_handler.rs`
    - 拆分为事件缓存、状态 reducer、Champ Select 富化、队伍分析和前端 emit。
    - 保持一个公开入口，不能让 transport 直接依赖多个业务细节。
-2. `shared/types/types/mod.rs`
+2. [x] `shared/types/types/analysis.rs`
    - 按账号、对局、分析、Champ Select、设置等领域拆成子模块。
    - 通过 `pub use` 保持外部接口稳定，避免一次性修改所有调用方。
-3. `matches/service.rs`
+3. [x] `matches/service.rs`
    - 分离原始 LCU 拉取、数据规范化、详情组装和分析证据构建。
-4. `common/commands/data_collection.rs`
+4. [ ] `common/commands/data_collection.rs`
    - 明确其开发测试性质，移到 dev tooling 或通过开发特性/构建条件隔离。
 
 ### 实施约束
