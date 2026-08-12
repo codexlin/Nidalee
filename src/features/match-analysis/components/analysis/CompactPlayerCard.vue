@@ -13,9 +13,13 @@ const props = defineProps<{
   playerStats?: PlayerMatchStats | null
   isLocal?: boolean
   isAlly?: boolean
+  retrying?: boolean
 }>()
 
-const emit = defineEmits<{ select: [player: CompactPlayer] }>()
+const emit = defineEmits<{
+  select: [player: CompactPlayer]
+  retry: [player: CompactPlayer]
+}>()
 
 const identityPending = computed(() => {
   if (props.player.isBot) return false
@@ -55,37 +59,6 @@ const analysisScopeLabel = computed(() => {
   return scope ? scopeLabels[scope] : '近期综合'
 })
 
-const confidenceLabel = computed(() => {
-  if (analysisBasis.value?.confidence === 'high') return '高可信'
-  if (analysisBasis.value?.confidence === 'medium') return '中可信'
-  return '低可信'
-})
-
-const confidenceIndicatorClass = computed(() => {
-  if (analysisBasis.value?.confidence === 'high') return 'bg-emerald-500/80'
-  if (analysisBasis.value?.confidence === 'medium') return 'bg-amber-500/80'
-  return 'bg-rose-500/80'
-})
-
-const confidenceExplanation = computed(() => {
-  const basis = analysisBasis.value
-  if (!basis) return ''
-  if (basis.fallbackUsed) {
-    if (basis.primaryScope === 'ranked') return '本队列不足，合并排位样本'
-    if (basis.primaryScope === 'summonersRift') return '排位不足，扩展峡谷样本'
-    if (basis.primaryScope === 'recentOverall') return '采用全部模式的近期样本'
-  }
-  if (basis.confidence === 'high') return '命中样本充分'
-  if (basis.confidence === 'medium') return '样本量一般'
-  return '样本较少，仅供参考'
-})
-
-const analysisBasisSummary = computed(() => {
-  const basis = analysisBasis.value
-  if (!basis) return ''
-  return `分析范围：${analysisScopeLabel.value} ${basis.primaryGames} 场 · ${confidenceLabel.value} · ${confidenceExplanation.value}`
-})
-
 const positionLabels: Record<string, string> = {
   TOP: '上路',
   JUNGLE: '打野',
@@ -103,6 +76,10 @@ function positionLabel(position: string): string {
 
 function selectPlayer(): void {
   if (canSelect.value) emit('select', props.player)
+}
+
+function retryPlayer(): void {
+  if (props.player.puuid && !props.retrying) emit('retry', props.player)
 }
 
 function setPerformanceView(view: 'recent' | 'sample'): void {
@@ -199,7 +176,7 @@ function setPerformanceView(view: 'recent' | 'sample'): void {
       v-else-if="analysisStatus === 'loading'"
       class="flex flex-1 items-center justify-center text-xs text-muted-foreground"
     >
-      正在分析近期战绩
+      {{ retrying ? '正在重新分析近期战绩' : '正在分析近期战绩' }}
     </div>
     <div
       v-else-if="analysisStatus === 'insufficientData' && !playerStats"
@@ -209,25 +186,23 @@ function setPerformanceView(view: 'recent' | 'sample'): void {
     </div>
     <div
       v-else-if="analysisStatus === 'unavailable' && !playerStats"
-      class="flex flex-1 items-center justify-center text-xs text-muted-foreground"
+      class="flex flex-1 flex-col items-center justify-center gap-2 text-xs text-muted-foreground"
     >
-      战绩服务暂不可用
+      <span>战绩服务暂不可用</span>
+      <Button
+        v-if="player.puuid"
+        type="button"
+        size="sm"
+        variant="outline"
+        class="h-6 px-2 text-[10px]"
+        :disabled="retrying"
+        @click.stop="retryPlayer"
+      >
+        {{ retrying ? '重试中' : '重新分析' }}
+      </Button>
     </div>
     <template v-else-if="playerStats">
-      <PlayerInsightSummary :stats="playerStats" :ranked-rating="player.rankedRating" />
-      <Tooltip v-if="analysisBasis">
-        <TooltipTrigger as-child>
-          <div
-            class="flex min-w-0 cursor-help items-center gap-1 rounded-md bg-muted/15 px-1.5 py-1 text-[9px] leading-4"
-          >
-            <span class="text-muted-foreground">分析样本</span>
-            <span class="font-medium text-foreground">{{ analysisBasis.primaryGames }}场</span>
-            <i class="size-1 rounded-full" :class="confidenceIndicatorClass" />
-            <span class="font-medium text-foreground/85">{{ confidenceLabel }}</span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent class="max-w-72 text-xs">{{ analysisBasisSummary }}</TooltipContent>
-      </Tooltip>
+      <PlayerInsightSummary :stats="playerStats" :ranked-rating="player.rankedRating" :analysis-basis="analysisBasis" />
       <RecentPerformanceGrid
         v-if="player.recentMatches.length || analysisSample.length"
         :matches="visiblePerformance"

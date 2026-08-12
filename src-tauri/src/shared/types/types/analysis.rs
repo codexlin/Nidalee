@@ -12,7 +12,9 @@ use ts_rs::TS;
 #[serde(rename_all = "camelCase")]
 pub struct AnalysisChampionStats {
     pub champion_id: i32,
-    pub champion_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub champion_name: Option<String>,
     pub games: u32,
     pub wins: u32,
     pub win_rate: f64,
@@ -681,7 +683,9 @@ pub struct MatchPerformance {
     pub game_id: Option<u64>,
     pub win: bool,
     pub champion_id: i32,
-    pub champion_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub champion_name: Option<String>,
     pub kills: i32,
     pub deaths: i32,
     pub assists: i32,

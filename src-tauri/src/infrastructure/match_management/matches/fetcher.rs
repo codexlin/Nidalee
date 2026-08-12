@@ -22,6 +22,7 @@ use futures_util::stream::{self, StreamExt};
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde_json::Value;
+use tokio::sync::Semaphore;
 
 use crate::domains::analysis::pipeline::{is_ranked_queue, AnalysisPolicy};
 use crate::shared::utils::lcu_get;
@@ -49,6 +50,7 @@ static SHARED_TIMELINE_CACHE: Lazy<Arc<TimelineCache>> =
     Lazy::new(|| Arc::new(TimelineCache::new(DEFAULT_TIMELINE_CACHE_TTL)));
 static SHARED_DETAIL_CACHE: Lazy<Arc<TimelineCache>> =
     Lazy::new(|| Arc::new(TimelineCache::new(DEFAULT_DETAIL_CACHE_TTL)));
+static LCU_MATCH_LIST_LIMITER: Lazy<Semaphore> = Lazy::new(|| Semaphore::new(2));
 
 /// 原始数据源：只负责发请求，不做任何策略判断与数据整形
 pub trait MatchDataSource {
@@ -85,7 +87,13 @@ impl MatchDataSource for LcuMatchDataSource<'_> {
             "/lol-match-history/v1/products/lol/{}/matches?begIndex=0&endIndex={}",
             puuid, end_index
         );
-        async move { lcu_get::<Value>(client, &url).await }
+        async move {
+            let _permit = LCU_MATCH_LIST_LIMITER
+                .acquire()
+                .await
+                .map_err(|_| "LCU match-history limiter closed unexpectedly".to_owned())?;
+            lcu_get::<Value>(client, &url).await
+        }
     }
 
     fn fetch_game_detail_raw(&self, game_id: u64) -> impl Future<Output = Result<Value, String>> + Send {

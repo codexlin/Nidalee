@@ -289,6 +289,11 @@ pub struct ChampSelectPlayer {
 #[allow(dead_code)] // Rust-owned schema exported for raw LCU events consumed by Vue.
 pub struct ChampSelectSession {
     pub local_player_cell_id: i32,
+    #[ts(type = "number")]
+    #[serde(default)]
+    pub queue_id: i64,
+    #[serde(default)]
+    pub is_custom_game: bool,
     pub my_team: Vec<ChampSelectPlayer>,
     pub their_team: Vec<ChampSelectPlayer>,
     pub bans: ChampSelectBans,

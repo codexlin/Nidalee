@@ -25,7 +25,9 @@
                 :team-data="myTeamData!"
                 :team-stats="myTeamStats"
                 team-type="ally"
+                :is-player-retrying="isPlayerRetrying"
                 @select-player="handlePlayerDetails"
+                @retry-player="retryPlayer"
               />
             </div>
           </section>
@@ -46,7 +48,9 @@
                 :team-data="enemyTeamData!"
                 :team-stats="enemyTeamStats"
                 team-type="enemy"
+                :is-player-retrying="isPlayerRetrying"
                 @select-player="handlePlayerDetails"
+                @retry-player="retryPlayer"
               />
             </div>
           </section>
@@ -74,6 +78,7 @@ import { useMatchAnalysisStore } from './store'
 import type { UIPlayerData } from '@/types/match-analysis'
 import { useSummonerDetailSheet } from '@/features/dashboard/composables/useSummonerDetailSheet'
 import SummonerDetailSheet from '@/features/dashboard/components/detail/SummonerDetailSheet.vue'
+import { usePlayerAnalysisRetry } from './composables/usePlayerAnalysisRetry'
 
 // Use Pinia Store
 const matchAnalysisStore = useMatchAnalysisStore()
@@ -121,6 +126,7 @@ const {
   openByDisplayName,
   refresh: refreshSummoner
 } = useSummonerDetailSheet()
+const { isRetrying: isPlayerRetrying, retryPlayer } = usePlayerAnalysisRetry()
 
 function handlePlayerDetails(player: UIPlayerData): void {
   void openByDisplayName(player.displayName)

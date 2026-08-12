@@ -9,7 +9,7 @@ use serde_json::Value;
 #[derive(Default)]
 pub(super) struct EventCache {
     pub(super) gameflow_phase: Option<String>,
-    pub(super) gameflow_session: Option<String>,
+    pub(super) gameflow_session: Option<Value>,
     pub(super) current_summoner: Option<SummonerInfo>,
     pub(super) champ_select_session: Option<Value>,
     pub(super) matchmaking_state: Option<MatchmakingState>,

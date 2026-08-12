@@ -21,16 +21,10 @@ pub struct WsEventHandler {
 
 impl WsEventHandler {
     pub fn new(app: AppHandle) -> Self {
-        let client = Client::builder()
-            .tls_danger_accept_invalid_certs(true)
-            .timeout(std::time::Duration::from_secs(5))
-            .build()
-            .unwrap_or_else(|_| Client::new());
-
         Self {
             app,
             cache: Arc::new(RwLock::new(EventCache::default())),
-            client,
+            client: crate::http_client::get_lcu_client().clone(),
         }
     }
 
@@ -57,12 +51,8 @@ impl WsEventHandler {
         if let Some(phase) = cache.gameflow_phase.as_ref() {
             let _ = self.app.emit("gameflow-phase-change", &Some(phase.clone()));
         }
-        if let Some(session) = cache
-            .gameflow_session
-            .as_ref()
-            .and_then(|session| serde_json::from_str::<Value>(session).ok())
-        {
-            let _ = self.app.emit("gameflow-session-changed", session);
+        if let Some(session) = cache.gameflow_session.as_ref() {
+            let _ = self.app.emit("gameflow-session-changed", session.clone());
         }
         if let Some(summoner) = cache.current_summoner.as_ref() {
             let _ = self.app.emit("summoner-change", &Some(summoner.clone()));
@@ -287,17 +277,22 @@ impl WsEventHandler {
     async fn handle_gameflow_session_change(&self, data: &Value, event_type: &str) -> Result<()> {
         // Create and Update events both contain data.
         if event_type == "Create" || event_type == "Update" {
-            // Serialize session data to a string for comparison.
-            let session_json = serde_json::to_string(data).unwrap_or_default();
-
             let mut cache = self.cache.write().await;
 
-            let session_changed = cache.gameflow_session.as_ref() != Some(&session_json);
+            let session_changed = cache.gameflow_session.as_ref() != Some(data);
 
             if session_changed {
-                cache.gameflow_session = Some(session_json);
+                cache.gameflow_session = Some(data.clone());
                 let _ = self.app.emit("gameflow-session-changed", data);
                 log::debug!("[ws-event] Gameflow session updated and broadcast ({}).", event_type);
+
+                if let Some(champ_select) = cache.champ_select_session.clone() {
+                    let session = champ_select_session_with_gameflow_context(&champ_select, Some(data));
+                    if session != champ_select {
+                        cache.champ_select_session = Some(session.clone());
+                        let _ = self.app.emit("champ-select-session-changed", &session);
+                    }
+                }
             } else {
                 log::trace!("[ws-event] Gameflow session unchanged, skipping broadcast.");
             }
@@ -328,24 +323,24 @@ impl WsEventHandler {
         log::info!("[ws-event] Champ select event received, type: {}", event_type);
 
         if event_type == "Create" || event_type == "Update" {
-            let analysis_key = analysis_data::service::champ_select_analysis_key(data);
-
             // Step 1: Immediately send raw session data for fast auto-pick response.
             log::info!("[ws-event] Sending raw champ-select-session-changed event (immediate)");
-            {
+            let session = {
                 let mut cache = self.cache.write().await;
-                cache.champ_select_session = Some(data.clone());
-                let _ = self.app.emit("champ-select-session-changed", data);
+                let session = champ_select_session_with_gameflow_context(data, cache.gameflow_session.as_ref());
+                cache.champ_select_session = Some(session.clone());
+                let _ = self.app.emit("champ-select-session-changed", &session);
 
                 // Champion intent, spells and assigned position change frequently. Keep the
                 // enriched roster current without repeating summoner/rank/history requests.
+                let analysis_key = analysis_data::service::champ_select_analysis_key(&session);
                 if cache.champ_select_analysis_key.as_ref() == Some(&analysis_key) {
                     let patched = cache
                         .team_analysis_data
                         .as_mut()
                         .filter(|analysis| analysis.game_phase == "ChampSelect")
                         .is_some_and(|analysis| {
-                            analysis_data::service::patch_team_analysis_from_session(analysis, data)
+                            analysis_data::service::patch_team_analysis_from_session(analysis, &session)
                         });
                     if patched {
                         if let Some(analysis) = cache.team_analysis_data.as_ref() {
@@ -353,14 +348,16 @@ impl WsEventHandler {
                         }
                     }
                 }
-            }
+                session
+            };
+            let analysis_key = analysis_data::service::champ_select_analysis_key(&session);
 
             // Step 2: Debounce the expensive enrichment work. Champ-select emits frequent
             // timer/action updates, while the raw event above must remain immediate for auto-pick.
             let app = self.app.clone();
             let client = self.client.clone();
             let cache_for_task = Arc::clone(&self.cache);
-            let data_clone = data.clone();
+            let data_clone = session;
             let analysis_work = {
                 let mut cache = self.cache.write().await;
                 if cache.champ_select_analysis_key.as_ref() == Some(&analysis_key) {
@@ -571,9 +568,87 @@ impl WsEventHandler {
     }
 }
 
+fn champ_select_session_with_gameflow_context(champ_select: &Value, gameflow_session: Option<&Value>) -> Value {
+    let Some(context) = gameflow_session.and_then(gameflow_build_context) else {
+        return champ_select.clone();
+    };
+    let Some(session) = champ_select.as_object() else {
+        return champ_select.clone();
+    };
+
+    let mut enriched = session.clone();
+    enriched.insert("queueId".to_string(), Value::from(context.queue_id));
+    enriched.insert("isCustomGame".to_string(), Value::from(context.is_custom_game));
+    Value::Object(enriched)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct GameflowBuildContext {
+    queue_id: i64,
+    is_custom_game: bool,
+}
+
+fn gameflow_build_context(session: &Value) -> Option<GameflowBuildContext> {
+    if session.get("phase")?.as_str()? != "ChampSelect" {
+        return None;
+    }
+    let game_data = session.get("gameData")?;
+    Some(GameflowBuildContext {
+        queue_id: game_data.get("queue")?.get("id")?.as_i64()?,
+        is_custom_game: game_data.get("isCustomGame")?.as_bool()?,
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::EventCache;
+    use super::{champ_select_session_with_gameflow_context, gameflow_build_context, EventCache, GameflowBuildContext};
+    use serde_json::json;
+
+    #[test]
+    fn champ_select_session_uses_authoritative_gameflow_context() {
+        let raw = json!({ "localPlayerCellId": 4, "queueId": 0, "isCustomGame": true, "myTeam": [] });
+        let gameflow = json!({
+            "phase": "ChampSelect",
+            "gameData": {
+                "queue": { "id": 440 },
+                "isCustomGame": false
+            }
+        });
+
+        let session = champ_select_session_with_gameflow_context(&raw, Some(&gameflow));
+
+        assert_eq!(session["queueId"], 440);
+        assert_eq!(session["isCustomGame"], false);
+        assert_eq!(session["localPlayerCellId"], 4);
+    }
+
+    #[test]
+    fn gameflow_context_requires_both_runtime_fields() {
+        assert_eq!(
+            gameflow_build_context(&json!({
+                "phase": "ChampSelect",
+                "gameData": { "queue": { "id": 450 }, "isCustomGame": false }
+            })),
+            Some(GameflowBuildContext {
+                queue_id: 450,
+                is_custom_game: false
+            })
+        );
+        assert_eq!(
+            gameflow_build_context(&json!({
+                "phase": "ChampSelect",
+                "gameData": { "queue": { "id": 450 } }
+            })),
+            None
+        );
+        assert_eq!(
+            gameflow_build_context(&json!({
+                "phase": "InProgress",
+                "gameData": { "queue": { "id": 450 }, "isCustomGame": false }
+            })),
+            None
+        );
+    }
 
     #[test]
     fn in_game_recovery_generation_invalidates_old_work() {

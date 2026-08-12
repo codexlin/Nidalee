@@ -107,21 +107,29 @@ pub async fn get_rank_info(client: &Client, puuid: &str) -> Result<RankInfo, Str
     let path = &format!("/lol-ranked/v1/ranked-stats/{}", puuid);
     let rank_data: Value = lcu_get(client, path).await?;
 
+    Ok(parse_rank_info(&rank_data))
+}
+
+fn parse_rank_info(rank_data: &Value) -> RankInfo {
     let mut rank_info = RankInfo::default();
     if let Some(queues) = rank_data.get("queues").and_then(|q| q.as_array()) {
         for queue in queues {
             let queue_type = queue.get("queueType").and_then(|q| q.as_str()).unwrap_or("");
+            let tier = queue
+                .get("tier")
+                .and_then(Value::as_str)
+                .filter(|tier| is_ranked_tier(tier));
             match queue_type {
-                "RANKED_SOLO_5x5" => {
-                    rank_info.solo_tier = queue.get("tier").and_then(|t| t.as_str()).map(String::from);
-                    rank_info.solo_division = queue.get("division").and_then(|d| d.as_str()).map(String::from);
+                "RANKED_SOLO_5x5" if tier.is_some() => {
+                    rank_info.solo_tier = tier.map(String::from);
+                    rank_info.solo_division = queue.get("division").and_then(Value::as_str).and_then(rank_text);
                     rank_info.solo_lp = queue.get("leaguePoints").and_then(|l| l.as_i64()).map(|l| l as i32);
                     rank_info.solo_wins = queue.get("wins").and_then(|w| w.as_i64()).map(|w| w as i32);
                     rank_info.solo_losses = queue.get("losses").and_then(|l| l.as_i64()).map(|l| l as i32);
                 }
-                "RANKED_FLEX_SR" => {
-                    rank_info.flex_tier = queue.get("tier").and_then(|t| t.as_str()).map(String::from);
-                    rank_info.flex_division = queue.get("division").and_then(|d| d.as_str()).map(String::from);
+                "RANKED_FLEX_SR" if tier.is_some() => {
+                    rank_info.flex_tier = tier.map(String::from);
+                    rank_info.flex_division = queue.get("division").and_then(Value::as_str).and_then(rank_text);
                     rank_info.flex_lp = queue.get("leaguePoints").and_then(|l| l.as_i64()).map(|l| l as i32);
                     rank_info.flex_wins = queue.get("wins").and_then(|w| w.as_i64()).map(|w| w as i32);
                     rank_info.flex_losses = queue.get("losses").and_then(|l| l.as_i64()).map(|l| l as i32);
@@ -130,7 +138,82 @@ pub async fn get_rank_info(client: &Client, puuid: &str) -> Result<RankInfo, Str
             }
         }
     }
-    Ok(rank_info)
+    rank_info
+}
+
+fn is_ranked_tier(tier: &str) -> bool {
+    !tier.trim().is_empty() && !matches!(tier.to_ascii_uppercase().as_str(), "NA" | "NONE" | "UNRANKED")
+}
+
+fn rank_text(value: &str) -> Option<String> {
+    is_ranked_tier(value).then(|| value.to_owned())
+}
+
+#[cfg(test)]
+mod rank_tests {
+    use super::parse_rank_info;
+    use serde_json::json;
+
+    #[test]
+    fn unranked_lcu_sentinels_do_not_become_rank_badges() {
+        let rank = parse_rank_info(&json!({
+            "queues": [
+                {
+                    "queueType": "RANKED_SOLO_5x5",
+                    "tier": "NA",
+                    "division": "NA",
+                    "leaguePoints": 0
+                },
+                {
+                    "queueType": "RANKED_FLEX_SR",
+                    "tier": "UNRANKED",
+                    "division": "NA",
+                    "leaguePoints": 0
+                }
+            ]
+        }));
+
+        assert_eq!(rank.solo_tier, None);
+        assert_eq!(rank.solo_lp, None);
+        assert_eq!(rank.flex_tier, None);
+        assert_eq!(rank.flex_lp, None);
+    }
+
+    #[test]
+    fn ranked_queue_keeps_real_tier_details() {
+        let rank = parse_rank_info(&json!({
+            "queues": [{
+                "queueType": "RANKED_FLEX_SR",
+                "tier": "EMERALD",
+                "division": "II",
+                "leaguePoints": 42,
+                "wins": 12,
+                "losses": 8
+            }]
+        }));
+
+        assert_eq!(rank.flex_tier.as_deref(), Some("EMERALD"));
+        assert_eq!(rank.flex_division.as_deref(), Some("II"));
+        assert_eq!(rank.flex_lp, Some(42));
+        assert_eq!(rank.flex_wins, Some(12));
+        assert_eq!(rank.flex_losses, Some(8));
+    }
+
+    #[test]
+    fn apex_rank_omits_na_division() {
+        let rank = parse_rank_info(&json!({
+            "queues": [{
+                "queueType": "RANKED_SOLO_5x5",
+                "tier": "MASTER",
+                "division": "NA",
+                "leaguePoints": 120
+            }]
+        }));
+
+        assert_eq!(rank.solo_tier.as_deref(), Some("MASTER"));
+        assert_eq!(rank.solo_division, None);
+        assert_eq!(rank.solo_lp, Some(120));
+    }
 }
 
 // 获取指定ID的召唤师

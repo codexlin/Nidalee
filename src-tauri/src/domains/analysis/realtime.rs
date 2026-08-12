@@ -241,14 +241,19 @@ fn build_realtime_traits(stats: &PlayerMatchStats) -> Vec<SummonerTrait> {
     }
 
     if traits.len() < 3 {
-        if let Some(champion) = stats.favorite_champions.first() {
+        if let Some(champion) = stats
+            .favorite_champions
+            .first()
+            .filter(|champion| champion.champion_name.is_some())
+        {
             let share = champion.games as f64 / stats.total_games as f64;
             if champion.games >= 3 && share >= 0.45 {
+                let champion_name = champion.champion_name.as_deref().unwrap_or_default();
                 traits.push(SummonerTrait {
                     name: "英雄选择集中".to_string(),
                     description: format!(
                         "{} 在最近样本中使用 {} 场，占 {:.0}%",
-                        champion.champion_name,
+                        champion_name,
                         champion.games,
                         share * 100.0
                     ),

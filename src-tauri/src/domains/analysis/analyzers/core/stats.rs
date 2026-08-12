@@ -206,8 +206,30 @@ pub fn analyze_player_stats_with_resolver(
     }
 }
 
-fn resolve_champion_name(resolver: Option<ChampionNameResolver<'_>>, champion_id: i32) -> String {
-    resolver
-        .and_then(|resolve| resolve(champion_id))
-        .unwrap_or_else(|| format!("未知英雄({})", champion_id))
+fn resolve_champion_name(resolver: Option<ChampionNameResolver<'_>>, champion_id: i32) -> Option<String> {
+    resolver.and_then(|resolve| resolve(champion_id))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_champion_name;
+
+    #[test]
+    fn champion_name_should_remain_absent_without_a_resolver() {
+        assert_eq!(resolve_champion_name(None, 67), None);
+    }
+
+    #[test]
+    fn champion_name_should_remain_absent_when_resolver_misses() {
+        let resolver = |_champion_id| None;
+
+        assert_eq!(resolve_champion_name(Some(&resolver), 67), None);
+    }
+
+    #[test]
+    fn champion_name_should_use_resolved_catalog_value() {
+        let resolver = |champion_id| (champion_id == 67).then(|| "暗夜猎手".to_string());
+
+        assert_eq!(resolve_champion_name(Some(&resolver), 67), Some("暗夜猎手".to_string()));
+    }
 }

@@ -90,6 +90,7 @@ pub fn run() {
             infrastructure::real_time::websocket::commands::stop_lcu_ws,
             // 分析数据命令
             infrastructure::match_management::analysis_data::commands::get_cached_analysis_data,
+            infrastructure::match_management::analysis_data::commands::retry_player_analysis,
             // 静态目录（版本化英雄/技能）
             infrastructure::data_services::static_catalog::commands::get_static_catalog_meta,
             infrastructure::data_services::static_catalog::commands::refresh_static_catalogs,

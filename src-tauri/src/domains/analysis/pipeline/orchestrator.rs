@@ -75,10 +75,8 @@ impl<'a> OrchestratorInput<'a> {
         self
     }
 
-    fn champion_name_of(&self, champion_id: i32) -> String {
-        self.champion_name
-            .and_then(|resolve| resolve(champion_id))
-            .unwrap_or_else(|| format!("未知英雄({})", champion_id))
+    fn champion_name_of(&self, champion_id: i32) -> Option<String> {
+        self.champion_name.and_then(|resolve| resolve(champion_id))
     }
 }
 
@@ -415,7 +413,7 @@ fn build_champion_pool(games: &[ParsedGame], input: &OrchestratorInput<'_>) -> V
         .into_iter()
         .map(|(champion_id, (games, wins, total_kda))| ChampionStat {
             champion_id,
-            champion_name: Some(input.champion_name_of(champion_id)),
+            champion_name: input.champion_name_of(champion_id),
             games,
             wins,
             win_rate: percentage(wins, games),

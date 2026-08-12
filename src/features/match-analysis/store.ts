@@ -1,4 +1,5 @@
 import type { GamePhase, TeamData, EnrichedPlayerMatchStats } from '@/types/match-analysis'
+import { getCompactQueueDisplayName } from '@/common/queueCatalog'
 
 /**
  * 对局分析 Store
@@ -51,26 +52,7 @@ export const useMatchAnalysisStore = defineStore('matchAnalysis', () => {
   // 对局类型标签和图标
   const queueTypeLabel = computed(() => {
     if (isCustomGame.value) return '自定义游戏'
-    switch (queueId.value) {
-      case 420:
-        return '单/双排位'
-      case 440:
-        return '灵活排位'
-      case 450:
-        return '极地大乱斗'
-      case 400:
-        return '匹配模式'
-      case 430:
-        return '匹配模式'
-      case 900:
-        return '无限火力'
-      case 1020:
-        return '云顶之弈'
-      case 4310:
-        return '经典模式'
-      default:
-        return queueId.value > 0 ? `队列 ${queueId.value}` : '未知模式'
-    }
+    return queueId.value > 0 ? getCompactQueueDisplayName(queueId.value) : '未知模式'
   })
 
   const queueTypeIcon = computed(() => {

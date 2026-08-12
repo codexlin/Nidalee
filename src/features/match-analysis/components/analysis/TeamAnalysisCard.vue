@@ -9,7 +9,9 @@
           :player-stats="getPlayerStats(index)"
           :is-local="player.cellId === teamData.localPlayerCellId"
           :is-ally="teamType === 'ally'"
+          :retrying="isPlayerRetrying?.(player) ?? false"
           @select="$emit('select-player', player, getPlayerStats(index))"
+          @retry="$emit('retry-player', player)"
         />
       </div>
     </Card>
@@ -34,6 +36,7 @@ const props = withDefaults(
     teamStats?: (MatchablePlayerStats | null)[]
     teamType: 'ally' | 'enemy'
     localPlayerCellId?: number | null
+    isPlayerRetrying?: (player: UIPlayerData) => boolean
   }>(),
   {
     teamStats: () => []
@@ -42,6 +45,7 @@ const props = withDefaults(
 
 defineEmits<{
   'select-player': [player: UIPlayerData, stats: MatchablePlayerStats | null]
+  'retry-player': [player: UIPlayerData]
 }>()
 
 const enemyStatusMessage = computed(() => {
