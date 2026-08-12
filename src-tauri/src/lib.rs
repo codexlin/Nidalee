@@ -112,20 +112,20 @@ pub fn run() {
             common::commands::export::copy_png_to_clipboard,
             // 数据收集测试命令
             #[cfg(debug_assertions)]
-            common::commands::data_collection::generate_test_data_file,
+            common::commands::dev_tools::data_collection::generate_test_data_file,
             #[cfg(debug_assertions)]
-            common::commands::data_collection::analyze_data_file,
+            common::commands::dev_tools::data_collection::analyze_data_file,
             #[cfg(debug_assertions)]
-            common::commands::threshold_analyzer::analyze_thresholds_from_raw_data,
+            common::commands::dev_tools::threshold_analyzer::analyze_thresholds_from_raw_data,
             #[cfg(debug_assertions)]
-            common::commands::data_collection::collect_raw_match_data,
+            common::commands::dev_tools::data_collection::collect_raw_match_data,
             #[cfg(debug_assertions)]
-            common::commands::data_collection::analyze_raw_match_timeline,
+            common::commands::dev_tools::data_collection::analyze_raw_match_timeline,
             #[cfg(debug_assertions)]
-            common::commands::data_collection::show_raw_json_structure,
+            common::commands::dev_tools::data_collection::show_raw_json_structure,
             // 分页探针仅用于调试验证 begIndex；生产构建不注册
             #[cfg(debug_assertions)]
-            common::commands::data_collection::probe_match_history_pages,
+            common::commands::dev_tools::data_collection::probe_match_history_pages,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
