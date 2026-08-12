@@ -36,29 +36,25 @@ export function useAppEvents() {
 
   // 事件处理函数
   const handleGameFlowPhaseChange = (event: Event<string>) => {
-    console.log('[AppEvents] 游戏阶段变化:', event.payload)
     const phase = event.payload as string
     handleGamePhaseChange(phase)
   }
 
-  const handleGameflowSessionChanged = (event: Event<unknown>) => {
-    console.log('[AppEvents] Gameflow Session 变化:', event.payload)
+  const handleGameflowSessionChanged = (_event: Event<unknown>) => {
     // 可根据需要处理
   }
 
   const handleLobbyChangeEvent = (event: Event<LobbyInfo | null>) => {
-    console.log('[AppEvents] 大厅变化:', event.payload)
     handleLobbyChange(event.payload as LobbyInfo | null)
   }
 
   const handleChampSelectSessionChanged = (event: Event<ChampSelectSession | null>) => {
-    console.log('[AppEvents] 英雄选择 Session 变化:', event.payload)
     handleChampSelectChange(event.payload)
   }
 
-  const handleMatchmakingStateChanged = (event: Event<MatchmakingState>) => {
-    console.log('[AppEvents] 匹配状态变化:', event.payload)
-    matchmakingStore.updateState(event.payload)
+  const handleMatchmakingStateChanged = (event: Event<MatchmakingState | null>) => {
+    if (event.payload) matchmakingStore.updateState(event.payload)
+    else matchmakingStore.clearState()
   }
 
   const handleSummonerChange = (event: Event<SummonerInfo | null>) => {
@@ -86,16 +82,21 @@ export function useAppEvents() {
 
   // 战绩分析数据（异步到达）
   const handleTeamAnalysisData = (event: Event<TeamAnalysisData | null>) => {
-    console.log('[AppEvents] 收到战绩分析数据，更新 UI')
     updateTeamAnalysisData(event.payload)
   }
 
   const handleConnectionStateChange = async (event: Event<unknown>) => {
     const state = event.payload as ConnectedState
-    await connectionStore.updateConnectionState(isObject(state) ? state.state : state)
+    const nextState = isObject(state) ? state.state : state
+    await connectionStore.updateConnectionState(nextState)
+
+    if (nextState === 'Disconnected') {
+      matchAnalysisStore.clearAllData()
+      matchmakingStore.clearState()
+    }
 
     // 当连接成功时，检查游戏版本
-    if (isObject(state) ? state.state === 'Connected' : state === 'Connected') {
+    if (nextState === 'Connected') {
       await checkGameVersion()
     }
   }
@@ -114,11 +115,8 @@ export function useAppEvents() {
       dataStore.setGameVersion(meta.version)
 
       if (refreshed && currentGameVersion) {
-        console.log(`[AppEvents] 检测到游戏版本变化: ${currentGameVersion} → ${meta.version}`)
       } else if (!currentGameVersion) {
-        console.log(`[AppEvents] 当前游戏版本: ${meta.version}`)
       } else {
-        console.log(`[AppEvents] 版本未变化: ${meta.version}`)
       }
       currentGameVersion = meta.version
     } catch (error) {
@@ -128,13 +126,9 @@ export function useAppEvents() {
 
   const handleConnectionStateChangeDebounced = debounce({ delay: 300 }, handleConnectionStateChange)
 
-  const handleGameFinished = () => {
-    console.log('[AppEvents] 游戏结束事件')
-    updateTeamAnalysisData(null)
-  }
-
   const stopListening = () => {
     cancelPendingAutoAccept()
+    cancelPendingUpdates()
     gameStore.clearChampSelect()
     if (!listeningRequested && !listenersReady && unlisteners.length === 0) return
 
@@ -143,7 +137,6 @@ export function useAppEvents() {
     handleConnectionStateChangeDebounced.cancel()
     cancelActiveConnectionStateDebounce?.()
     cancelActiveConnectionStateDebounce = null
-    console.log(`[AppEvents] 停止 ${unlisteners.length} 个全局事件监听器...`)
     unlisteners.forEach((unlisten) => {
       try {
         unlisten()
@@ -155,13 +148,11 @@ export function useAppEvents() {
     listenersReady = false
     // 允许旧的异步注册收尾前开启新一代监听；旧 generation 会自行卸载。
     startListeningPromise = null
-    console.log('[AppEvents] 全局事件监听已停止。')
   }
 
   const restoreCachedAnalysis = async (generation: number) => {
     const revisionBeforeRestore = analysisStateRevision
     try {
-      console.log('[AppEvents] 🔄 尝试从后端缓存恢复数据...')
       const { invoke } = await import('@tauri-apps/api/core')
       const cachedData = await invoke<TeamAnalysisData | null>('get_cached_analysis_data')
       if (!listenersReady || listenerGeneration !== generation) return
@@ -169,7 +160,6 @@ export function useAppEvents() {
       // is newer than this cache read and must keep ownership of the store.
       if (analysisStateRevision !== revisionBeforeRestore) return
       if (cachedData) {
-        console.log('[AppEvents] ✅ 找到缓存数据，正在恢复...')
         updateTeamAnalysisData(cachedData)
       }
     } catch (error) {
@@ -217,7 +207,6 @@ export function useAppEvents() {
           () => register('matchmaking-state-changed', handleMatchmakingStateChanged),
           () => register('summoner-change', handleSummonerChange),
           () => register('connection-state-changed', handleConnectionStateChangeDebounced),
-          () => register('game-finished', handleGameFinished),
           () => register('team-analysis-data', handleTeamAnalysisData)
         ]
 
@@ -236,7 +225,6 @@ export function useAppEvents() {
         unlisteners = registered
         listenersReady = true
         cancelActiveConnectionStateDebounce = () => handleConnectionStateChangeDebounced.cancel()
-        console.log(`[AppEvents] ${unlisteners.length} 个全局事件监听已启动`)
 
         // 缓存恢复不属于监听器握手，不应阻塞或推翻 producer 启动。
         void restoreCachedAnalysis(generation)

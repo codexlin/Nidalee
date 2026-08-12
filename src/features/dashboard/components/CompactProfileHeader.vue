@@ -2,10 +2,7 @@
   <Card class="relative overflow-hidden px-5">
     <!-- 主内容：左中右三栏布局 -->
     <div class="relative">
-      <div
-        class="flex items-center gap-6"
-        :class="showToday ? 'justify-between' : 'justify-start gap-10'"
-      >
+      <div class="flex items-center gap-6" :class="showToday ? 'justify-between' : 'justify-start gap-10'">
         <!-- 左栏：头像 + 基本信息 -->
         <div class="flex items-center gap-4 shrink-0">
           <div class="relative shrink-0">
@@ -35,6 +32,7 @@
                 >#{{ summonerInfo.tagLine }}</span
               >
               <Badge
+                v-if="isConnected !== undefined"
                 :variant="isConnected ? 'default' : 'secondary'"
                 :class="[
                   'gap-1 px-2 h-6 text-xs shrink-0',
@@ -204,17 +202,11 @@
 
 <script setup lang="ts">
 import type { StyleValue } from 'vue'
+import type { SummonerRankPresentation } from '@/shared/utils/summonerRankPresentation'
 import { getChallengeCrystalIconUrl, getProfileIconUrl, getTierIconUrl } from '@/lib'
 import { Shield, User, Users } from 'lucide-vue-next'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-
-interface RankInfo {
-  tier: string
-  rank: string
-  leaguePoints: number
-  winRate: number
-}
 
 interface TodayMatches {
   total: number
@@ -224,11 +216,12 @@ interface TodayMatches {
 
 const props = withDefaults(
   defineProps<{
-    isConnected: boolean
+    /** 仅当前账号页面传入；查看其他玩家时省略，避免误解为对方在线状态。 */
+    isConnected?: boolean
     summonerInfo: SummonerInfo | null
     todayMatches: TodayMatches
-    soloRank: RankInfo
-    flexRank: RankInfo
+    soloRank: SummonerRankPresentation
+    flexRank: SummonerRankPresentation
     /** 查他人时隐藏「今日」块 */
     showToday?: boolean
   }>(),

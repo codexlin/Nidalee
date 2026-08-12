@@ -7,6 +7,7 @@
 export {}
 declare global {
   const EffectScope: typeof import('vue')['EffectScope']
+  const POST_GAME_REFRESH_DELAYS_MS: typeof import('../src/shared/composables/game/postGameMatchRefresh')['POST_GAME_REFRESH_DELAYS_MS']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const cancelPendingMatchAnalysis: typeof import('../src/shared/composables/game/useMatchAnalysis')['cancelPendingMatchAnalysis']
   const computed: typeof import('vue')['computed']
@@ -20,6 +21,7 @@ declare global {
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
+  const getLatestMatchId: typeof import('../src/shared/composables/game/postGameMatchRefresh')['getLatestMatchId']
   const h: typeof import('vue')['h']
   const inject: typeof import('vue')['inject']
   const isProxy: typeof import('vue')['isProxy']
@@ -55,6 +57,7 @@ declare global {
   const ref: typeof import('vue')['ref']
   const refreshStaticCatalogsOnVersionChange: typeof import('../src/shared/composables/data/useVersionedData')['refreshStaticCatalogsOnVersionChange']
   const resolveComponent: typeof import('vue')['resolveComponent']
+  const runPostGameRefresh: typeof import('../src/shared/composables/game/postGameMatchRefresh')['runPostGameRefresh']
   const setActivePinia: typeof import('pinia')['setActivePinia']
   const setMapStoreSuffix: typeof import('pinia')['setMapStoreSuffix']
   const shallowReactive: typeof import('vue')['shallowReactive']
@@ -145,6 +148,9 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { PostGameRefreshOutcome } from '../src/shared/composables/game/postGameMatchRefresh'
+  import('../src/shared/composables/game/postGameMatchRefresh')
   // @ts-ignore
   export type { PerkStyle, PerkSlot, Perk } from '../src/shared/composables/game/useRuneData'
   import('../src/shared/composables/game/useRuneData')

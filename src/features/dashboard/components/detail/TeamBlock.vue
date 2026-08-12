@@ -198,9 +198,9 @@ import {
   getPerkImageUrlFromIconPath,
   getProfileIconUrl,
   getSpellMeta,
-  resolveChampionName,
+  resolveChampionName
 } from '@/lib'
-import { gradeFromStats, gradeTextClass } from '../../utils/matchGrade'
+import { gradeFromStats, gradeTextClass } from '@/shared/utils/matchGrade'
 import ParticipantHoverCard from './ParticipantHoverCard.vue'
 
 const props = defineProps<{
@@ -259,21 +259,14 @@ const keystoneIcon = (participant: ParticipantInfo) => {
   return getPerkImageUrlFromIconPath(perk?.iconPath ?? '', perkId)
 }
 
-const hasRune = (participant: ParticipantInfo) =>
-  !!(primaryStyleIcon(participant) || keystoneIcon(participant))
+const hasRune = (participant: ParticipantInfo) => !!(primaryStyleIcon(participant) || keystoneIcon(participant))
 
-const teamKills = computed(() =>
-  props.participants.reduce((sum, p) => sum + (p.stats?.kills || 0), 0)
-)
-const maxTeamGold = computed(() =>
-  Math.max(0, ...props.participants.map((p) => p.stats?.goldEarned || 0))
-)
+const teamKills = computed(() => props.participants.reduce((sum, p) => sum + (p.stats?.kills || 0), 0))
+const maxTeamGold = computed(() => Math.max(0, ...props.participants.map((p) => p.stats?.goldEarned || 0)))
 const maxTeamDamage = computed(() =>
   Math.max(0, ...props.participants.map((p) => p.stats?.totalDamageDealtToChampions || 0))
 )
-const maxTeamVision = computed(() =>
-  Math.max(0, ...props.participants.map((p) => p.stats?.visionScore || 0))
-)
+const maxTeamVision = computed(() => Math.max(0, ...props.participants.map((p) => p.stats?.visionScore || 0)))
 
 const isTeamMaxGold = (participant: ParticipantInfo) => {
   const gold = participant.stats?.goldEarned || 0

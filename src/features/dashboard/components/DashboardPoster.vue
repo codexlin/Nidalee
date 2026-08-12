@@ -235,11 +235,11 @@ import {
   getChampionIconUrl,
   getProfileIconUrl,
   getQueueName,
-  resolveChampionName,
+  resolveChampionName
 } from '@/lib'
 import { getMatchModeLabel, type MatchModeKey } from '@/common/queueCatalog'
 import SummonerTraits from './SummonerTraits.vue'
-import { displayGrade, gradeWatermarkClass, gradeWatermarkSizeClass } from '../utils/matchGrade'
+import { displayGrade, gradeWatermarkClass, gradeWatermarkSizeClass } from '@/shared/utils/matchGrade'
 
 interface RankInfo {
   tier: string

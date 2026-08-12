@@ -1,27 +1,14 @@
 <template>
   <div class="flex flex-col gap-6">
     <!-- 空态 -->
-    <div
-      v-if="!currentResult"
-      class="flex min-h-[calc(100dvh-12rem)] flex-col items-center justify-center gap-4"
-    >
+    <div v-if="!currentResult" class="flex min-h-[calc(100dvh-12rem)] flex-col items-center justify-center gap-4">
       <div class="space-y-1 text-center">
         <h1 class="text-lg font-medium text-foreground">战绩查询</h1>
         <p class="text-sm text-muted-foreground">输入召唤师名称，查看近期表现与位置倾向</p>
       </div>
-      <SummonerSearchBox
-        v-model:summoner-name="searchText"
-        show-history
-        :loading="loading"
-        @on-search="onSearch"
-      />
-      <label
-        class="mx-auto flex max-w-xl cursor-pointer items-center gap-2 px-0.5 text-xs text-muted-foreground"
-      >
-        <Switch
-          :model-value="applyDefaultFilterOnSearch"
-          @update:model-value="setApplyDefaultFilterOnSearch"
-        />
+      <SummonerSearchBox v-model:summoner-name="searchText" show-history :loading="loading" @on-search="onSearch" />
+      <label class="mx-auto flex max-w-xl cursor-pointer items-center gap-2 px-0.5 text-xs text-muted-foreground">
+        <Switch :model-value="applyDefaultFilterOnSearch" @update:model-value="setApplyDefaultFilterOnSearch" />
         <span>
           查询时跟随仪表盘模式
           <span class="text-muted-foreground/80">（当前：{{ dashboardModeLabel }}）</span>
@@ -39,13 +26,8 @@
           :loading="loading"
           @on-search="onSearch"
         />
-        <label
-          class="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground"
-        >
-          <Switch
-            :model-value="applyDefaultFilterOnSearch"
-            @update:model-value="setApplyDefaultFilterOnSearch"
-          />
+        <label class="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+          <Switch :model-value="applyDefaultFilterOnSearch" @update:model-value="setApplyDefaultFilterOnSearch" />
           <span>
             跟随仪表盘
             <span class="text-muted-foreground/80">（{{ dashboardModeLabel }}）</span>
@@ -71,7 +53,6 @@
       </div>
 
       <CompactProfileHeader
-        :is-connected="isConnected"
         :summoner-info="currentResult.summonerInfo"
         :today-matches="emptyTodayMatches"
         :solo-rank="soloRank"
@@ -98,6 +79,7 @@
 import { appContextKey, type AppContext } from '@/types'
 import CompactProfileHeader from '@/features/dashboard/components/CompactProfileHeader.vue'
 import { getMatchModeLabel } from '@/common/queueCatalog'
+import { buildSummonerRankPresentation } from '@/shared/utils/summonerRankPresentation'
 import { storeToRefs } from 'pinia'
 
 const { isConnected } = inject(appContextKey) as AppContext
@@ -113,43 +95,25 @@ const searchPositionAnalysis = computed(() => currentResult.value?.positionAnaly
 
 const emptyTodayMatches = { total: 0, wins: 0, losses: 0 }
 
-const buildRank = (
-  tier: string | null | undefined,
-  division: string | null | undefined,
-  lp: number | null | undefined,
-  wins: number | null | undefined,
-  losses: number | null | undefined
-) => {
-  const w = wins || 0
-  const l = losses || 0
-  const total = w + l
-  return {
-    tier: tier || 'UNRANKED',
-    rank: division || '',
-    leaguePoints: lp || 0,
-    winRate: total > 0 ? Math.round((w / total) * 100) : 0
-  }
-}
-
 const soloRank = computed(() => {
   const info = currentResult.value?.summonerInfo
-  return buildRank(
-    info?.soloRankTier,
-    info?.soloRankDivision,
-    info?.soloRankLp,
-    info?.soloRankWins,
-    info?.soloRankLosses
-  )
+  return buildSummonerRankPresentation({
+    tier: info?.soloRankTier,
+    division: info?.soloRankDivision,
+    leaguePoints: info?.soloRankLp,
+    wins: info?.soloRankWins,
+    losses: info?.soloRankLosses
+  })
 })
 
 const flexRank = computed(() => {
   const info = currentResult.value?.summonerInfo
-  return buildRank(
-    info?.flexRankTier,
-    info?.flexRankDivision,
-    info?.flexRankLp,
-    info?.flexRankWins,
-    info?.flexRankLosses
-  )
+  return buildSummonerRankPresentation({
+    tier: info?.flexRankTier,
+    division: info?.flexRankDivision,
+    leaguePoints: info?.flexRankLp,
+    wins: info?.flexRankWins,
+    losses: info?.flexRankLosses
+  })
 })
 </script>

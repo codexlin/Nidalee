@@ -87,6 +87,10 @@ export const useDataStore = defineStore('data', () => {
     isMatchHistoryLoading.value = true
   }
 
+  const finishLoadingMatchHistory = () => {
+    isMatchHistoryLoading.value = false
+  }
+
   const setGameVersion = (version: string) => {
     gameVersion.value = version
   }
@@ -134,6 +138,7 @@ export const useDataStore = defineStore('data', () => {
     setMatchStatistics,
     clearMatchHistory,
     startLoadingMatchHistory,
+    finishLoadingMatchHistory,
     setGameVersion,
     clearAccountData,
     clearAllData

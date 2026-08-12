@@ -101,6 +101,7 @@ import { useMatchAnalysis } from '@/shared/composables/game/useMatchAnalysis'
 import { useAiAnalysis } from '@/shared/composables/game/useAiAnalysis'
 import { usePersonalMatchAnalysisStore } from '@/shared/stores/features/personalMatchAnalysisStore'
 import { useDashboardPosterExport } from './composables/useDashboardPosterExport'
+import { buildSummonerRankPresentation } from '@/shared/utils/summonerRankPresentation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
@@ -121,31 +122,25 @@ const { exporting: posterExporting, exportPoster } = useDashboardPosterExport()
 const posterRef = ref<{ getRoot: () => HTMLElement | null } | null>(null)
 
 const soloRank = computed(() => {
-  const tier = summonerInfo.value?.soloRankTier
-  const wins = summonerInfo.value?.soloRankWins || 0
-  const losses = summonerInfo.value?.soloRankLosses || 0
-  const totalGames = wins + losses
-
-  return {
-    tier: tier || 'UNRANKED',
-    rank: summonerInfo.value?.soloRankDivision || '',
-    leaguePoints: summonerInfo.value?.soloRankLp || 0,
-    winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0
-  }
+  const info = summonerInfo.value
+  return buildSummonerRankPresentation({
+    tier: info?.soloRankTier,
+    division: info?.soloRankDivision,
+    leaguePoints: info?.soloRankLp,
+    wins: info?.soloRankWins,
+    losses: info?.soloRankLosses
+  })
 })
 
 const flexRank = computed(() => {
-  const tier = summonerInfo.value?.flexRankTier
-  const wins = summonerInfo.value?.flexRankWins || 0
-  const losses = summonerInfo.value?.flexRankLosses || 0
-  const totalGames = wins + losses
-
-  return {
-    tier: tier || 'UNRANKED',
-    rank: summonerInfo.value?.flexRankDivision || '',
-    leaguePoints: summonerInfo.value?.flexRankLp || 0,
-    winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0
-  }
+  const info = summonerInfo.value
+  return buildSummonerRankPresentation({
+    tier: info?.flexRankTier,
+    division: info?.flexRankDivision,
+    leaguePoints: info?.flexRankLp,
+    wins: info?.flexRankWins,
+    losses: info?.flexRankLosses
+  })
 })
 
 const dataStore = useDataStore()
@@ -199,7 +194,7 @@ const syncFetchPreferences = () => {
 
 const refreshAnalysis = async () => {
   syncFetchPreferences()
-  await analyzeMatches(selectedMatchMode.value, selectedMatchCount.value)
+  await analyzeMatches({ mode: selectedMatchMode.value, count: selectedMatchCount.value })
 }
 
 const handleFetchMatchHistory = async () => {

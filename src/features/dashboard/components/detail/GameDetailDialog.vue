@@ -90,6 +90,7 @@
     :selected-player="selectedPlayer"
     :current-result="currentResult"
     :loading="summonerLoading"
+    @refresh="refreshSummoner"
   />
 </template>
 
@@ -134,6 +135,7 @@ const {
   selectedPlayer,
   currentResult,
   loading: summonerLoading,
+  refresh: refreshSummoner,
   openFromParticipant
 } = useSummonerDetailSheet()
 

@@ -4,7 +4,7 @@ export function useGamePhaseManager() {
   const activityLogger = useActivityLogger()
   const autoFunctionStore = useAutoFunctionStore()
   const { handleAcceptMatch } = useMatchmaking()
-  const { updateSummonerAndMatches } = useSummonerAndMatchUpdater()
+  const { preparePostGameRefresh, refreshMatchesAfterGame } = useSummonerAndMatchUpdater()
   const router = useRouter()
   let acceptTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -33,6 +33,7 @@ export function useGamePhaseManager() {
     switch (nextPhase) {
       case 'None':
         activityLogger.log.info('返回客户端主界面', 'game')
+        void refreshMatchesAfterGame()
         break
       case 'Lobby':
         activityLogger.log.info('进入房间', 'game')
@@ -59,6 +60,9 @@ export function useGamePhaseManager() {
       case 'WaitingForStats':
         activityLogger.log.info('游戏结束', 'game')
         break
+      case 'EndOfGame':
+        void refreshMatchesAfterGame()
+        break
     }
 
     if (previousPhase === 'InProgress' && nextPhase !== 'InProgress') {
@@ -66,7 +70,10 @@ export function useGamePhaseManager() {
       gameStore.clearChampSelect()
       gameStore.updateLobbyInfo(null)
       activityLogger.log.info('游戏已结束，已清理游戏状态', 'game')
-      void updateSummonerAndMatches()
+      preparePostGameRefresh()
+      if (nextPhase === 'EndOfGame' || nextPhase === 'None') {
+        void refreshMatchesAfterGame()
+      }
     }
     console.log('[🎮 GamePhaseManager] ===== 阶段变更处理完成 =====\n')
   }

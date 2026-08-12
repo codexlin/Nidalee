@@ -79,7 +79,7 @@ import { getChampionIconUrl, getQueueName, resolveChampionName } from '@/lib'
 import FloatIconButton from '@/components/common/FloatIconButton.vue'
 import { Calendar, Clock, Timer } from 'lucide-vue-next'
 import { computed } from 'vue'
-import { displayGrade, gradeWatermarkClass, gradeWatermarkSizeClass } from '../utils/matchGrade'
+import { displayGrade, gradeWatermarkClass, gradeWatermarkSizeClass } from '@/shared/utils/matchGrade'
 
 const props = defineProps<{
   games: MatchPerformance[]

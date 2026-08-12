@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { getChampionIconUrl, getSpellMeta, resolveChampionName } from '@/lib'
-import { gradeFromStats, gradeTextClass } from '../../utils/matchGrade'
+import { gradeFromStats, gradeTextClass } from '@/shared/utils/matchGrade'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import ThemedChart from '@/shared/components/charts/ThemedChart.vue'
 import { themeColor, themeColors } from '@/lib/themeColor'

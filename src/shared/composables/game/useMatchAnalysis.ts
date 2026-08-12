@@ -31,6 +31,12 @@ function buildRequest(modeKey: MatchModeKey, count: number): MatchAnalysisReques
   }
 }
 
+interface AnalyzeMatchesOptions {
+  mode?: MatchModeKey
+  count?: number
+  background?: boolean
+}
+
 /**
  * 统一个人战绩分析：Dashboard / 自动刷新只调用一次 `analyze_matches`
  *
@@ -46,17 +52,15 @@ export function useMatchAnalysis() {
   /**
    * 单次分析：写入 personalMatchAnalysisStore + dataStore.matchStatistics
    */
-  const analyzeMatches = async (
-    modeKey?: MatchModeKey,
-    countOverride?: number
-  ): Promise<MatchAnalysisResult | null> => {
-    const mode = modeKey ?? settingsStore.lastMatchMode
-    const count = countOverride ?? settingsStore.lastMatchCount
+  const analyzeMatches = async (options: AnalyzeMatchesOptions = {}): Promise<MatchAnalysisResult | null> => {
+    const { mode = settingsStore.lastMatchMode, count = settingsStore.lastMatchCount, background = false } = options
     const seq = ++analyzeSeq
 
-    analysisStore.setLoading(true)
-    dataStore.startLoadingMatchHistory()
-    analysisStore.setError(null)
+    if (!background) {
+      analysisStore.setLoading(true)
+      dataStore.startLoadingMatchHistory()
+      analysisStore.setError(null)
+    }
 
     try {
       let summoner = dataStore.summonerInfo
@@ -79,7 +83,9 @@ export function useMatchAnalysis() {
 
       analysisStore.setResult(result, puuid)
       dataStore.setMatchStatistics(result.overallStats)
-      activityStore.addActivity('success', `战绩分析完成（${mode} / ${result.displayGames} 场基础统计）`, 'data')
+      if (!background) {
+        activityStore.addActivity('success', `战绩分析完成（${mode} / ${result.displayGames} 场基础统计）`, 'data')
+      }
       return result
     } catch (e: unknown) {
       if (seq !== analyzeSeq) {
@@ -87,14 +93,17 @@ export function useMatchAnalysis() {
       }
       const message = e instanceof Error ? e.message : String(e)
       console.error('[useMatchAnalysis] analyze_matches 失败:', e)
-      analysisStore.setError(message)
-      analysisStore.clear()
-      dataStore.clearMatchHistory()
-      activityStore.addActivity('error', '战绩分析失败', 'error')
+      if (!background) {
+        analysisStore.setError(message)
+        analysisStore.clear()
+        dataStore.clearMatchHistory()
+        activityStore.addActivity('error', '战绩分析失败', 'error')
+      }
       return null
     } finally {
       if (seq === analyzeSeq) {
         analysisStore.setLoading(false)
+        dataStore.finishLoadingMatchHistory()
       }
     }
   }

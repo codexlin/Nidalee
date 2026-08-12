@@ -1,11 +1,16 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { MatchModeKey } from '@/common/queueCatalog'
 import { cancelPendingMatchAnalysis, useMatchAnalysis } from '@/shared/composables/game/useMatchAnalysis'
+import { getLatestMatchId, runPostGameRefresh } from '@/shared/composables/game/postGameMatchRefresh'
 
 let updateGeneration = 0
 let activeAccountInitialization: { generation: number; promise: Promise<void> } | null = null
 let pendingReadySummoner: SummonerInfo | null = null
+let postGameRefreshGeneration = 0
+let pendingPostGameBaseline: number | null | undefined
+let activePostGameRefresh: { generation: number; promise: Promise<void> } | null = null
 const ACCOUNT_SERVICES_READINESS_DELAY_MS = 350
+const SUMMONER_READ_RETRY_DELAYS_MS = [0, 150, 250] as const
 
 function waitForAccountServices(): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ACCOUNT_SERVICES_READINESS_DELAY_MS))
@@ -31,24 +36,36 @@ export function useSummonerAndMatchUpdater() {
     generation: number,
     readyFallback: SummonerInfo | null = null
   ): Promise<SummonerInfo | null> => {
-    try {
-      dataStore.startLoadingSummoner()
-      const summonerInfo = normalizeSummoner(await invoke<SummonerInfo>('get_current_summoner'))
-      if (generation === updateGeneration && summonerInfo?.puuid) {
-        dataStore.setSummonerInfo(summonerInfo)
-        activityStore.addActivity('info', '召唤师信息已更新', 'data')
-        return summonerInfo
-      }
-    } catch (error) {
+    dataStore.startLoadingSummoner()
+    let lastError: unknown
+
+    for (const delayMs of SUMMONER_READ_RETRY_DELAYS_MS) {
       if (generation !== updateGeneration) return null
-      console.error('[Updater] 获取召唤师信息失败:', error)
-      const fallback = readyFallback ?? pendingReadySummoner
-      if (fallback?.puuid) {
-        dataStore.setSummonerInfo(fallback)
-        return fallback
+      if (delayMs > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, delayMs))
+        if (generation !== updateGeneration) return null
       }
-      dataStore.clearSummonerInfo()
+
+      try {
+        const summonerInfo = normalizeSummoner(await invoke<SummonerInfo>('get_current_summoner'))
+        if (generation === updateGeneration && summonerInfo?.puuid) {
+          dataStore.setSummonerInfo(summonerInfo)
+          activityStore.addActivity('info', '召唤师信息已更新', 'data')
+          return summonerInfo
+        }
+      } catch (error) {
+        lastError = error
+      }
     }
+
+    if (generation !== updateGeneration) return null
+    console.error('[Updater] 获取召唤师信息失败:', lastError)
+    const fallback = readyFallback ?? pendingReadySummoner
+    if (fallback?.puuid) {
+      dataStore.setSummonerInfo(fallback)
+      return fallback
+    }
+    dataStore.clearSummonerInfo()
     return null
   }
 
@@ -61,8 +78,54 @@ export function useSummonerAndMatchUpdater() {
    * 更新战绩信息（单次 analyze_matches）
    * 无参时与仪表盘共用 settingsStore.lastMatchMode / lastMatchCount
    */
+  const cancelPostGameRefresh = () => {
+    postGameRefreshGeneration += 1
+    pendingPostGameBaseline = undefined
+    activePostGameRefresh = null
+  }
+
   const updateMatchHistory = async (mode?: MatchModeKey, countOverride?: number) => {
-    await analyzeMatches(mode, countOverride)
+    cancelPostGameRefresh()
+    return analyzeMatches({ mode, count: countOverride })
+  }
+
+  const preparePostGameRefresh = () => {
+    postGameRefreshGeneration += 1
+    pendingPostGameBaseline = getLatestMatchId(dataStore.matchStatistics)
+  }
+
+  const refreshMatchesAfterGame = (): Promise<void> => {
+    if (pendingPostGameBaseline === undefined) return Promise.resolve()
+
+    const generation = postGameRefreshGeneration
+    if (activePostGameRefresh?.generation === generation) {
+      return activePostGameRefresh.promise
+    }
+
+    const baselineGameId = pendingPostGameBaseline
+    const promise = (async () => {
+      const outcome = await runPostGameRefresh({
+        baselineGameId,
+        refresh: () => analyzeMatches({ background: true }),
+        wait: (delayMs) => new Promise((resolve) => window.setTimeout(resolve, delayMs)),
+        isCancelled: () => generation !== postGameRefreshGeneration
+      })
+
+      if (generation === postGameRefreshGeneration) {
+        pendingPostGameBaseline = undefined
+        if (outcome === 'exhausted') {
+          console.warn('[Updater] 对局结束后 LCU 战绩仍未出现新 gameId，已停止有限重试')
+        }
+      }
+    })()
+
+    activePostGameRefresh = { generation, promise }
+    void promise.finally(() => {
+      if (activePostGameRefresh?.generation === generation) {
+        activePostGameRefresh = null
+      }
+    })
+    return promise
   }
 
   const updateSummonerAndMatches = (readySummoner?: SummonerInfo): Promise<void> => {
@@ -73,7 +136,6 @@ export function useSummonerAndMatchUpdater() {
     // Connected and current-summoner readiness commonly arrive within the same second. They
     // describe one account initialization and must join the same request chain.
     if (activeAccountInitialization) {
-      console.log('[Updater] 合并重复的账号初始化请求')
       return activeAccountInitialization.promise
     }
 
@@ -111,6 +173,7 @@ export function useSummonerAndMatchUpdater() {
 
   const cancelPendingUpdates = () => {
     updateGeneration += 1
+    cancelPostGameRefresh()
     activeAccountInitialization = null
     pendingReadySummoner = null
     cancelPendingMatchAnalysis()
@@ -120,6 +183,8 @@ export function useSummonerAndMatchUpdater() {
     updateSummonerAndMatches,
     updateSummonerInfo,
     updateMatchHistory,
+    preparePostGameRefresh,
+    refreshMatchesAfterGame,
     cancelPendingUpdates
   }
 }
