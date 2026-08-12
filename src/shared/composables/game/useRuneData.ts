@@ -114,34 +114,6 @@ export function useRuneData() {
     return getLolGameDataAssetUrl(iconPath)
   }
 
-  const validateRuneConfig = (
-    primaryStyleId: number,
-    subStyleId: number,
-    selectedPerkIds: number[]
-  ): { valid: boolean; error?: string } => {
-    const primaryStyle = getPerkStyleById(primaryStyleId)
-    const subStyle = getPerkStyleById(subStyleId)
-
-    if (!primaryStyle) {
-      return { valid: false, error: `主系符文 ${primaryStyleId} 不存在` }
-    }
-    if (!subStyle) {
-      return { valid: false, error: `副系符文 ${subStyleId} 不存在` }
-    }
-    if (!primaryStyle.allowedSubStyles.includes(subStyleId)) {
-      return { valid: false, error: `副系 ${subStyle.name} 不能与主系 ${primaryStyle.name} 搭配` }
-    }
-    if (selectedPerkIds.length !== 9) {
-      return { valid: false, error: `符文数量错误，应该是 9 个，当前是 ${selectedPerkIds.length} 个` }
-    }
-    for (const perkId of selectedPerkIds) {
-      if (!getPerkById(perkId)) {
-        return { valid: false, error: `符文 ${perkId} 不存在` }
-      }
-    }
-    return { valid: true }
-  }
-
   const clearCache = () => {
     clearVersionedCache(CACHE_KEY_STYLES)
   }
@@ -156,7 +128,6 @@ export function useRuneData() {
     getPerkById,
     getPerkIconUrl,
     getStyleIconUrl,
-    validateRuneConfig,
     clearCache
   }
 }

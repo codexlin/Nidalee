@@ -70,11 +70,10 @@ pub fn run() {
             infrastructure::data_services::summoner::commands::set_summoner_background_skin,
             // 召唤师符文
             infrastructure::champion_selection::perks::commands::get_current_rune_page,
-            infrastructure::champion_selection::perks::commands::apply_custom_runes,
+            infrastructure::champion_selection::perks::commands::apply_rune_selection,
             // OPGG 相关
             infrastructure::data_services::external::opgg::commands::get_opgg_champion_build,
             infrastructure::data_services::external::opgg::commands::get_opgg_tier_list,
-            infrastructure::data_services::external::opgg::commands::apply_opgg_runes,
             // 海克斯（dtodo aramgg）
             infrastructure::data_services::external::hextech::commands::get_hextech_tier_list,
             infrastructure::data_services::external::hextech::commands::get_hextech_champion_detail,

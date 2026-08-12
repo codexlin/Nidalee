@@ -19,8 +19,8 @@ export function useApp() {
   const settingsStore = useSettingsStore()
   const appInit = useAppInitialization()
   const appEvents = useAppEvents()
-  const userRuneStore = useUserRuneStore()
-  const autoRune = useAutoRune()
+  const buildPresetStore = useBuildPresetStore()
+  const autoBuild = useAutoBuild()
   const { isConnected, connectionMessage, checkConnection, hasAuth } = useConnection()
   const isDark = computed(() => settingsStore.isDark)
   let instanceGeneration: number | null = null
@@ -45,26 +45,29 @@ export function useApp() {
         throw new Error('Tauri 事件监听器注册未完成')
       }
 
-      if (!userRuneStore.isLoaded) {
-        await userRuneStore.loadFromStore()
+      if (!buildPresetStore.isLoaded) {
+        try {
+          await buildPresetStore.loadFromStore()
+        } catch (error) {
+          console.error('[App] 构建方案加载失败，自动构建保持关闭:', error)
+        }
       }
       if (generation !== activeLifecycleGeneration) return
 
-      autoRune.startAutoRuneWatch()
+      autoBuild.startAutoBuildWatch()
       await enqueueLcuWsCommand('start_lcu_ws')
       if (generation !== activeLifecycleGeneration) {
-        autoRune.stopAutoRuneWatch()
+        autoBuild.stopAutoBuildWatch()
         return
       }
 
       await appInit.initializeApp()
       if (generation !== activeLifecycleGeneration) {
-        autoRune.stopAutoRuneWatch()
+        autoBuild.stopAutoBuildWatch()
         return
       }
-      console.log('[App] 应用初始化和事件监听完成')
     } catch (error) {
-      autoRune.stopAutoRuneWatch()
+      autoBuild.stopAutoBuildWatch()
       if (generation !== activeLifecycleGeneration) return
       appEvents.stopListening()
       appInit.cleanup()
@@ -74,11 +77,10 @@ export function useApp() {
   })
 
   onUnmounted(() => {
-    autoRune.stopAutoRuneWatch()
+    autoBuild.stopAutoBuildWatch()
     if (instanceGeneration === null || activeLifecycleGeneration !== instanceGeneration) return
 
     activeLifecycleGeneration = null
-    console.log('[App] 组件卸载，清理资源')
     appEvents.stopListening()
     appInit.cleanup()
     void stopLcuWsBestEffort('app-unmounted')
