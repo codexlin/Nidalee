@@ -4,7 +4,7 @@
       <div class="space-y-0.5 border-b border-border/50 px-4 py-4 sm:px-5">
         <h2 class="flex items-center gap-2 text-lg font-medium leading-tight">
           <Zap class="size-4 text-muted-foreground" />
-          简单模式
+          自动应用
         </h2>
         <p class="text-xs text-muted-foreground">选人阶段自动应用符文，支持 OP.GG 与自定义配置</p>
       </div>
@@ -64,10 +64,9 @@
                 <SelectValue placeholder="选择段位" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">全部段位</SelectItem>
-                <SelectItem value="PLATINUM+">铂金以上</SelectItem>
-                <SelectItem value="DIAMOND+">钻石以上（推荐）</SelectItem>
-                <SelectItem value="MASTER+">大师以上</SelectItem>
+                <SelectItem v-for="tier in tierOptions" :key="tier.value" :value="tier.value">
+                  {{ tier.label }}{{ tier.value === 'diamond_plus' ? '（推荐）' : '' }}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -89,7 +88,7 @@
           <div class="min-w-0 space-y-0.5">
             <div class="text-sm font-medium text-primary">自动符文配置已启用</div>
             <div class="text-xs text-muted-foreground">
-              当前策略：{{ strategyLabel }} · OP.GG 段位：{{ autoApply.opggTier }}
+              当前策略：{{ strategyLabel }} · OP.GG 段位：{{ opggTierLabel }}
             </div>
           </div>
         </div>
@@ -101,7 +100,7 @@
         <div class="min-w-0 space-y-0.5">
           <h2 class="flex items-center gap-2 text-lg font-medium leading-tight">
             <Settings class="size-4 text-muted-foreground" />
-            复杂模式
+            自定义方案
           </h2>
           <p class="text-xs text-muted-foreground">为每个英雄和位置创建专属符文配置</p>
         </div>
@@ -121,6 +120,7 @@ import { useUserRuneStore } from '@/shared/stores/features/userRuneStore'
 import { Zap, Sparkles, Globe, User, Settings, CheckCircle2 } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
 import RuneConfigList from './RuneConfigList.vue'
+import { AUTO_RUNE_OPGG_TIER_OPTIONS, getOpggTierLabel, isOpggTier } from '@/shared/utils/opggTier'
 
 onMounted(async () => {
   if (!useUserRuneStore().isLoaded) {
@@ -131,6 +131,8 @@ onMounted(async () => {
 const userRuneStore = useUserRuneStore()
 const autoApply = computed(() => userRuneStore.autoApply)
 const configCount = computed(() => userRuneStore.configCount)
+const tierOptions = AUTO_RUNE_OPGG_TIER_OPTIONS
+const opggTierLabel = computed(() => getOpggTierLabel(autoApply.value.opggTier))
 
 const strategyLabel = computed(() => {
   const labels = {
@@ -151,7 +153,7 @@ const handleStrategyChange = async (strategy: AcceptableValue) => {
 }
 
 const handleTierChange = async (tier: AcceptableValue) => {
-  if (typeof tier !== 'string') return
+  if (!isOpggTier(tier)) return
   await userRuneStore.updateAutoApply({ opggTier: tier })
 }
 

@@ -4,6 +4,8 @@ import { useUserRuneStore, type RuneConfig } from '@/shared/stores/features/user
 import { useGameStore } from '@/shared/stores/features/gameStore'
 import { useMatchAnalysisStore } from '@/features/match-analysis/store'
 import { getChampionName } from '@/lib'
+import { getOpggTierLabel } from '@/shared/utils/opggTier'
+import { toast } from 'vue-sonner'
 
 const AUTO_RUNE_DELAY_MS = 1500
 
@@ -63,12 +65,12 @@ export function useAutoRune() {
   /**
    * 应用用户自定义符文
    */
-  const applyUserConfig = async (config: RuneConfig, _championId: number, championName: string): Promise<void> => {
+  const applyUserConfig = async (config: RuneConfig): Promise<void> => {
     console.log('[AutoRune] 应用用户自定义符文:', config)
 
     // 调用后端应用自定义符文
     await invoke<string>('apply_custom_runes', {
-      championName: championName,
+      configName: config.name,
       primaryStyleId: config.primaryStyleId,
       subStyleId: config.subStyleId,
       selectedPerkIds: config.selectedPerkIds
@@ -96,7 +98,7 @@ export function useAutoRune() {
       buildIndex: 0 // 应用第一个（最佳）符文配置
     })
 
-    lastSuccess.value = `✨ 自动应用符文成功！\n🎯 英雄：${championName}\n📍 位置：${position || '通用'}\n🔮 来源：OP.GG (${autoApply.opggTier})`
+    lastSuccess.value = `${championName} · ${position || '通用'} · OP.GG ${getOpggTierLabel(autoApply.opggTier)}`
   }
 
   /**
@@ -146,12 +148,12 @@ export function useAutoRune() {
           console.log('[AutoRune] 找到用户自定义配置:', userConfig)
 
           try {
-            await applyUserConfig(userConfig, championId, championName)
+            await applyUserConfig(userConfig)
 
             // 增加使用次数
             await userRuneStore.incrementUsageCount(userConfig.id)
 
-            lastSuccess.value = `✨ 自动应用符文成功！\n🎯 英雄：${championName}\n📍 位置：${position || '通用'}\n🔮 来源：自定义 (${userConfig.name})`
+            lastSuccess.value = `${championName} · ${position || '通用'} · 自定义「${userConfig.name}」`
             applied = true
           } catch (err) {
             console.warn('[AutoRune] 应用用户自定义符文失败，将回退到 OP.GG:', err)
@@ -177,8 +179,7 @@ export function useAutoRune() {
 
       // 显示 Toast（如果启用）
       if (userRuneStore.autoApply.showToast && lastSuccess.value) {
-        // TODO: 集成 Toast 通知组件
-        console.log('[AutoRune] 应用成功:', lastSuccess.value)
+        toast.success('自动符文已应用', { description: lastSuccess.value, duration: 4000 })
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : '应用符文失败'
@@ -187,8 +188,7 @@ export function useAutoRune() {
 
       // 显示错误 Toast
       if (userRuneStore.autoApply.showToast) {
-        // TODO: 集成 Toast 通知组件
-        console.error('[AutoRune] 应用失败:', lastError.value)
+        toast.error('自动符文应用失败', { description: lastError.value, duration: 5000 })
       }
     } finally {
       isApplying.value = false

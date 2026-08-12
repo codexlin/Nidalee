@@ -1,18 +1,18 @@
 <template>
-  <div class="space-y-4">
+  <RuneEditorPanel
+    v-if="showEditor"
+    :config="editingConfig"
+    :saving="isSaving"
+    @close="handleCloseEditor"
+    @save="handleSaveConfig"
+  />
+
+  <div v-else class="space-y-4">
     <!-- 操作按钮 -->
     <div class="flex items-center gap-2">
       <Button @click="handleAddConfig" class="flex items-center gap-2 bg-primary hover:bg-primary/90 shadow-md">
         <Plus class="h-4 w-4" />
         新增配置
-      </Button>
-      <Button
-        @click="handleImportFromOpgg"
-        variant="outline"
-        class="flex items-center gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/50"
-      >
-        <Download class="h-4 w-4" />
-        从 OP.GG 导入
       </Button>
       <Button
         v-if="configCount > 0"
@@ -140,34 +140,14 @@
         <p class="text-xs text-muted-foreground mt-1">尝试调整搜索条件或筛选器</p>
       </div>
     </div>
-
-    <!-- 符文编辑器 Dialog -->
-    <RuneEditorDialog
-      v-if="showEditor"
-      :open="showEditor"
-      :config="editingConfig"
-      @close="handleCloseEditor"
-      @save="handleSaveConfig"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { useUserRuneStore, type RuneConfig } from '@/shared/stores/features/userRuneStore'
-import {
-  Plus,
-  Download,
-  Upload,
-  Search,
-  User,
-  MapPin,
-  Sparkles,
-  TrendingUp,
-  Star,
-  Pencil,
-  Trash2
-} from 'lucide-vue-next'
-import RuneEditorDialog from './RuneEditorDialog.vue'
+import { toast } from 'vue-sonner'
+import { Plus, Upload, Search, User, MapPin, Sparkles, TrendingUp, Star, Pencil, Trash2 } from 'lucide-vue-next'
+import RuneEditorPanel from './RuneEditorPanel.vue'
 
 const userRuneStore = useUserRuneStore()
 
@@ -176,6 +156,7 @@ const searchQuery = ref('')
 const positionFilter = ref('all')
 const showEditor = ref(false)
 const editingConfig = ref<RuneConfig | null>(null)
+const isSaving = ref(false)
 
 // 计算属性
 const configCount = computed(() => userRuneStore.configCount)
@@ -243,19 +224,28 @@ const handleEditConfig = (config: RuneConfig) => {
 }
 
 const handleCloseEditor = () => {
+  if (isSaving.value) return
   showEditor.value = false
   editingConfig.value = null
 }
 
 const handleSaveConfig = async (config: RuneConfig) => {
-  if (editingConfig.value) {
-    // 更新现有配置
-    await userRuneStore.updateConfig(editingConfig.value.id, config)
-  } else {
-    // 添加新配置
-    await userRuneStore.addConfig(config)
+  if (isSaving.value) return
+  isSaving.value = true
+  try {
+    if (editingConfig.value) {
+      await userRuneStore.updateConfig(editingConfig.value.id, config)
+    } else {
+      await userRuneStore.addConfig(config)
+    }
+    toast.success(editingConfig.value ? '符文配置已更新' : '符文配置已创建')
+    showEditor.value = false
+    editingConfig.value = null
+  } catch (error) {
+    toast.error(`保存失败：${error instanceof Error ? error.message : String(error)}`)
+  } finally {
+    isSaving.value = false
   }
-  handleCloseEditor()
 }
 
 const handleSetDefault = async (id: string) => {
@@ -277,11 +267,6 @@ const handleDeleteConfig = async (id: string) => {
   }
 }
 
-const handleImportFromOpgg = () => {
-  // TODO: 实现从 OP.GG 导入的功能
-  alert('从 OP.GG 导入功能正在开发中...')
-}
-
 const handleExportConfigs = () => {
   try {
     const json = userRuneStore.exportConfigs()
@@ -294,7 +279,7 @@ const handleExportConfigs = () => {
     URL.revokeObjectURL(url)
   } catch (error) {
     console.error('导出配置失败:', error)
-    alert('导出配置失败')
+    toast.error('导出配置失败')
   }
 }
 </script>

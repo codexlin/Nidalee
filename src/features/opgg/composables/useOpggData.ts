@@ -2,6 +2,7 @@ import { computed, ref, type MaybeRefOrGetter, toValue } from 'vue'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { fetchOpggChampionBuild, fetchOpggTierList } from '@/lib/dataApi'
 import { OPGG_MODES, buildRequestPosition } from '../types/modes'
+import { OPGG_TIER_OPTIONS } from '@/shared/utils/opggTier'
 
 export interface OpggConfig {
   region: string
@@ -18,13 +19,7 @@ export function opggTierListQueryKey(region: string, mode: string, tier: string)
   return ['opgg', 'tierList', region, mode, tier] as const
 }
 
-export function opggBuildQueryKey(
-  region: string,
-  mode: string,
-  tier: string,
-  championId: number,
-  position: string
-) {
+export function opggBuildQueryKey(region: string, mode: string, tier: string, championId: number, position: string) {
   return ['opgg', 'build', region, mode, tier, championId, position] as const
 }
 
@@ -75,22 +70,7 @@ export function useOpggData(options?: {
 
   const modes = OPGG_MODES.map(({ value, label }) => ({ value, label }))
 
-  const tiers = [
-    { value: 'emerald_plus', label: '翡翠+' },
-    { value: 'platinum_plus', label: '铂金+' },
-    { value: 'diamond_plus', label: '钻石+' },
-    { value: 'all', label: '全部段位' },
-    { value: 'iron', label: '黑铁' },
-    { value: 'bronze', label: '青铜' },
-    { value: 'silver', label: '白银' },
-    { value: 'gold', label: '黄金' },
-    { value: 'platinum', label: '铂金' },
-    { value: 'emerald', label: '翡翠' },
-    { value: 'diamond', label: '钻石' },
-    { value: 'master', label: '大师' },
-    { value: 'grandmaster', label: '宗师' },
-    { value: 'challenger', label: '王者' }
-  ]
+  const tiers = [...OPGG_TIER_OPTIONS]
 
   const positions = [
     { value: 'TOP', label: '上单' },
@@ -100,14 +80,10 @@ export function useOpggData(options?: {
     { value: 'SUPPORT', label: '辅助' }
   ]
 
-  const buildPositionKey = computed(
-    () => buildRequestPosition(config.value.mode, config.value.position) ?? ''
-  )
+  const buildPositionKey = computed(() => buildRequestPosition(config.value.mode, config.value.position) ?? '')
 
   const tierListQuery = useQuery({
-    queryKey: computed(() =>
-      opggTierListQueryKey(config.value.region, config.value.mode, config.value.tier)
-    ),
+    queryKey: computed(() => opggTierListQueryKey(config.value.region, config.value.mode, config.value.tier)),
     queryFn: () => loadOpggTierList(config.value.region, config.value.mode, config.value.tier),
     staleTime: STALE_MS,
     gcTime: GC_MS,
@@ -129,9 +105,7 @@ export function useOpggData(options?: {
     staleTime: STALE_MS,
     gcTime: GC_MS,
     refetchOnWindowFocus: false,
-    enabled: computed(
-      () => (toValue(options?.buildEnabled) ?? false) && config.value.championId > 0
-    )
+    enabled: computed(() => (toValue(options?.buildEnabled) ?? false) && config.value.championId > 0)
   })
 
   const loading = computed(

@@ -2,6 +2,7 @@ import { computed, readonly, ref, watch } from 'vue'
 import { readVersionedCache, writeVersionedCache, clearVersionedCache } from '@/shared/utils/versionedCache'
 import { useCommunityDragonPerksQuery, useGameVersion } from '@/shared/composables/data/useVersionedData'
 import type { CommunityDragonPerk } from '@/lib/dataApi'
+import { getLolGameDataAssetUrl, getPerkImageUrlFromIconPath } from '@/lib'
 
 export interface PerkStyle {
   id: number
@@ -106,13 +107,11 @@ export function useRuneData() {
   const getPerkById = (perkId: number): Perk | undefined => perks.value.find((p) => p.id === perkId)
 
   const getPerkIconUrl = (iconPath: string): string => {
-    if (iconPath.startsWith('http')) return iconPath
-    return `${CD_BASE_URL}${iconPath}`
+    return getPerkImageUrlFromIconPath(iconPath)
   }
 
   const getStyleIconUrl = (iconPath: string): string => {
-    if (iconPath.startsWith('http')) return iconPath
-    return `${CD_BASE_URL}${iconPath}`
+    return getLolGameDataAssetUrl(iconPath)
   }
 
   const validateRuneConfig = (

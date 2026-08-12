@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { load } from '@tauri-apps/plugin-store'
+import { isOpggTier, type OpggTier } from '@/shared/utils/opggTier'
 
 // 符文配置接口
 export interface RuneConfig {
@@ -30,9 +31,20 @@ export interface RuneConfig {
 export interface AutoApplyConfig {
   enabled: boolean // 是否启用自动应用
   strategy: 'auto' | 'opgg' | 'custom' // 优先级策略
-  opggTier: string // OP.GG 段位参考 (DIAMOND+, PLATINUM+, etc.)
+  opggTier: OpggTier // OP.GG API 使用的规范段位值
   showToast: boolean // 是否显示应用成功提示
 }
+
+type PersistedAutoApplyConfig = Partial<Omit<AutoApplyConfig, 'opggTier'>> & {
+  opggTier?: unknown
+}
+
+const createDefaultAutoApply = (): AutoApplyConfig => ({
+  enabled: false,
+  strategy: 'auto',
+  opggTier: 'diamond_plus',
+  showToast: true
+})
 
 // Store 数据结构
 interface StoreData {
@@ -46,12 +58,7 @@ export const useUserRuneStore = defineStore('userRune', () => {
 
   // 状态
   const configs = ref<RuneConfig[]>([])
-  const autoApply = ref<AutoApplyConfig>({
-    enabled: false,
-    strategy: 'auto',
-    opggTier: 'DIAMOND+',
-    showToast: true
-  })
+  const autoApply = ref<AutoApplyConfig>(createDefaultAutoApply())
 
   const isLoaded = ref(false)
 
@@ -67,14 +74,26 @@ export const useUserRuneStore = defineStore('userRune', () => {
       }
 
       const storedConfigs = await tauriStore.get<RuneConfig[]>('configs')
-      const storedAutoApply = await tauriStore.get<AutoApplyConfig>('autoApply')
+      const storedAutoApply = await tauriStore.get<PersistedAutoApplyConfig>('autoApply')
 
       if (storedConfigs) {
         configs.value = storedConfigs
       }
 
       if (storedAutoApply) {
-        autoApply.value = storedAutoApply
+        const opggTier = isOpggTier(storedAutoApply.opggTier)
+          ? storedAutoApply.opggTier
+          : createDefaultAutoApply().opggTier
+        autoApply.value = {
+          ...createDefaultAutoApply(),
+          ...storedAutoApply,
+          opggTier
+        }
+
+        if (storedAutoApply.opggTier !== opggTier) {
+          await tauriStore.set('autoApply', autoApply.value)
+          await tauriStore.save()
+        }
       }
 
       isLoaded.value = true
@@ -185,10 +204,10 @@ export const useUserRuneStore = defineStore('userRune', () => {
    * 优先级：
    * 1. 英雄+位置专属 + 默认
    * 2. 英雄+位置专属
-   * 3. 位置通用 + 默认
-   * 4. 位置通用
-   * 5. 英雄通用 + 默认
-   * 6. 英雄通用
+   * 3. 英雄通用 + 默认
+   * 4. 英雄通用
+   * 5. 位置通用 + 默认
+   * 6. 位置通用
    * 7. null (无匹配，需要回退到 OP.GG)
    */
   const findBestMatch = (championId: number, position?: string): RuneConfig | null => {
@@ -200,25 +219,25 @@ export const useUserRuneStore = defineStore('userRune', () => {
     match = configs.value.find((c) => c.championId === championId && c.position === position)
     if (match) return match
 
-    // 3. 位置通用 + 默认
+    // 3. 英雄通用 + 默认
+    match = configs.value.find((c) => c.championId === championId && c.position === null && c.isDefault)
+    if (match) return match
+
+    // 4. 英雄通用
+    match = configs.value.find((c) => c.championId === championId && c.position === null)
+    if (match) return match
+
+    // 5. 位置通用 + 默认
     if (position) {
       match = configs.value.find((c) => c.championId === null && c.position === position && c.isDefault)
       if (match) return match
     }
 
-    // 4. 位置通用
+    // 6. 位置通用
     if (position) {
       match = configs.value.find((c) => c.championId === null && c.position === position)
       if (match) return match
     }
-
-    // 5. 英雄通用 + 默认
-    match = configs.value.find((c) => c.championId === championId && c.position === null && c.isDefault)
-    if (match) return match
-
-    // 6. 英雄通用
-    match = configs.value.find((c) => c.championId === championId && c.position === null)
-    if (match) return match
 
     // 7. 无匹配
     return null
@@ -288,7 +307,11 @@ export const useUserRuneStore = defineStore('userRune', () => {
       }
 
       if (data.autoApply) {
-        autoApply.value = data.autoApply
+        autoApply.value = {
+          ...createDefaultAutoApply(),
+          ...data.autoApply,
+          opggTier: isOpggTier(data.autoApply.opggTier) ? data.autoApply.opggTier : createDefaultAutoApply().opggTier
+        }
       }
 
       await saveToStore()

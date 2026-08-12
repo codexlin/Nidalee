@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 pb-6">
+  <div class="flex w-full flex-col gap-4 pb-6">
     <Card class="shrink-0 gap-0 py-0">
       <CardContent class="flex flex-wrap items-start justify-between gap-3 p-4">
         <div class="min-w-0">
@@ -12,11 +12,7 @@
             :key="tab.id"
             type="button"
             class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
-            :class="
-              activeTab === tab.id
-                ? 'bg-primary/15 text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            "
+            :class="activeTab === tab.id ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'"
             @click="selectTab(tab.id)"
           >
             <component :is="tab.icon" class="size-3.5 shrink-0" />
@@ -27,7 +23,7 @@
     </Card>
 
     <!-- 外观设置 -->
-    <div v-if="activeTab === 'appearance'" class="space-y-4">
+    <div v-if="activeTab === 'appearance'" class="w-full space-y-4">
       <Card class="gap-0 py-0">
         <CardContent class="space-y-6 px-4 py-4 sm:px-5">
           <ThemeCustomizer />
@@ -42,7 +38,7 @@
     </div>
 
     <!-- 游戏设置 -->
-    <div v-else-if="activeTab === 'game'" class="space-y-4">
+    <div v-else-if="activeTab === 'game'" class="w-full space-y-4">
       <Card class="gap-0 overflow-hidden py-0">
         <div class="grid gap-0 border-b border-border/50 lg:grid-cols-2 lg:divide-x lg:divide-border/50">
           <section class="space-y-3 px-4 py-4 sm:px-5">
@@ -82,7 +78,7 @@
     </div>
 
     <!-- 辅助功能 -->
-    <div v-else-if="activeTab === 'automation'" class="space-y-4">
+    <div v-else-if="activeTab === 'automation'" class="w-full space-y-4">
       <Card class="gap-0 py-0">
         <CardContent class="flex flex-wrap items-start justify-between gap-3 p-4">
           <div class="min-w-0 space-y-0.5">
@@ -93,13 +89,7 @@
             <span class="rounded-full surface-inset px-2.5 py-1 text-xs tabular-nums text-muted-foreground">
               已启用 {{ enabledFunctionsCount }} 项
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              class="h-8"
-              :disabled="!isAnyFunctionEnabled"
-              @click="handleDisableAll"
-            >
+            <Button variant="outline" size="sm" class="h-8" :disabled="!isAnyFunctionEnabled" @click="handleDisableAll">
               <X class="size-3.5" />
               全部关闭
             </Button>
@@ -140,7 +130,7 @@
     </div>
 
     <!-- 快捷键设置 -->
-    <div v-else-if="activeTab === 'shortcuts'" class="space-y-4">
+    <div v-else-if="activeTab === 'shortcuts'" class="w-full space-y-4">
       <Card class="gap-0 py-0">
         <CardHeader class="gap-1 px-4 py-3 sm:px-5">
           <CardTitle class="text-lg font-medium leading-tight">快捷键设置</CardTitle>
@@ -161,17 +151,7 @@ import SummonerNoteEditor from '@/features/game-helper/components/SummonerNoteEd
 import SummonerRankEditor from '@/features/game-helper/components/SummonerRankEditor.vue'
 import ProfileBackgroundManager from '@/features/game-helper/components/ProfileBackgroundManager.vue'
 import RuneSettingsTab from './components/rune/RuneSettingsTab.vue'
-import {
-  Palette,
-  Gamepad2,
-  Zap,
-  Keyboard,
-  X,
-  Sparkles,
-  MessageSquareText,
-  Trophy,
-  Users
-} from 'lucide-vue-next'
+import { Palette, Gamepad2, Zap, Keyboard, X, Sparkles, MessageSquareText, Trophy, Users } from 'lucide-vue-next'
 
 const autoFunctionStore = useAutoFunctionStore()
 const activityLogger = useActivityLogger()
@@ -199,9 +179,7 @@ type TabId = (typeof tabs)[number]['id']
 const route = useRoute()
 const router = useRouter()
 const tabIds = new Set<string>(tabs.map((t) => t.id))
-const activeTab = ref<TabId>(
-  tabIds.has(String(route.query.tab)) ? (route.query.tab as TabId) : 'appearance'
-)
+const activeTab = ref<TabId>(tabIds.has(String(route.query.tab)) ? (route.query.tab as TabId) : 'appearance')
 
 const selectTab = (id: TabId) => {
   activeTab.value = id
