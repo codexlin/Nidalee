@@ -755,7 +755,7 @@ fn test_match_list_url_is_assembled_only_in_fetcher() {
         BTreeSet::from([
             unified_entry,
             // 分页探针命令刻意变化 begIndex 以验证 LCU 是否忽略它，无法走固定 begIndex=0 的统一入口
-            "src/common/commands/data_collection.rs".to_string(),
+            "src/common/commands/dev_tools/data_collection.rs".to_string(),
         ]),
         "除分页探针外，不允许出现第二处战绩列表 URL 拼装"
     );

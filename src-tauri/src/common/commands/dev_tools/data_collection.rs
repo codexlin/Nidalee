@@ -1,6 +1,6 @@
 use crate::http_client;
 use crate::infrastructure::match_management::matches::service;
-/// 数据收集测试命令
+/// 开发期数据收集命令
 ///
 /// 用于生成分析数据文件，帮助优化算法
 use crate::shared::utils::lcu_get;
