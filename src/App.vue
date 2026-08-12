@@ -55,11 +55,11 @@ watch(
           >
             <div
               class="flex min-h-full flex-col bg-background"
-              :class="isConnected ? 'gap-6 p-6' : 'p-0'"
+              :class="isConnected ? 'mx-auto w-full max-w-[1600px] gap-6 p-6' : 'p-0'"
             >
               <router-view v-slot="{ Component }">
                 <transition :name="currentTransition" mode="out-in" @before-leave="handleRouteChange">
-                  <KeepAlive :include="['DashboardView', 'OpggView']">
+                  <KeepAlive :include="['DashboardView', 'MatchAnalysisView', 'OpggView']">
                     <component :is="isConnected ? Component : ClientDisconnected" />
                   </KeepAlive>
                 </transition>

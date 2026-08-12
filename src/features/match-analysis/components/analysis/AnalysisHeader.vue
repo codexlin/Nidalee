@@ -1,11 +1,11 @@
 <template>
   <div
-    class="sticky top-0 z-10 flex items-center justify-between gap-2 px-3 py-2 border-b border-border/50 bg-background/80 backdrop-blur"
+    class="sticky top-0 z-10 flex h-10 flex-none items-center justify-between gap-2 border-b border-border/50 bg-background/80 px-3 backdrop-blur"
   >
     <!-- 左侧：队伍信息 -->
     <div class="flex items-center gap-2 min-w-0">
       <!-- 队伍标识 -->
-      <div class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium" :class="teamTypeClass">
+      <div class="flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-xs font-medium" :class="teamTypeClass">
         <div class="w-1.5 h-1.5 rounded-full" :class="teamIndicatorClass" />
         <span>{{ teamTypeName }}</span>
       </div>
@@ -15,8 +15,8 @@
 
       <!-- 阶段信息 -->
       <div class="flex items-center gap-1.5">
-        <span class="text-xs text-muted-foreground">阶段</span>
-        <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium" :class="phaseClass">
+        <span class="text-xs text-muted-foreground">游戏阶段</span>
+        <div class="inline-flex items-center gap-1 text-xs font-medium text-foreground">
           <div class="w-1 h-1 rounded-full" :class="phaseIndicatorClass" />
           <span>{{ phaseDisplayName }}</span>
         </div>
@@ -27,10 +27,9 @@
         <!-- 分隔线 -->
         <div class="h-3 w-px bg-border/60" />
 
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-muted-foreground">对局</span>
-          <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium" :class="queueClass">
-            <span>{{ queueTypeIcon }}</span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-muted-foreground">游戏模式</span>
+          <div class="inline-flex items-center gap-1 text-xs font-medium text-foreground">
             <span>{{ queueTypeLabel }}</span>
           </div>
         </div>
@@ -111,9 +110,6 @@ const matchAnalysisStore = useMatchAnalysisStore()
 
 // 对局类型信息
 const queueTypeLabel = computed(() => matchAnalysisStore.queueTypeLabel)
-const queueTypeIcon = computed(() => matchAnalysisStore.queueTypeIcon)
-const isRankedGame = computed(() => matchAnalysisStore.isRankedGame)
-
 // 队伍类型相关
 const teamTypeName = computed(() => {
   return props.teamType === 'ally' ? '我方队伍' : '敌方队伍'
@@ -121,8 +117,8 @@ const teamTypeName = computed(() => {
 
 const teamTypeClass = computed(() => {
   return props.teamType === 'ally'
-    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800'
-    : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 ring-1 ring-red-200 dark:ring-red-800'
+    ? 'border-blue-500/25 bg-blue-500/[0.08] text-blue-500'
+    : 'border-red-500/25 bg-red-500/[0.08] text-red-500'
 })
 
 const teamIndicatorClass = computed(() => {
@@ -147,19 +143,6 @@ const phaseDisplayName = computed(() => {
   }
 })
 
-const phaseClass = computed(() => {
-  switch (props.phase) {
-    case 'ChampSelect':
-      return 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-200 dark:ring-purple-800'
-    case 'InProgress':
-      return 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 ring-1 ring-green-200 dark:ring-green-800'
-    case 'Matchmaking':
-      return 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 ring-1 ring-yellow-200 dark:ring-yellow-800'
-    default:
-      return 'bg-gray-50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 ring-1 ring-gray-200 dark:ring-gray-800'
-  }
-})
-
 const phaseIndicatorClass = computed(() => {
   switch (props.phase) {
     case 'ChampSelect':
@@ -171,13 +154,5 @@ const phaseIndicatorClass = computed(() => {
     default:
       return 'bg-gray-500'
   }
-})
-
-// 对局类型样式
-const queueClass = computed(() => {
-  if (isRankedGame.value) {
-    return 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800'
-  }
-  return 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 ring-1 ring-cyan-200 dark:ring-cyan-800'
 })
 </script>

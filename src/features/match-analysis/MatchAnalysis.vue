@@ -3,10 +3,16 @@
     <!-- 使用 Transition 实现平滑切换 -->
     <Transition name="fade" mode="out-in">
       <!-- Main Analysis View -->
-      <div v-if="shouldShowAnalysis && hasMyTeamData && isDataReady" key="analysis" class="w-full max-w-full mx-auto">
-        <div class="flex gap-1 h-screen max-h-screen overflow-hidden">
+      <div
+        v-if="shouldShowAnalysis && hasMyTeamData && isDataReady"
+        key="analysis"
+        class="mx-auto h-[calc(100dvh-8.5rem)] min-h-[600px] w-full max-w-full overflow-hidden"
+      >
+        <div class="flex h-full min-h-0 flex-col gap-1">
           <!-- Ally Team -->
-          <div class="flex-1 flex flex-col min-w-0">
+          <section
+            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-blue-500/15 bg-blue-500/[0.02]"
+          >
             <AnalysisHeader
               team-type="ally"
               :phase="currentPhase"
@@ -14,7 +20,7 @@
               :has-data="hasMyTeamData"
               :loading="isLoading"
             />
-            <div class="flex-1 overflow-y-auto">
+            <div class="min-h-0 flex-1 p-1.5">
               <TeamAnalysisCard
                 :team-data="myTeamData!"
                 :team-stats="myTeamStats"
@@ -22,12 +28,12 @@
                 @select-player="handlePlayerDetails"
               />
             </div>
-          </div>
-
-          <div class="w-px bg-border/50"></div>
+          </section>
 
           <!-- Enemy Team -->
-          <div class="flex-1 flex flex-col min-w-0">
+          <section
+            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-red-500/15 bg-red-500/[0.02]"
+          >
             <AnalysisHeader
               team-type="enemy"
               :phase="currentPhase"
@@ -35,7 +41,7 @@
               :has-data="hasEnemyTeamData"
               :loading="isEnemyTeamLoading"
             />
-            <div class="flex-1 overflow-y-auto">
+            <div class="min-h-0 flex-1 p-1.5">
               <TeamAnalysisCard
                 :team-data="enemyTeamData!"
                 :team-stats="enemyTeamStats"
@@ -43,7 +49,7 @@
                 @select-player="handlePlayerDetails"
               />
             </div>
-          </div>
+          </section>
         </div>
       </div>
 
@@ -53,14 +59,12 @@
       </div>
     </Transition>
 
-    <!-- Summoner Details Dialog -->
-    <SummonerDetailsDialog
-      v-if="selectedPlayer"
-      :open="showPlayerDetails"
-      :summoner="selectedPlayer"
-      :summoner-result="currentResult ?? undefined"
+    <SummonerDetailSheet
+      v-model:open="showPlayerDetails"
+      :selected-player="selectedPlayer"
+      :current-result="currentResult"
       :loading="summonerLoading"
-      @close="closePlayerDetails"
+      @refresh="refreshSummoner"
     />
   </div>
 </template>
@@ -68,6 +72,8 @@
 <script setup lang="ts">
 import { useMatchAnalysisStore } from './store'
 import type { UIPlayerData } from '@/types/match-analysis'
+import { useSummonerDetailSheet } from '@/features/dashboard/composables/useSummonerDetailSheet'
+import SummonerDetailSheet from '@/features/dashboard/components/detail/SummonerDetailSheet.vue'
 
 // Use Pinia Store
 const matchAnalysisStore = useMatchAnalysisStore()
@@ -107,23 +113,17 @@ watch(
   { immediate: true }
 )
 
-// Summoner details logic
-const { fetchSummonerInfo, currentResult, clearSummonerInfo, loading: summonerLoading } = useSearchMatches()
-const selectedPlayer = ref<UIPlayerData | null>(null)
-const showPlayerDetails = ref(false)
+const {
+  isOpen: showPlayerDetails,
+  selectedPlayer,
+  currentResult,
+  loading: summonerLoading,
+  openByDisplayName,
+  refresh: refreshSummoner
+} = useSummonerDetailSheet()
 
-const handlePlayerDetails = async (player: UIPlayerData) => {
-  clearSummonerInfo()
-  selectedPlayer.value = player
-  showPlayerDetails.value = true
-  if (player.displayName && player.displayName !== '未知召唤师') {
-    await fetchSummonerInfo([player.displayName])
-  }
-}
-
-const closePlayerDetails = () => {
-  selectedPlayer.value = null
-  showPlayerDetails.value = false
+function handlePlayerDetails(player: UIPlayerData): void {
+  void openByDisplayName(player.displayName)
 }
 </script>
 

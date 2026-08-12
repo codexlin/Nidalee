@@ -96,6 +96,7 @@ const FALLBACK_QUEUE_NAMES: Record<number, string> = {
   1900: '无限火力',
   2300: '神木之门',
   2400: '海克斯大乱斗',
+  3110: '自定义游戏',
   4310: '经典模式'
 }
 
@@ -112,6 +113,11 @@ export function setCdragonQueueNames(entries: Array<{ id: number; name: string }
 
 export function getQueueDisplayName(queueId: number): string {
   return cdragonQueueNames.get(queueId) || FALLBACK_QUEUE_NAMES[queueId] || `未知队列(${queueId})`
+}
+
+/** 紧凑卡片使用短模式名，避免 CDragon 名称携带地图前缀后挤占内容。 */
+export function getCompactQueueDisplayName(queueId: number): string {
+  return FALLBACK_QUEUE_NAMES[queueId] || getQueueDisplayName(queueId)
 }
 
 export function isMatchModeKey(value: string): value is MatchModeKey {
