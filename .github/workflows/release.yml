@@ -94,7 +94,9 @@ jobs:
 
       - name: 🧪 Cargo test
         working-directory: src-tauri
-        run: cargo test --all-targets --locked
+        run: |
+          cargo test --lib --locked
+          cargo test --test '*' --locked
 
       - name: 🔄 Sync generated TypeScript contracts
         run: node scripts/sync-types.mjs

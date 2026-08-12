@@ -22,6 +22,14 @@ rust-version = "1.79"
 name = "nidalee_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+name = "nidalee"
+path = "src/main.rs"
+# The Windows GUI binary requires elevation and contains no unit tests.
+# Keep Cargo's test harness on the library and integration-test targets.
+test = false
+bench = false
+
 [build-dependencies]
 tauri-build = { version = "2.5", features = [] }
 

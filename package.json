@@ -19,7 +19,7 @@
     "type-check": "vue-tsc --build",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
-    "types": "node scripts/prepare-types.mjs && cd src-tauri && cargo test --all-targets --locked && cd .. && node scripts/sync-types.mjs",
+    "types": "node scripts/prepare-types.mjs && cd src-tauri && cargo test --lib --locked && cd .. && node scripts/sync-types.mjs",
     "types:sync": "node scripts/sync-types.mjs",
     "types:check": "pnpm run types && git diff --exit-code -- src/types/global.d.ts",
     "lint": "oxlint src/",
