@@ -1,5 +1,6 @@
 import { colors, radiusOptions, styles } from '@/lib/theme'
 import { isMatchModeKey, matchModeToQueueIds, normalizeMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
+import { DEFAULT_OVERLAY_SHORTCUT } from '@/shared/utils/accelerator'
 
 export const useSettingsStore = defineStore(
   'settings',
@@ -29,6 +30,8 @@ export const useSettingsStore = defineStore(
     const applyDefaultFilterOnSearch = ref(true)
     const lastMatchCount = ref<number>(20)
     const allowedMatchCounts = [20, 25, 30] as const
+    const augmentOverlayShortcut = ref(DEFAULT_OVERLAY_SHORTCUT)
+    const augmentOverlayOcrEnabled = ref(false)
 
     // 计算属性
     const themeConfig = computed(() => ({
@@ -41,13 +44,15 @@ export const useSettingsStore = defineStore(
     // 主题相关class同步
     function setThemeClass(theme: string, isDark: boolean) {
       const html = document.documentElement
+      const overlay = html.classList.contains('overlay-shell')
       const removeList: string[] = []
       html.classList.forEach((cls) => {
         if (cls.startsWith('theme-') || cls === 'dark') removeList.push(cls)
       })
       removeList.forEach((cls) => html.classList.remove(cls))
       html.classList.add(`theme-${theme}`)
-      if (isDark) html.classList.add('dark')
+      if (isDark || overlay) html.classList.add('dark')
+      if (overlay) html.classList.add('overlay-shell')
     }
 
     // 设置颜色
@@ -204,6 +209,14 @@ export const useSettingsStore = defineStore(
       lastMatchCount.value = (allowedMatchCounts as readonly number[]).includes(count) ? count : 20
     }
 
+    const setAugmentOverlayShortcut = (shortcut: string) => {
+      augmentOverlayShortcut.value = shortcut.trim() || DEFAULT_OVERLAY_SHORTCUT
+    }
+
+    const setAugmentOverlayOcrEnabled = (enabled: boolean) => {
+      augmentOverlayOcrEnabled.value = enabled
+    }
+
     // 重置所有设置
     const resetAllSettings = () => {
       resetTheme()
@@ -218,6 +231,8 @@ export const useSettingsStore = defineStore(
       setLastMatchMode('all')
       applyDefaultFilterOnSearch.value = true
       setLastMatchCount(20)
+      setAugmentOverlayShortcut(DEFAULT_OVERLAY_SHORTCUT)
+      setAugmentOverlayOcrEnabled(false)
     }
 
     // 导出设置
@@ -314,6 +329,8 @@ export const useSettingsStore = defineStore(
       allowedMatchCounts,
       defaultQueueTypes,
       applyDefaultFilterOnSearch,
+      augmentOverlayShortcut,
+      augmentOverlayOcrEnabled,
 
       // 计算属性
       themeConfig,
@@ -341,6 +358,8 @@ export const useSettingsStore = defineStore(
       setLastMatchCount,
       setDefaultQueueTypes,
       setApplyDefaultFilterOnSearch,
+      setAugmentOverlayShortcut,
+      setAugmentOverlayOcrEnabled,
       resetAllSettings,
       exportSettings,
       importSettings

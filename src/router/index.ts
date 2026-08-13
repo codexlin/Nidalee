@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { APP_ROUTES } from './appRoutes'
+import { isOverlayWindow, overlayRoute } from '@/shared/utils/overlayWindow'
 
 const productionRoutes: RouteRecordRaw[] = [
   {
@@ -31,6 +32,18 @@ const productionRoutes: RouteRecordRaw[] = [
     path: APP_ROUTES.settings.path,
     name: APP_ROUTES.settings.name,
     component: () => import('../views/SettingsView.vue')
+  },
+  {
+    path: '/augment-overlay',
+    name: 'augment-overlay',
+    component: () => import('../views/AugmentOverlayView.vue'),
+    meta: { shell: 'overlay' }
+  },
+  {
+    path: '/augment-side-panel',
+    name: 'augment-side-panel',
+    component: () => import('../views/AugmentSidePanelView.vue'),
+    meta: { shell: 'overlay' }
   }
 ]
 
@@ -59,6 +72,15 @@ const router = createRouter({
       redirect: '/'
     }
   ]
+})
+
+router.beforeEach((to) => {
+  if (!isOverlayWindow()) return true
+  const target = overlayRoute()
+  if (to.path !== target) {
+    return { path: target, replace: true }
+  }
+  return true
 })
 
 export default router

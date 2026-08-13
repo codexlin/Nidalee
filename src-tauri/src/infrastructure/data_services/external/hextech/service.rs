@@ -1,10 +1,29 @@
 use super::client::HextechClient;
-use super::parser::{parse_champion_detail_merging_catalog, parse_tier_list};
+use super::parser::{
+    parse_augment_catalog_entries, parse_champion_detail_merging_catalog, parse_tier_list, AugmentCatalogEntry,
+};
 use super::types::{HextechChampionDetail, HextechTierList};
 use once_cell::sync::Lazy;
+use serde_json::Value;
+use std::collections::HashMap;
+use tokio::sync::Mutex;
 
 static HEXTECH_CLIENT: Lazy<HextechClient> =
     Lazy::new(|| HextechClient::with_client(crate::http_client::get_public_client().clone()));
+
+struct HextechDataCache {
+    version: String,
+    catalog: Option<Value>,
+    details: HashMap<i32, HextechChampionDetail>,
+}
+
+static DATA_CACHE: Lazy<Mutex<HextechDataCache>> = Lazy::new(|| {
+    Mutex::new(HextechDataCache {
+        version: String::new(),
+        catalog: None,
+        details: HashMap::new(),
+    })
+});
 
 pub async fn get_tier_list() -> Result<HextechTierList, String> {
     let version = HEXTECH_CLIENT.resolve_data_version().await?;
@@ -17,15 +36,55 @@ pub async fn get_champion_detail(champion_id: i32) -> Result<HextechChampionDeta
         return Err("无效的英雄 ID".to_string());
     }
     let version = HEXTECH_CLIENT.resolve_data_version().await?;
+    {
+        let cache = DATA_CACHE.lock().await;
+        if cache.version == version {
+            if let Some(detail) = cache.details.get(&champion_id) {
+                return Ok(detail.clone());
+            }
+        }
+    }
 
-    let (detail_res, catalog_res) = tokio::join!(
+    let (detail_res, catalog) = tokio::join!(
         HEXTECH_CLIENT.get_champion_detail(&version, champion_id),
-        HEXTECH_CLIENT.get_augments(&version)
+        cached_catalog(&version)
     );
-    let detail = detail_res?;
-    let catalog = catalog_res.unwrap_or_else(|err| {
-        log::warn!("海克斯增强目录拉取失败，三连名称可能不完整: {err}");
-        serde_json::json!({ "data": [] })
-    });
-    parse_champion_detail_merging_catalog(detail, &catalog)
+    let parsed = parse_champion_detail_merging_catalog(detail_res?, &catalog?)?;
+
+    let mut cache = DATA_CACHE.lock().await;
+    reset_cache_if_version_changed(&mut cache, &version);
+    cache.details.insert(champion_id, parsed.clone());
+    Ok(parsed)
+}
+
+pub async fn get_augment_catalog() -> Result<Vec<AugmentCatalogEntry>, String> {
+    let version = HEXTECH_CLIENT.resolve_data_version().await?;
+    let raw = cached_catalog(&version).await?;
+    Ok(parse_augment_catalog_entries(&raw))
+}
+
+async fn cached_catalog(version: &str) -> Result<Value, String> {
+    {
+        let cache = DATA_CACHE.lock().await;
+        if cache.version == version {
+            if let Some(catalog) = &cache.catalog {
+                return Ok(catalog.clone());
+            }
+        }
+    }
+
+    let raw = HEXTECH_CLIENT.get_augments(version).await?;
+    let mut cache = DATA_CACHE.lock().await;
+    reset_cache_if_version_changed(&mut cache, version);
+    cache.catalog = Some(raw.clone());
+    Ok(raw)
+}
+
+fn reset_cache_if_version_changed(cache: &mut HextechDataCache, version: &str) {
+    if cache.version == version {
+        return;
+    }
+    cache.version = version.to_string();
+    cache.catalog = None;
+    cache.details.clear();
 }

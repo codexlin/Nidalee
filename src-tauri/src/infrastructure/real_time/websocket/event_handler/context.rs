@@ -38,6 +38,18 @@ fn champ_select_gameflow_context(session: &Value) -> Option<GameflowContext> {
     gameflow_context_for_phase(session, "ChampSelect")
 }
 
+pub(super) fn overlay_queue_id(champ_select: Option<&Value>, gameflow: Option<&Value>) -> Option<i64> {
+    let from_flow = gameflow.and_then(|session| {
+        session
+            .get("gameData")
+            .and_then(|data| data.get("queue"))
+            .and_then(|queue| queue.get("id"))
+            .and_then(Value::as_i64)
+    });
+    let from_select = champ_select.and_then(|session| session.get("queueId").and_then(Value::as_i64));
+    from_flow.or(from_select).filter(|id| *id > 0)
+}
+
 pub(super) fn in_progress_gameflow_context(
     cached_session: Option<&Value>,
     fetched_session: Option<&Value>,
@@ -51,7 +63,7 @@ pub(super) fn in_progress_gameflow_context(
 mod tests {
     use super::{
         champ_select_gameflow_context, champ_select_session_with_gameflow_context, in_progress_gameflow_context,
-        GameflowContext,
+        overlay_queue_id, GameflowContext,
     };
     use serde_json::json;
 
@@ -137,5 +149,15 @@ mod tests {
         let context = in_progress_gameflow_context(Some(&stale), Some(&incomplete));
 
         assert_eq!(context, None);
+    }
+
+    #[test]
+    fn overlay_queue_prefers_gameflow_then_champ_select() {
+        let select = json!({ "queueId": 2400 });
+        let flow = json!({ "gameData": { "queue": { "id": 420 } } });
+        assert_eq!(overlay_queue_id(Some(&select), Some(&flow)), Some(420));
+        assert_eq!(overlay_queue_id(Some(&select), None), Some(2400));
+        assert_eq!(overlay_queue_id(None, None), None);
+        assert_eq!(overlay_queue_id(Some(&json!({ "queueId": 0 })), None), None);
     }
 }

@@ -42,6 +42,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(infrastructure::data_services::external::ai::commands::AiSettingsState::default())
         .setup(app::setup_app)
         .invoke_handler(tauri::generate_handler![
@@ -78,6 +79,19 @@ pub fn run() {
             // 海克斯（dtodo aramgg）
             infrastructure::data_services::external::hextech::commands::get_hextech_tier_list,
             infrastructure::data_services::external::hextech::commands::get_hextech_champion_detail,
+            // 游戏内海克斯 OCR 浮窗
+            infrastructure::augment_overlay::commands::set_augment_overlay_enabled,
+            infrastructure::augment_overlay::commands::hide_augment_overlay,
+            infrastructure::augment_overlay::commands::hide_augment_card_overlay,
+            infrastructure::augment_overlay::commands::hide_augment_side_panel,
+            infrastructure::augment_overlay::commands::toggle_augment_side_panel,
+            infrastructure::augment_overlay::commands::ensure_augment_overlay_window,
+            infrastructure::augment_overlay::commands::get_augment_overlay_snapshot,
+            infrastructure::augment_overlay::commands::get_augment_overlay_visible,
+            infrastructure::augment_overlay::commands::get_augment_overlay_shortcut,
+            infrastructure::augment_overlay::commands::set_augment_overlay_shortcut,
+            infrastructure::augment_overlay::commands::get_augment_overlay_ocr_enabled,
+            infrastructure::augment_overlay::commands::set_augment_overlay_ocr_enabled,
             // OpenAI-compatible BYOK
             infrastructure::data_services::external::ai::commands::get_ai_settings,
             infrastructure::data_services::external::ai::commands::set_ai_settings,

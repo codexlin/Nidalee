@@ -262,3 +262,31 @@ body {
     box-shadow: 0 6px 16px -6px oklch(0 0 0 / 0.35);
   }
 }
+
+/* 浮窗独立 webview 不走主应用 initTheme，必须在 layer 外覆盖浅色 token */
+html.overlay-shell {
+  color-scheme: dark;
+  --background: oklch(0.22 0.012 286);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.22 0.012 286);
+  --card-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.32 0.01 286);
+  --muted-foreground: oklch(0.8 0.01 286);
+  --border: oklch(1 0 0 / 0.18);
+  --accent: oklch(0.32 0.01 286);
+  --accent-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.32 0.01 286);
+  --secondary-foreground: oklch(0.985 0 0);
+}
+
+html.overlay-shell,
+html.overlay-shell body {
+  background: transparent !important;
+  color: var(--foreground) !important;
+}
+
+html.overlay-shell .surface-overlay {
+  background: color-mix(in oklch, oklch(0.18 0.014 286) 88%, transparent);
+  border-color: oklch(1 0 0 / 0.2);
+  color: var(--foreground);
+}

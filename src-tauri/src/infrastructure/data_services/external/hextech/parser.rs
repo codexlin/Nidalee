@@ -2,7 +2,7 @@ use super::types::*;
 use serde_json::Value;
 use std::collections::HashMap;
 
-const MAX_AUGMENTS: usize = 40;
+const MAX_AUGMENTS: usize = 256;
 const MAX_COMBOS: usize = 5;
 
 fn f64_field(v: &Value, key: &str) -> f64 {
@@ -130,12 +130,37 @@ fn parse_augment(v: &Value, catalog: &HashMap<i32, CatalogAugment>) -> Option<He
 }
 
 #[derive(Debug, Clone, Default)]
-struct CatalogAugment {
-    name: String,
-    icon_url: String,
-    rarity: i32,
-    rarity_name: String,
-    rarity_display_name: String,
+pub struct CatalogAugment {
+    pub name: String,
+    pub icon_url: String,
+    pub rarity: i32,
+    pub rarity_name: String,
+    pub rarity_display_name: String,
+}
+
+/// 海克斯增强目录条目（overlay OCR 匹配用）
+#[derive(Debug, Clone)]
+pub struct AugmentCatalogEntry {
+    pub id: i32,
+    pub name: String,
+    pub icon_url: String,
+    pub rarity: i32,
+    pub rarity_name: String,
+    pub rarity_display_name: String,
+}
+
+pub fn parse_augment_catalog_entries(raw: &Value) -> Vec<AugmentCatalogEntry> {
+    parse_augment_catalog(raw)
+        .into_iter()
+        .map(|(id, item)| AugmentCatalogEntry {
+            id,
+            name: item.name,
+            icon_url: item.icon_url,
+            rarity: item.rarity,
+            rarity_name: item.rarity_name,
+            rarity_display_name: item.rarity_display_name,
+        })
+        .collect()
 }
 
 /// 从 augments.json 建 id → 名称/图标索引（补全三连元数据）
@@ -286,6 +311,11 @@ fn parse_champion_detail_with_catalog(
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().filter_map(parse_trio).collect())
         .unwrap_or_default();
+    augment_trios.sort_by(|a, b| {
+        b.win_rate
+            .partial_cmp(&a.win_rate)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     augment_trios.truncate(MAX_COMBOS);
 
     // 保证三连里的增强仍保留元数据（图标/名称），即便未进 Top N
@@ -462,5 +492,22 @@ mod tests {
         assert_eq!(detail.summoner_spells[0].spell_ids, vec![4, 32]);
         assert_eq!(detail.skill_orders[0].skill_keys[0], "Q");
         assert_eq!(detail.core_items[0].item_ids.len(), 2);
+    }
+
+    #[test]
+    fn sorts_augment_trios_by_win_rate() {
+        let raw = json!({
+            "dataVersion": "16.15.6",
+            "champion": { "id": 157, "alias": "Yasuo", "name": "亚索", "title": "", "roles": [], "iconUrl": "", "stats": {} },
+            "augments": [],
+            "augmentTrios": [
+                { "augmentIds": [1, 2, 3], "stats": { "winRate": 0.61 } },
+                { "augmentIds": [4, 5, 6], "stats": { "winRate": 0.72 } }
+            ]
+        });
+        let catalog = json!({ "data": [] });
+        let detail = parse_champion_detail_merging_catalog(raw, &catalog).unwrap();
+        assert_eq!(detail.augment_trios[0].win_rate, 0.72);
+        assert_eq!(detail.augment_trios[1].win_rate, 0.61);
     }
 }
