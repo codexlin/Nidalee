@@ -2,7 +2,7 @@ use super::types::*;
 use serde_json::Value;
 use std::collections::HashMap;
 
-const MAX_AUGMENTS: usize = 40;
+const MAX_AUGMENTS: usize = 256;
 const MAX_COMBOS: usize = 5;
 
 fn f64_field(v: &Value, key: &str) -> f64 {
@@ -286,6 +286,7 @@ fn parse_champion_detail_with_catalog(
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().filter_map(parse_trio).collect())
         .unwrap_or_default();
+    augment_trios.sort_by(|a, b| b.win_rate.partial_cmp(&a.win_rate).unwrap_or(std::cmp::Ordering::Equal));
     augment_trios.truncate(MAX_COMBOS);
 
     // 保证三连里的增强仍保留元数据（图标/名称），即便未进 Top N
