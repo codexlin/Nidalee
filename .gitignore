@@ -47,3 +47,5 @@ vite.config.d.ts
 # Agent/local cargo target dirs
 src-tauri/target-agent/
 
+# Claude Code local permission state
+.claude/settings.local.json
