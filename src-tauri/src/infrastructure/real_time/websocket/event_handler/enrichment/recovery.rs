@@ -4,9 +4,31 @@ use tauri::Emitter;
 use super::super::WsEventHandler;
 use super::identity::same_riot_id;
 use crate::infrastructure::data_services::static_catalog;
+use crate::infrastructure::real_time::websocket::event_handler::context::in_progress_gameflow_context;
 use crate::shared::Result;
 
 const RECOVERY_PLAYER_FETCH_CONCURRENCY: usize = 4;
+
+fn split_roster_by_team(
+    live_players: &[crate::shared::types::LiveClientPlayer],
+    local_team: &str,
+) -> (
+    Vec<crate::shared::types::LiveClientPlayer>,
+    Vec<crate::shared::types::LiveClientPlayer>,
+) {
+    live_players
+        .iter()
+        .cloned()
+        .partition(|player| player.team == local_team)
+}
+
+fn recovery_context_values(
+    cached_session: Option<&serde_json::Value>,
+    fetched_session: Option<&serde_json::Value>,
+) -> (i64, bool) {
+    in_progress_gameflow_context(cached_session, fetched_session)
+        .map_or((0, false), |context| (context.queue_id, context.is_custom_game))
+}
 
 impl WsEventHandler {
     /// 从头构建队伍分析数据（应用重启后没有缓存时使用）
@@ -20,13 +42,20 @@ impl WsEventHandler {
             "Building team data from LiveClient (app restart recovery)"
         );
 
-        if !self.cache.read().await.can_commit_in_game_recovery(generation) {
-            return Ok(());
-        }
+        let cached_gameflow_session = {
+            let cache = self.cache.read().await;
+            if !cache.can_commit_in_game_recovery(generation) {
+                return Ok(());
+            }
+            cache.gameflow_session.clone()
+        };
 
-        static_catalog::ensure_static_catalogs()
-            .await
-            .map_err(|error| format!("Static catalog is unavailable for in-game recovery: {error}"))?;
+        if let Err(error) = static_catalog::ensure_static_catalogs().await {
+            log::warn!(
+                target: "ws::event_handler",
+                "Static catalog is unavailable during in-game recovery; unresolved champion IDs will remain empty: {error}"
+            );
+        }
 
         if !self.cache.read().await.can_commit_in_game_recovery(generation) {
             return Ok(());
@@ -101,18 +130,9 @@ impl WsEventHandler {
             .map(|player| player.team.as_str())
             .ok_or_else(|| format!("Could not find local player '{local_name}' in LiveClient roster"))?;
 
-        // Resolve sides from the local player. The local side is not guaranteed to be ORDER.
-        let my_team_players: Vec<_> = live_players
-            .iter()
-            .filter(|p| p.team == local_team && !p.is_bot && !p.summoner_name.is_empty())
-            .cloned()
-            .collect();
-
-        let enemy_team_players: Vec<_> = live_players
-            .iter()
-            .filter(|p| p.team != local_team && !p.is_bot && !p.summoner_name.is_empty())
-            .cloned()
-            .collect();
+        // LiveClient owns the active roster. Bots and players whose identity lookup fails still
+        // need stable cards, so only the local player's side decides the split.
+        let (my_team_players, enemy_team_players) = split_roster_by_team(&live_players, local_team);
 
         log::debug!(
             target: "ws::event_handler",
@@ -128,10 +148,12 @@ impl WsEventHandler {
             .map(|p| p.summoner_name.clone())
             .collect();
 
-        let summoners_info =
+        let summoners_info = if all_player_names.is_empty() {
+            Vec::new()
+        } else {
             match crate::infrastructure::data_services::summoner::service::get_summoners_by_names_with_rank(
                 &self.client,
-                all_player_names.clone(),
+                all_player_names,
             )
             .await
             {
@@ -143,39 +165,40 @@ impl WsEventHandler {
                     );
                     info
                 }
-                Err(e) => {
-                    log::error!(
-                        target: "ws::event_handler",
-                        "Batch fetch for summoner info failed: {}",
-                        e
-                    );
-                    return Err(format!("Failed to fetch summoner info: {}", e).into());
-                }
-            };
-
-        // 4. 先获取游戏信息（需要用于战绩过滤）
-        let (queue_id, is_custom_game) =
-            match crate::infrastructure::game_session::gameflow::service::get_gameflow_session(&self.client).await {
-                Ok(session) => {
-                    let queue_id = session["gameData"]["queue"]["id"].as_i64().unwrap_or(420);
-                    let is_custom = session["gameData"]["isCustomGame"].as_bool().unwrap_or(false);
-                    log::debug!(
-                        target: "ws::event_handler",
-                        "Got game info from API: queue_id={}, is_custom={}",
-                        queue_id,
-                        is_custom
-                    );
-                    (queue_id, is_custom)
-                }
-                Err(e) => {
+                Err(error) => {
                     log::warn!(
                         target: "ws::event_handler",
-                        "Failed to get gameflow session: {}, using defaults",
-                        e
+                        "Batch fetch for summoner info failed; publishing the LiveClient roster without identity enrichment: {error}"
                     );
-                    (420, false)
+                    Vec::new()
                 }
-            };
+            }
+        };
+
+        // 4. 先获取游戏信息（需要用于战绩过滤）
+        let fetched_gameflow_session = if in_progress_gameflow_context(cached_gameflow_session.as_ref(), None).is_none()
+        {
+            match crate::infrastructure::game_session::gameflow::service::get_gameflow_session(&self.client).await {
+                Ok(session) => Some(session),
+                Err(error) => {
+                    log::warn!(
+                        target: "ws::event_handler",
+                        "Failed to refresh gameflow context during recovery: {error}"
+                    );
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        let (queue_id, is_custom_game) =
+            recovery_context_values(cached_gameflow_session.as_ref(), fetched_gameflow_session.as_ref());
+        if queue_id == 0 {
+            log::warn!(
+                target: "ws::event_handler",
+                "Game mode is unknown during recovery; history analysis will use the explicit unknown-mode policy"
+            );
+        }
 
         // 5. 构建我方队伍数据
         let mut my_team_data = Vec::new();
@@ -203,8 +226,7 @@ impl WsEventHandler {
         let summoners_info = summoners_info.as_slice();
         let handler = self;
         let player_results = stream::iter(jobs.map(|(is_ally, cell_id, live_player, perspective)| async move {
-            let player_name = live_player.summoner_name.clone();
-            let result = handler
+            let player_data = handler
                 .build_player_data(
                     &live_player,
                     cell_id,
@@ -214,30 +236,20 @@ impl WsEventHandler {
                     perspective,
                 )
                 .await;
-            (is_ally, player_name, result)
+            (is_ally, player_data)
         }))
         .buffered(RECOVERY_PLAYER_FETCH_CONCURRENCY)
         .collect::<Vec<_>>()
         .await;
 
-        for (is_ally, player_name, result) in player_results {
-            match result {
-                Ok((player_data, cache_entry)) => {
-                    if let Some(entry) = cache_entry {
-                        stats_to_cache.push(entry);
-                    }
-                    if is_ally {
-                        my_team_data.push(player_data);
-                    } else {
-                        enemy_team_data.push(player_data);
-                    }
-                }
-                Err(error) => log::warn!(
-                    target: "ws::event_handler",
-                    "Failed to build recovery data for player '{}': {}",
-                    player_name,
-                    error
-                ),
+        for (is_ally, (player_data, cache_entry)) in player_results {
+            if let Some(entry) = cache_entry {
+                stats_to_cache.push(entry);
+            }
+            if is_ally {
+                my_team_data.push(player_data);
+            } else {
+                enemy_team_data.push(player_data);
             }
         }
 
@@ -299,5 +311,59 @@ impl WsEventHandler {
         );
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{recovery_context_values, split_roster_by_team};
+    use crate::shared::types::LiveClientPlayer;
+
+    fn live_player(name: &str, team: &str, is_bot: bool) -> LiveClientPlayer {
+        LiveClientPlayer {
+            summoner_name: name.to_owned(),
+            champion_name: "Champion".to_owned(),
+            is_bot,
+            is_dead: false,
+            items: Vec::new(),
+            level: 1,
+            position: String::new(),
+            raw_champion_name: String::new(),
+            respawn_timer: 0.0,
+            runes: serde_json::Value::Null,
+            scores: serde_json::Value::Null,
+            skin_id: 0,
+            summoner_spells: serde_json::Value::Null,
+            team: team.to_owned(),
+        }
+    }
+
+    #[test]
+    fn split_roster_by_team_keeps_bots_and_empty_identities() {
+        let players = vec![
+            live_player("local#CN1", "ORDER", false),
+            live_player("", "ORDER", true),
+            live_player("enemy#CN1", "CHAOS", false),
+            live_player("", "CHAOS", true),
+        ];
+
+        let (allies, enemies) = split_roster_by_team(&players, "ORDER");
+
+        assert_eq!(
+            (
+                allies.len(),
+                enemies.len(),
+                allies.iter().filter(|player| player.is_bot).count(),
+                enemies.iter().filter(|player| player.is_bot).count(),
+            ),
+            (2, 2, 1, 1)
+        );
+    }
+
+    #[test]
+    fn recovery_context_values_never_invent_ranked_queue() {
+        let context = recovery_context_values(None, None);
+
+        assert_eq!(context, (0, false));
     }
 }

@@ -4,7 +4,7 @@ pub(super) fn champ_select_session_with_gameflow_context(
     champ_select: &Value,
     gameflow_session: Option<&Value>,
 ) -> Value {
-    let Some(context) = gameflow_session.and_then(gameflow_build_context) else {
+    let Some(context) = gameflow_session.and_then(champ_select_gameflow_context) else {
         return champ_select.clone();
     };
     let Some(session) = champ_select.as_object() else {
@@ -18,25 +18,41 @@ pub(super) fn champ_select_session_with_gameflow_context(
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct GameflowBuildContext {
-    queue_id: i64,
-    is_custom_game: bool,
+pub(super) struct GameflowContext {
+    pub(super) queue_id: i64,
+    pub(super) is_custom_game: bool,
 }
 
-fn gameflow_build_context(session: &Value) -> Option<GameflowBuildContext> {
-    if session.get("phase")?.as_str()? != "ChampSelect" {
+fn gameflow_context_for_phase(session: &Value, expected_phase: &str) -> Option<GameflowContext> {
+    if session.get("phase")?.as_str()? != expected_phase {
         return None;
     }
     let game_data = session.get("gameData")?;
-    Some(GameflowBuildContext {
+    Some(GameflowContext {
         queue_id: game_data.get("queue")?.get("id")?.as_i64()?,
         is_custom_game: game_data.get("isCustomGame")?.as_bool()?,
     })
 }
 
+fn champ_select_gameflow_context(session: &Value) -> Option<GameflowContext> {
+    gameflow_context_for_phase(session, "ChampSelect")
+}
+
+pub(super) fn in_progress_gameflow_context(
+    cached_session: Option<&Value>,
+    fetched_session: Option<&Value>,
+) -> Option<GameflowContext> {
+    cached_session
+        .and_then(|session| gameflow_context_for_phase(session, "InProgress"))
+        .or_else(|| fetched_session.and_then(|session| gameflow_context_for_phase(session, "InProgress")))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{champ_select_session_with_gameflow_context, gameflow_build_context, GameflowBuildContext};
+    use super::{
+        champ_select_gameflow_context, champ_select_session_with_gameflow_context, in_progress_gameflow_context,
+        GameflowContext,
+    };
     use serde_json::json;
 
     #[test]
@@ -60,28 +76,66 @@ mod tests {
     #[test]
     fn gameflow_context_requires_both_runtime_fields() {
         assert_eq!(
-            gameflow_build_context(&json!({
+            champ_select_gameflow_context(&json!({
                 "phase": "ChampSelect",
                 "gameData": { "queue": { "id": 450 }, "isCustomGame": false }
             })),
-            Some(GameflowBuildContext {
+            Some(GameflowContext {
                 queue_id: 450,
                 is_custom_game: false
             })
         );
         assert_eq!(
-            gameflow_build_context(&json!({
+            champ_select_gameflow_context(&json!({
                 "phase": "ChampSelect",
                 "gameData": { "queue": { "id": 450 } }
             })),
             None
         );
         assert_eq!(
-            gameflow_build_context(&json!({
+            champ_select_gameflow_context(&json!({
                 "phase": "InProgress",
                 "gameData": { "queue": { "id": 450 }, "isCustomGame": false }
             })),
             None
         );
+    }
+
+    #[test]
+    fn in_progress_context_prefers_cached_runtime_state() {
+        let cached = json!({
+            "phase": "InProgress",
+            "gameData": { "queue": { "id": 450 }, "isCustomGame": false }
+        });
+        let fetched = json!({
+            "phase": "InProgress",
+            "gameData": { "queue": { "id": 420 }, "isCustomGame": false }
+        });
+
+        let context = in_progress_gameflow_context(Some(&cached), Some(&fetched));
+
+        assert_eq!(
+            context,
+            Some(GameflowContext {
+                queue_id: 450,
+                is_custom_game: false
+            })
+        );
+    }
+
+    #[test]
+    fn in_progress_context_rejects_stale_or_incomplete_sessions() {
+        let stale = json!({
+            "phase": "ChampSelect",
+            "gameData": { "queue": { "id": 440 }, "isCustomGame": false }
+        });
+        let incomplete = json!({
+            "phase": "InProgress",
+            "gameData": { "queue": { "id": 440 } }
+        });
+
+        let context = in_progress_gameflow_context(Some(&stale), Some(&incomplete));
+
+        assert_eq!(context, None);
     }
 }
