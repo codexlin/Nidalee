@@ -1,4 +1,3 @@
-use crate::infrastructure::data_services::static_catalog::ensure_static_catalogs;
 use crate::infrastructure::data_services::summoner::service::get_summoner_by_id;
 use crate::infrastructure::data_services::summoner::service::get_summoners_by_names;
 use crate::infrastructure::match_management::matches::fetcher::fetch_match_list;
@@ -723,7 +722,7 @@ async fn fetch_all_players_match_stats_internal(
 
     let player_names: Vec<String> = need_fetch_indices
         .iter()
-        .filter(|&&idx| players[idx].puuid.as_deref().map_or(true, str::is_empty))
+        .filter(|&&idx| players[idx].puuid.as_deref().is_none_or(str::is_empty))
         .map(|&idx| players[idx].display_name.clone())
         .collect();
 
@@ -864,10 +863,6 @@ pub(crate) async fn fetch_realtime_player_analysis_with_retry(
     queue_id: i64,
     is_custom_game: bool,
 ) -> Result<CachedPlayerAnalysis, RealtimePlayerAnalysisError> {
-    ensure_static_catalogs()
-        .await
-        .map_err(RealtimePlayerAnalysisError::Unavailable)?;
-
     for attempt in 1..=REALTIME_HISTORY_FETCH_ATTEMPTS {
         let result = fetch_realtime_player_analysis(http_client, puuid, queue_id, is_custom_game).await;
         match result {

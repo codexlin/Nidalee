@@ -110,7 +110,28 @@ struct ApiPlayer {
     game_name: Option<String>,
     #[serde(default)]
     tag_line: Option<String>,
+    #[serde(default)]
     profile_icon: i64,
+}
+
+fn participant_display_name(player: Option<&ApiPlayer>) -> String {
+    let Some(player) = player else {
+        return "未知玩家".to_owned();
+    };
+
+    match (
+        player.game_name.as_deref().map(str::trim),
+        player.tag_line.as_deref().map(str::trim),
+    ) {
+        (Some(name), Some(tag)) if !name.is_empty() && !tag.is_empty() => format!("{name}#{tag}"),
+        _ => player
+            .summoner_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .unwrap_or("未知玩家")
+            .to_owned(),
+    }
 }
 
 pub(super) fn map_game_detail(raw_detail: Value) -> Result<GameDetail, String> {
@@ -149,16 +170,20 @@ pub(super) fn map_game_detail(raw_detail: Value) -> Result<GameDetail, String> {
         let champion_id = p.champion_id.unwrap_or(0);
         let team_id = p.team_id.unwrap_or(0);
 
-        if team_id == 100 {
-            blue_team_stats.kills += kills;
-            blue_team_stats.gold_earned += gold;
-            blue_team_stats.total_damage_dealt_to_champions += damage;
-            blue_team_stats.vision_score += vision;
-        } else {
-            red_team_stats.kills += kills;
-            red_team_stats.gold_earned += gold;
-            red_team_stats.total_damage_dealt_to_champions += damage;
-            red_team_stats.vision_score += vision;
+        match team_id {
+            100 => {
+                blue_team_stats.kills += kills;
+                blue_team_stats.gold_earned += gold;
+                blue_team_stats.total_damage_dealt_to_champions += damage;
+                blue_team_stats.vision_score += vision;
+            }
+            200 => {
+                red_team_stats.kills += kills;
+                red_team_stats.gold_earned += gold;
+                red_team_stats.total_damage_dealt_to_champions += damage;
+                red_team_stats.vision_score += vision;
+            }
+            _ => {}
         }
 
         if damage > max_damage {
@@ -177,17 +202,7 @@ pub(super) fn map_game_detail(raw_detail: Value) -> Result<GameDetail, String> {
         }
 
         let player_identity = player_map.get(&p.participant_id);
-        let summoner_name = player_identity.map_or_else(String::new, |pi| {
-            if let (Some(name), Some(tag)) = (&pi.game_name, &pi.tag_line) {
-                if !name.is_empty() && !tag.is_empty() {
-                    return format!("{}#{}", name, tag);
-                }
-            }
-            if let Some(s_name) = &pi.summoner_name {
-                return s_name.clone();
-            }
-            String::from("未知玩家")
-        });
+        let summoner_name = participant_display_name(player_identity);
         let profile_icon_id = player_identity.map_or(0, |pi| pi.profile_icon);
 
         let champion_name =
@@ -461,7 +476,7 @@ mod tests {
             participant.stats.item0,
         );
 
-        assert_eq!(defaults, (0, 0, "", 0, None, None, None, None, 0, 0, 0, None));
+        assert_eq!(defaults, (0, 0, "未知玩家", 0, None, None, None, None, 0, 0, 0, None));
     }
 
     #[test]
@@ -471,5 +486,66 @@ mod tests {
         let detail = map_game_detail(raw).unwrap();
 
         assert_eq!(detail.participants[0].champion_name, None);
+    }
+
+    #[test]
+    fn unknown_team_id_does_not_pollute_red_team_totals() {
+        let raw = detail_fixture(
+            vec![participant(
+                1,
+                0,
+                2_000_000_001,
+                json!({
+                    "kills": 9,
+                    "goldEarned": 12000,
+                    "totalDamageDealtToChampions": 26000,
+                    "visionScore": 15
+                }),
+            )],
+            vec![],
+        );
+
+        let detail = map_game_detail(raw).unwrap();
+
+        assert_eq!(
+            (
+                detail.red_team_stats.kills,
+                detail.red_team_stats.gold_earned,
+                detail.red_team_stats.total_damage_dealt_to_champions,
+                detail.red_team_stats.vision_score,
+            ),
+            (0, 0, 0, 0)
+        );
+    }
+
+    #[test]
+    fn missing_profile_icon_uses_zero_without_rejecting_detail() {
+        let raw = detail_fixture(
+            vec![participant(1, 100, 2_000_000_001, json!({}))],
+            vec![json!({
+                "participantId": 1,
+                "player": {
+                    "summonerName": "legacy",
+                    "gameName": "RiotName",
+                    "tagLine": "CN1"
+                }
+            })],
+        );
+
+        let detail = map_game_detail(raw).unwrap();
+
+        assert_eq!(detail.participants[0].profile_icon_id, 0);
+    }
+
+    #[test]
+    fn empty_identity_names_use_unknown_player_fallback() {
+        let raw = detail_fixture(
+            vec![participant(1, 100, 2_000_000_001, json!({}))],
+            vec![identity(1, Some("  "), Some(""), Some("CN1"), 11)],
+        );
+
+        let detail = map_game_detail(raw).unwrap();
+
+        assert_eq!(detail.participants[0].summoner_name, "未知玩家");
     }
 }

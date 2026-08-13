@@ -1,12 +1,15 @@
 use reqwest::Client;
+#[cfg(debug_assertions)]
 use serde_json::Value;
 
+#[cfg(debug_assertions)]
 use crate::domains::analysis::analyzers::core::strategy::AnalysisMode;
 use crate::shared::types::{AdvicePerspective, PlayerMatchStats};
 
 /// 单次请求指定数量的原生 LCU 战绩。
 ///
 /// 实现已统一到 [`super::super::fetcher`]，这里只做转发，避免出现第二套列表获取逻辑。
+#[cfg(debug_assertions)]
 pub async fn fetch_match_list(client: &Client, puuid: &str, count: usize) -> Result<Value, String> {
     super::super::fetcher::fetch_match_list(client, puuid, count).await
 }
@@ -15,6 +18,7 @@ pub async fn fetch_match_list(client: &Client, puuid: &str, count: usize) -> Res
 /// 内部兼容入口（数据采集等）；前端请使用 `analyze_matches`。
 ///
 /// 改为调用统一应用服务，不再自行请求战绩列表。
+#[cfg(debug_assertions)]
 pub(crate) async fn get_match_history(
     client: &Client,
     end_count: usize,
@@ -65,7 +69,7 @@ pub async fn get_recent_matches_by_puuid(
 ///
 /// 兼容适配器：团队/选人概览路径，强制 Simple（零时间线），
 /// 避免 10 玩家 × N 时间线把客户端拖垮。个人深度分析走 `analyze_matches`。
-pub async fn get_recent_matches_by_puuid_with_perspective(
+async fn get_recent_matches_by_puuid_with_perspective(
     client: &Client,
     puuid: &str,
     count: usize,

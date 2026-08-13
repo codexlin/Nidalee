@@ -202,6 +202,7 @@ pub fn invalidate_auth_info() {
     }
 }
 
+#[cfg(debug_assertions)]
 pub fn verify_lockfile_vs_cmdline() {
     process_discovery::verify_lockfile_vs_cmdline();
 }

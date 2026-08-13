@@ -430,7 +430,7 @@ fn calculate_distribution_stats(values: &[f64]) -> DistributionStats {
     let max = values[values.len() - 1];
     let mean = values.iter().sum::<f64>() / values.len() as f64;
 
-    let median = if values.len() % 2 == 0 {
+    let median = if values.len().is_multiple_of(2) {
         (values[values.len() / 2 - 1] + values[values.len() / 2]) / 2.0
     } else {
         values[values.len() / 2]
@@ -735,7 +735,7 @@ pub async fn analyze_raw_match_timeline(file_path: String) -> Result<String, Str
         let min_duration = durations[0];
         let max_duration = durations[durations.len() - 1];
         let avg_duration = durations.iter().sum::<i32>() as f64 / durations.len() as f64;
-        let median_duration = if durations.len() % 2 == 0 {
+        let median_duration = if durations.len().is_multiple_of(2) {
             (durations[durations.len() / 2 - 1] + durations[durations.len() / 2]) as f64 / 2.0
         } else {
             durations[durations.len() / 2] as f64

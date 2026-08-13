@@ -375,7 +375,7 @@ fn median_distance(frames: &[&Value], target_participant_id: i32, enemy_particip
 fn median_of_sorted(sorted: &[f64]) -> f64 {
     let len = sorted.len();
     let middle = len / 2;
-    if len % 2 == 0 {
+    if len.is_multiple_of(2) {
         (sorted[middle - 1] + sorted[middle]) / 2.0
     } else {
         sorted[middle]

@@ -1,8 +1,7 @@
 use tauri::Emitter;
 
 use super::super::WsEventHandler;
-use super::identity::{live_position, same_riot_id};
-use crate::infrastructure::champion_selection::summoner_spells;
+use super::identity::{live_position, live_spell_id, same_riot_id};
 use crate::infrastructure::data_services::champion_data;
 use crate::shared::Result;
 
@@ -10,6 +9,40 @@ pub(super) type MatchStatsCacheEntry = (
     crate::infrastructure::match_management::analysis_data::service::MatchStatsCacheKey,
     crate::infrastructure::match_management::analysis_data::service::CachedPlayerAnalysis,
 );
+
+fn base_player_data(
+    live_player: &crate::shared::types::LiveClientPlayer,
+    cell_id: i32,
+    champion_id: Option<i32>,
+) -> crate::shared::types::PlayerAnalysisData {
+    crate::shared::types::PlayerAnalysisData {
+        cell_id,
+        display_name: live_player.summoner_name.clone(),
+        summoner_id: None,
+        puuid: None,
+        is_local: false,
+        is_bot: live_player.is_bot,
+        analysis_status: if live_player.is_bot {
+            crate::shared::types::PlayerAnalysisStatus::Bot
+        } else {
+            crate::shared::types::PlayerAnalysisStatus::Loading
+        },
+        champion_id,
+        champion_name: Some(live_player.champion_name.clone()),
+        champion_pick_intent: None,
+        position: live_position(&live_player.position),
+        solo_rank: None,
+        flex_rank: None,
+        profile_icon_id: None,
+        tag_line: None,
+        spell1_id: live_spell_id(&live_player.summoner_spells, "summonerSpellOne"),
+        spell2_id: live_spell_id(&live_player.summoner_spells, "summonerSpellTwo"),
+        match_stats: None,
+        recent_matches: Vec::new(),
+        analysis_basis: None,
+        ranked_rating: None,
+    }
+}
 
 impl WsEventHandler {
     pub(crate) async fn retry_player_analysis(
@@ -149,7 +182,7 @@ impl WsEventHandler {
         command_result
     }
 
-    /// 辅助方法：从 LiveClient 玩家数据构建 PlayerAnalysisData
+    /// Builds the best available player card from the authoritative LiveClient roster.
     pub(super) async fn build_player_data(
         &self,
         live_player: &crate::shared::types::LiveClientPlayer,
@@ -158,10 +191,20 @@ impl WsEventHandler {
         queue_id: i64,
         is_custom_game: bool,
         perspective: crate::shared::types::AdvicePerspective,
-    ) -> Result<(crate::shared::types::PlayerAnalysisData, Option<MatchStatsCacheEntry>)> {
-        // 获取英雄 ID
-        let champion_id = champion_data::get_champion_id_by_name(&live_player.champion_name)
-            .ok_or_else(|| format!("Could not find champion ID for '{}'", live_player.champion_name))?;
+    ) -> (crate::shared::types::PlayerAnalysisData, Option<MatchStatsCacheEntry>) {
+        let champion_id = champion_data::get_champion_id_by_name(&live_player.champion_name);
+        if champion_id.is_none() {
+            log::warn!(
+                target: "ws::event_handler",
+                "Champion '{}' is absent from the current static catalog; keeping the player with an unresolved champion ID",
+                live_player.champion_name
+            );
+        }
+
+        let mut player_data = base_player_data(live_player, cell_id, champion_id);
+        if live_player.is_bot {
+            return (player_data, None);
+        }
 
         // 查找召唤师信息
         let summoner_info = summoners_info.iter().find(|s| {
@@ -173,52 +216,11 @@ impl WsEventHandler {
             same_riot_id(&full_name, &live_player.summoner_name)
         });
 
-        let mut player_data = crate::shared::types::PlayerAnalysisData {
-            cell_id,
-            display_name: live_player.summoner_name.clone(),
-            summoner_id: None,
-            puuid: None,
-            is_local: false,
-            is_bot: false,
-            analysis_status: crate::shared::types::PlayerAnalysisStatus::Loading,
-            champion_id: Some(champion_id),
-            champion_name: Some(live_player.champion_name.clone()),
-            champion_pick_intent: None,
-            position: live_position(&live_player.position),
-            solo_rank: None,
-            flex_rank: None,
-            profile_icon_id: None,
-            tag_line: None,
-            spell1_id: None,
-            spell2_id: None,
-            match_stats: None,
-            recent_matches: Vec::new(),
-            analysis_basis: None,
-            ranked_rating: None,
-        };
         let mut cache_entry = None;
-
-        // 解析召唤师技能
-        if let Some(spells) = live_player.summoner_spells.as_object() {
-            if let Some(spell_one) = spells.get("summonerSpellOne") {
-                if let Some(spell_name) = spell_one.get("displayName").and_then(|v| v.as_str()) {
-                    if let Some(spell_id) = summoner_spells::get_spell_id_by_name(spell_name) {
-                        player_data.spell1_id = Some(spell_id);
-                    }
-                }
-            }
-
-            if let Some(spell_two) = spells.get("summonerSpellTwo") {
-                if let Some(spell_name) = spell_two.get("displayName").and_then(|v| v.as_str()) {
-                    if let Some(spell_id) = summoner_spells::get_spell_id_by_name(spell_name) {
-                        player_data.spell2_id = Some(spell_id);
-                    }
-                }
-            }
-        }
 
         // 填充召唤师详细信息
         if let Some(info) = summoner_info {
+            player_data.summoner_id = Some(info.summoner_id.clone());
             player_data.puuid = Some(info.puuid.clone());
             crate::infrastructure::match_management::analysis_data::service::apply_rank_summaries(
                 &mut player_data,
@@ -280,6 +282,51 @@ impl WsEventHandler {
             );
         }
 
-        Ok((player_data, cache_entry))
+        (player_data, cache_entry)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::base_player_data;
+    use crate::shared::types::{LiveClientPlayer, PlayerAnalysisStatus};
+
+    fn live_player(is_bot: bool) -> LiveClientPlayer {
+        LiveClientPlayer {
+            summoner_name: "Player#CN1".to_owned(),
+            champion_name: "Catalog Miss".to_owned(),
+            is_bot,
+            is_dead: false,
+            items: Vec::new(),
+            level: 1,
+            position: "MIDDLE".to_owned(),
+            raw_champion_name: String::new(),
+            respawn_timer: 0.0,
+            runes: serde_json::Value::Null,
+            scores: serde_json::Value::Null,
+            skin_id: 0,
+            summoner_spells: serde_json::Value::Null,
+            team: "ORDER".to_owned(),
+        }
+    }
+
+    #[test]
+    fn base_player_data_keeps_player_when_champion_id_is_unresolved() {
+        let player = base_player_data(&live_player(false), 3, None);
+
+        assert_eq!(
+            (player.display_name.as_str(), player.champion_id, player.analysis_status),
+            ("Player#CN1", None, PlayerAnalysisStatus::Loading)
+        );
+    }
+
+    #[test]
+    fn base_player_data_marks_bot_without_requesting_identity() {
+        let player = base_player_data(&live_player(true), 103, Some(55));
+
+        assert_eq!(
+            (player.is_bot, player.analysis_status, player.champion_id),
+            (true, PlayerAnalysisStatus::Bot, Some(55))
+        );
     }
 }
