@@ -57,7 +57,7 @@
                     v-for="champion in filteredChampions"
                     :key="champion.id"
                     type="button"
-                    class="flex w-[3.25rem] flex-col items-center gap-0.5 rounded-lg p-0.5 text-center transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    class="flex w-13 flex-col items-center gap-0.5 rounded-lg p-0.5 text-center transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                     :title="champion.name"
                     @click="handleChampionSelect(champion)"
                   >

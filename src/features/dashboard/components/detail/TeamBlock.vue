@@ -99,7 +99,7 @@
                     alt=""
                   />
                   <span
-                    class="absolute -bottom-0.5 -right-0.5 bg-background text-foreground text-xs min-w-[18px] h-4 px-1 flex items-center justify-center rounded ring-1 ring-border tabular-nums leading-none"
+                    class="absolute -bottom-0.5 -right-0.5 bg-background text-foreground text-xs min-w-4.5 h-4 px-1 flex items-center justify-center rounded ring-1 ring-border tabular-nums leading-none"
                   >
                     {{ participant.stats?.champLevel || '?' }}
                   </span>

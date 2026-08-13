@@ -2,7 +2,7 @@
   <div class="flex flex-wrap items-center gap-2">
     <template v-if="!compact">
       <Select :model-value="config.region" @update:model-value="patch('region', String($event))">
-        <SelectTrigger class="h-9 w-[8rem] text-sm">
+        <SelectTrigger class="h-9 w-32 text-sm">
           <SelectValue placeholder="区域" />
         </SelectTrigger>
         <SelectContent>
@@ -13,7 +13,7 @@
       </Select>
 
       <Select :model-value="config.mode" @update:model-value="patch('mode', String($event))">
-        <SelectTrigger class="h-9 w-[7.5rem] text-sm">
+        <SelectTrigger class="h-9 w-30 text-sm">
           <SelectValue placeholder="模式" />
         </SelectTrigger>
         <SelectContent>
@@ -28,7 +28,7 @@
         :model-value="config.tier"
         @update:model-value="patch('tier', String($event))"
       >
-        <SelectTrigger class="h-9 w-[8rem] text-sm">
+        <SelectTrigger class="h-9 w-32 text-sm">
           <SelectValue placeholder="段位" />
         </SelectTrigger>
         <SelectContent>

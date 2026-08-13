@@ -6,7 +6,7 @@
       :max="10000"
       :min="1000"
       :step="100"
-      class="min-w-[8rem] flex-1"
+      class="min-w-32 flex-1"
       @update:model-value="(val: number[] | undefined) => (delayModel = val || [0])"
     />
     <div class="flex items-center gap-1.5 tabular-nums">

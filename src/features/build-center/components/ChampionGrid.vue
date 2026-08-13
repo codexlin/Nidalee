@@ -1,7 +1,5 @@
 <template>
-  <aside
-    class="flex h-full min-h-0 w-[18.5rem] shrink-0 flex-col overflow-hidden border-r border-border/60 sm:w-[20.5rem]"
-  >
+  <aside class="flex h-full min-h-0 w-74 shrink-0 flex-col overflow-hidden border-r border-border/60 sm:w-[20.5rem]">
     <div class="shrink-0 space-y-2 border-b border-border/60 p-3">
       <div class="relative">
         <Search class="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />

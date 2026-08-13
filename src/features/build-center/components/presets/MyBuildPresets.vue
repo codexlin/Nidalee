@@ -283,7 +283,7 @@ const handleImportPresets = async (event: Event) => {
 
       <div
         v-if="groupedPresets.length && selectedGroup"
-        class="grid min-h-[28rem] overflow-hidden rounded-xl surface-inset lg:h-[calc(100dvh-22rem)] lg:max-h-[42rem] lg:grid-cols-[15rem_minmax(0,1fr)]"
+        class="grid min-h-112 overflow-hidden rounded-xl surface-inset lg:h-[calc(100dvh-22rem)] lg:max-h-168 lg:grid-cols-[15rem_minmax(0,1fr)]"
       >
         <aside class="flex min-h-0 flex-col border-b border-border/50 lg:border-r lg:border-b-0">
           <div class="border-b border-border/40 px-3 py-2.5">

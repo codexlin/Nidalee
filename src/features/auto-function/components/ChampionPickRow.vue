@@ -67,7 +67,7 @@
     </button>
 
     <Dialog v-model:open="open">
-      <DialogContent class="!max-h-[85vh] w-[85vw] !max-w-[85vw] overflow-hidden">
+      <DialogContent class="!max-h-[85vh] w-[85vw] max-w-[85vw]! overflow-hidden">
         <DialogHeader class="pb-4">
           <DialogTitle class="text-lg font-medium">选择英雄</DialogTitle>
           <DialogDescription>按使用顺序添加，可拖动调整优先级</DialogDescription>

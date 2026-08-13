@@ -6,7 +6,7 @@
       <div
         v-if="shouldShowAnalysis && hasMyTeamData && isDataReady"
         key="analysis"
-        class="mx-auto h-[calc(100dvh-8.5rem)] min-h-[600px] w-full max-w-full overflow-hidden"
+        class="mx-auto h-[calc(100dvh-8.5rem)] min-h-150 w-full max-w-full overflow-hidden"
       >
         <div class="flex h-full min-h-0 flex-col gap-1">
           <!-- Ally Team -->
