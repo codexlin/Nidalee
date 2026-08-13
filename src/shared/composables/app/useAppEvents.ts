@@ -29,7 +29,6 @@ export function useAppEvents() {
   const matchmakingStore = useMatchmakingStore()
   const matchAnalysisStore = useMatchAnalysisStore()
   const queryClient = useQueryClient() // ← 移到外层，所有函数共享同一个实例
-  let analysisStateRevision = 0
 
   const { handleGamePhaseChange, cancelPendingAutoAccept } = gamePhaseManager
   const { handleLobbyChange, handleChampSelectChange } = champSelectManager
@@ -76,7 +75,6 @@ export function useAppEvents() {
   }
 
   const updateTeamAnalysisData = (data: TeamAnalysisData | null) => {
-    analysisStateRevision += 1
     matchAnalysisStore.setTeamAnalysisData(data)
   }
 
@@ -150,23 +148,6 @@ export function useAppEvents() {
     startListeningPromise = null
   }
 
-  const restoreCachedAnalysis = async (generation: number) => {
-    const revisionBeforeRestore = analysisStateRevision
-    try {
-      const { invoke } = await import('@tauri-apps/api/core')
-      const cachedData = await invoke<TeamAnalysisData | null>('get_cached_analysis_data')
-      if (!listenersReady || listenerGeneration !== generation) return
-      // A live event or game-finished notification that arrived while the command was in flight
-      // is newer than this cache read and must keep ownership of the store.
-      if (analysisStateRevision !== revisionBeforeRestore) return
-      if (cachedData) {
-        updateTeamAnalysisData(cachedData)
-      }
-    } catch (error) {
-      console.error('[AppEvents] 从后端缓存恢复数据失败:', error)
-    }
-  }
-
   const startListening = (): Promise<boolean> => {
     if (listenersReady) return Promise.resolve(true)
     if (startListeningPromise) return startListeningPromise
@@ -226,8 +207,6 @@ export function useAppEvents() {
         listenersReady = true
         cancelActiveConnectionStateDebounce = () => handleConnectionStateChangeDebounced.cancel()
 
-        // 缓存恢复不属于监听器握手，不应阻塞或推翻 producer 启动。
-        void restoreCachedAnalysis(generation)
         return true
       } catch (error) {
         console.error('[AppEvents] 启动全局事件监听失败:', error)

@@ -19,7 +19,7 @@ impl WsEventHandler {
         &self,
         generation: u64,
     ) -> Result<()> {
-        log::info!("[ws-event-backfill] Starting backfill task...");
+        log::info!("开始补全敌方阵容数据");
 
         if !self.cache.read().await.can_commit_in_game_recovery(generation) {
             return Ok(());
@@ -42,7 +42,7 @@ impl WsEventHandler {
                 attempts += 1;
                 match crate::infrastructure::real_time::liveclient::service::get_live_player_list().await {
                     Ok(players) if !players.is_empty() => {
-                        log::info!("[ws-event-backfill] Successfully fetched player list from LiveClient.");
+                        log::info!("LiveClient 玩家列表已就绪");
                         break players;
                     }
                     Ok(_) => {
@@ -52,7 +52,7 @@ impl WsEventHandler {
                             );
                         }
                         log::warn!(
-                            "[ws-event-backfill] LiveClient returned an empty list (game loading?), attempt {}/{}...",
+                            "LiveClient returned an empty list (game loading?), attempt {}/{}...",
                             attempts,
                             max_attempts
                         );
@@ -67,7 +67,7 @@ impl WsEventHandler {
                             .into());
                         }
                         log::warn!(
-                            "[ws-event-backfill] Failed to fetch LiveClient player list (attempt {}/{}), retrying in 2s: {}",
+                            "Failed to fetch LiveClient player list (attempt {}/{}), retrying in 2s: {}",
                             attempts,
                             max_attempts,
                             e
@@ -78,23 +78,20 @@ impl WsEventHandler {
             }
         };
 
-        log::info!(
-            "[ws-event-backfill] Found {} players in LiveClient data.",
-            live_players.len()
-        );
+        log::info!("LiveClient 返回 {} 名玩家", live_players.len());
 
         // 2. Snapshot cached analysis data. All network I/O below operates on this owned copy;
         // no EventCache lock is held across an await.
         let mut team_analysis = {
             let cache = self.cache.read().await;
             if !cache.can_commit_in_game_recovery(generation) {
-                log::debug!("[ws-event-backfill] Recovery generation {generation} is stale before backfill");
+                log::debug!("Recovery generation {generation} is stale before backfill");
                 return Ok(());
             }
             match cache.team_analysis_data.clone() {
                 Some(data) => data,
                 None => {
-                    log::warn!("[ws-event-backfill] No TeamAnalysisData in cache, cannot perform backfill.");
+                    log::warn!("No TeamAnalysisData in cache, cannot perform backfill.");
                     return Ok(());
                 }
             }
@@ -103,9 +100,7 @@ impl WsEventHandler {
         // 3. Resolve the local side from the local player instead of assuming ORDER.
         // Custom games can place the local player on either side.
         let Some(local_team) = resolve_local_live_team(&live_players, &team_analysis).map(str::to_owned) else {
-            log::warn!(
-                "[ws-event-backfill] Could not resolve the local player's LiveClient team; skipping roster backfill."
-            );
+            log::warn!("Could not resolve the local player's LiveClient team; skipping roster backfill.");
             return Ok(());
         };
 
@@ -119,10 +114,7 @@ impl WsEventHandler {
         let mut occupied_enemy_slots = HashSet::new();
         for live_player in enemy_live_players.iter().filter(|player| player.is_bot) {
             let Some(champion_id) = champion_data::get_champion_id_by_name(&live_player.champion_name) else {
-                log::warn!(
-                    "[ws-event-backfill] Could not resolve bot champion '{}'.",
-                    live_player.champion_name
-                );
+                log::warn!("Could not resolve bot champion '{}'.", live_player.champion_name);
                 continue;
             };
 
@@ -133,7 +125,7 @@ impl WsEventHandler {
                 champion_id,
             ) else {
                 log::warn!(
-                    "[ws-event-backfill] Could not match bot '{}' (champion: {}) to the cached enemy roster.",
+                    "Could not match bot '{}' (champion: {}) to the cached enemy roster.",
                     live_player.summoner_name,
                     live_player.champion_name
                 );
@@ -158,14 +150,12 @@ impl WsEventHandler {
             cache.team_analysis_data = Some(team_analysis.clone());
             cache.in_game_recovery_abort = None;
             let _ = self.app.emit("team-analysis-data", &team_analysis);
-            log::info!(
-                "[ws-event-backfill] Enemy roster contains no real players; confirmed bot identities were published."
-            );
+            log::info!("Enemy roster contains no real players; confirmed bot identities were published.");
             return Ok(());
         }
 
         log::info!(
-            "[ws-event-backfill] Found {} real enemy players, starting data backfill...",
+            "识别到 {} 名真实敌方玩家，开始补全身份、段位与战绩",
             enemy_live_players.len()
         );
 
@@ -180,15 +170,12 @@ impl WsEventHandler {
             .await
             {
                 Ok(info) => {
-                    log::info!(
-                        "[ws-event-backfill] Successfully fetched details for {} enemy summoners.",
-                        info.len()
-                    );
+                    log::info!("已获取 {} 名敌方玩家的身份与段位", info.len());
                     info
                 }
                 Err(e) => {
                     log::error!(
-                        "[ws-event-backfill] Batch fetch for enemy summoner info failed: {}. Publishing the resolved LiveClient roster without rank/history.",
+                        "Batch fetch for enemy summoner info failed: {}. Publishing the resolved LiveClient roster without rank/history.",
                         e
                     );
                     Vec::new()
@@ -203,7 +190,7 @@ impl WsEventHandler {
             // 5.1 Find champion ID by name.
             let Some(champion_id) = champion_data::get_champion_id_by_name(&live_player.champion_name) else {
                 log::warn!(
-                    "[ws-event-backfill] Could not find champion ID for '{}', skipping player.",
+                    "Could not find champion ID for '{}', skipping player.",
                     live_player.champion_name
                 );
                 continue;
@@ -221,7 +208,7 @@ impl WsEventHandler {
                 Some(index) => index,
                 None => {
                     log::warn!(
-                        "[ws-event-backfill] Could not find player '{}' (champion: {}) in cached enemy team, skipping.",
+                        "Could not find player '{}' (champion: {}) in cached enemy team, skipping.",
                         live_player.summoner_name,
                         live_player.champion_name
                     );
@@ -238,18 +225,14 @@ impl WsEventHandler {
             enemy_player.champion_name = Some(live_player.champion_name.clone());
             enemy_player.position = live_position(&live_player.position);
 
-            // 5.3.1 解析并转换召唤师技能（从中文名转为 ID）
+            // LiveClient uses localized spell names, while the frontend consumes stable numeric IDs.
             if let Some(spells) = live_player.summoner_spells.as_object() {
                 // 技能1
                 if let Some(spell_one) = spells.get("summonerSpellOne") {
                     if let Some(spell_name) = spell_one.get("displayName").and_then(|v| v.as_str()) {
                         if let Some(spell_id) = summoner_spells::get_spell_id_by_name(spell_name) {
                             enemy_player.spell1_id = Some(spell_id);
-                            log::debug!(
-                                "[ws-event-backfill] 转换召唤师技能1: '{}' -> ID {}",
-                                spell_name,
-                                spell_id
-                            );
+                            log::trace!("召唤师技能映射 slot=1 name={} id={}", spell_name, spell_id);
                         }
                     }
                 }
@@ -259,11 +242,7 @@ impl WsEventHandler {
                     if let Some(spell_name) = spell_two.get("displayName").and_then(|v| v.as_str()) {
                         if let Some(spell_id) = summoner_spells::get_spell_id_by_name(spell_name) {
                             enemy_player.spell2_id = Some(spell_id);
-                            log::debug!(
-                                "[ws-event-backfill] 转换召唤师技能2: '{}' -> ID {}",
-                                spell_name,
-                                spell_id
-                            );
+                            log::trace!("召唤师技能映射 slot=2 name={} id={}", spell_name, spell_id);
                         }
                     }
                 }
@@ -293,7 +272,7 @@ impl WsEventHandler {
             } else {
                 enemy_player.analysis_status = crate::shared::types::PlayerAnalysisStatus::Unavailable;
                 log::warn!(
-                    "[ws-event-backfill] Could not find detailed summoner info for '{}'.",
+                    "Could not find detailed summoner info for '{}'.",
                     live_player.summoner_name
                 );
             }
@@ -348,18 +327,11 @@ impl WsEventHandler {
                     enemy_player.analysis_basis = Some(analysis.basis);
                     enemy_player.is_bot = false;
                     enemy_player.analysis_status = crate::shared::types::PlayerAnalysisStatus::Ready;
-                    log::info!(
-                        "[ws-event-backfill] Successfully backfilled full data for player '{}'.",
-                        display_name
-                    );
+                    log::debug!("敌方玩家分析完成: {}", display_name);
                 }
                 Err(error) => {
                     team_analysis.enemy_team[enemy_index].analysis_status = error.status();
-                    log::warn!(
-                        "[ws-event-backfill] Failed to get match history for player '{}': {}",
-                        display_name,
-                        error
-                    );
+                    log::warn!("Failed to get match history for player '{}': {}", display_name, error);
                 }
             }
         }
@@ -369,7 +341,7 @@ impl WsEventHandler {
         // Commit only if this is still the active in-game generation.
         let mut cache = self.cache.write().await;
         if !cache.can_commit_in_game_recovery(generation) {
-            log::debug!("[ws-event-backfill] Discarding stale recovery generation {generation}");
+            log::debug!("Discarding stale recovery generation {generation}");
             return Ok(());
         }
         for (key, stats) in stats_to_cache {
@@ -383,8 +355,10 @@ impl WsEventHandler {
         drop(cache);
 
         // 6. Emit the updated data to the frontend.
-        log::info!("[ws-event-backfill] Emitting complete, backfilled analysis data to frontend.");
-        log::info!("[ws-event-backfill] Backfill task completed.");
+        log::info!(
+            "敌方阵容数据补全完成，共处理 {} 名真实玩家",
+            updated_data.enemy_team.iter().filter(|player| !player.is_bot).count()
+        );
 
         Ok(())
     }

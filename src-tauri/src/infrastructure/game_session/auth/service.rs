@@ -183,7 +183,7 @@ pub async fn ensure_valid_auth_info_async() -> Option<LcuAuthInfo> {
     match refresh_auth_singleflight(None).await {
         Ok(auth) => Some(auth),
         Err(error) => {
-            log::error!("[LCU] Unable to refresh authentication: {}", error);
+            log::error!("Unable to refresh authentication: {}", error);
             None
         }
     }
@@ -198,7 +198,7 @@ pub fn invalidate_auth_info() {
     if let Ok(mut auth) = AUTH_INFO.write() {
         *auth = None;
         AUTH_GENERATION.fetch_add(1, Ordering::SeqCst);
-        log::info!("[LCU] AuthInfo 缓存已清除");
+        log::info!("AuthInfo 缓存已清除");
     }
 }
 

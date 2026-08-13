@@ -23,7 +23,7 @@ pub async fn send_chat_message(client: &Client, chat_id: &str, message: &str) ->
 
     lcu_post_no_content(client, &url, payload).await?;
     log::info!(
-        target: "lobby::service",
+        target: "game::lobby",
         "Chat message sent to room {}: '{}'",
         chat_id,
         message

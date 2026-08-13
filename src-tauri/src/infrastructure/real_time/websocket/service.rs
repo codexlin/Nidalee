@@ -72,9 +72,9 @@ async fn cancel_and_join(state: &mut WsSupervisorState) {
     if let Some(mut task) = state.task.take() {
         match tokio::time::timeout(Duration::from_secs(3), &mut task).await {
             Ok(Ok(())) => {}
-            Ok(Err(error)) => log::warn!("[lcu-ws] Supervisor join failed: {}", error),
+            Ok(Err(error)) => log::warn!("Supervisor join failed: {}", error),
             Err(_) => {
-                log::warn!("[lcu-ws] Supervisor did not stop in time; aborting it.");
+                log::warn!("Supervisor did not stop in time; aborting it.");
                 task.abort();
                 let _ = task.await;
             }
@@ -92,7 +92,7 @@ pub async fn start_ws(app: tauri::AppHandle) -> bool {
 
     if let Some(task) = state.task.take() {
         if let Err(error) = task.await {
-            log::warn!("[lcu-ws] Previous supervisor join failed: {}", error);
+            log::warn!("Previous supervisor join failed: {}", error);
         }
     }
     state.cancel = None;
@@ -117,7 +117,7 @@ async fn run_supervisor(handler: Arc<WsEventHandler>, mut cancel: watch::Receive
             discovery_failures = discovery_failures.saturating_add(1);
             let delay = discovery_backoff(discovery_failures);
             log::debug!(
-                "[lcu-ws] Waiting for LCU authentication info; retrying in {} seconds.",
+                "Waiting for LCU authentication info; retrying in {} seconds.",
                 delay.as_secs()
             );
             if transport::sleep_or_cancel(delay, &mut cancel).await {
@@ -127,7 +127,7 @@ async fn run_supervisor(handler: Arc<WsEventHandler>, mut cancel: watch::Receive
         };
         discovery_failures = 0;
 
-        log::info!("[lcu-ws] Auth info obtained, attempting to connect...");
+        log::info!("Auth info obtained, attempting to connect...");
         let result = transport::connect_and_run_ws(&auth, handler.clone(), &mut cancel).await;
         handler.handle_transport_disconnected().await;
         // A transport generation ended. The same LCU process may still yield identical
@@ -139,8 +139,8 @@ async fn run_supervisor(handler: Arc<WsEventHandler>, mut cancel: watch::Receive
             break;
         }
         match result {
-            Ok(()) => log::info!("[lcu-ws] Connection closed; reconnecting in 3 seconds."),
-            Err(error) => log::warn!("[lcu-ws] Connection failed: {}; retrying in 3 seconds.", error),
+            Ok(()) => log::info!("Connection closed; reconnecting in 3 seconds."),
+            Err(error) => log::warn!("Connection failed: {}; retrying in 3 seconds.", error),
         }
         if transport::sleep_or_cancel(Duration::from_secs(3), &mut cancel).await {
             break;
@@ -148,7 +148,7 @@ async fn run_supervisor(handler: Arc<WsEventHandler>, mut cancel: watch::Receive
     }
 
     handler.handle_transport_disconnected().await;
-    log::info!("[lcu-ws] Supervisor stopped.");
+    log::info!("Supervisor stopped.");
 }
 
 fn discovery_backoff(failures: u32) -> Duration {

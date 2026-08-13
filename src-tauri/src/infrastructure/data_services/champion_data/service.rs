@@ -71,13 +71,13 @@ pub fn install_champion_maps(champions: Vec<ChampionInfo>) -> Result<(), String>
     let count = data.len();
     let mut guard = CHAMPION_STORE.write().map_err(|e| format!("英雄目录锁中毒: {e}"))?;
     *guard = Some(ChampionStore { name_to_id, data });
-    log::info!("[ChampionData] ✅ 英雄目录已安装，共 {count} 个");
+    log::info!("英雄目录已安装，共 {count} 个");
     Ok(())
 }
 
 /// 从 Community Dragon 拉取原始英雄列表（不写内存）
 pub async fn fetch_champion_data_from_network() -> Result<Vec<ChampionInfo>, Box<dyn std::error::Error + Send + Sync>> {
-    log::info!("[ChampionData] 🌐 正在从 Community Dragon 拉取英雄摘要...");
+    log::info!("正在从 Community Dragon 拉取英雄摘要...");
     let url =
         "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/zh_cn/v1/champion-summary.json";
 

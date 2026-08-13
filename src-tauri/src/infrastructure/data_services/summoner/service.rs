@@ -265,14 +265,14 @@ pub async fn set_summoner_background(client: &Client, skin_id: u64) -> Result<()
     // 使用 POST 请求而不是 PUT
     match lcu_post::<Value>(client, path, body_value).await {
         Ok(response) => {
-            println!("成功设置生涯背景皮肤，皮肤ID: {}", skin_id);
+            log::info!("成功设置生涯背景皮肤，皮肤ID: {skin_id}");
             if !response.is_null() {
-                println!("返回的 profile 信息: {}", response);
+                log::debug!("生涯背景接口返回了 profile 信息");
             }
             Ok(())
         }
         Err(e) => {
-            println!("设置生涯背景皮肤失败: {}", e);
+            log::error!("设置生涯背景皮肤失败: {e}");
             // 尝试解析错误信息
             if let Ok(error_json) = serde_json::from_str::<Value>(&e) {
                 if let Some(error_code) = error_json.get("errorCode") {

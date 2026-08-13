@@ -7,6 +7,7 @@ use base64::{engine::general_purpose, Engine as _};
 use reqwest::{Client, Method, Response};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use std::borrow::Cow;
 use std::future::Future;
 use std::time::Instant;
 
@@ -18,6 +19,37 @@ struct LcuAttempt<T> {
     value: T,
     status: reqwest::StatusCode,
     auth: LcuAuthInfo,
+}
+
+fn is_uuid_segment(segment: &str) -> bool {
+    segment.len() == 36
+        && segment.bytes().enumerate().all(|(index, byte)| match index {
+            8 | 13 | 18 | 23 => byte == b'-',
+            _ => byte.is_ascii_hexdigit(),
+        })
+}
+
+fn redact_lcu_path(path: &str) -> Cow<'_, str> {
+    if !path.split(['/', '?', '&', '=']).any(is_uuid_segment) {
+        return Cow::Borrowed(path);
+    }
+
+    let mut redacted = String::with_capacity(path.len());
+    for segment in path.split_inclusive(['/', '?', '&', '=']) {
+        let separator_len = segment
+            .as_bytes()
+            .last()
+            .is_some_and(|byte| matches!(byte, b'/' | b'?' | b'&' | b'=')) as usize;
+        let value_len = segment.len() - separator_len;
+        let (value, separator) = segment.split_at(value_len);
+        if is_uuid_segment(value) {
+            redacted.push_str("<puuid>");
+        } else {
+            redacted.push_str(value);
+        }
+        redacted.push_str(separator);
+    }
+    Cow::Owned(redacted)
 }
 
 async fn execute_with_auth_retry<T, Send, SendFuture, Refresh, RefreshFuture>(
@@ -35,7 +67,7 @@ where
 
         if response.status == reqwest::StatusCode::UNAUTHORIZED || response.status == reqwest::StatusCode::FORBIDDEN {
             if should_retry_auth(response.status, attempt) {
-                log::warn!("[LCU] Authentication failed with {}; refreshing once", response.status);
+                log::warn!("Authentication failed with {}; refreshing once", response.status);
                 refresh(response.auth).await?;
                 continue;
             }
@@ -62,9 +94,10 @@ async fn send_lcu_request(
         .await
         .ok_or("认证信息不存在，请检查LCU进程或重试")?;
     let url = format!("https://127.0.0.1:{}{}", auth.app_port, path);
+    let log_path = redact_lcu_path(path);
 
     let start = Instant::now();
-    log::info!("[LCU] {} {}", method, url);
+    log::info!("{} {}", method, log_path);
 
     let auth_string = format!("riot:{}", auth.remoting_auth_token);
     let base64_auth = general_purpose::STANDARD.encode(auth_string.as_bytes());
@@ -74,31 +107,31 @@ async fn send_lcu_request(
         .header("Authorization", format!("Basic {}", base64_auth));
 
     let builder = if let Some(ref body) = body {
-        log::debug!("[LCU] 请求体: {}", body);
+        log::trace!("请求包含 JSON body");
         builder.json(body)
     } else {
         builder
     };
 
     let response = builder.send().await.map_err(|e| {
-        log::error!("[LCU] {} {} 发送失败: {}", method, url, e);
+        log::error!("{} {} 发送失败: {}", method, log_path, e);
         format!("请求失败: {}", e)
     })?;
 
     let duration = start.elapsed();
     log::info!(
-        "[LCU] {} {} -> {} (耗时: {}ms)",
+        "{} {} -> {} (耗时: {}ms)",
         method,
-        url,
+        log_path,
         response.status(),
         duration.as_millis()
     );
 
     if !response.status().is_success() {
         log::warn!(
-            "[LCU] {} {} 返回非成功状态: {} (耗时: {}ms)",
+            "{} {} 返回非成功状态: {} (耗时: {}ms)",
             method,
-            url,
+            log_path,
             response.status(),
             duration.as_millis()
         );
@@ -178,7 +211,7 @@ pub async fn lcu_post_no_content(client: &Client, path: &str, body: Value) -> Re
 }
 #[cfg(test)]
 mod tests {
-    use super::{execute_with_auth_retry, LcuAttempt};
+    use super::{execute_with_auth_retry, redact_lcu_path, LcuAttempt};
     use crate::shared::types::LcuAuthInfo;
     use reqwest::StatusCode;
     use std::collections::VecDeque;
@@ -192,6 +225,22 @@ mod tests {
             remoting_auth_token: token.to_string(),
             app_port: port,
         }
+    }
+
+    #[test]
+    fn lcu_log_path_redacts_uuid_segments() {
+        let path = "/lol-ranked/v1/ranked-stats/c69b0edb-fbe6-5d0a-8eb0-8b36bb977a98";
+        assert_eq!(redact_lcu_path(path), "/lol-ranked/v1/ranked-stats/<puuid>");
+    }
+
+    #[test]
+    fn lcu_log_path_preserves_non_identifier_query_values() {
+        let path =
+            "/lol-match-history/v1/products/lol/c69b0edb-fbe6-5d0a-8eb0-8b36bb977a98/matches?begIndex=0&endIndex=49";
+        assert_eq!(
+            redact_lcu_path(path),
+            "/lol-match-history/v1/products/lol/<puuid>/matches?begIndex=0&endIndex=49"
+        );
     }
 
     async fn run_sequence(statuses: Vec<StatusCode>) -> (Result<&'static str, String>, usize, Vec<String>) {

@@ -94,13 +94,13 @@ impl LcuCache {
             let cache_read = cache.read().await;
             if let Some(entry) = cache_read.get(key) {
                 if entry.expired_at > Instant::now() {
-                    log::debug!("[LCU Cache] HIT: {} (剩余 {} 秒)", key, entry.expired_at.elapsed().as_secs());
+                    log::debug!("HIT: {} (剩余 {} 秒)", key, entry.expired_at.elapsed().as_secs());
                     return Ok(entry.data.clone());
                 } else {
-                    log::debug!("[LCU Cache] EXPIRED: {}", key);
+                    log::debug!("EXPIRED: {}", key);
                 }
             } else {
-                log::debug!("[LCU Cache] MISS: {}", key);
+                log::debug!("MISS: {}", key);
             }
         }
 
@@ -138,7 +138,7 @@ impl LcuCache {
         }
 
         if !expired_keys.is_empty() {
-            log::debug!("[LCU Cache] 清理了 {} 个过期条目", expired_keys.len());
+            log::debug!("清理了 {} 个过期条目", expired_keys.len());
         }
     }
 
@@ -154,7 +154,7 @@ impl LcuCache {
         self.static_data.write().await.clear();
         self.dynamic_data.write().await.clear();
         self.session_data.write().await.clear();
-        log::info!("[LCU Cache] 已清空所有缓存");
+        log::info!("已清空所有缓存");
     }
 
     /// 获取缓存统计信息

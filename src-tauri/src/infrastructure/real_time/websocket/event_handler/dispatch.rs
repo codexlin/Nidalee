@@ -74,7 +74,7 @@ impl WsEventHandler {
                 self.handle_matchmaking_change(&event.data, &event.event_type).await?;
             }
             _ => {
-                log::trace!("[ws-event] Unhandled event URI: {}", event.uri);
+                log::trace!("Unhandled event URI: {}", event.uri);
             }
         }
 

@@ -8,8 +8,8 @@ use crate::shared::types::{GameDetail, GameProcessReview};
 #[tauri::command]
 pub async fn analyze_matches(puuid: String, request: MatchAnalysisRequest) -> Result<MatchAnalysisResult, String> {
     log::info!(
-        "[analyze_matches] puuid={} count={} mode={:?} depth={:?} maxAnalysisGames={:?}",
-        puuid,
+        "analysis requested puuid={} count={} mode={:?} depth={:?} max_analysis_games={:?}",
+        redact_puuid(&puuid),
         request.count,
         request.mode,
         request.depth,
@@ -21,7 +21,7 @@ pub async fn analyze_matches(puuid: String, request: MatchAnalysisRequest) -> Re
 
 #[tauri::command]
 pub async fn get_game_detail(game_id: u64) -> Result<GameDetail, String> {
-    log::info!("[match-detail] loading gameId={game_id}");
+    log::info!("loading gameId={game_id}");
     service::get_game_detail_logic(http_client::get_lcu_client(), game_id).await
 }
 
@@ -33,9 +33,17 @@ pub async fn get_game_process_review(
     cached_evidence: Option<MatchEvidence>,
 ) -> Result<GameProcessReview, String> {
     log::info!(
-        "[process-review] gameId={} cached={}",
+        "process review requested game_id={} cached={}",
         game_id,
         cached_evidence.is_some()
     );
     service::get_game_process_review_logic(http_client::get_lcu_client(), &puuid, game_id, cached_evidence).await
+}
+
+fn redact_puuid(puuid: &str) -> String {
+    let trimmed = puuid.trim();
+    if trimmed.len() <= 8 {
+        return "***".to_string();
+    }
+    format!("{}…{}", &trimmed[..4], &trimmed[trimmed.len() - 4..])
 }

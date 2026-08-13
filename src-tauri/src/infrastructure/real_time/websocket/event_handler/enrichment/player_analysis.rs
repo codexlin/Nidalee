@@ -195,7 +195,7 @@ impl WsEventHandler {
         let champion_id = champion_data::get_champion_id_by_name(&live_player.champion_name);
         if champion_id.is_none() {
             log::warn!(
-                target: "ws::event_handler",
+                target: "ws::event",
                 "Champion '{}' is absent from the current static catalog; keeping the player with an unresolved champion ID",
                 live_player.champion_name
             );
@@ -258,7 +258,7 @@ impl WsEventHandler {
                     );
 
                     log::debug!(
-                        target: "ws::event_handler",
+                        target: "ws::event",
                         "Fetched match data for player '{}'",
                         live_player.summoner_name
                     );
@@ -266,7 +266,7 @@ impl WsEventHandler {
                 Err(e) => {
                     player_data.analysis_status = e.status();
                     log::warn!(
-                        target: "ws::event_handler",
+                        target: "ws::event",
                         "Failed to get match history for player '{}': {}",
                         live_player.summoner_name,
                         e
@@ -276,7 +276,7 @@ impl WsEventHandler {
         } else {
             player_data.analysis_status = crate::shared::types::PlayerAnalysisStatus::Unavailable;
             log::warn!(
-                target: "ws::event_handler",
+                target: "ws::event",
                 "Could not find detailed summoner info for '{}'",
                 live_player.summoner_name
             );

@@ -124,7 +124,7 @@ fn detect_game_path_sync() -> Result<String, String> {
     // 1) WeGame：扫描各盘符 WeGameApps 下名称包含「英雄联盟」的目录
     #[cfg(target_os = "windows")]
     if let Some(path) = detect_wegame_lol_path() {
-        log::info!("[GamePath] detected (WeGame): {}", path);
+        log::info!("detected (WeGame): {}", path);
         return Ok(path);
     }
 
@@ -140,7 +140,7 @@ fn detect_game_path_sync() -> Result<String, String> {
     ];
     for path in &riot_paths {
         if Path::new(path).exists() {
-            log::info!("[GamePath] detected (Riot): {}", path);
+            log::info!("detected (Riot): {}", path);
             return Ok(path.to_string());
         }
     }
@@ -150,7 +150,7 @@ fn detect_game_path_sync() -> Result<String, String> {
     {
         match get_game_path_from_registry() {
             Ok(path) if !path.is_empty() => {
-                log::info!("[GamePath] detected (registry): {}", path);
+                log::info!("detected (registry): {}", path);
                 return Ok(path);
             }
             _ => {}
@@ -214,7 +214,7 @@ fn resolve_wegame_exe(game_root: &Path) -> Option<String> {
 fn detect_wegame_lol_path() -> Option<String> {
     let roots = existing_drive_roots();
     log::info!(
-        "[GamePath] scanning drive roots: {:?}",
+        "scanning drive roots: {:?}",
         roots.iter().map(|p| p.display().to_string()).collect::<Vec<_>>()
     );
 
@@ -226,7 +226,7 @@ fn detect_wegame_lol_path() -> Option<String> {
         let entries = match std::fs::read_dir(&wegame_root) {
             Ok(e) => e,
             Err(err) => {
-                log::warn!("[GamePath] read_dir failed for {}: {}", wegame_root.display(), err);
+                log::warn!("read_dir failed for {}: {}", wegame_root.display(), err);
                 continue;
             }
         };
@@ -240,11 +240,11 @@ fn detect_wegame_lol_path() -> Option<String> {
             if !looks_like_wegame_lol_dir(&game_root, &name) {
                 continue;
             }
-            log::info!("[GamePath] candidate dir: {}", game_root.display());
+            log::info!("candidate dir: {}", game_root.display());
             if let Some(exe) = resolve_wegame_exe(&game_root) {
                 return Some(exe);
             }
-            log::warn!("[GamePath] matched dir but no launcher exe: {}", game_root.display());
+            log::warn!("matched dir but no launcher exe: {}", game_root.display());
         }
     }
 

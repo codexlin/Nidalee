@@ -98,7 +98,8 @@ struct ApiParticipantStats {
 #[serde(rename_all = "camelCase")]
 struct ApiParticipantIdentity {
     participant_id: i32,
-    player: ApiPlayer,
+    #[serde(default)]
+    player: Option<ApiPlayer>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -150,7 +151,7 @@ pub(super) fn map_game_detail(raw_detail: Value) -> Result<GameDetail, String> {
     let player_map: HashMap<i32, ApiPlayer> = api_game_data
         .participant_identities
         .into_iter()
-        .map(|p| (p.participant_id, p.player))
+        .filter_map(|identity| identity.player.map(|player| (identity.participant_id, player)))
         .collect();
 
     let api_participants = api_game_data.participants;
@@ -186,19 +187,21 @@ pub(super) fn map_game_detail(raw_detail: Value) -> Result<GameDetail, String> {
             _ => {}
         }
 
-        if damage > max_damage {
-            max_damage = damage;
-            best_player_champion_id = champion_id;
-        }
-        if damage_taken > max_tank {
-            max_tank = damage_taken;
-            max_tank_champion_id = champion_id;
-        }
+        if matches!(team_id, 100 | 200) {
+            if damage > max_damage {
+                max_damage = damage;
+                best_player_champion_id = champion_id;
+            }
+            if damage_taken > max_tank {
+                max_tank = damage_taken;
+                max_tank_champion_id = champion_id;
+            }
 
-        let multi_kill = stats.largest_multi_kill.unwrap_or(0);
-        if multi_kill > max_streak {
-            max_streak = multi_kill;
-            max_streak_champion_id = champion_id;
+            let multi_kill = stats.largest_multi_kill.unwrap_or(0);
+            if multi_kill > max_streak {
+                max_streak = multi_kill;
+                max_streak_champion_id = champion_id;
+            }
         }
 
         let player_identity = player_map.get(&p.participant_id);
@@ -489,7 +492,7 @@ mod tests {
     }
 
     #[test]
-    fn unknown_team_id_does_not_pollute_red_team_totals() {
+    fn unknown_team_id_does_not_pollute_team_totals_or_match_leaders() {
         let raw = detail_fixture(
             vec![participant(
                 1,
@@ -499,6 +502,8 @@ mod tests {
                     "kills": 9,
                     "goldEarned": 12000,
                     "totalDamageDealtToChampions": 26000,
+                    "totalDamageTaken": 31000,
+                    "largestMultiKill": 4,
                     "visionScore": 15
                 }),
             )],
@@ -515,6 +520,17 @@ mod tests {
                 detail.red_team_stats.vision_score,
             ),
             (0, 0, 0, 0)
+        );
+        assert_eq!(
+            (
+                detail.best_player_champion_id,
+                detail.max_damage,
+                detail.max_tank_champion_id,
+                detail.max_tank,
+                detail.max_streak_champion_id,
+                detail.max_streak,
+            ),
+            (0, 0, 0, 0, 0, 0)
         );
     }
 
@@ -535,6 +551,26 @@ mod tests {
         let detail = map_game_detail(raw).unwrap();
 
         assert_eq!(detail.participants[0].profile_icon_id, 0);
+    }
+
+    #[test]
+    fn null_or_missing_player_uses_unknown_identity_without_rejecting_detail() {
+        for identity in [
+            json!({ "participantId": 1, "player": null }),
+            json!({ "participantId": 1 }),
+        ] {
+            let raw = detail_fixture(vec![participant(1, 100, 2_000_000_001, json!({}))], vec![identity]);
+
+            let detail = map_game_detail(raw).unwrap();
+
+            assert_eq!(
+                (
+                    detail.participants[0].summoner_name.as_str(),
+                    detail.participants[0].profile_icon_id,
+                ),
+                ("未知玩家", 0)
+            );
+        }
     }
 
     #[test]

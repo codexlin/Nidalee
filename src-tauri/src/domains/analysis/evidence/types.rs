@@ -533,6 +533,7 @@ pub struct TimelineSpan {
 pub struct MatchEvidence {
     #[ts(type = "number")]
     pub game_id: u64,
+    pub target_puuid: String,
     #[ts(type = "number")]
     pub queue_id: i64,
     #[ts(type = "number")]

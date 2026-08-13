@@ -38,7 +38,7 @@ impl WsEventHandler {
         generation: u64,
     ) -> Result<()> {
         log::info!(
-            target: "ws::event_handler",
+            target: "ws::event",
             "Building team data from LiveClient (app restart recovery)"
         );
 
@@ -52,7 +52,7 @@ impl WsEventHandler {
 
         if let Err(error) = static_catalog::ensure_static_catalogs().await {
             log::warn!(
-                target: "ws::event_handler",
+                target: "ws::event",
                 "Static catalog is unavailable during in-game recovery; unresolved champion IDs will remain empty: {error}"
             );
         }
@@ -70,7 +70,7 @@ impl WsEventHandler {
                 match crate::infrastructure::real_time::liveclient::service::get_live_player_list().await {
                     Ok(players) if !players.is_empty() => {
                         log::debug!(
-                            target: "ws::event_handler",
+                            target: "ws::event",
                             "Fetched {} players from LiveClient",
                             players.len()
                         );
@@ -81,7 +81,7 @@ impl WsEventHandler {
                             return Err("LiveClient returned empty list after max retries (game still loading?)".into());
                         }
                         log::debug!(
-                            target: "ws::event_handler",
+                            target: "ws::event",
                             "LiveClient empty, retrying {}/{}",
                             attempts,
                             max_attempts
@@ -97,7 +97,7 @@ impl WsEventHandler {
                             .into());
                         }
                         log::warn!(
-                            target: "ws::event_handler",
+                            target: "ws::event",
                             "LiveClient fetch failed (attempt {}/{}): {}, retrying",
                             attempts,
                             max_attempts,
@@ -110,7 +110,7 @@ impl WsEventHandler {
         };
 
         log::debug!(
-            target: "ws::event_handler",
+            target: "ws::event",
             "Found {} players in LiveClient data",
             live_players.len()
         );
@@ -135,7 +135,7 @@ impl WsEventHandler {
         let (my_team_players, enemy_team_players) = split_roster_by_team(&live_players, local_team);
 
         log::debug!(
-            target: "ws::event_handler",
+            target: "ws::event",
             "Team split: {} my team, {} enemy team",
             my_team_players.len(),
             enemy_team_players.len()
@@ -159,7 +159,7 @@ impl WsEventHandler {
             {
                 Ok(info) => {
                     log::debug!(
-                        target: "ws::event_handler",
+                        target: "ws::event",
                         "Fetched {} summoner details",
                         info.len()
                     );
@@ -167,7 +167,7 @@ impl WsEventHandler {
                 }
                 Err(error) => {
                     log::warn!(
-                        target: "ws::event_handler",
+                        target: "ws::event",
                         "Batch fetch for summoner info failed; publishing the LiveClient roster without identity enrichment: {error}"
                     );
                     Vec::new()
@@ -176,26 +176,22 @@ impl WsEventHandler {
         };
 
         // 4. 先获取游戏信息（需要用于战绩过滤）
-        let fetched_gameflow_session = if in_progress_gameflow_context(cached_gameflow_session.as_ref(), None).is_none()
-        {
+        let fetched_gameflow_session =
             match crate::infrastructure::game_session::gameflow::service::get_gameflow_session(&self.client).await {
                 Ok(session) => Some(session),
                 Err(error) => {
                     log::warn!(
-                        target: "ws::event_handler",
-                        "Failed to refresh gameflow context during recovery: {error}"
+                        target: "ws::event",
+                        "Failed to refresh gameflow context during recovery; falling back to the cached session: {error}"
                     );
                     None
                 }
-            }
-        } else {
-            None
-        };
+            };
         let (queue_id, is_custom_game) =
             recovery_context_values(cached_gameflow_session.as_ref(), fetched_gameflow_session.as_ref());
         if queue_id == 0 {
             log::warn!(
-                target: "ws::event_handler",
+                target: "ws::event",
                 "Game mode is unknown during recovery; history analysis will use the explicit unknown-mode policy"
             );
         }
@@ -279,7 +275,7 @@ impl WsEventHandler {
         // 批量插入战绩缓存
         if !cache.can_commit_in_game_recovery(generation) {
             log::debug!(
-                target: "ws::event_handler",
+                target: "ws::event",
                 "Discarding stale from-scratch recovery generation {}",
                 generation
             );
@@ -295,7 +291,7 @@ impl WsEventHandler {
         // Keep validation, cache commit and publication atomic with respect to phase changes.
         let _ = self.app.emit("team-analysis-data", &team_analysis_data);
         log::debug!(
-            target: "ws::event_handler",
+            target: "ws::event",
             "TeamAnalysisData cached, match_stats_cache size: {}",
             cache.match_stats_cache.len()
         );
@@ -304,7 +300,7 @@ impl WsEventHandler {
 
         // 10. 发送到前端
         log::info!(
-            target: "ws::event_handler",
+            target: "ws::event",
             "Build from scratch completed: my_team={}, enemy_team={}",
             team_analysis_data.my_team.len(),
             team_analysis_data.enemy_team.len()
@@ -365,5 +361,21 @@ mod tests {
         let context = recovery_context_values(None, None);
 
         assert_eq!(context, (0, false));
+    }
+
+    #[test]
+    fn recovery_context_values_prefers_fresh_session_over_cached_session() {
+        let cached = serde_json::json!({
+            "phase": "InProgress",
+            "gameData": { "queue": { "id": 450 }, "isCustomGame": false }
+        });
+        let fresh = serde_json::json!({
+            "phase": "InProgress",
+            "gameData": { "queue": { "id": 440 }, "isCustomGame": false }
+        });
+
+        let context = recovery_context_values(Some(&cached), Some(&fresh));
+
+        assert_eq!(context, (440, false));
     }
 }

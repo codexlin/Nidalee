@@ -21,6 +21,7 @@ fn base_result() -> MatchAnalysisResult {
 fn ranked_match(game_id: u64, queue_id: i64) -> MatchEvidence {
     MatchEvidence {
         game_id,
+        target_puuid: "secret-puuid-should-not-leak".to_owned(),
         queue_id,
         game_duration_seconds: 1800,
         game_creation: 0,
