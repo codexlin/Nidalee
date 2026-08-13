@@ -62,7 +62,7 @@ impl ConnectionManager {
 
             loop {
                 if transport.changed().await.is_err() {
-                    log::warn!(target: "connection::service", "WebSocket lifecycle channel closed");
+                    log::warn!(target: "lcu::connection", "WebSocket lifecycle channel closed");
                     break;
                 }
                 let connected = *transport.borrow_and_update();
@@ -71,7 +71,7 @@ impl ConnectionManager {
         });
 
         log::info!(
-            target: "connection::service",
+            target: "lcu::connection",
             "Connection state projection started (WebSocket supervisor owns background discovery)"
         );
     }
@@ -109,7 +109,7 @@ async fn project_transport_state(info: &Arc<RwLock<ConnectionInfo>>, app: &AppHa
         }
 
         log::info!(
-            target: "connection::service",
+            target: "lcu::connection",
             "Connection state changed: {:?} -> {:?}",
             previous,
             next_state
@@ -118,6 +118,6 @@ async fn project_transport_state(info: &Arc<RwLock<ConnectionInfo>>, app: &AppHa
     };
 
     if let Err(error) = app.emit("connection-state-changed", snapshot) {
-        log::warn!(target: "connection::service", "Failed to emit connection state: {error}");
+        log::warn!(target: "lcu::connection", "Failed to emit connection state: {error}");
     }
 }

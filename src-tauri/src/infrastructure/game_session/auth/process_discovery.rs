@@ -16,11 +16,11 @@ static REMOTING_TOKEN_RE: Lazy<Regex> =
 static APP_PORT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"--app-port=([^\s]+)").expect("valid app port regex"));
 
 pub(super) fn discover_auth_info() -> Result<LcuAuthInfo> {
-    log::info!("[LCU] 开始强制刷新 AuthInfo");
+    log::info!("开始强制刷新 AuthInfo");
     let cmdline = match get_lcu_cmdline() {
         Some(cmd) => cmd,
         None => {
-            log::error!("[LCU] LeagueClientUx.exe 进程未找到，无法刷新 AuthInfo");
+            log::error!("LeagueClientUx.exe 进程未找到，无法刷新 AuthInfo");
             return Err(NidaleeError::LcuNotFound);
         }
     };
@@ -55,7 +55,7 @@ pub(super) fn discover_auth_info() -> Result<LcuAuthInfo> {
             app_port,
         })
     } else {
-        log::error!("[LCU] 解析 LeagueClientUx.exe 启动参数失败");
+        log::error!("解析 LeagueClientUx.exe 启动参数失败");
         Err(NidaleeError::LcuAuth("解析 LeagueClientUx 启动参数失败".to_string()))
     }
 }
@@ -71,7 +71,7 @@ fn get_lcu_cmdline() -> Option<String> {
     }
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     {
-        log::error!("[LCU] 当前操作系统暂不支持自动获取 LoL 参数");
+        log::error!("当前操作系统暂不支持自动获取 LoL 参数");
         None
     }
 }
@@ -79,7 +79,7 @@ fn get_lcu_cmdline() -> Option<String> {
 #[cfg(target_os = "windows")]
 fn get_lcu_cmdline_windows() -> Option<String> {
     let mut system = SYSTEM.lock().unwrap_or_else(|poisoned| {
-        log::warn!("[LCU] process cache mutex was poisoned; recovering cached state");
+        log::warn!("process cache mutex was poisoned; recovering cached state");
         poisoned.into_inner()
     });
     system.refresh_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::everything()));
@@ -103,7 +103,7 @@ fn get_lcu_cmdline_windows() -> Option<String> {
 
         if process_name == "leagueclientux.exe" {
             if has_lcu_arguments(&cmdline) {
-                log::debug!("[LCU] 找到包含 LCU 参数的 LeagueClientUx.exe 进程, PID: {}", pid);
+                log::debug!("找到包含 LCU 参数的 LeagueClientUx.exe 进程, PID: {}", pid);
                 return Some(cmdline);
             }
             ux_cmdline = Some(cmdline);
@@ -113,25 +113,23 @@ fn get_lcu_cmdline_windows() -> Option<String> {
     }
 
     if let Some(cmdline) = client_cmdline.filter(|cmdline| has_lcu_arguments(cmdline)) {
-        log::warn!("[LCU] LeagueClientUx.exe 命令行中未找到认证参数，回退使用 LeagueClient.exe 的参数。");
+        log::warn!("LeagueClientUx.exe 命令行中未找到认证参数，回退使用 LeagueClient.exe 的参数。");
         return Some(cmdline);
     }
 
     if let Some(cmdline) = ux_cmdline {
-        log::warn!(
-            "[LCU] 无法在任何进程的命令行中找到认证参数，将使用无参数的 LeagueClientUx.exe 命令行进行后续尝试。"
-        );
+        log::warn!("无法在任何进程的命令行中找到认证参数，将使用无参数的 LeagueClientUx.exe 命令行进行后续尝试。");
         return Some(cmdline);
     }
 
-    log::debug!("[LCU] 未找到包含有效 LCU 参数的客户端进程");
+    log::debug!("未找到包含有效 LCU 参数的客户端进程");
     None
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn get_lcu_cmdline_unix() -> Option<String> {
     let mut system = SYSTEM.lock().unwrap_or_else(|poisoned| {
-        log::warn!("[LCU] process cache mutex was poisoned; recovering cached state");
+        log::warn!("process cache mutex was poisoned; recovering cached state");
         poisoned.into_inner()
     });
     system.refresh_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::everything()));

@@ -117,8 +117,8 @@ const teamTypeName = computed(() => {
 
 const teamTypeClass = computed(() => {
   return props.teamType === 'ally'
-    ? 'border-blue-500/25 bg-blue-500/[0.08] text-blue-500'
-    : 'border-red-500/25 bg-red-500/[0.08] text-red-500'
+    ? 'border-blue-500/25 bg-blue-500/8 text-blue-500'
+    : 'border-red-500/25 bg-red-500/8 text-red-500'
 })
 
 const teamIndicatorClass = computed(() => {

@@ -70,7 +70,7 @@
       <!-- 离屏海报稿：固定宽 720，不截整页 -->
       <div
         v-if="canExportPoster"
-        class="pointer-events-none fixed top-0 -left-[10000px] z-[-1] w-[720px]"
+        class="pointer-events-none fixed top-0 left-[-10000px] z-[-1] w-180"
         aria-hidden="true"
       >
         <DashboardPoster

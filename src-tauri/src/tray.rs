@@ -23,7 +23,7 @@ pub fn setup_system_tray(app: &mut App) -> TauriResult<()> {
     if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());
     } else {
-        log::warn!("[tray] default window icon is unavailable; creating tray without an icon");
+        log::warn!("default window icon is unavailable; creating tray without an icon");
     }
 
     let _tray = tray.build(app)?;
@@ -53,7 +53,7 @@ fn handle_tray_icon_event(tray: &tauri::tray::TrayIcon, event: TrayIconEvent) {
 
 fn handle_menu_event(app_handle: &AppHandle, event: tauri::menu::MenuEvent) {
     let Some(window) = app_handle.get_webview_window("main") else {
-        log::warn!("[tray] main window is unavailable");
+        log::warn!("main window is unavailable");
         return;
     };
 

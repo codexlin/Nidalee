@@ -12,7 +12,6 @@ export function useConnection() {
   const connectionMessage = computed(() => connectionStore.statusText)
 
   const checkConnection = () => {
-    console.log('手动检查连接🙌')
     return connectionStore.checkConnection()
   }
 

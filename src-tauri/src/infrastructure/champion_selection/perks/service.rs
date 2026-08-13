@@ -6,11 +6,11 @@ use reqwest::{Client, Method};
 use serde_json::json;
 
 pub async fn get_rune_pages(client: &Client) -> Result<Vec<RunePage>, String> {
-    log::info!("🔧 开始获取符文页面列表");
+    log::info!("开始获取符文页面列表");
     let result: Result<Vec<RunePage>, String> = lcu_get(client, "/lol-perks/v1/pages").await;
     match &result {
-        Ok(pages) => log::info!("🔧 成功获取到 {} 个符文页面", pages.len()),
-        Err(e) => log::error!("🔧 获取符文页面失败: {}", e),
+        Ok(pages) => log::info!("成功获取到 {} 个符文页面", pages.len()),
+        Err(e) => log::error!("获取符文页面失败: {}", e),
     }
     result
 }
@@ -29,9 +29,9 @@ pub async fn create_rune_page(
     sub_style_id: i32,
     selected_perk_ids: Vec<i32>,
 ) -> Result<RunePage, String> {
-    log::info!("🔧 开始创建符文页面: {}", name);
-    log::info!("🔧 主系ID: {}, 副系ID: {}", primary_style_id, sub_style_id);
-    log::info!("🔧 符文IDs: {:?}", selected_perk_ids);
+    log::info!("开始创建符文页面: {}", name);
+    log::info!("主系ID: {}, 副系ID: {}", primary_style_id, sub_style_id);
+    log::info!("符文IDs: {:?}", selected_perk_ids);
 
     let request = CreateRunePageRequest {
         name: name.to_string(),
@@ -42,11 +42,11 @@ pub async fn create_rune_page(
 
     let body = serde_json::to_value(request).map_err(|e| format!("序列化创建符文页面请求失败: {}", e))?;
 
-    log::info!("🔧 发送创建符文页面请求到: /lol-perks/v1/pages");
+    log::info!("发送创建符文页面请求到: /lol-perks/v1/pages");
     let result: Result<RunePage, String> = lcu_post(client, "/lol-perks/v1/pages", body).await;
     match &result {
-        Ok(page) => log::info!("🔧 成功创建符文页面: {}", page.name),
-        Err(e) => log::error!("🔧 创建符文页面失败: {}", e),
+        Ok(page) => log::info!("成功创建符文页面: {}", page.name),
+        Err(e) => log::error!("创建符文页面失败: {}", e),
     }
     result
 }
@@ -81,7 +81,7 @@ async fn activate_rune_page(client: &Client, page_id: i64) -> Result<(), String>
     let status = response.status();
 
     if status.is_success() {
-        log::info!("🔧 已将符文页设为当前页: {page_id}");
+        log::info!("已将符文页设为当前页: {page_id}");
         return Ok(());
     }
 

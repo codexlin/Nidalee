@@ -10,10 +10,10 @@ use crate::shared::Result;
 
 impl WsEventHandler {
     pub(super) async fn handle_champ_select_change(&self, data: &Value, event_type: &str) -> Result<()> {
-        log::info!("[ws-event] Champ select event received, type: {}", event_type);
+        log::info!("Champ select event received, type: {}", event_type);
 
         if event_type == "Create" || event_type == "Update" {
-            log::info!("[ws-event] Sending raw champ-select-session-changed event (immediate)");
+            log::info!("Sending raw champ-select-session-changed event (immediate)");
             let session = {
                 let mut cache = self.cache.write().await;
                 let session = champ_select_session_with_gameflow_context(data, cache.gameflow_session.as_ref());
@@ -46,7 +46,7 @@ impl WsEventHandler {
             let analysis_work = {
                 let mut cache = self.cache.write().await;
                 if cache.champ_select_analysis_key.as_ref() == Some(&analysis_key) {
-                    log::trace!("[ws-event] Champ-select analysis inputs unchanged; skipping enrichment");
+                    log::trace!("Champ-select analysis inputs unchanged; skipping enrichment");
                     None
                 } else {
                     cache.cancel_champ_select_analysis();
@@ -78,7 +78,7 @@ impl WsEventHandler {
                     Ok(mut enriched_data) => {
                         let mut cache = cache_for_task.write().await;
                         if !cache.can_commit_champ_select_analysis(generation) {
-                            log::debug!("[ws-event] Discarding stale team analysis generation {}", generation);
+                            log::debug!("Discarding stale team analysis generation {}", generation);
                             return;
                         }
 
@@ -89,21 +89,18 @@ impl WsEventHandler {
                             );
                         }
 
-                        log::info!("[ws-event] Successfully generated enriched team analysis data (with match stats).");
+                        log::info!("Successfully generated enriched team analysis data (with match stats).");
                         log::debug!(
-                            "[ws-event] My team size: {}, Enemy team size: {}",
+                            "My team size: {}, Enemy team size: {}",
                             enriched_data.my_team.len(),
                             enriched_data.enemy_team.len()
                         );
-                        log::info!(
-                            "[ws-event] Current cached match stats count: {}",
-                            match_stats_cache.len()
-                        );
+                        log::info!("Current cached match stats count: {}", match_stats_cache.len());
 
                         cache.match_stats_cache = match_stats_cache;
                         cache.team_analysis_data = Some(enriched_data.clone());
                         cache.champ_select_analysis_abort = None;
-                        log::info!("[ws-event] Enriched TeamAnalysisData has been cached.");
+                        log::info!("Enriched TeamAnalysisData has been cached.");
                         let _ = app.emit("team-analysis-data", &enriched_data);
                         drop(cache);
                     }
@@ -115,11 +112,11 @@ impl WsEventHandler {
                         }
                         drop(cache);
 
-                        log::error!("[ws-event] Failed to generate enriched team analysis data: {}", error);
+                        log::error!("Failed to generate enriched team analysis data: {}", error);
                         if let Some(source) = error.source() {
-                            log::error!("[ws-event] Caused by: {}", source);
+                            log::error!("Caused by: {}", source);
                         }
-                        log::warn!("[ws-event] Session data already sent, match stats will be unavailable");
+                        log::warn!("Session data already sent, match stats will be unavailable");
                     }
                 }
             });
@@ -132,7 +129,7 @@ impl WsEventHandler {
                 abort_handle.abort();
             }
         } else if event_type == "Delete" {
-            log::info!("[ws-event] Champ select session cleared, but preserving analysis data for backfill.");
+            log::info!("Champ select session cleared, but preserving analysis data for backfill.");
 
             let mut cache = self.cache.write().await;
             cache.cancel_champ_select_analysis();

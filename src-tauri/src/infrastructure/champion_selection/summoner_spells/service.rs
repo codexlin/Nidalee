@@ -74,14 +74,14 @@ pub fn install_summoner_spell_maps(spells: Vec<SummonerSpellInfo>) -> Result<(),
     let count = data.len();
     let mut guard = SPELL_STORE.write().map_err(|e| format!("召唤师技能目录锁中毒: {e}"))?;
     *guard = Some(SpellStore { data, name_to_id });
-    log::info!("[SummonerSpells] ✅ 召唤师技能目录已安装，共 {count} 个");
+    log::info!("召唤师技能目录已安装，共 {count} 个");
     Ok(())
 }
 
 /// 从 Community Dragon 拉取原始技能列表（不写内存）
 pub async fn fetch_summoner_spell_data_from_network(
 ) -> Result<Vec<SummonerSpellInfo>, Box<dyn std::error::Error + Send + Sync>> {
-    log::info!("[SummonerSpells] 🌐 正在从 Community Dragon 拉取召唤师技能...");
+    log::info!("正在从 Community Dragon 拉取召唤师技能...");
     let url =
         "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/zh_cn/v1/summoner-spells.json";
 

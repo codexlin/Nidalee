@@ -852,7 +852,7 @@ aiInsight?: AiInsight, };
 /**
  * 单局证据
  */
-type MatchEvidence = { gameId: number, queueId: number, gameDurationSeconds: number, gameCreation: number, participantId: number, teamId: number, championId: number, win: boolean, position: EvidencePosition, quality: EvidenceQuality, opponent?: OpponentEvidence,
+type MatchEvidence = { gameId: number, targetPuuid: string, queueId: number, gameDurationSeconds: number, gameCreation: number, participantId: number, teamId: number, championId: number, win: boolean, position: EvidencePosition, quality: EvidenceQuality, opponent?: OpponentEvidence,
 /**
  * 只包含真实存在的阶段（短局 / remake 可能只有 early）
  */

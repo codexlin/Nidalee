@@ -228,7 +228,7 @@ pub async fn build_team_analysis_from_session(
     let is_custom_game = session["isCustomGame"].as_bool().unwrap_or(false);
 
     log::info!(
-        target: "analysis_data::service",
+        target: "analysis::team",
         "Building team analysis data: localPlayerCellId={}, queueId={}, isCustom={}",
         local_player_cell_id,
         queue_id,
@@ -237,7 +237,7 @@ pub async fn build_team_analysis_from_session(
 
     if is_custom_game {
         log::debug!(
-            target: "analysis_data::service",
+            target: "analysis::team",
             "Custom game detected, some players may be bots"
         );
     }
@@ -271,7 +271,7 @@ pub async fn build_team_analysis_from_session(
 
     if !my_team_real_players.is_empty() {
         log::info!(
-            target: "analysis_data::service",
+            target: "analysis::team",
             "Fetching match stats for {} ally players with Collaboration perspective",
             my_team_real_players.len()
         );
@@ -299,7 +299,7 @@ pub async fn build_team_analysis_from_session(
 
     if !enemy_real_players.is_empty() {
         log::info!(
-            target: "analysis_data::service",
+            target: "analysis::team",
             "Fetching match stats for {} enemy players with Targeting perspective",
             enemy_real_players.len()
         );
@@ -351,7 +351,7 @@ async fn parse_and_enrich_team(
     http_client: &reqwest::Client,
 ) -> Vec<PlayerAnalysisData> {
     let Some(team) = team else {
-        log::warn!(target: "analysis_data::service", "Session missing '{}' array", team_name);
+        log::warn!(target: "analysis::team", "Session missing '{}' array", team_name);
         return Vec::new();
     };
 
@@ -361,7 +361,7 @@ async fn parse_and_enrich_team(
                 Ok(player) => player,
                 Err(error) => {
                     log::warn!(
-                        target: "analysis_data::service",
+                        target: "analysis::team",
                         "Failed to parse {} player[{}]: {}",
                         team_name,
                         index,
@@ -373,7 +373,7 @@ async fn parse_and_enrich_team(
 
             if let Err(error) = enrich_player_data(&mut player, &raw_player, http_client).await {
                 log::warn!(
-                    target: "analysis_data::service",
+                    target: "analysis::team",
                     "Failed to enrich {} player[{}]: {}; keeping basic data",
                     team_name,
                     index,
@@ -498,7 +498,7 @@ fn parse_player_from_session(
     let is_obfuscated = identity.is_obfuscated;
 
     log::debug!(
-        target: "analysis_data::service",
+        target: "analysis::team",
         "Parsed player: cellId={}, displayName='{}', gameName='{}', tagLine='{}', summonerId={}, isBot={}, obfuscated={}, puuid='{}'",
         cell_id,
         resolved_display_name,
@@ -572,7 +572,7 @@ async fn enrich_player_data(
             }
             player_data.tag_line = tag_line.map(|s| s.to_string());
             log::debug!(
-                target: "analysis_data::service",
+                target: "analysis::team",
                 "Extracted display name from session: {}",
                 player_data.display_name
             );
@@ -595,7 +595,7 @@ async fn enrich_player_data(
                 player_data.profile_icon_id = Some(summoner_info.profile_icon_id as i32);
                 player_data.tag_line = summoner_info.tag_line;
                 log::debug!(
-                    target: "analysis_data::service",
+                    target: "analysis::team",
                     "Fetched summoner info by ID {}: displayName='{}', soloRank={:?}, flexRank={:?}",
                     summoner_id_u64,
                     player_data.display_name,
@@ -605,7 +605,7 @@ async fn enrich_player_data(
             }
             Err(e) => {
                 log::warn!(
-                    target: "analysis_data::service",
+                    target: "analysis::team",
                     "Failed to fetch summoner info for ID {}: {}",
                     summoner_id_u64,
                     e
@@ -631,7 +631,7 @@ async fn fetch_players_match_stats_with_perspective(
     perspective: AdvicePerspective,
     local_cell_id: i32,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    println!("🎯 批量获取玩家战绩（视角：{:?}）", perspective);
+    log::info!("批量获取玩家战绩（视角：{perspective:?}）");
 
     fetch_all_players_match_stats_internal(
         players,
@@ -678,7 +678,7 @@ async fn fetch_all_players_match_stats_internal(
         });
         if let Some(cached_analysis) = cached_stats {
             log::debug!(
-                target: "analysis_data::service",
+                target: "analysis::team",
                 "Using cached stats for player '{}'",
                 player.display_name
             );
@@ -695,7 +695,7 @@ async fn fetch_all_players_match_stats_internal(
             cached_count += 1;
         } else {
             log::debug!(
-                target: "analysis_data::service",
+                target: "analysis::team",
                 "Player '{}' needs match stats fetch",
                 player.display_name
             );
@@ -704,7 +704,7 @@ async fn fetch_all_players_match_stats_internal(
     }
 
     log::info!(
-        target: "analysis_data::service",
+        target: "analysis::team",
         "Match stats cache: {}/{} hit, {} need fetch",
         cached_count,
         players.len(),
@@ -714,7 +714,7 @@ async fn fetch_all_players_match_stats_internal(
     // 第二步：只为没有缓存的玩家获取战绩
     if need_fetch_indices.is_empty() {
         log::debug!(
-            target: "analysis_data::service",
+            target: "analysis::team",
             "All match stats from cache, skipping network request"
         );
         return Ok(cached_count);
@@ -727,7 +727,7 @@ async fn fetch_all_players_match_stats_internal(
         .collect();
 
     log::debug!(
-        target: "analysis_data::service",
+        target: "analysis::team",
         "Batch querying summoners: {:?}",
         player_names
     );
@@ -739,7 +739,7 @@ async fn fetch_all_players_match_stats_internal(
             Ok(summoners) => summoners,
             Err(error) => {
                 log::warn!(
-                    target: "analysis_data::service",
+                    target: "analysis::team",
                     "Batch summoner query failed; PUUID-known players can still continue: {}",
                     error
                 );
@@ -749,7 +749,7 @@ async fn fetch_all_players_match_stats_internal(
     };
 
     log::debug!(
-        target: "analysis_data::service",
+        target: "analysis::team",
         "Fetched {} summoner infos",
         summoners.len()
     );
@@ -770,7 +770,7 @@ async fn fetch_all_players_match_stats_internal(
         });
         let Some(puuid) = puuid else {
             log::warn!(
-                target: "analysis_data::service",
+                target: "analysis::team",
                 "Summoner info not found for player '{}', skipping",
                 player.display_name
             );
@@ -810,7 +810,7 @@ async fn fetch_all_players_match_stats_internal(
             }
             Err(error) => {
                 log::warn!(
-                    target: "analysis_data::service",
+                    target: "analysis::team",
                     "Failed to fetch match stats for player '{}': {}, skipping",
                     display_name,
                     error
@@ -868,7 +868,7 @@ pub(crate) async fn fetch_realtime_player_analysis_with_retry(
         match result {
             Err(error) if error.is_unavailable() && attempt < REALTIME_HISTORY_FETCH_ATTEMPTS => {
                 log::debug!(
-                    target: "analysis_data::service",
+                    target: "analysis::team",
                     "Realtime history request failed on attempt {attempt}; retrying once: {error}"
                 );
                 tokio::time::sleep(std::time::Duration::from_millis(750)).await;

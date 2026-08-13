@@ -42,9 +42,9 @@ pub(super) fn in_progress_gameflow_context(
     cached_session: Option<&Value>,
     fetched_session: Option<&Value>,
 ) -> Option<GameflowContext> {
-    cached_session
+    fetched_session
         .and_then(|session| gameflow_context_for_phase(session, "InProgress"))
-        .or_else(|| fetched_session.and_then(|session| gameflow_context_for_phase(session, "InProgress")))
+        .or_else(|| cached_session.and_then(|session| gameflow_context_for_phase(session, "InProgress")))
 }
 
 #[cfg(test)]
@@ -102,7 +102,7 @@ mod tests {
     }
 
     #[test]
-    fn in_progress_context_prefers_cached_runtime_state() {
+    fn in_progress_context_prefers_fresh_runtime_state() {
         let cached = json!({
             "phase": "InProgress",
             "gameData": { "queue": { "id": 450 }, "isCustomGame": false }
@@ -117,7 +117,7 @@ mod tests {
         assert_eq!(
             context,
             Some(GameflowContext {
-                queue_id: 450,
+                queue_id: 420,
                 is_custom_game: false
             })
         );

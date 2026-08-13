@@ -79,21 +79,21 @@ async fn fetch_snapshot_inner(phase_hint: Option<String>) -> SnapshotBatch {
                 data: Value::String(phase),
             });
         }
-        Err(error) => log::debug!("[lcu-ws] Fallback phase fetch failed: {}", error),
+        Err(error) => log::debug!("Fallback phase fetch failed: {}", error),
     }
     match session_result {
         Ok(data) => batch.entries.push(SnapshotEntry {
             uri: "/lol-gameflow/v1/session",
             data,
         }),
-        Err(error) => log::debug!("[lcu-ws] Fallback session fetch failed: {}", error),
+        Err(error) => log::debug!("Fallback session fetch failed: {}", error),
     }
     match summoner_result.and_then(|summoner| serde_json::to_value(summoner).map_err(|error| error.to_string())) {
         Ok(data) => batch.entries.push(SnapshotEntry {
             uri: "/lol-summoner/v1/current-summoner",
             data,
         }),
-        Err(error) => log::debug!("[lcu-ws] Fallback current summoner fetch failed: {}", error),
+        Err(error) => log::debug!("Fallback current summoner fetch failed: {}", error),
     }
 
     let effective_phase = batch.phase.clone().or(phase_hint);
@@ -115,7 +115,7 @@ async fn fetch_snapshot_inner(phase_hint: Option<String>) -> SnapshotBatch {
                     uri: "/lol-lobby/v2/lobby",
                     data,
                 }),
-                Err(error) => log::debug!("[lcu-ws] Fallback lobby fetch failed: {}", error),
+                Err(error) => log::debug!("Fallback lobby fetch failed: {}", error),
             }
             match matchmaking_result.and_then(|state| serde_json::to_value(state).map_err(|error| error.to_string())) {
                 Ok(data) => batch.entries.push(SnapshotEntry {
@@ -123,7 +123,7 @@ async fn fetch_snapshot_inner(phase_hint: Option<String>) -> SnapshotBatch {
                     data,
                 }),
                 Err(error) => {
-                    log::debug!("[lcu-ws] Fallback matchmaking fetch failed: {}", error)
+                    log::debug!("Fallback matchmaking fetch failed: {}", error)
                 }
             }
         }
@@ -136,7 +136,7 @@ async fn fetch_snapshot_inner(phase_hint: Option<String>) -> SnapshotBatch {
                     data,
                 }),
                 Err(error) => {
-                    log::debug!("[lcu-ws] Fallback champ-select fetch failed: {}", error)
+                    log::debug!("Fallback champ-select fetch failed: {}", error)
                 }
             }
         }
@@ -153,7 +153,7 @@ pub(super) async fn apply_snapshot(handler: &WsEventHandler, batch: SnapshotBatc
         }
 
         if let Err(error) = handler.handle_snapshot(entry.uri, entry.data).await {
-            log::warn!("[lcu-ws] Failed to reduce HTTP snapshot for {}: {}", entry.uri, error);
+            log::warn!("Failed to reduce HTTP snapshot for {}: {}", entry.uri, error);
         }
     }
 }

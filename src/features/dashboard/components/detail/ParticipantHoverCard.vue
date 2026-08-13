@@ -26,7 +26,7 @@
               class="h-9 w-9 rounded-full border border-border shadow-sm"
             />
             <span
-              class="absolute -bottom-0.5 -right-0.5 bg-background text-foreground text-[9px] min-w-[16px] h-3.5 px-0.5 flex items-center justify-center rounded ring-1 ring-border tabular-nums leading-none"
+              class="absolute -bottom-0.5 -right-0.5 bg-background text-foreground text-[9px] min-w-4 h-3.5 px-0.5 flex items-center justify-center rounded ring-1 ring-border tabular-nums leading-none"
             >
               {{ stats.champLevel || '?' }}
             </span>
@@ -64,7 +64,7 @@
         <div class="w-px shrink-0 self-stretch bg-border/70 my-1" aria-hidden="true" />
 
         <div class="w-[86px] shrink-0 py-1 pl-2">
-          <div class="flex h-full flex-col justify-center gap-[5px] text-[11px] tabular-nums">
+          <div class="flex h-full flex-col justify-center gap-1.25 text-[11px] tabular-nums">
             <div v-for="row in detailRows" :key="row.label" class="flex items-baseline gap-1.5 leading-none">
               <span class="shrink-0 text-muted-foreground">{{ row.label }}</span>
               <span class="min-w-0 font-medium text-foreground truncate" :class="row.toneClass">{{ row.value }}</span>

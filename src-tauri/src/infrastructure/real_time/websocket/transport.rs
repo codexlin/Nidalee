@@ -195,16 +195,16 @@ async fn ensure_subscribed(
     match send_with_cancel(ws_stream, Message::Text(message), cancel).await {
         SendOutcome::Sent => {
             subscribed.insert(path.to_string());
-            log::info!("[lcu-ws] Successfully subscribed to: {}", path);
+            log::info!("Successfully subscribed to: {}", path);
             true
         }
         SendOutcome::Cancelled => false,
         SendOutcome::Failed(error) => {
-            log::warn!("[lcu-ws] Failed to subscribe to {}: {}", path, error);
+            log::warn!("Failed to subscribe to {}: {}", path, error);
             false
         }
         SendOutcome::TimedOut => {
-            log::warn!("[lcu-ws] Timed out subscribing to {}", path);
+            log::warn!("Timed out subscribing to {}", path);
             false
         }
     }
@@ -254,7 +254,7 @@ pub(super) async fn connect_and_run_ws(
     let (mut ws_stream, _) = connect_result
         .map_err(|error| NidaleeError::LcuWebSocket(format!("LCU WebSocket connection failed: {error}")))?;
 
-    log::info!("[lcu-ws] WebSocket connection successful; registering base subscriptions.");
+    log::info!("WebSocket connection successful; registering base subscriptions.");
     let mut subscribed = HashSet::new();
 
     for path in [PHASE_URI, SESSION_URI, SUMMONER_URI] {
@@ -270,7 +270,7 @@ pub(super) async fn connect_and_run_ws(
 
     let result = run_session(&mut ws_stream, event_handler, &mut subscribed, cancel).await;
     best_effort_close(&mut ws_stream).await;
-    log::info!("[lcu-ws] WebSocket connection closed.");
+    log::info!("WebSocket connection closed.");
     result
 }
 
@@ -296,7 +296,7 @@ async fn run_session(
                 idle.as_mut().reset(tokio::time::Instant::now() + PHASE_HEALTH_INTERVAL);
                 match classify_incoming(incoming) {
                     Ok(IncomingMessage::Closed) => {
-                        log::info!("[lcu-ws] Server closed the WebSocket stream.");
+                        log::info!("Server closed the WebSocket stream.");
                         break Ok(());
                     }
                     Ok(IncomingMessage::Ping(payload)) => {
@@ -326,7 +326,7 @@ async fn run_session(
                                 handled = event_handler.handle_event(&text) => handled,
                             };
                             if let Err(error) = handled {
-                                log::warn!("[lcu-ws] Event handling failed for [{}]: {}", context, error);
+                                log::warn!("Event handling failed context={} error={}", context, error);
                             }
                             if changed
                                 && !ensure_phase_subscriptions(ws_stream, &phase, subscribed, cancel).await
@@ -342,7 +342,7 @@ async fn run_session(
                             handled = event_handler.handle_event(&text) => handled,
                         };
                         if let Err(error) = handled {
-                            log::warn!("[lcu-ws] Event handling failed for [{}]: {}", context, error);
+                            log::warn!("Event handling failed context={} error={}", context, error);
                         }
                     }
                     Ok(IncomingMessage::Ignore) => {}
@@ -371,7 +371,7 @@ async fn run_session(
                                 batch.phase.as_deref(),
                             ) {
                                 log::info!(
-                                    "[lcu-ws] Phase health check diverged ({:?} -> {:?}); running full snapshot.",
+                                    "Phase health check diverged ({:?} -> {:?}); running full snapshot.",
                                     current_phase,
                                     batch.phase
                                 );
@@ -382,10 +382,10 @@ async fn run_session(
                             }
                         }
                         Some(Ok(Err(error))) => {
-                            log::debug!("[lcu-ws] Phase health check failed: {}", error);
+                            log::debug!("Phase health check failed: {}", error);
                         }
                         Some(Err(error)) => {
-                            log::warn!("[lcu-ws] Phase health check task failed: {}", error);
+                            log::warn!("Phase health check task failed: {}", error);
                         }
                         None => {}
                     }
@@ -411,7 +411,7 @@ async fn run_session(
                         }
                     }
                     Some(Ok(Err(error))) => {
-                        log::debug!("[lcu-ws] HTTP snapshot failed: {}", error);
+                        log::debug!("HTTP snapshot failed: {}", error);
                         if let Some(phase) = observed_phase.or(current_phase.clone()) {
                             if !ensure_phase_subscriptions(ws_stream, &phase, subscribed, cancel).await {
                                 break Ok(());
@@ -420,7 +420,7 @@ async fn run_session(
                         }
                     }
                     Some(Err(error)) => {
-                        log::warn!("[lcu-ws] HTTP snapshot task failed: {}", error);
+                        log::warn!("HTTP snapshot task failed: {}", error);
                         if let Some(phase) = observed_phase.or(current_phase.clone()) {
                             if !ensure_phase_subscriptions(ws_stream, &phase, subscribed, cancel).await {
                                 break Ok(());
@@ -432,7 +432,7 @@ async fn run_session(
                 idle.as_mut().reset(tokio::time::Instant::now() + PHASE_HEALTH_INTERVAL);
             }
             _ = &mut idle, if snapshot_task.is_none() => {
-                log::debug!("[lcu-ws] No WS events for 90s, checking gameflow phase.");
+                log::debug!("No WS events for 90s, checking gameflow phase.");
                 snapshot_task = Some(tokio::spawn(fallback::fetch_phase_snapshot()));
                 snapshot_kind = SnapshotKind::PhaseHealth;
                 snapshot_merge = Some(SnapshotMergeState::default());

@@ -1,7 +1,7 @@
 <template>
   <div
     ref="rootRef"
-    class="dashboard-poster w-[720px] box-border bg-background text-foreground p-6 space-y-5"
+    class="dashboard-poster w-180 box-border bg-background text-foreground p-6 space-y-5"
     data-dashboard-poster
   >
     <div class="surface-raised p-5 space-y-5">

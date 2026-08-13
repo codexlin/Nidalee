@@ -80,6 +80,6 @@ pub async fn get_live_player_list() -> Result<Vec<crate::shared::types::LiveClie
         .map_err(|error| format!("读取 LiveClient 玩家列表失败: {error}"))?;
     let players = serde_json::from_str::<Vec<crate::shared::types::LiveClientPlayer>>(&raw_body)
         .map_err(|error| format!("解析 LiveClient 玩家列表失败: {error}"))?;
-    log::debug!("[LiveClient] loaded {} players", players.len());
+    log::debug!("loaded {} players", players.len());
     Ok(players)
 }

@@ -68,6 +68,8 @@ fn top_evidence() -> MatchEvidence {
 fn test_thirty_minute_timeline_uses_real_elapsed_time() {
     let evidence = top_evidence();
 
+    assert_eq!(evidence.target_puuid, TARGET_TOP);
+
     let early = phase(&evidence, GamePhase::Early);
     approx(Some(early.duration_minutes), 10.0, "早期真实时长(分钟)");
     approx(early.cs_per_min, 8.0, "早期 CS/min");

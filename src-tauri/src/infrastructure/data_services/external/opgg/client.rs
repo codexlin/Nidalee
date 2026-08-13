@@ -25,7 +25,7 @@ impl OpggClient {
         tier: &str,
     ) -> Result<Value, String> {
         let url = champion_build_url(region, mode, champion_id, position, tier);
-        log::info!("🌐 请求OP.GG API: {}", url);
+        log::info!("请求OP.GG API: {}", url);
         self.get_json(&url).await
     }
 
@@ -35,7 +35,7 @@ impl OpggClient {
     /// - 其它模式: 不带 query（现网 `?tier=` 虽多半可用，但 arena 构建对空 tier 敏感，列表统一干净路径）
     pub async fn get_tier_list(&self, region: &str, mode: &str, tier: &str) -> Result<Value, String> {
         let url = tier_list_url(region, mode, tier);
-        log::info!("🌐 请求OP.GG层级列表: {}", url);
+        log::info!("请求OP.GG层级列表: {}", url);
         self.get_json(&url).await
     }
 

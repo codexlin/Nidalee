@@ -44,7 +44,7 @@
             <div
               v-for="id in trio.augmentIds"
               :key="id"
-              class="flex min-w-0 max-w-[7.5rem] items-center gap-1.5"
+              class="flex min-w-0 max-w-30 items-center gap-1.5"
               :title="augmentName(id)"
             >
               <img

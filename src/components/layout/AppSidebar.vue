@@ -7,7 +7,7 @@
             <router-link :to="APP_ROUTES.overview.path">
               <div class="flex items-center gap-3 py-2 select-none">
                 <div
-                  class="relative isolate overflow-hidden rounded-xl p-[1px] bg-gradient-to-br from-white/70 to-black/10"
+                  class="relative isolate overflow-hidden rounded-xl p-px bg-gradient-to-br from-white/70 to-black/10"
                 >
                   <img
                     src="@/assets/logo.png"

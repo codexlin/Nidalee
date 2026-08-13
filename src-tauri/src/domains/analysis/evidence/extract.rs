@@ -151,6 +151,7 @@ pub fn extract_match_evidence(
 
     Ok(MatchEvidence {
         game_id: game.get("gameId").and_then(Value::as_u64).unwrap_or(0),
+        target_puuid: target_puuid.to_owned(),
         queue_id,
         game_duration_seconds: game.get("gameDuration").and_then(Value::as_i64).unwrap_or(0),
         game_creation: game.get("gameCreation").and_then(Value::as_i64).unwrap_or(0),

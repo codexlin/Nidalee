@@ -39,7 +39,7 @@ impl HextechClient {
         }
 
         let url = format!("{BASE}/config");
-        log::info!("🌐 请求海克斯 config: {url}");
+        log::info!("请求海克斯 config: {url}");
         let data = self.get_json(&url).await?;
         let version = data
             .get("dataVersion")
@@ -58,19 +58,19 @@ impl HextechClient {
 
     pub async fn get_champions(&self, version: &str) -> Result<Value, String> {
         let url = format!("{BASE}/data/{version}/champions.json");
-        log::info!("🌐 请求海克斯强度榜: {url}");
+        log::info!("请求海克斯强度榜: {url}");
         self.get_json(&url).await
     }
 
     pub async fn get_champion_detail(&self, version: &str, champion_id: i32) -> Result<Value, String> {
         let url = format!("{BASE}/data/{version}/champions/{champion_id}.json");
-        log::info!("🌐 请求海克斯英雄详情: {url}");
+        log::info!("请求海克斯英雄详情: {url}");
         self.get_json(&url).await
     }
 
     pub async fn get_augments(&self, version: &str) -> Result<Value, String> {
         let url = format!("{BASE}/data/{version}/augments.json");
-        log::info!("🌐 请求海克斯增强列表: {url}");
+        log::info!("请求海克斯增强列表: {url}");
         self.get_json(&url).await
     }
 

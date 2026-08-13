@@ -43,7 +43,7 @@
           </p>
         </div>
 
-        <div class="shrink-0 text-right pl-1 min-w-[3.25rem]">
+        <div class="shrink-0 text-right pl-1 min-w-13">
           <div
             class="text-lg font-semibold tabular-nums leading-none tracking-tight"
             :class="winRateClass(card.winRate)"

@@ -102,7 +102,7 @@ fn version_dir(version: &str) -> PathBuf {
 fn set_meta(meta: StaticCatalogMeta) {
     match META.write() {
         Ok(mut guard) => *guard = Some(meta),
-        Err(e) => log::error!("[StaticCatalog] META 锁中毒，无法写入: {e}"),
+        Err(e) => log::error!("META 锁中毒，无法写入: {e}"),
     }
 }
 
@@ -124,10 +124,10 @@ pub async fn fetch_ddragon_version() -> Option<String> {
                     return Some(latest.clone());
                 }
             }
-            log::warn!("[StaticCatalog] DDragon versions.json 无有效条目");
+            log::warn!("DDragon versions.json 无有效条目");
         }
         Err(e) => {
-            log::warn!("[StaticCatalog] 获取 DDragon 版本失败: {e}");
+            log::warn!("获取 DDragon 版本失败: {e}");
         }
     }
     None
@@ -257,7 +257,7 @@ fn prune_old_versions(keep: &str) {
         let name = name.to_string_lossy();
         if name.as_ref() != keep && entry.path().is_dir() {
             let _ = std::fs::remove_dir_all(entry.path());
-            log::info!("[StaticCatalog] 已清理旧静态包: {name}");
+            log::info!("已清理旧静态包: {name}");
         }
     }
 }
@@ -288,7 +288,7 @@ fn install_disk_bundle(
     source: &str,
 ) -> Result<(), String> {
     log::info!(
-        "[StaticCatalog] 💾 使用磁盘静态目录 version={version} source={source} champions={} spells={}",
+        "使用磁盘静态目录 version={version} source={source} champions={} spells={}",
         champions.len(),
         spells.len()
     );
@@ -296,7 +296,7 @@ fn install_disk_bundle(
 }
 
 async fn load_from_network(version: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    log::info!("[StaticCatalog] 🌐 网络拉取静态目录 version={version}");
+    log::info!("网络拉取静态目录 version={version}");
     let (champions, spells) = tokio::try_join!(
         fetch_champion_data_from_network(),
         fetch_summoner_spell_data_from_network()
@@ -309,11 +309,11 @@ async fn load_from_network(version: &str) -> Result<(), Box<dyn std::error::Erro
     .await
     .map_err(|error| format!("静态目录落盘任务失败: {error}"))?;
     let loaded_at = loaded_at.unwrap_or_else(|e| {
-        log::warn!("[StaticCatalog] 落盘失败（仍将 hydrate 内存）: {e}");
+        log::warn!("落盘失败（仍将 hydrate 内存）: {e}");
         now_ms()
     });
     install_bundle(version, champions, spells, "network", loaded_at)?;
-    log::info!("[StaticCatalog] ✅ 网络静态目录已就绪 version={version}");
+    log::info!("网络静态目录已就绪 version={version}");
     Ok(())
 }
 
@@ -325,11 +325,11 @@ async fn init_inner() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 return Ok(());
             }
 
-            log::info!("[StaticCatalog] 磁盘未命中 version={version}，改为网络拉取");
+            log::info!("磁盘未命中 version={version}，改为网络拉取");
             match load_from_network(&version).await {
                 Ok(()) => Ok(()),
                 Err(net_err) => {
-                    log::warn!("[StaticCatalog] 网络拉取失败，尝试磁盘回退: {net_err}");
+                    log::warn!("网络拉取失败，尝试磁盘回退: {net_err}");
                     if let Some((v, champions, spells, loaded_at)) = load_newest_disk_bundle().await {
                         install_disk_bundle(&v, champions, spells, loaded_at, "disk-stale")?;
                         Ok(())
@@ -340,7 +340,7 @@ async fn init_inner() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
         }
         None => {
-            log::warn!("[StaticCatalog] 无法探测版本，尝试加载磁盘最新缓存");
+            log::warn!("无法探测版本，尝试加载磁盘最新缓存");
             if let Some((v, champions, spells, loaded_at)) = load_newest_disk_bundle().await {
                 install_disk_bundle(&v, champions, spells, loaded_at, "disk-offline")?;
                 Ok(())
@@ -361,7 +361,7 @@ pub async fn ensure_static_catalogs() -> Result<(), String> {
 async fn refresh_static_catalogs_inner() -> RefreshResult {
     let Some(latest) = fetch_ddragon_version().await else {
         if champions_loaded() && spells_loaded() {
-            log::info!("[StaticCatalog] 离线且内存目录已就绪，跳过刷新");
+            log::info!("离线且内存目录已就绪，跳过刷新");
             return Ok(false);
         }
         if let Some((v, champions, spells, loaded_at)) = load_newest_disk_bundle().await {
@@ -373,11 +373,11 @@ async fn refresh_static_catalogs_inner() -> RefreshResult {
 
     let current = get_static_meta().map(|m| m.version);
     if current.as_deref() == Some(latest.as_str()) && champions_loaded() && spells_loaded() {
-        log::info!("[StaticCatalog] 版本未变化 ({latest})，保持缓存");
+        log::info!("版本未变化 ({latest})，保持缓存");
         return Ok(false);
     }
 
-    log::info!("[StaticCatalog] 版本变化 {:?} → {}，刷新静态目录", current, latest);
+    log::info!("版本变化 {:?} → {}，刷新静态目录", current, latest);
 
     if let Some((champions, spells, loaded_at)) = load_disk_version(latest.clone()).await {
         install_disk_bundle(&latest, champions, spells, loaded_at, "disk")?;
@@ -388,7 +388,7 @@ async fn refresh_static_catalogs_inner() -> RefreshResult {
         Ok(()) => Ok(true),
         Err(e) => {
             if champions_loaded() && spells_loaded() {
-                log::warn!("[StaticCatalog] 刷新失败但保留旧内存目录: {e}");
+                log::warn!("刷新失败但保留旧内存目录: {e}");
                 Ok(false)
             } else if let Some((v, champions, spells, loaded_at)) = load_newest_disk_bundle().await {
                 install_disk_bundle(&v, champions, spells, loaded_at, "disk-stale")?;

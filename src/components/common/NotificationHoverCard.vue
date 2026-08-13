@@ -54,7 +54,7 @@
               <div class="flex-1 min-w-0">
                 <div class="flex items-center">
                   <span class="text-sm font-medium text-foreground truncate flex-1">{{ activity.message }}</span>
-                  <div class="flex items-center min-w-[48px] justify-end ml-2 gap-1">
+                  <div class="flex items-center min-w-12 justify-end ml-2 gap-1">
                     <span class="text-xs text-muted-foreground">{{ formatRelativeTime(activity.timestamp) }}</span>
                     <span v-if="!activity.read" class="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></span>
                   </div>
