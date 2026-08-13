@@ -131,13 +131,7 @@
 
     <!-- 快捷键设置 -->
     <div v-else-if="activeTab === 'shortcuts'" class="w-full space-y-4">
-      <Card class="gap-0 py-0">
-        <CardHeader class="gap-1 px-4 py-3 sm:px-5">
-          <CardTitle class="text-lg font-medium leading-tight">快捷键设置</CardTitle>
-          <p class="mt-0.5 text-xs text-muted-foreground">自定义快捷键</p>
-        </CardHeader>
-        <CardContent class="px-4 pb-4 text-sm text-muted-foreground sm:px-5">敬请期待…</CardContent>
-      </Card>
+      <ShortcutSettingsTab />
     </div>
 
     <SupportUs />
@@ -151,6 +145,7 @@ import SummonerNoteEditor from '@/features/game-helper/components/SummonerNoteEd
 import SummonerRankEditor from '@/features/game-helper/components/SummonerRankEditor.vue'
 import ProfileBackgroundManager from '@/features/game-helper/components/ProfileBackgroundManager.vue'
 import RuneSettingsTab from './components/rune/RuneSettingsTab.vue'
+import ShortcutSettingsTab from './components/ShortcutSettingsTab.vue'
 import { Palette, Gamepad2, Zap, Keyboard, X, Sparkles, MessageSquareText, Trophy, Users } from 'lucide-vue-next'
 
 const autoFunctionStore = useAutoFunctionStore()

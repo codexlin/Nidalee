@@ -1,4 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
+import { isOverlayWindow } from '@/shared/utils/overlayWindow'
+import { DEFAULT_OVERLAY_SHORTCUT } from '@/shared/utils/accelerator'
 
 let nextLifecycleGeneration = 0
 let activeLifecycleGeneration: number | null = null
@@ -23,6 +25,8 @@ export function useApp() {
   const autoBuild = useAutoBuild()
   const { isConnected, connectionMessage, checkConnection, hasAuth } = useConnection()
   const isDark = computed(() => settingsStore.isDark)
+  const route = useRoute()
+  const isOverlayShell = computed(() => isOverlayWindow() || route.meta.shell === 'overlay')
   let instanceGeneration: number | null = null
 
   const stopLcuWsBestEffort = async (context: string) => {
@@ -34,6 +38,7 @@ export function useApp() {
   }
 
   onMounted(async () => {
+    if (isOverlayWindow() || isOverlayShell.value) return
     const generation = ++nextLifecycleGeneration
     instanceGeneration = generation
     activeLifecycleGeneration = generation
@@ -43,6 +48,15 @@ export function useApp() {
       if (generation !== activeLifecycleGeneration) return
       if (!listenersReady) {
         throw new Error('Tauri 事件监听器注册未完成')
+      }
+
+      try {
+        const requested = settingsStore.augmentOverlayShortcut.trim()
+        const shortcut = requested || DEFAULT_OVERLAY_SHORTCUT
+        const saved = await invoke<string>('set_augment_overlay_shortcut', { shortcut })
+        settingsStore.setAugmentOverlayShortcut(saved)
+      } catch (error) {
+        console.warn('[App] 同步海克斯侧栏设置失败:', error)
       }
 
       if (!buildPresetStore.isLoaded) {
@@ -77,6 +91,7 @@ export function useApp() {
   })
 
   onUnmounted(() => {
+    if (isOverlayWindow() || isOverlayShell.value) return
     autoBuild.stopAutoBuildWatch()
     if (instanceGeneration === null || activeLifecycleGeneration !== instanceGeneration) return
 

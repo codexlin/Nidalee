@@ -1,9 +1,25 @@
-use super::context::{champ_select_session_with_gameflow_context, in_progress_gameflow_context};
+use super::context::{champ_select_session_with_gameflow_context, in_progress_gameflow_context, overlay_queue_id};
 use super::WsEventHandler;
+use crate::infrastructure::augment_overlay::state as augment_overlay;
 use crate::shared::types::TeamAnalysisData;
 use crate::shared::Result;
 use serde_json::Value;
 use tauri::Emitter;
+
+pub(super) fn local_champion_id(session: Option<&Value>) -> Option<i32> {
+    let session = session?;
+    let cell_id = session.get("localPlayerCellId")?.as_i64()?;
+    let team = session.get("myTeam")?.as_array()?;
+    for player in team {
+        if player.get("cellId").and_then(Value::as_i64) == Some(cell_id) {
+            let id = player.get("championId").and_then(Value::as_i64)?;
+            if id > 0 {
+                return Some(id as i32);
+            }
+        }
+    }
+    None
+}
 
 impl WsEventHandler {
     async fn start_in_game_recovery(&self) {
@@ -110,6 +126,15 @@ impl WsEventHandler {
                         false
                     };
                     let _ = self.app.emit("gameflow-phase-change", &Some(phase.to_string()));
+                    let champion_id = local_champion_id(cache.champ_select_session.as_ref());
+                    let queue_id =
+                        overlay_queue_id(cache.champ_select_session.as_ref(), cache.gameflow_session.as_ref());
+                    augment_overlay::on_gameflow_phase(
+                        self.app.clone(),
+                        Some(phase.to_string()),
+                        champion_id,
+                        queue_id,
+                    );
                     should_start_recovery
                 };
 
@@ -127,6 +152,7 @@ impl WsEventHandler {
                 log::info!("Gameflow phase cleared.");
                 let _ = self.app.emit("gameflow-phase-change", &None::<String>);
             }
+            augment_overlay::on_gameflow_phase(self.app.clone(), None, None, None);
         }
         Ok(())
     }
@@ -183,7 +209,14 @@ impl WsEventHandler {
                 queue["isRanked"].as_bool().unwrap_or(false),
                 queue["isCustom"].as_bool().unwrap_or(false),
             );
+            let phase = data["phase"].as_str().map(str::to_string);
+            let champion_id = local_champion_id(cache.champ_select_session.as_ref());
+            let queue_id = overlay_queue_id(cache.champ_select_session.as_ref(), Some(data));
             drop(cache);
+
+            if matches!(phase.as_deref(), Some("GameStart" | "InProgress" | "Reconnect")) {
+                augment_overlay::on_gameflow_phase(self.app.clone(), phase, champion_id, queue_id);
+            }
 
             if should_restart_recovery {
                 log::info!("In-progress game context changed; restarting team recovery.");

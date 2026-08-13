@@ -1,6 +1,6 @@
 use super::{
     champ_select_gameflow_context, champ_select_session_with_gameflow_context, in_progress_gameflow_context,
-    GameflowContext,
+    overlay_queue_id, GameflowContext,
 };
 use serde_json::json;
 
@@ -86,4 +86,15 @@ fn in_progress_context_rejects_stale_or_incomplete_sessions() {
     let context = in_progress_gameflow_context(Some(&stale), Some(&incomplete));
 
     assert_eq!(context, None);
+}
+
+#[test]
+fn overlay_queue_prefers_gameflow_then_champ_select() {
+    let select = json!({ "queueId": 2400 });
+    let flow = json!({ "gameData": { "queue": { "id": 420 } } });
+
+    assert_eq!(overlay_queue_id(Some(&select), Some(&flow)), Some(420));
+    assert_eq!(overlay_queue_id(Some(&select), None), Some(2400));
+    assert_eq!(overlay_queue_id(None, None), None);
+    assert_eq!(overlay_queue_id(Some(&json!({ "queueId": 0 })), None), None);
 }

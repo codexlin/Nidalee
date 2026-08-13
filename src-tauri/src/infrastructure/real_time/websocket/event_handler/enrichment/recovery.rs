@@ -298,6 +298,17 @@ impl WsEventHandler {
 
         drop(cache);
 
+        let local_champion_id = team_analysis_data
+            .my_team
+            .iter()
+            .find(|player| player.is_local)
+            .and_then(|player| player.champion_id);
+        crate::infrastructure::augment_overlay::state::on_in_game_champion(
+            self.app.clone(),
+            local_champion_id,
+            Some(team_analysis_data.queue_id).filter(|id| *id > 0),
+        );
+
         // 10. 发送到前端
         log::info!(
             target: "ws::event",

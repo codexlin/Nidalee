@@ -38,6 +38,18 @@ fn champ_select_gameflow_context(session: &Value) -> Option<GameflowContext> {
     gameflow_context_for_phase(session, "ChampSelect")
 }
 
+pub(super) fn overlay_queue_id(champ_select: Option<&Value>, gameflow: Option<&Value>) -> Option<i64> {
+    let from_flow = gameflow.and_then(|session| {
+        session
+            .get("gameData")
+            .and_then(|data| data.get("queue"))
+            .and_then(|queue| queue.get("id"))
+            .and_then(Value::as_i64)
+    });
+    let from_select = champ_select.and_then(|session| session.get("queueId").and_then(Value::as_i64));
+    from_flow.or(from_select).filter(|id| *id > 0)
+}
+
 pub(super) fn in_progress_gameflow_context(
     cached_session: Option<&Value>,
     fetched_session: Option<&Value>,

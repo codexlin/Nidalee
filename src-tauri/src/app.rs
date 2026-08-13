@@ -23,6 +23,14 @@ pub fn setup_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     // 初始化游戏数据（异步加载，不阻塞应用启动）
     initialization::start_game_data_initialization();
 
+    // 海克斯推荐侧栏预创建（隐藏），保证对局时监听器已挂上
+    if let Err(error) = infrastructure::augment_overlay::window::ensure_window(app.handle()) {
+        log::warn!("预创建海克斯浮窗失败: {error}");
+    }
+    if let Err(error) = infrastructure::augment_overlay::shortcut::register_default(app.handle()) {
+        log::warn!("注册海克斯侧栏快捷键失败: {error}");
+    }
+
     Ok(())
 }
 
