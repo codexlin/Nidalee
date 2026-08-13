@@ -47,3 +47,12 @@ vite.config.d.ts
 # Agent/local cargo target dirs
 src-tauri/target-agent/
 
+# PaddleOCR model files (20MB+ binary, distributed via build pipeline)
+# 忽略模型本身，但保留 README.md 作为说明
+src-tauri/resources/models/paddleocr/
+src-tauri/resources/models/*.onnx
+src-tauri/resources/models/*.yml
+src-tauri/resources/models/*.tar
+src-tauri/resources/models/*.pdiparams
+src-tauri/resources/models/*.pdmodel
+src-tauri/resources/models/*.pdparams
