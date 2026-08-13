@@ -51,10 +51,19 @@
     "createUpdaterArtifacts": false,
     "active": true,
     "targets": ["msi", "dmg"],
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "resources": {
       "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
-      "../src/assets/fonts/harmonyos-sans-sc/LICENSE.txt": "licenses/HarmonyOS-Sans-SC-LICENSE.txt"
+      "../src/assets/fonts/harmonyos-sans-sc/LICENSE.txt": "licenses/HarmonyOS-Sans-SC-LICENSE.txt",
+      "resources/models/paddleocr/det/inference.onnx": "models/paddleocr/det/inference.onnx",
+      "resources/models/paddleocr/rec/inference.onnx": "models/paddleocr/rec/inference.onnx",
+      "resources/models/paddleocr/rec/inference.yml": "models/paddleocr/rec/inference.yml"
     },
     "externalBin": [],
     "copyright": "Copyright © 2024 Nidalee Team. All rights reserved.",
