@@ -38,6 +38,18 @@ fn champ_select_gameflow_context(session: &Value) -> Option<GameflowContext> {
     gameflow_context_for_phase(session, "ChampSelect")
 }
 
+pub(super) fn overlay_queue_id(champ_select: Option<&Value>, gameflow: Option<&Value>) -> Option<i64> {
+    let from_flow = gameflow.and_then(|session| {
+        session
+            .get("gameData")
+            .and_then(|data| data.get("queue"))
+            .and_then(|queue| queue.get("id"))
+            .and_then(Value::as_i64)
+    });
+    let from_select = champ_select.and_then(|session| session.get("queueId").and_then(Value::as_i64));
+    from_flow.or(from_select).filter(|id| *id > 0)
+}
+
 pub(super) fn in_progress_gameflow_context(
     cached_session: Option<&Value>,
     fetched_session: Option<&Value>,
@@ -48,94 +60,5 @@ pub(super) fn in_progress_gameflow_context(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{
-        champ_select_gameflow_context, champ_select_session_with_gameflow_context, in_progress_gameflow_context,
-        GameflowContext,
-    };
-    use serde_json::json;
-
-    #[test]
-    fn champ_select_session_uses_authoritative_gameflow_context() {
-        let raw = json!({ "localPlayerCellId": 4, "queueId": 0, "isCustomGame": true, "myTeam": [] });
-        let gameflow = json!({
-            "phase": "ChampSelect",
-            "gameData": {
-                "queue": { "id": 440 },
-                "isCustomGame": false
-            }
-        });
-
-        let session = champ_select_session_with_gameflow_context(&raw, Some(&gameflow));
-
-        assert_eq!(session["queueId"], 440);
-        assert_eq!(session["isCustomGame"], false);
-        assert_eq!(session["localPlayerCellId"], 4);
-    }
-
-    #[test]
-    fn gameflow_context_requires_both_runtime_fields() {
-        assert_eq!(
-            champ_select_gameflow_context(&json!({
-                "phase": "ChampSelect",
-                "gameData": { "queue": { "id": 450 }, "isCustomGame": false }
-            })),
-            Some(GameflowContext {
-                queue_id: 450,
-                is_custom_game: false
-            })
-        );
-        assert_eq!(
-            champ_select_gameflow_context(&json!({
-                "phase": "ChampSelect",
-                "gameData": { "queue": { "id": 450 } }
-            })),
-            None
-        );
-        assert_eq!(
-            champ_select_gameflow_context(&json!({
-                "phase": "InProgress",
-                "gameData": { "queue": { "id": 450 }, "isCustomGame": false }
-            })),
-            None
-        );
-    }
-
-    #[test]
-    fn in_progress_context_prefers_fresh_runtime_state() {
-        let cached = json!({
-            "phase": "InProgress",
-            "gameData": { "queue": { "id": 450 }, "isCustomGame": false }
-        });
-        let fetched = json!({
-            "phase": "InProgress",
-            "gameData": { "queue": { "id": 420 }, "isCustomGame": false }
-        });
-
-        let context = in_progress_gameflow_context(Some(&cached), Some(&fetched));
-
-        assert_eq!(
-            context,
-            Some(GameflowContext {
-                queue_id: 420,
-                is_custom_game: false
-            })
-        );
-    }
-
-    #[test]
-    fn in_progress_context_rejects_stale_or_incomplete_sessions() {
-        let stale = json!({
-            "phase": "ChampSelect",
-            "gameData": { "queue": { "id": 440 }, "isCustomGame": false }
-        });
-        let incomplete = json!({
-            "phase": "InProgress",
-            "gameData": { "queue": { "id": 440 } }
-        });
-
-        let context = in_progress_gameflow_context(Some(&stale), Some(&incomplete));
-
-        assert_eq!(context, None);
-    }
-}
+#[path = "context_tests.rs"]
+mod tests;

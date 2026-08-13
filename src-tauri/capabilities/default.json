@@ -3,7 +3,8 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": [
-    "main"
+    "main",
+    "augment-side-panel"
   ],
   "permissions": [
     "core:default",
@@ -16,6 +17,8 @@
     "core:window:allow-hide",
     "core:window:allow-show",
     "core:window:allow-start-dragging",
+    "core:window:allow-set-position",
+    "core:window:allow-set-always-on-top",
     "log:default",
     "store:default"
   ]

@@ -31,12 +31,6 @@ impl WsEventHandler {
             client: crate::http_client::get_lcu_client().clone(),
         }
     }
-
-    /// Gets the cached team analysis data.
-    pub async fn get_cached_team_analysis_data(&self) -> Option<crate::shared::types::TeamAnalysisData> {
-        let cache = self.cache.read().await;
-        cache.team_analysis_data.clone()
-    }
 }
 
 #[cfg(test)]

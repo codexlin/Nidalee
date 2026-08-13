@@ -2,6 +2,7 @@ import { VueQueryPlugin, QueryClient } from '@tanstack/vue-query'
 import App from './App.vue'
 import router from './router'
 import './style.css'
+import { isOverlayWindow, markOverlayDocument, overlayRoute } from './shared/utils/overlayWindow'
 
 /** 挂载前只等 Regular；Medium/Bold 挂载后后台预热，缩短首屏空白 */
 async function warmHarmonyFonts() {
@@ -50,6 +51,14 @@ async function bootstrap() {
   app.use(VueQueryPlugin, { queryClient })
   app.use(stores)
   app.use(router)
+
+  if (isOverlayWindow()) {
+    markOverlayDocument()
+    const target = overlayRoute()
+    if (router.currentRoute.value.path !== target) {
+      await router.replace(target)
+    }
+  }
 
   app.mount('#app')
   warmSecondaryHarmonyFonts()

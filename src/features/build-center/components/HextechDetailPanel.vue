@@ -28,63 +28,12 @@
       <StatKpiStrip :items="kpis" />
     </div>
 
-    <WorkbenchSection v-if="detail.augmentTrios?.length" title="推荐三连" show-rates>
-      <div class="space-y-1.5">
-        <div
-          v-for="(trio, index) in detail.augmentTrios"
-          :key="`trio-${index}`"
-          class="grid items-center gap-2 rounded-xl surface-inset px-2.5 py-2 sm:grid-cols-[minmax(0,1fr)_auto]"
-        >
-          <div class="flex min-w-0 flex-wrap items-center gap-2">
-            <span
-              class="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-xs font-bold text-primary"
-            >
-              {{ index + 1 }}
-            </span>
-            <div
-              v-for="id in trio.augmentIds"
-              :key="id"
-              class="flex min-w-0 max-w-30 items-center gap-1.5"
-              :title="augmentName(id)"
-            >
-              <img
-                :src="augmentIcon(id)"
-                :alt="augmentName(id)"
-                class="size-8 shrink-0 rounded-md ring-1 ring-border/50"
-                @error="fadeImg"
-              />
-              <span class="truncate text-sm font-medium">{{ augmentName(id) }}</span>
-            </div>
-          </div>
-          <RateColumns :win-rate="trio.winRate" :pick-rate="trio.pickRate" :games="trio.games" />
-        </div>
-      </div>
+    <WorkbenchSection v-if="guideTrios.length" title="推荐三连" show-rates>
+      <HextechTrioList :trios="guideTrios" variant="workbench" />
     </WorkbenchSection>
 
-    <WorkbenchSection title="推荐增强" show-rates>
-      <div v-if="detail.augments?.length" class="overflow-hidden rounded-xl surface-inset">
-        <div
-          v-for="aug in detail.augments.slice(0, 12)"
-          :key="aug.id"
-          class="grid items-center gap-2 border-b border-border/40 px-2.5 py-2 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto]"
-        >
-          <div class="flex min-w-0 items-center gap-2">
-            <img :src="aug.iconUrl" alt="" class="size-8 shrink-0 rounded-md ring-1 ring-border/50" @error="fadeImg" />
-            <div class="min-w-0">
-              <p class="truncate text-sm font-medium">{{ aug.name }}</p>
-              <p class="text-xs text-muted-foreground">
-                {{ aug.rarityDisplayName || rarityLabel(aug.rarityName) }}
-                <template v-if="aug.tier">
-                  <span class="mx-1 text-border">·</span>
-                  T{{ aug.tier }}
-                </template>
-              </p>
-            </div>
-          </div>
-          <RateColumns :win-rate="aug.winRate" :pick-rate="aug.pickRate" :games="aug.games" />
-        </div>
-      </div>
-      <p v-else class="py-4 text-center text-sm text-muted-foreground">暂无增强数据</p>
+    <WorkbenchSection title="推荐增强">
+      <HextechAugmentGroups :augments="detail.augments" variant="workbench" />
     </WorkbenchSection>
 
     <div>
@@ -189,11 +138,13 @@
 <script setup lang="ts">
 import { ArrowLeft, ChevronDown } from 'lucide-vue-next'
 import FloatIconButton from '@/components/common/FloatIconButton.vue'
+import HextechAugmentGroups from '@/shared/components/hextech/HextechAugmentGroups.vue'
+import HextechTrioList from '@/shared/components/hextech/HextechTrioList.vue'
+import type { HextechGuideTrio } from '@/shared/hextech/guideAugment'
 import { getChampionIconUrl, getChampionName, getSpellMeta } from '@/lib'
 import ItemRows from './ItemRows.vue'
 import WorkbenchSection from './WorkbenchSection.vue'
 import StatKpiStrip from './StatKpiStrip.vue'
-import RateColumns from './RateColumns.vue'
 import type { StatKpiItem } from './StatKpiStrip.vue'
 
 const props = defineProps<{
@@ -213,6 +164,29 @@ const augmentById = computed(() => {
   for (const a of props.detail.augments) map.set(a.id, a)
   return map
 })
+
+const guideTrios = computed((): HextechGuideTrio[] =>
+  (props.detail.augmentTrios ?? []).map((trio) => ({
+    augments: trio.augmentIds.map((id) => {
+      const stat = augmentById.value.get(id)
+      if (stat) return stat
+      return {
+        id,
+        name: `#${id}`,
+        iconUrl: '',
+        rarityName: '',
+        rarityDisplayName: '',
+        winRate: 0,
+        pickRate: 0,
+        games: null,
+        tier: null
+      }
+    }),
+    winRate: trio.winRate,
+    pickRate: trio.pickRate,
+    games: trio.games
+  }))
+)
 
 watch(
   () => summary.value.championId,
@@ -237,16 +211,6 @@ const fadeImg = (e: Event) => {
   el.style.opacity = '0.3'
 }
 
-const rarityLabel = (name: string) => {
-  const map: Record<string, string> = {
-    prismatic: '棱彩',
-    gold: '黄金',
-    silver: '白银',
-    bronze: '青铜'
-  }
-  return map[name] || name
-}
-
 const roleLabel = (name: string) => {
   const map: Record<string, string> = {
     tank: '坦克',
@@ -266,9 +230,6 @@ const skillTone = (skill: string) => {
   if (skill === 'R') return 'bg-rose-500/20 text-rose-700 dark:text-rose-300'
   return 'bg-muted text-muted-foreground'
 }
-
-const augmentIcon = (id: number) => augmentById.value.get(id)?.iconUrl || ''
-const augmentName = (id: number) => augmentById.value.get(id)?.name || `#${id}`
 
 const toItemRows = (combos: HextechItemCombo[]): OpggItem[] =>
   combos.map((c) => ({

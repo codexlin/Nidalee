@@ -250,7 +250,9 @@ refactor(static-catalog): centralize versioned game metadata
 
 ## 阶段 5：Rust 大模块结构治理
 
-**状态：已完成**
+后续 Rust 核心模块的继续治理顺序、拆分边界和验收门禁见 [`RUST_MODULE_GOVERNANCE.md`](./RUST_MODULE_GOVERNANCE.md)。该计划明确采用“按职责与数据流拆分”，不按文件行数机械拆分；下一批从 `analysis_data/service.rs` 开始。
+
+**状态：首轮大模块拆分已完成；后续职责治理按专项计划继续**
 
 ### 候选模块
 

@@ -8,6 +8,7 @@ use crate::http_client;
 
 struct ChampionStore {
     name_to_id: HashMap<String, i32>,
+    alias_to_id: HashMap<String, i32>,
     data: HashMap<i32, ChampionInfo>,
 }
 
@@ -67,10 +68,14 @@ fn build_champion_maps(champions: Vec<ChampionInfo>) -> ChampionMaps {
 
 /// 安装/替换内存中的英雄目录（供 static_catalog 编排）
 pub fn install_champion_maps(champions: Vec<ChampionInfo>) -> Result<(), String> {
-    let (_alias_to_id, name_to_id, data) = build_champion_maps(champions);
+    let (alias_to_id, name_to_id, data) = build_champion_maps(champions);
     let count = data.len();
     let mut guard = CHAMPION_STORE.write().map_err(|e| format!("英雄目录锁中毒: {e}"))?;
-    *guard = Some(ChampionStore { name_to_id, data });
+    *guard = Some(ChampionStore {
+        name_to_id,
+        alias_to_id,
+        data,
+    });
     log::info!("英雄目录已安装，共 {count} 个");
     Ok(())
 }
@@ -90,10 +95,19 @@ pub async fn fetch_champion_data_from_network() -> Result<Vec<ChampionInfo>, Box
     Ok(champions)
 }
 
-/// 根据中文名称获取英雄 ID（支持完整名称或称号）
+/// 根据中文名称、称号或英文别名获取英雄 ID
 pub fn get_champion_id_by_name(name: &str) -> Option<i32> {
+    let name = name.trim();
+    if name.is_empty() {
+        return None;
+    }
     let guard = CHAMPION_STORE.read().ok()?;
-    guard.as_ref()?.name_to_id.get(name).copied()
+    let store = guard.as_ref()?;
+    store
+        .name_to_id
+        .get(name)
+        .copied()
+        .or_else(|| store.alias_to_id.get(&name.to_lowercase()).copied())
 }
 
 /// 根据 ID 获取英雄信息

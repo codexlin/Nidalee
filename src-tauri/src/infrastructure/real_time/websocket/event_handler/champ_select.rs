@@ -4,7 +4,9 @@ use serde_json::Value;
 use tauri::Emitter;
 
 use super::context::champ_select_session_with_gameflow_context;
+use super::phase_session::local_champion_id;
 use super::WsEventHandler;
+use crate::infrastructure::augment_overlay::state as augment_overlay;
 use crate::infrastructure::match_management::analysis_data;
 use crate::shared::Result;
 
@@ -37,6 +39,8 @@ impl WsEventHandler {
                 }
                 session
             };
+            let queue_id = session.get("queueId").and_then(Value::as_i64).filter(|id| *id > 0);
+            augment_overlay::on_champion_ready(local_champion_id(Some(&session)), queue_id);
             let analysis_key = analysis_data::service::champ_select_analysis_key(&session);
 
             let app = self.app.clone();

@@ -6,6 +6,7 @@ import ClientDisconnected from './components/common/ClientDisconnected.vue'
 import TitleBar from './components/layout/TitleBar.vue'
 import AppTopNav from './components/layout/AppTopNav.vue'
 import { APP_ROUTES } from './router/appRoutes'
+import { isOverlayWindow } from './shared/utils/overlayWindow'
 
 const { isDark, checkConnection, isConnected, fetchMatchHistory } = useApp()
 const theme = computed(() => (isDark.value ? 'dark' : 'light'))
@@ -27,10 +28,12 @@ const handleRouteChange = () => {
 }
 const route = useRoute()
 const router = useRouter()
+const isOverlayShell = computed(() => isOverlayWindow() || route.meta.shell === 'overlay')
 
 watch(
   isConnected,
   () => {
+    if (isOverlayWindow() || isOverlayShell.value) return
     if (route.name !== APP_ROUTES.overview.name) {
       void router.replace({ name: APP_ROUTES.overview.name })
     }
@@ -40,7 +43,14 @@ watch(
 </script>
 
 <template>
-  <div id="app" class="flex h-screen flex-col overflow-hidden bg-background">
+  <div
+    v-if="isOverlayShell"
+    id="app"
+    class="h-screen overflow-hidden bg-transparent"
+  >
+    <router-view />
+  </div>
+  <div v-else id="app" class="flex h-screen flex-col overflow-hidden bg-background">
     <Toaster richColors :theme />
     <TooltipProvider :delay-duration="300">
       <TitleBar />

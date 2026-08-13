@@ -336,6 +336,7 @@ await queryClient.invalidateQueries({ queryKey: ['static', 'champions'] })
 
 ### Rust
 - Unit tests live alongside source (`#[cfg(test)] mod tests`)
+- Keep small focused suites inline; move large suites to a sibling `*_tests.rs` file with `#[path = "..."] mod tests` so they retain private-module access without burying production code.
 - Integration tests live under `src-tauri/tests/` (e.g. `analysis_evidence.rs`, `analysis_orchestrator.rs`)
 - Run: `cargo test --all-targets --locked`
 

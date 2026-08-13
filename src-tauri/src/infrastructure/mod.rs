@@ -6,6 +6,7 @@
 //! - 数据缓存
 //! - 错误处理
 
+pub mod augment_overlay;
 pub mod champion_selection;
 pub mod data_services;
 pub mod game_session;
