@@ -133,6 +133,7 @@ pub async fn analyze_matches_for_puuid(
 }
 
 /// 分析当前登录的召唤师
+#[cfg(debug_assertions)]
 pub async fn analyze_current_summoner(
     client: &Client,
     request: &MatchAnalysisRequest,
@@ -142,6 +143,7 @@ pub async fn analyze_current_summoner(
 }
 
 /// 读取当前召唤师 PUUID
+#[cfg(debug_assertions)]
 pub async fn current_summoner_puuid(client: &Client) -> Result<String, String> {
     let summoner: serde_json::Value =
         crate::shared::utils::lcu_get(client, "/lol-summoner/v1/current-summoner").await?;

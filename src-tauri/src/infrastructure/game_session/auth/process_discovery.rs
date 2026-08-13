@@ -157,6 +157,7 @@ fn has_lcu_arguments(cmdline: &str) -> bool {
 }
 
 /// Diagnostic helper used by the existing auth command.
+#[cfg(debug_assertions)]
 pub(super) fn verify_lockfile_vs_cmdline() {
     log::info!("========== 开始验证 lockfile vs 进程命令行 ==========");
 
@@ -187,6 +188,7 @@ pub(super) fn verify_lockfile_vs_cmdline() {
 }
 
 #[cfg(target_os = "windows")]
+#[cfg(debug_assertions)]
 fn get_lcu_from_lockfile() -> Option<(u16, String)> {
     use std::fs;
     use std::path::Path;
@@ -212,6 +214,7 @@ fn get_lcu_from_lockfile() -> Option<(u16, String)> {
 }
 
 #[cfg(not(target_os = "windows"))]
+#[cfg(debug_assertions)]
 fn get_lcu_from_lockfile() -> Option<(u16, String)> {
     None
 }

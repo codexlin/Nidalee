@@ -1,6 +1,8 @@
+#[cfg(debug_assertions)]
 use crate::infrastructure::game_session::auth::service::{
     verify_lockfile_vs_cmdline as do_verify_lockfile_vs_cmdline, AUTH_INFO,
 };
+#[cfg(debug_assertions)]
 use crate::shared::types::LcuAuthInfo;
 
 #[cfg(debug_assertions)]

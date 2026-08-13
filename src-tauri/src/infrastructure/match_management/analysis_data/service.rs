@@ -722,7 +722,7 @@ async fn fetch_all_players_match_stats_internal(
 
     let player_names: Vec<String> = need_fetch_indices
         .iter()
-        .filter(|&&idx| players[idx].puuid.as_deref().map_or(true, str::is_empty))
+        .filter(|&&idx| players[idx].puuid.as_deref().is_none_or(str::is_empty))
         .map(|&idx| players[idx].display_name.clone())
         .collect();
 

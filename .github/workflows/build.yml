@@ -18,6 +18,7 @@ env:
   RUST_BACKTRACE: 1
   NODE_VERSION: '22.23.2'
   PNPM_VERSION: '10.34.5'
+  RUST_MSRV: '1.88.0'
 
 jobs:
   frontend-quality:
@@ -67,7 +68,7 @@ jobs:
       - name: 🦀 Setup Rust
         uses: dtolnay/rust-toolchain@1.97.1
         with:
-          components: rustfmt
+          components: rustfmt,clippy
           targets: x86_64-pc-windows-msvc
 
       - name: 🟢 Setup Node.js
@@ -88,6 +89,18 @@ jobs:
         working-directory: src-tauri
         run: cargo check --all-targets --locked
 
+      - name: 📦 Check release library
+        working-directory: src-tauri
+        run: cargo check --release --lib --locked
+
+      - name: 📎 Clippy
+        working-directory: src-tauri
+        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+
+      - name: 📎 Clippy release library
+        working-directory: src-tauri
+        run: cargo clippy --release --lib --locked -- -D warnings
+
       - name: 🧹 Prepare generated TypeScript contracts
         run: node scripts/prepare-types.mjs
 
@@ -103,9 +116,31 @@ jobs:
       - name: 🧾 Verify generated TypeScript contracts
         run: git diff --exit-code -- src/types/global.d.ts
 
+  rust-msrv:
+    name: 🦀 Rust MSRV (1.88.0)
+    runs-on: windows-latest
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🦀 Setup minimum supported Rust
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: 🗄️ Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          key: msrv-${{ env.RUST_MSRV }}
+
+      - name: ✅ Check library on MSRV
+        working-directory: src-tauri
+        run: cargo check --lib --locked
+
   build-tauri:
     name: 🏗️ Build Tauri App (Windows)
-    needs: [frontend-quality, rust-quality]
+    needs: [frontend-quality, rust-quality, rust-msrv]
     runs-on: windows-latest
     steps:
       - name: 📦 Checkout repository
@@ -149,7 +184,7 @@ jobs:
 
   build-tauri-mac:
     name: 🏗️ Build Tauri App (macOS)
-    needs: [frontend-quality, rust-quality]
+    needs: [frontend-quality, rust-quality, rust-msrv]
     runs-on: macos-latest
     steps:
       - name: 📦 Checkout repository

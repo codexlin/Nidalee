@@ -25,7 +25,7 @@ struct WsSupervisorState {
 
 impl WsSupervisorState {
     fn can_start(&self) -> bool {
-        self.task.as_ref().map_or(true, JoinHandle::is_finished)
+        self.task.as_ref().is_none_or(JoinHandle::is_finished)
     }
 }
 

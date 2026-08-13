@@ -10,9 +10,10 @@ mod overview;
 mod process_review;
 
 pub use detail::get_game_detail_logic;
-// Keep the historical facade even when a specific binary does not use every adapter.
-#[allow(unused_imports)]
-pub use overview::{fetch_match_list, get_recent_matches_by_puuid, get_recent_matches_by_puuid_with_perspective};
+pub use overview::get_recent_matches_by_puuid;
 pub use process_review::get_game_process_review_logic;
 
+#[cfg(debug_assertions)]
+pub use overview::fetch_match_list;
+#[cfg(debug_assertions)]
 pub(crate) use overview::get_match_history;
