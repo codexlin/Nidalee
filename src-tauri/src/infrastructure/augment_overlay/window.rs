@@ -66,14 +66,7 @@ pub fn show_side_panel(app: &AppHandle) {
     }
 }
 
-/// 对局里只藏内容、不关窗口，避免再显示时被游戏挡住。
-pub fn conceal_side_panel(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window(SIDE_PANEL_LABEL) {
-        let _ = window.set_ignore_cursor_events(true);
-        let _ = window.set_always_on_top(true);
-    }
-}
-
+/// 隐藏原生窗口；调用方负责决定是否同时清理当前对局状态。
 pub fn hide_side_panel(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(SIDE_PANEL_LABEL) {
         let _ = window.set_ignore_cursor_events(false);

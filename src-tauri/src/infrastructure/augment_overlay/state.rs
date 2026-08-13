@@ -241,14 +241,14 @@ pub async fn is_visible() -> bool {
     controller().lock().await.visible
 }
 
-/// 手动隐藏只改变可见性，保留本局队列、英雄与推荐快照，以便快捷键再次显示。
+/// 手动隐藏原生窗口，但保留本局队列、英雄与推荐快照，以便快捷键再次显示。
 pub async fn hide_side_panel(app: AppHandle) {
     let mut ctrl = controller().lock().await;
     ctrl.visible = false;
     ctrl.revealing = false;
     ctrl.visibility_generation = ctrl.visibility_generation.wrapping_add(1);
     drop(ctrl);
-    window::conceal_side_panel(&app);
+    window::hide_side_panel(&app);
     emit_visibility(&app, false);
 }
 
