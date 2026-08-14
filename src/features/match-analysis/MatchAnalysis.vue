@@ -4,7 +4,7 @@
     <Transition name="fade" mode="out-in">
       <!-- Main Analysis View -->
       <div
-        v-if="shouldShowAnalysis && hasMyTeamData && isDataReady"
+        v-if="shouldShowAnalysis && hasMyTeamData"
         key="analysis"
         class="mx-auto h-[calc(100dvh-8.5rem)] min-h-150 w-full max-w-full overflow-hidden"
       >
@@ -13,18 +13,12 @@
           <section
             class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-blue-500/15 bg-blue-500/[0.02]"
           >
-            <AnalysisHeader
-              team-type="ally"
-              :phase="currentPhase"
-              :team-count="myTeamData?.players.length || 0"
-              :has-data="hasMyTeamData"
-              :loading="isLoading"
-            />
+            <AnalysisHeader team-type="ally" :phase="currentPhase" :team-count="myTeam.length" />
             <div class="min-h-0 flex-1 p-1.5">
               <TeamAnalysisCard
-                :team-data="myTeamData!"
-                :team-stats="myTeamStats"
+                :players="myTeam"
                 team-type="ally"
+                :local-player-cell-id="localPlayerCellId"
                 :is-player-retrying="isPlayerRetrying"
                 @select-player="handlePlayerDetails"
                 @retry-player="retryPlayer"
@@ -36,18 +30,12 @@
           <section
             class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-red-500/15 bg-red-500/[0.02]"
           >
-            <AnalysisHeader
-              team-type="enemy"
-              :phase="currentPhase"
-              :team-count="enemyTeamData?.players.length || 0"
-              :has-data="hasEnemyTeamData"
-              :loading="isEnemyTeamLoading"
-            />
+            <AnalysisHeader team-type="enemy" :phase="currentPhase" :team-count="enemyTeam.length" />
             <div class="min-h-0 flex-1 p-1.5">
               <TeamAnalysisCard
-                :team-data="enemyTeamData!"
-                :team-stats="enemyTeamStats"
+                :players="enemyTeam"
                 team-type="enemy"
+                :local-player-cell-id="localPlayerCellId"
                 :is-player-retrying="isPlayerRetrying"
                 @select-player="handlePlayerDetails"
                 @retry-player="retryPlayer"
@@ -82,41 +70,11 @@ import { usePlayerAnalysisRetry } from './composables/usePlayerAnalysisRetry'
 
 // Use Pinia Store
 const matchAnalysisStore = useMatchAnalysisStore()
-const {
-  currentPhase,
-  isLoading,
-  isEnemyTeamLoading,
-  myTeamData,
-  myTeamStats,
-  enemyTeamData,
-  enemyTeamStats,
-  shouldShowAnalysis,
-  hasMyTeamData,
-  hasEnemyTeamData
-} = storeToRefs(matchAnalysisStore)
+const { currentPhase, myTeam, enemyTeam, localPlayerCellId, shouldShowAnalysis, hasMyTeamData } =
+  storeToRefs(matchAnalysisStore)
 
 // 注释：敌方英雄选择现在由 team-analysis-data 事件自动更新
 // 不再需要手动监听 gameStore.champSelectSession
-
-// 🎨 平滑切换逻辑：添加短暂延迟，确保数据准备完毕再显示
-const isDataReady = ref(false)
-
-watch(
-  () => shouldShowAnalysis.value && hasMyTeamData.value,
-  (shouldShow, _previousValue, onCleanup) => {
-    if (shouldShow) {
-      // 数据加载完成后，延迟 150ms 再显示，避免闪烁
-      isDataReady.value = false
-      const readyTimer = setTimeout(() => {
-        isDataReady.value = true
-      }, 150)
-      onCleanup(() => clearTimeout(readyTimer))
-    } else {
-      isDataReady.value = false
-    }
-  },
-  { immediate: true }
-)
 
 const {
   isOpen: showPlayerDetails,

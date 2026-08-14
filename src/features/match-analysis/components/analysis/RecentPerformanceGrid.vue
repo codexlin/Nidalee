@@ -10,6 +10,7 @@ const props = defineProps<{
   scopeLabel: string
   recentCount: number
   sampleCount: number
+  showScopeSwitch?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -29,7 +30,11 @@ function getModeLabel(match: MatchPerformance): string {
   <section class="flex flex-col gap-1">
     <div class="flex min-w-0 items-center gap-1.5">
       <h4 class="flex-none text-xs font-bold text-foreground">对局记录</h4>
-      <div class="flex flex-none rounded-md border border-border/50 bg-muted/15 p-px" aria-label="对局记录范围">
+      <div
+        v-if="showScopeSwitch"
+        class="flex flex-none rounded-md border border-border/50 bg-muted/15 p-px"
+        aria-label="对局记录范围"
+      >
         <button
           type="button"
           class="rounded px-1.5 py-0.5 text-[9px] leading-none transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -51,7 +56,7 @@ function getModeLabel(match: MatchPerformance): string {
           "
           :aria-pressed="view === 'sample'"
           :disabled="sampleCount === 0"
-          title="显示用于计算胜率、KDA、特征和置信度的分析样本"
+          title="显示用于计算排位表现、位置画像和竞技评级的当前排位样本"
           @click.stop="emit('update:view', 'sample')"
         >
           参考样本

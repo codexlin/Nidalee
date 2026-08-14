@@ -144,7 +144,6 @@ const statusDescription = ref('')
 watch(
   currentPhase,
   (phase) => {
-    console.log('[GameStatusHub]👍 当前阶段:', phase)
     switch (phase) {
       case 'Lobby':
         statusIcon.value = Users

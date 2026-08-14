@@ -2,7 +2,8 @@
 import { computed, shallowRef } from 'vue'
 import { getChampionIconUrl, getChampionName, getRoleIconUrl, getSpellMeta } from '@/lib'
 import type { UIPlayerData } from '@/types/match-analysis'
-import PlayerInsightSummary from './PlayerInsightSummary.vue'
+import PlayerPerformanceSummary from './PlayerPerformanceSummary.vue'
+import PlayerRankedSnapshot from './PlayerRankedSnapshot.vue'
 import PlayerRankBadges from './PlayerRankBadges.vue'
 import RecentPerformanceGrid from './RecentPerformanceGrid.vue'
 
@@ -10,7 +11,6 @@ type CompactPlayer = UIPlayerData & { assignedPosition?: string | null }
 
 const props = defineProps<{
   player: CompactPlayer
-  playerStats?: PlayerMatchStats | null
   isLocal?: boolean
   isAlly?: boolean
   retrying?: boolean
@@ -37,11 +37,15 @@ const nameLabel = computed(() => {
 
 const canSelect = computed(() => !props.player.isBot && !identityPending.value)
 const performanceView = shallowRef<'recent' | 'sample'>('recent')
-const analysisSample = computed(() => props.playerStats?.recentPerformance ?? [])
+const analysis = computed(() => props.player.analysis)
+const playerStats = computed(() => analysis.value?.stats)
+const isRankedAnalysis = computed(() => analysis.value?.depth === 'ranked')
+const analysisSample = computed(() => playerStats.value?.recentPerformance ?? [])
+const effectivePerformanceView = computed(() => (isRankedAnalysis.value ? performanceView.value : 'recent'))
 const visiblePerformance = computed(() =>
-  performanceView.value === 'recent' ? props.player.recentMatches : analysisSample.value
+  effectivePerformanceView.value === 'recent' ? (analysis.value?.recentMatches ?? []) : analysisSample.value
 )
-const analysisBasis = computed(() => props.player.analysisBasis)
+const analysisBasis = computed(() => analysis.value?.basis)
 const analysisStatus = computed(() => props.player.analysisStatus)
 
 const scopeLabels: Record<PlayerAnalysisScope, string> = {
@@ -90,12 +94,17 @@ function setPerformanceView(view: 'recent' | 'sample'): void {
 <template>
   <article
     class="group flex h-full min-w-0 flex-col gap-1.5 overflow-hidden rounded-xl border bg-card/75 p-2 transition-colors"
+    :role="canSelect ? 'button' : undefined"
+    :tabindex="canSelect ? 0 : undefined"
+    :aria-label="canSelect ? `查看 ${nameLabel} 的召唤师详情` : undefined"
     :class="[
       isLocal ? 'border-primary/65 shadow-[inset_3px_0_0_var(--color-primary)]' : 'border-border/50',
       canSelect ? 'cursor-pointer hover:border-primary/40 hover:bg-card' : 'cursor-default',
       player.isBot ? 'opacity-75 grayscale' : ''
     ]"
     @click="selectPlayer"
+    @keydown.enter="selectPlayer"
+    @keydown.space.prevent="selectPlayer"
   >
     <header class="flex min-w-0 items-center gap-2">
       <div class="relative flex-none">
@@ -182,7 +191,7 @@ function setPerformanceView(view: 'recent' | 'sample'): void {
       v-else-if="analysisStatus === 'insufficientData' && !playerStats"
       class="flex flex-1 items-center justify-center text-xs text-muted-foreground"
     >
-      最近 50 场中没有足够的可分析数据
+      当前模式近期没有足够的有效战绩
     </div>
     <div
       v-else-if="analysisStatus === 'unavailable' && !playerStats"
@@ -201,15 +210,17 @@ function setPerformanceView(view: 'recent' | 'sample'): void {
         {{ retrying ? '重试中' : '重新分析' }}
       </Button>
     </div>
-    <template v-else-if="playerStats">
-      <PlayerInsightSummary :stats="playerStats" :ranked-rating="player.rankedRating" :analysis-basis="analysisBasis" />
+    <template v-else-if="analysis && playerStats">
+      <PlayerPerformanceSummary :analysis="analysis" />
+      <PlayerRankedSnapshot v-if="analysis.ranked" :ranked="analysis.ranked" />
       <RecentPerformanceGrid
-        v-if="player.recentMatches.length || analysisSample.length"
+        v-if="analysis.recentMatches.length || analysisSample.length"
         :matches="visiblePerformance"
-        :view="performanceView"
-        :scope-label="performanceView === 'recent' ? '全部模式' : analysisScopeLabel"
-        :recent-count="player.recentMatches.length"
+        :view="effectivePerformanceView"
+        :scope-label="effectivePerformanceView === 'recent' ? '全部模式' : analysisScopeLabel"
+        :recent-count="analysis.recentMatches.length"
         :sample-count="analysisSample.length"
+        :show-scope-switch="isRankedAnalysis"
         @update:view="setPerformanceView"
       />
     </template>
