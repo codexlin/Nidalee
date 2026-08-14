@@ -1,7 +1,7 @@
 use tauri::Emitter;
 
 use super::super::WsEventHandler;
-use super::identity::{live_position, live_spell_id, same_riot_id};
+use super::identity::{canonical_riot_id, live_position, live_spell_id, same_riot_id};
 use crate::infrastructure::data_services::champion_data;
 use crate::shared::Result;
 
@@ -37,10 +37,7 @@ fn base_player_data(
         tag_line: None,
         spell1_id: live_spell_id(&live_player.summoner_spells, "summonerSpellOne"),
         spell2_id: live_spell_id(&live_player.summoner_spells, "summonerSpellTwo"),
-        match_stats: None,
-        recent_matches: Vec::new(),
-        analysis_basis: None,
-        ranked_rating: None,
+        analysis: None,
     }
 }
 
@@ -54,7 +51,7 @@ impl WsEventHandler {
             return Err("Player PUUID is required".into());
         }
 
-        let (is_champ_select, generation, queue_id, is_custom_game, perspective) = {
+        let (is_champ_select, generation, queue_id, is_custom_game) = {
             let mut cache = self.cache.write().await;
             let (is_champ_select, generation) = match cache.gameflow_phase.as_deref() {
                 Some("ChampSelect") => (true, cache.champ_select_analysis_generation),
@@ -67,7 +64,7 @@ impl WsEventHandler {
                 .ok_or("No active team analysis data is available")?;
             let queue_id = analysis.queue_id;
             let is_custom_game = analysis.is_custom_game;
-            let perspective = if let Some(player) = analysis
+            if let Some(player) = analysis
                 .my_team
                 .iter_mut()
                 .find(|player| player.puuid.as_deref() == Some(puuid))
@@ -79,11 +76,6 @@ impl WsEventHandler {
                     return Ok(crate::shared::types::PlayerAnalysisStatus::Loading);
                 }
                 player.analysis_status = crate::shared::types::PlayerAnalysisStatus::Loading;
-                if player.is_local {
-                    crate::shared::types::AdvicePerspective::SelfImprovement
-                } else {
-                    crate::shared::types::AdvicePerspective::Collaboration
-                }
             } else if let Some(player) = analysis
                 .enemy_team
                 .iter_mut()
@@ -96,14 +88,13 @@ impl WsEventHandler {
                     return Ok(crate::shared::types::PlayerAnalysisStatus::Loading);
                 }
                 player.analysis_status = crate::shared::types::PlayerAnalysisStatus::Loading;
-                crate::shared::types::AdvicePerspective::Targeting
             } else {
                 return Err("Player is no longer part of the active team analysis".into());
-            };
+            }
 
             let updated_data = analysis.clone();
             let _ = self.app.emit("team-analysis-data", &updated_data);
-            (is_champ_select, generation, queue_id, is_custom_game, perspective)
+            (is_champ_select, generation, queue_id, is_custom_game)
         };
 
         let result =
@@ -138,12 +129,10 @@ impl WsEventHandler {
 
         let (cache_entry, command_result) = match result {
             Ok(player_analysis) => {
-                player.match_stats = Some(player_analysis.stats.clone());
-                player.recent_matches = player_analysis.recent_matches.clone();
-                player.analysis_basis = Some(player_analysis.basis.clone());
-                player.analysis_status = crate::shared::types::PlayerAnalysisStatus::Ready;
-                crate::infrastructure::match_management::analysis_data::service::refresh_ranked_rating(
-                    player, queue_id,
+                crate::infrastructure::match_management::analysis_data::service::apply_player_analysis(
+                    player,
+                    player_analysis.clone(),
+                    queue_id,
                 );
                 (
                     Some(player_analysis),
@@ -151,10 +140,7 @@ impl WsEventHandler {
                 )
             }
             Err(error) => {
-                player.match_stats = None;
-                player.recent_matches.clear();
-                player.analysis_basis = None;
-                player.ranked_rating = None;
+                crate::infrastructure::match_management::analysis_data::service::clear_player_analysis(player);
                 player.analysis_status = error.status();
                 let status = error.status();
                 let command_result = if error.is_unavailable() {
@@ -173,7 +159,6 @@ impl WsEventHandler {
                     puuid,
                     queue_id,
                     is_custom_game,
-                    perspective,
                 ),
                 player_analysis,
             );
@@ -190,7 +175,6 @@ impl WsEventHandler {
         summoners_info: &[crate::shared::types::SummonerInfo],
         queue_id: i64,
         is_custom_game: bool,
-        perspective: crate::shared::types::AdvicePerspective,
     ) -> (crate::shared::types::PlayerAnalysisData, Option<MatchStatsCacheEntry>) {
         let champion_id = champion_data::get_champion_id_by_name(&live_player.champion_name);
         if champion_id.is_none() {
@@ -220,6 +204,8 @@ impl WsEventHandler {
 
         // 填充召唤师详细信息
         if let Some(info) = summoner_info {
+            player_data.display_name =
+                canonical_riot_id(&info.display_name, info.game_name.as_deref(), info.tag_line.as_deref());
             player_data.summoner_id = Some(info.summoner_id.clone());
             player_data.puuid = Some(info.puuid.clone());
             crate::infrastructure::match_management::analysis_data::service::apply_rank_summaries(
@@ -244,16 +230,12 @@ impl WsEventHandler {
                             &info.puuid,
                             queue_id,
                             is_custom_game,
-                            perspective,
                         ),
                         analysis.clone(),
                     ));
-                    player_data.match_stats = Some(analysis.stats);
-                    player_data.recent_matches = analysis.recent_matches;
-                    player_data.analysis_basis = Some(analysis.basis);
-                    player_data.analysis_status = crate::shared::types::PlayerAnalysisStatus::Ready;
-                    crate::infrastructure::match_management::analysis_data::service::refresh_ranked_rating(
+                    crate::infrastructure::match_management::analysis_data::service::apply_player_analysis(
                         &mut player_data,
+                        analysis,
                         queue_id,
                     );
 

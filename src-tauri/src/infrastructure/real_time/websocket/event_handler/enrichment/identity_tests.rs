@@ -1,4 +1,4 @@
-use super::{live_position, same_riot_id, select_enemy_slot};
+use super::{canonical_riot_id, live_position, same_riot_id, select_enemy_slot};
 use crate::shared::types::{LiveClientPlayer, PlayerAnalysisData, PlayerAnalysisStatus};
 use std::collections::HashSet;
 
@@ -21,10 +21,7 @@ fn anonymous_enemy(cell_id: i32) -> PlayerAnalysisData {
         tag_line: None,
         spell1_id: None,
         spell2_id: None,
-        match_stats: None,
-        recent_matches: Vec::new(),
-        analysis_basis: None,
-        ranked_rating: None,
+        analysis: None,
     }
 }
 
@@ -52,6 +49,16 @@ fn riot_id_matching_preserves_tag_when_both_sources_have_one() {
     assert!(same_riot_id("bbs#23912", "BBS#23912"));
     assert!(!same_riot_id("bbs#23912", "bbs#other"));
     assert!(same_riot_id("bbs", "bbs#23912"));
+}
+
+#[test]
+fn canonical_riot_id_prefers_game_name_and_tag_line() {
+    assert_eq!(
+        canonical_riot_id("legacy name", Some("bbs"), Some("23912")),
+        "bbs#23912"
+    );
+    assert_eq!(canonical_riot_id("legacy name", Some("bbs"), None), "bbs");
+    assert_eq!(canonical_riot_id(" legacy name ", None, Some("23912")), "legacy name");
 }
 
 #[test]

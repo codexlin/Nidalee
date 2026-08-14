@@ -5,13 +5,25 @@ use tauri::Emitter;
 
 use super::super::WsEventHandler;
 use super::identity::{
-    apply_confirmed_bot_identity, live_position, resolve_local_live_team, same_riot_id, select_enemy_slot,
+    apply_confirmed_bot_identity, canonical_riot_id, live_position, resolve_local_live_team, same_riot_id,
+    select_enemy_slot,
 };
 use crate::infrastructure::champion_selection::summoner_spells;
 use crate::infrastructure::data_services::{champion_data, static_catalog};
 use crate::shared::Result;
 
 const ENEMY_HISTORY_FETCH_CONCURRENCY: usize = 2;
+
+fn refresh_failure_status(
+    has_cached_analysis: bool,
+    failure_status: crate::shared::types::PlayerAnalysisStatus,
+) -> crate::shared::types::PlayerAnalysisStatus {
+    if has_cached_analysis {
+        crate::shared::types::PlayerAnalysisStatus::Ready
+    } else {
+        failure_status
+    }
+}
 
 impl WsEventHandler {
     /// Backfills detailed match history for the enemy team during the 'InProgress' phase.
@@ -260,6 +272,8 @@ impl WsEventHandler {
 
             if let Some(info) = summoner_info {
                 // 5.5 Update rank, icon, etc.
+                enemy_player.display_name =
+                    canonical_riot_id(&info.display_name, info.game_name.as_deref(), info.tag_line.as_deref());
                 enemy_player.puuid = Some(info.puuid.clone());
                 crate::infrastructure::match_management::analysis_data::service::apply_rank_summaries(
                     enemy_player,
@@ -317,20 +331,22 @@ impl WsEventHandler {
                             &puuid,
                             queue_id,
                             is_custom_game,
-                            crate::shared::types::AdvicePerspective::Targeting,
                         ),
                         analysis.clone(),
                     ));
                     let enemy_player = &mut team_analysis.enemy_team[enemy_index];
-                    enemy_player.match_stats = Some(analysis.stats);
-                    enemy_player.recent_matches = analysis.recent_matches;
-                    enemy_player.analysis_basis = Some(analysis.basis);
+                    crate::infrastructure::match_management::analysis_data::service::apply_player_analysis(
+                        enemy_player,
+                        analysis,
+                        queue_id,
+                    );
                     enemy_player.is_bot = false;
-                    enemy_player.analysis_status = crate::shared::types::PlayerAnalysisStatus::Ready;
                     log::debug!("敌方玩家分析完成: {}", display_name);
                 }
                 Err(error) => {
-                    team_analysis.enemy_team[enemy_index].analysis_status = error.status();
+                    let enemy_player = &mut team_analysis.enemy_team[enemy_index];
+                    enemy_player.analysis_status =
+                        refresh_failure_status(enemy_player.analysis.is_some(), error.status());
                     log::warn!("Failed to get match history for player '{}': {}", display_name, error);
                 }
             }
@@ -361,5 +377,23 @@ impl WsEventHandler {
         );
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::refresh_failure_status;
+    use crate::shared::types::PlayerAnalysisStatus;
+
+    #[test]
+    fn failed_refresh_keeps_cached_analysis_ready() {
+        assert_eq!(
+            refresh_failure_status(true, PlayerAnalysisStatus::Unavailable),
+            PlayerAnalysisStatus::Ready
+        );
+        assert_eq!(
+            refresh_failure_status(false, PlayerAnalysisStatus::Unavailable),
+            PlayerAnalysisStatus::Unavailable
+        );
     }
 }

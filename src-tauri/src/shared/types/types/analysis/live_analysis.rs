@@ -74,6 +74,138 @@ pub struct RankedPlayerRating {
     pub summary: String,
 }
 
+/// 实时玩家卡片采用的分析深度。
+///
+/// 只有单双排与灵活排位使用 [`PlayerAnalysisDepth::Ranked`]；其他队列统一为轻量摘要。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/PlayerAnalysisDepth.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub enum PlayerAnalysisDepth {
+    Simple,
+    Ranked,
+}
+
+/// 位置与英雄维度共用的近期样本摘要。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, Default)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/PlayerPerformanceSample.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerPerformanceSample {
+    pub games: u32,
+    pub wins: u32,
+    pub win_rate: f64,
+    pub avg_kda: f64,
+}
+
+/// 最近排位样本中的单位置表现。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/PositionPerformance.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct PositionPerformance {
+    /// TOP / JUNGLE / MID / ADC / SUPPORT。
+    pub position: String,
+    pub sample: PlayerPerformanceSample,
+}
+
+/// 当前分配位置相对近期位置画像的投影。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/CurrentPositionPerformance.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct CurrentPositionPerformance {
+    pub position: String,
+    pub sample: PlayerPerformanceSample,
+    pub is_primary: bool,
+}
+
+/// 严格基于当前排位队列样本的位置画像。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, Default)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/RankedPositionProfile.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct RankedPositionProfile {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub primary_position: Option<String>,
+    pub positions: Vec<PositionPerformance>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub current_position: Option<CurrentPositionPerformance>,
+}
+
+/// 最近排位样本中的英雄表现。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/ChampionPerformance.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ChampionPerformance {
+    pub champion_id: i32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub champion_name: Option<String>,
+    pub sample: PlayerPerformanceSample,
+}
+
+/// 排位模式额外提供的位置、英雄与竞技评级数据。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/RankedAnalysis.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct RankedAnalysis {
+    pub queue: RankedRatingQueue,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub rating: Option<RankedPlayerRating>,
+    pub position_profile: RankedPositionProfile,
+    /// 保留完整的最多 20 场英雄分布，选人变化时可本地重新投影。
+    pub champions: Vec<ChampionPerformance>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub current_champion: Option<ChampionPerformance>,
+}
+
+/// 实时对局分析的唯一结果模型。
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/PlayerAnalysisResult.ts",
+    rename_all = "camelCase"
+)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerAnalysisResult {
+    pub depth: PlayerAnalysisDepth,
+    pub stats: PlayerMatchStats,
+    pub basis: PlayerAnalysisBasis,
+    /// 未经分析范围筛选的真实最近对局，按时间倒序。
+    pub recent_matches: Vec<MatchPerformance>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub ranked: Option<RankedAnalysis>,
+}
+
 /// 玩家完整分析数据（包含战绩）
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(
@@ -110,20 +242,10 @@ pub struct PlayerAnalysisData {
     pub spell1_id: Option<i64>, // 改为 i64 以支持大数值
     pub spell2_id: Option<i64>, // 改为 i64 以支持大数值
 
-    // 战绩数据（只有真实玩家才有）
-    pub match_stats: Option<PlayerMatchStats>,
-
-    /// 未经分析范围筛选的真实最近对局，按时间倒序，供实时卡片切换展示。
-    pub recent_matches: Vec<MatchPerformance>,
-
-    /// 本次实时分析实际采用的样本范围。与战绩一起返回，避免前端猜测数据口径。
+    /// 身份、段位与选人信息之外的唯一分析结果。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
-    pub analysis_basis: Option<PlayerAnalysisBasis>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub ranked_rating: Option<RankedPlayerRating>,
+    pub analysis: Option<PlayerAnalysisResult>,
 }
 
 /// 实时玩家分析生命周期。显式状态避免前端用空名字/空战绩猜测加载进度。

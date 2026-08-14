@@ -1,6 +1,7 @@
 use super::{
-    canonical_assigned_position, champ_select_analysis_key, classify_champ_select_identity, parse_lcu_id_i64,
-    patch_team_analysis_from_session, ChampSelectIdentity, ChampSelectIdentityFields,
+    build_team_roster_from_session, canonical_assigned_position, champ_select_analysis_key,
+    classify_champ_select_identity, parse_lcu_id_i64, patch_team_analysis_from_session, ChampSelectIdentity,
+    ChampSelectIdentityFields,
 };
 use crate::shared::types::{PlayerAnalysisData, PlayerAnalysisStatus, PlayerRankSummary, TeamAnalysisData};
 use serde_json::json;
@@ -139,6 +140,38 @@ fn volatile_champ_select_updates_keep_the_same_analysis_key() {
 }
 
 #[test]
+fn initial_roster_is_publishable_before_network_enrichment() {
+    let roster = build_team_roster_from_session(&json!({
+        "localPlayerCellId": 0,
+        "queueId": 420,
+        "isCustomGame": false,
+        "myTeam": [{
+            "cellId": 0,
+            "displayName": "Player#CN1",
+            "summonerId": 42,
+            "puuid": "player-a",
+            "playerType": "HUMAN",
+            "nameVisibilityType": "VISIBLE",
+            "championId": 67,
+            "assignedPosition": "jungle"
+        }],
+        "theirTeam": [{
+            "cellId": 5,
+            "summonerId": 0,
+            "puuid": "",
+            "playerType": "HUMAN",
+            "nameVisibilityType": "HIDDEN"
+        }]
+    }));
+
+    assert_eq!(roster.my_team[0].analysis_status, PlayerAnalysisStatus::Loading);
+    assert_eq!(
+        roster.enemy_team[0].analysis_status,
+        PlayerAnalysisStatus::AwaitingIdentity
+    );
+}
+
+#[test]
 fn volatile_session_patch_preserves_enriched_player_data() {
     let mut analysis = TeamAnalysisData {
         my_team: vec![PlayerAnalysisData {
@@ -163,10 +196,7 @@ fn volatile_session_patch_preserves_enriched_player_data() {
             tag_line: Some("CN1".to_string()),
             spell1_id: Some(4),
             spell2_id: Some(11),
-            match_stats: None,
-            recent_matches: Vec::new(),
-            analysis_basis: None,
-            ranked_rating: None,
+            analysis: None,
         }],
         enemy_team: Vec::new(),
         local_player_cell_id: 0,

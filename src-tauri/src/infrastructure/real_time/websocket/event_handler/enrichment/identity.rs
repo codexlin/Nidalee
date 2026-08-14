@@ -17,6 +17,17 @@ pub(super) fn same_riot_id(left: &str, right: &str) -> bool {
     (!left_has_tag || !right_has_tag) && left_name.eq_ignore_ascii_case(right_name)
 }
 
+pub(super) fn canonical_riot_id(display_name: &str, game_name: Option<&str>, tag_line: Option<&str>) -> String {
+    match (
+        game_name.map(str::trim).filter(|value| !value.is_empty()),
+        tag_line.map(str::trim).filter(|value| !value.is_empty()),
+    ) {
+        (Some(game_name), Some(tag_line)) => format!("{game_name}#{tag_line}"),
+        (Some(game_name), None) => game_name.to_owned(),
+        _ => display_name.trim().to_owned(),
+    }
+}
+
 pub(super) fn resolve_local_live_team<'a>(
     live_players: &'a [crate::shared::types::LiveClientPlayer],
     team_analysis: &crate::shared::types::TeamAnalysisData,
@@ -49,9 +60,7 @@ pub(super) fn apply_confirmed_bot_identity(
     cached_player.position = live_position(&live_player.position);
     cached_player.spell1_id = live_spell_id(&live_player.summoner_spells, "summonerSpellOne");
     cached_player.spell2_id = live_spell_id(&live_player.summoner_spells, "summonerSpellTwo");
-    cached_player.match_stats = None;
-    cached_player.recent_matches.clear();
-    cached_player.analysis_basis = None;
+    cached_player.analysis = None;
 }
 
 pub(super) fn live_spell_id(spells: &serde_json::Value, slot: &str) -> Option<i64> {

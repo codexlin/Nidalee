@@ -56,6 +56,10 @@ impl WsEventHandler {
                     cache.cancel_champ_select_analysis();
                     cache.champ_select_analysis_key = Some(analysis_key);
 
+                    let roster = analysis_data::service::build_team_roster_from_session(&data_clone);
+                    cache.team_analysis_data = Some(roster.clone());
+                    let _ = self.app.emit("team-analysis-data", &roster);
+
                     Some((cache.champ_select_analysis_generation, cache.match_stats_cache.clone()))
                 }
             };
