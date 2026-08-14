@@ -22,3 +22,24 @@ export function formatRankLabel(tier?: string | null, division?: string | null, 
   const rank = parts.join(' ')
   return leaguePoints === null || leaguePoints === undefined ? rank : `${rank} · ${leaguePoints} LP`
 }
+
+export interface RankedPositionSnapshot {
+  primary: PositionPerformance | null
+  current: CurrentPositionPerformance | null
+  currentKind: 'same' | 'different' | 'unknown'
+}
+
+/** 把后端位置画像投影为卡片需要的最小状态，不在组件里重新推断统计。 */
+export function buildRankedPositionSnapshot(profile: RankedPositionProfile): RankedPositionSnapshot {
+  const primary =
+    profile.positions.find((item) => item.position === profile.primaryPosition) ??
+    [...profile.positions].sort((a, b) => b.sample.games - a.sample.games)[0] ??
+    null
+  const current = profile.currentPosition ?? null
+
+  return {
+    primary,
+    current,
+    currentKind: !current ? 'unknown' : current.isPrimary ? 'same' : 'different'
+  }
+}

@@ -35,8 +35,8 @@ defineEmits<{
       <Button
         type="button"
         variant="ghost"
-        size="icon-sm"
-        class="shrink-0 text-muted-foreground hover:text-foreground"
+        size="icon"
+        class="size-8 shrink-0 text-muted-foreground hover:text-foreground"
         title="关闭"
         aria-label="关闭"
         @click="$emit('close')"

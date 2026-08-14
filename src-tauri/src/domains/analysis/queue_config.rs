@@ -8,6 +8,17 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::shared::types::RankedRatingQueue;
+
+/// 实时对局卡片的分析策略。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AnalysisProfile {
+    /// 仅使用该排位队列的历史进行深度分析。
+    Ranked(RankedRatingQueue),
+    /// 非竞技队列只产出近期轻量摘要。
+    Simple,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QueueType {
     SoloRanked,
@@ -47,5 +58,42 @@ impl QueueType {
 
     pub fn is_aram(self) -> bool {
         matches!(self, Self::Aram)
+    }
+
+    pub fn analysis_profile(self) -> AnalysisProfile {
+        match self {
+            Self::SoloRanked => AnalysisProfile::Ranked(RankedRatingQueue::SoloRanked),
+            Self::FlexRanked => AnalysisProfile::Ranked(RankedRatingQueue::FlexRanked),
+            Self::Aram | Self::Urf | Self::Normal | Self::Other => AnalysisProfile::Simple,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{AnalysisProfile, QueueType};
+    use crate::shared::types::RankedRatingQueue;
+
+    #[test]
+    fn only_solo_and_flex_should_use_ranked_analysis() {
+        assert_eq!(
+            QueueType::from_queue_id(420).analysis_profile(),
+            AnalysisProfile::Ranked(RankedRatingQueue::SoloRanked)
+        );
+        assert_eq!(
+            QueueType::from_queue_id(440).analysis_profile(),
+            AnalysisProfile::Ranked(RankedRatingQueue::FlexRanked)
+        );
+    }
+
+    #[test]
+    fn non_ranked_queues_should_use_simple_analysis() {
+        for queue_id in [0, 400, 430, 450, 490, 900, 2400] {
+            assert_eq!(
+                QueueType::from_queue_id(queue_id).analysis_profile(),
+                AnalysisProfile::Simple,
+                "queue {queue_id} unexpectedly enabled ranked analysis"
+            );
+        }
     }
 }

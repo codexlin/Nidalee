@@ -13,42 +13,5 @@ export type GamePhase =
   | 'ReadyCheck'
   | 'Reconnect'
 
-/**
- * UI 专用的玩家数据扩展
- * 基于全局的 PlayerAnalysisData，添加 UI 便利属性
- */
-export interface UIPlayerData extends PlayerAnalysisData {
-  // UI 便利属性
-  spells: [number, number] // 召唤师技能数组 [spell1Id, spell2Id]
-}
-
-/**
- * 带 displayName 的战绩统计（用于 UI 显示）
- */
-export interface EnrichedPlayerMatchStats extends PlayerMatchStats {
-  displayName: string
-}
-
-/**
- * UI 中的团队数据格式（简化版，用于 Store 和组件）
- */
-export interface TeamData {
-  players: UIPlayerData[]
-  localPlayerCellId: number
-}
-
-/**
- * 对局分析状态（使用全局类型）
- */
-export interface MatchAnalysisState {
-  phase: GamePhase
-  isConnected: boolean
-  isLoading: boolean
-
-  // 🔥 直接使用后端的 TeamAnalysisData
-  teamAnalysisData: TeamAnalysisData | null
-
-  // UI 专用数据
-  myTeamStats: EnrichedPlayerMatchStats[]
-  enemyTeamStats: EnrichedPlayerMatchStats[]
-}
+/** 对局分析组件直接消费后端玩家契约，不再维护 UI 平行副本。 */
+export type UIPlayerData = PlayerAnalysisData

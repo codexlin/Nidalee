@@ -96,8 +96,6 @@ interface Props {
   teamType: 'ally' | 'enemy'
   phase: GamePhase
   teamCount: number
-  hasData: boolean
-  loading: boolean
 }
 
 const props = defineProps<Props>()

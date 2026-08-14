@@ -203,34 +203,18 @@ impl WsEventHandler {
         let jobs = my_team_players
             .into_iter()
             .enumerate()
-            .map(|(index, player)| {
-                (
-                    true,
-                    index as i32,
-                    player,
-                    crate::shared::types::AdvicePerspective::Collaboration,
-                )
-            })
-            .chain(enemy_team_players.into_iter().enumerate().map(|(index, player)| {
-                (
-                    false,
-                    (index + 100) as i32,
-                    player,
-                    crate::shared::types::AdvicePerspective::Targeting,
-                )
-            }));
+            .map(|(index, player)| (true, index as i32, player))
+            .chain(
+                enemy_team_players
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, player)| (false, (index + 100) as i32, player)),
+            );
         let summoners_info = summoners_info.as_slice();
         let handler = self;
-        let player_results = stream::iter(jobs.map(|(is_ally, cell_id, live_player, perspective)| async move {
+        let player_results = stream::iter(jobs.map(|(is_ally, cell_id, live_player)| async move {
             let player_data = handler
-                .build_player_data(
-                    &live_player,
-                    cell_id,
-                    summoners_info,
-                    queue_id,
-                    is_custom_game,
-                    perspective,
-                )
+                .build_player_data(&live_player, cell_id, summoners_info, queue_id, is_custom_game)
                 .await;
             (is_ally, player_data)
         }))

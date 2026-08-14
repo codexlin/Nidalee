@@ -1,14 +1,18 @@
 use serde_json::{json, Value};
 
-use super::{analyze_realtime_history, build_ranked_player_rating, RealtimeMatchContext};
+use super::{analyze_realtime_history, build_ranked_player_rating, project_ranked_context, RealtimeMatchContext};
 use crate::shared::types::{
-    PlayerAnalysisBasis, PlayerAnalysisConfidence, PlayerAnalysisScope, PlayerMatchStats, PlayerRankSummary,
-    RankedRatingGrade, RankedRatingQueue,
+    PlayerAnalysisBasis, PlayerAnalysisConfidence, PlayerAnalysisDepth, PlayerAnalysisScope, PlayerMatchStats,
+    PlayerRankSummary, RankedRatingGrade, RankedRatingQueue,
 };
 
 const PUUID: &str = "test-puuid";
 
 fn game(game_id: u64, queue_id: i64) -> Value {
+    game_with(game_id, queue_id, 11, "SOLO", "MIDDLE", true)
+}
+
+fn game_with(game_id: u64, queue_id: i64, champion_id: i32, role: &str, lane: &str, win: bool) -> Value {
     json!({
         "gameId": game_id,
         "queueId": queue_id,
@@ -20,10 +24,10 @@ fn game(game_id: u64, queue_id: i64) -> Value {
         }],
         "participants": [{
             "participantId": 1,
-            "championId": 11,
+            "championId": champion_id,
             "teamId": 100,
             "stats": {
-                "win": true,
+                "win": win,
                 "kills": 8,
                 "deaths": 4,
                 "assists": 10,
@@ -36,107 +40,77 @@ fn game(game_id: u64, queue_id: i64) -> Value {
                 "totalMinionsKilled": 150,
                 "neutralMinionsKilled": 20
             },
-            "timeline": { "role": "SOLO", "lane": "MIDDLE" }
+            "timeline": { "role": role, "lane": lane }
         }]
     })
 }
 
+fn analyze(games: &[Value], queue_id: i64) -> crate::shared::types::PlayerAnalysisResult {
+    analyze_realtime_history(
+        games,
+        PUUID,
+        RealtimeMatchContext::from_lcu(queue_id, false),
+        None,
+        None,
+        None,
+    )
+    .unwrap()
+}
+
 #[test]
-fn custom_game_should_use_ranked_history_without_filtering_custom_queue() {
-    let mut games = (0..6).map(|id| game(id, 420)).collect::<Vec<_>>();
-    games.extend((6..9).map(|id| game(id, 430)));
+fn solo_ranked_should_use_only_solo_matches_without_fallback() {
+    let mut games = (0..3).map(|id| game(id, 420)).collect::<Vec<_>>();
+    games.extend((3..12).map(|id| game(id, 440)));
+    games.extend((12..20).map(|id| game(id, 430)));
 
-    let analysis = analyze_realtime_history(&games, PUUID, RealtimeMatchContext::Custom, None).unwrap();
+    let analysis = analyze(&games, 420);
 
-    assert_eq!(analysis.basis.primary_scope, PlayerAnalysisScope::Ranked);
-    assert_eq!(analysis.basis.primary_games, 6);
+    assert_eq!(analysis.depth, PlayerAnalysisDepth::Ranked);
+    assert_eq!(analysis.basis.primary_scope, PlayerAnalysisScope::SoloRanked);
+    assert_eq!(analysis.basis.primary_games, 3);
     assert_eq!(analysis.basis.supporting_games, 0);
-    assert_eq!(analysis.stats.total_games, 6);
+    assert!(!analysis.basis.fallback_used);
     assert!(analysis
         .stats
         .recent_performance
         .iter()
         .all(|game| game.queue_id == Some(420)));
-    assert_eq!(
-        analysis
-            .recent_matches
-            .iter()
-            .map(|game| game.queue_id)
-            .collect::<Vec<_>>(),
-        vec![Some(430), Some(430), Some(430), Some(420), Some(420), Some(420)]
-    );
 }
 
 #[test]
-fn custom_game_without_ranked_sample_should_not_guess_the_map() {
-    let games = vec![game(1, 430), game(2, 450), game(3, 900)];
+fn flex_ranked_should_use_only_flex_matches_without_fallback() {
+    let mut games = (0..8).map(|id| game(id, 420)).collect::<Vec<_>>();
+    games.extend((8..12).map(|id| game(id, 440)));
 
-    let analysis = analyze_realtime_history(&games, PUUID, RealtimeMatchContext::Custom, None).unwrap();
+    let analysis = analyze(&games, 440);
 
-    assert_eq!(analysis.basis.primary_scope, PlayerAnalysisScope::RecentOverall);
-    assert!(analysis.basis.fallback_used);
-    assert_eq!(analysis.stats.total_games, 3);
-}
-
-#[test]
-fn ranked_game_should_fallback_to_combined_ranked_sample() {
-    let mut games = (0..3).map(|id| game(id, 420)).collect::<Vec<_>>();
-    games.extend((3..7).map(|id| game(id, 440)));
-
-    let analysis = analyze_realtime_history(&games, PUUID, RealtimeMatchContext::SoloRanked, None).unwrap();
-
-    assert_eq!(analysis.basis.primary_scope, PlayerAnalysisScope::Ranked);
-    assert!(analysis.basis.fallback_used);
-    assert_eq!(analysis.stats.total_games, 7);
-    assert_eq!(analysis.basis.supporting_games, 4);
-}
-
-#[test]
-fn aram_game_should_not_mix_ranked_matches_into_primary_stats() {
-    let mut games = (0..5).map(|id| game(id, 450)).collect::<Vec<_>>();
-    games.extend((5..10).map(|id| game(id, 420)));
-
-    let analysis = analyze_realtime_history(&games, PUUID, RealtimeMatchContext::Aram, None).unwrap();
-
-    assert_eq!(analysis.basis.primary_scope, PlayerAnalysisScope::Aram);
-    assert_eq!(analysis.stats.total_games, 5);
+    assert_eq!(analysis.basis.primary_scope, PlayerAnalysisScope::FlexRanked);
+    assert_eq!(analysis.stats.total_games, 4);
     assert!(analysis
         .stats
         .recent_performance
         .iter()
-        .all(|game| game.queue_id == Some(450)));
-    assert_eq!(
-        analysis
-            .recent_matches
-            .iter()
-            .map(|game| game.game_id)
-            .collect::<Vec<_>>(),
-        vec![Some(9), Some(8), Some(7), Some(6), Some(5), Some(4)]
-    );
-    assert_eq!(
-        analysis
-            .recent_matches
-            .iter()
-            .map(|game| game.queue_id)
-            .collect::<Vec<_>>(),
-        vec![Some(420), Some(420), Some(420), Some(420), Some(420), Some(450)]
-    );
+        .all(|game| game.queue_id == Some(440)));
 }
 
 #[test]
-fn realtime_summary_exposes_measured_traits() {
-    let games = (0..6).map(|id| game(id, 440)).collect::<Vec<_>>();
-    let analysis = analyze_realtime_history(&games, PUUID, RealtimeMatchContext::FlexRanked, None).unwrap();
+fn ranked_analysis_should_keep_zero_sample_instead_of_borrowing_other_queues() {
+    let games = (0..8).map(|id| game(id, 440)).collect::<Vec<_>>();
 
-    assert!(analysis.stats.traits.iter().any(|item| item.name == "近期状态强势"));
-    assert!(analysis.stats.traits.iter().any(|item| item.name == "生存稳定"));
-    assert!(analysis.stats.traits.iter().all(|item| !item.description.is_empty()));
+    let analysis = analyze(&games, 420);
+
+    assert_eq!(analysis.depth, PlayerAnalysisDepth::Ranked);
+    assert_eq!(analysis.basis.primary_games, 0);
+    assert_eq!(analysis.stats.total_games, 0);
+    assert_eq!(analysis.basis.confidence, PlayerAnalysisConfidence::Low);
+    assert!(analysis.ranked.unwrap().position_profile.positions.is_empty());
 }
 
 #[test]
-fn realtime_analysis_scans_the_window_but_caps_the_selected_sample_at_twenty() {
+fn ranked_analysis_should_cap_exact_queue_sample_at_twenty() {
     let games = (0..30).map(|id| game(id, 440)).collect::<Vec<_>>();
-    let analysis = analyze_realtime_history(&games, PUUID, RealtimeMatchContext::FlexRanked, None).unwrap();
+
+    let analysis = analyze(&games, 440);
 
     assert_eq!(analysis.basis.scanned_games, 30);
     assert_eq!(analysis.basis.primary_games, 20);
@@ -146,14 +120,110 @@ fn realtime_analysis_scans_the_window_but_caps_the_selected_sample_at_twenty() {
         analysis.stats.recent_performance.first().and_then(|game| game.game_id),
         Some(29)
     );
+}
+
+#[test]
+fn non_ranked_analysis_should_use_recent_twenty_without_ranked_depth() {
+    let games = (0..30)
+        .map(|id| game(id, if id % 2 == 0 { 420 } else { 450 }))
+        .collect::<Vec<_>>();
+
+    let analysis = analyze(&games, 450);
+
+    assert_eq!(analysis.depth, PlayerAnalysisDepth::Simple);
+    assert_eq!(analysis.basis.primary_scope, PlayerAnalysisScope::RecentOverall);
+    assert_eq!(analysis.stats.total_games, 20);
+    assert!(analysis.ranked.is_none());
+    assert!(analysis.stats.traits.is_empty());
+}
+
+#[test]
+fn custom_game_should_always_use_simple_recent_summary() {
+    let games = (0..12).map(|id| game(id, 420)).collect::<Vec<_>>();
+    let analysis = analyze_realtime_history(
+        &games,
+        PUUID,
+        RealtimeMatchContext::from_lcu(420, true),
+        None,
+        None,
+        None,
+    )
+    .unwrap();
+
+    assert_eq!(analysis.depth, PlayerAnalysisDepth::Simple);
+    assert_eq!(analysis.basis.primary_scope, PlayerAnalysisScope::RecentOverall);
+    assert!(analysis.ranked.is_none());
+}
+
+#[test]
+fn ranked_analysis_should_build_position_and_current_champion_profiles() {
+    let games = vec![
+        game_with(1, 420, 11, "JUNGLE", "JUNGLE", true),
+        game_with(2, 420, 11, "JUNGLE", "JUNGLE", false),
+        game_with(3, 420, 22, "SOLO", "TOP", true),
+    ];
+    let resolve = |champion_id| match champion_id {
+        11 => Some("Master Yi".to_string()),
+        22 => Some("Ashe".to_string()),
+        _ => None,
+    };
+
+    let analysis = analyze_realtime_history(
+        &games,
+        PUUID,
+        RealtimeMatchContext::from_lcu(420, false),
+        Some("JUNGLE"),
+        Some(11),
+        Some(&resolve),
+    )
+    .unwrap();
+    let ranked = analysis.ranked.unwrap();
+
+    assert_eq!(ranked.position_profile.primary_position.as_deref(), Some("JUNGLE"));
     assert_eq!(
-        analysis.stats.recent_performance.last().and_then(|game| game.game_id),
-        Some(10)
+        ranked.position_profile.current_position.as_ref().map(|current| (
+            current.position.as_str(),
+            current.sample.games,
+            current.is_primary
+        )),
+        Some(("JUNGLE", 2, true))
+    );
+    assert_eq!(
+        ranked
+            .current_champion
+            .as_ref()
+            .map(|champion| (champion.champion_name.as_deref(), champion.sample.games)),
+        Some((Some("Master Yi"), 2))
     );
 }
 
 #[test]
-fn flex_rating_uses_flex_rank_instead_of_stronger_solo_rank() {
+fn cached_ranked_breakdown_should_reproject_without_games() {
+    let games = vec![
+        game_with(1, 440, 11, "JUNGLE", "JUNGLE", true),
+        game_with(2, 440, 22, "DUO_CARRY", "BOTTOM", true),
+    ];
+    let mut analysis = analyze(&games, 440);
+    let ranked = analysis.ranked.as_mut().unwrap();
+
+    project_ranked_context(ranked, Some("BOTTOM"), Some(22), None);
+
+    assert_eq!(
+        ranked
+            .position_profile
+            .current_position
+            .as_ref()
+            .map(|current| (current.position.as_str(), current.sample.games)),
+        Some(("ADC", 1))
+    );
+    assert_eq!(
+        ranked.current_champion.as_ref().map(|champion| champion.sample.games),
+        Some(1)
+    );
+}
+
+#[test]
+fn flex_rating_should_use_flex_rank_instead_of_stronger_solo_rank() {
     let solo = rank("DIAMOND", "I", 80);
     let flex = rank("GOLD", "IV", 20);
     let rating = build_ranked_player_rating(
@@ -168,56 +238,20 @@ fn flex_rating_uses_flex_rank_instead_of_stronger_solo_rank() {
     assert_eq!(rating.queue, RankedRatingQueue::FlexRanked);
     assert_eq!(rating.grade, RankedRatingGrade::C);
     assert!(rating.summary.contains("灵活排位 荣耀黄金 IV"));
-    assert!(rating.summary.contains("近期表现小幅上调"));
 }
 
 #[test]
-fn ranked_rating_requires_matching_rank_but_not_five_recent_games() {
+fn non_ranked_queue_should_not_build_a_ranked_rating() {
     let solo = rank("EMERALD", "II", 40);
-    let enough = stats(12, 55.0, 3.5);
-    let too_small = stats(4, 75.0, 8.0);
-    let ranked_basis = basis(PlayerAnalysisScope::SoloRanked, PlayerAnalysisConfidence::Medium, 12);
-    let small_basis = basis(PlayerAnalysisScope::SoloRanked, PlayerAnalysisConfidence::Low, 4);
 
-    assert!(build_ranked_player_rating(440, Some(&solo), None, &enough, &ranked_basis).is_none());
-    let rank_only = build_ranked_player_rating(420, Some(&solo), None, &too_small, &small_basis).unwrap();
-    assert_eq!(rank_only.grade, RankedRatingGrade::B);
-    assert!(rank_only.summary.contains("近期样本不足，未进行状态修正"));
-}
-
-#[test]
-fn custom_ranked_sample_uses_the_stronger_available_rank() {
-    let solo = rank("PLATINUM", "I", 80);
-    let flex = rank("EMERALD", "III", 20);
-    let rating = build_ranked_player_rating(
-        0,
+    assert!(build_ranked_player_rating(
+        450,
         Some(&solo),
-        Some(&flex),
-        &stats(16, 50.0, 3.0),
-        &basis(PlayerAnalysisScope::Ranked, PlayerAnalysisConfidence::High, 16),
+        None,
+        &stats(20, 60.0, 4.0),
+        &basis(PlayerAnalysisScope::RecentOverall, PlayerAnalysisConfidence::High, 20),
     )
-    .unwrap();
-
-    assert_eq!(rating.queue, RankedRatingQueue::FlexRanked);
-    assert!(rating.summary.contains("流光翡翠"));
-}
-
-#[test]
-fn non_ranked_sample_keeps_the_stronger_rank_as_an_unadjusted_baseline() {
-    let solo = rank("EMERALD", "IV", 10);
-    let flex = rank("GOLD", "IV", 56);
-    let rating = build_ranked_player_rating(
-        0,
-        Some(&solo),
-        Some(&flex),
-        &stats(44, 34.0, 3.04),
-        &basis(PlayerAnalysisScope::RecentOverall, PlayerAnalysisConfidence::High, 44),
-    )
-    .unwrap();
-
-    assert_eq!(rating.queue, RankedRatingQueue::SoloRanked);
-    assert_eq!(rating.grade, RankedRatingGrade::B);
-    assert!(rating.summary.contains("当前样本并非排位，仅展示段位基础评级"));
+    .is_none());
 }
 
 fn rank(tier: &str, division: &str, league_points: i32) -> PlayerRankSummary {
