@@ -323,7 +323,7 @@ await queryClient.invalidateQueries({ queryKey: ['static', 'champions'] })
 
 ### Platform Support
 - **Primary target**: Windows (`.msi` installer via WiX)
-- **Secondary target**: macOS (`.dmg`) — workflow present, but full platform ownership is undecided (see `docs/PROJECT_STABILITY_ROADMAP.md` 阶段 8)
+- **Secondary target**: macOS universal (`.dmg`) — packaged by the release workflow, but currently not Developer ID signed or notarized (see `RELEASE.md`)
 - Game path detection via Windows registry (Windows-only)
 
 ## Testing

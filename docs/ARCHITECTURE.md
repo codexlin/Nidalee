@@ -1,184 +1,107 @@
-# Nidalee 架构设计
+# Nidalee 架构
 
-> 最后更新：2025-10-15
-> 版本：2.0 - 功能切片架构
+Nidalee 是 Tauri 2 桌面应用。Rust 后端负责 League Client 通信、会话状态、数据归一化和分析；Vue 前端负责交互、视图状态和展示。
 
----
+## 核心原则
 
-## 项目概述
+1. 后端提供事实与分析结果，前端不重复实现业务算法。
+2. 实时数据只有一条主链：LCU/LiveClient → Rust reducer/cache → Tauri event → Pinia → UI。
+3. 请求型数据使用明确的 query key 和生命周期，旧响应不能覆盖当前账号、筛选或详情。
+4. 运行时会话不持久化；客户端断开时清理账号、游戏和实时分析状态。
+5. Rust 公共 DTO 由 `ts-rs` 生成 TypeScript 契约，禁止手工维护重复类型。
 
-Nidalee 是一个高性能英雄联盟游戏助手，采用 Tauri (Rust + Vue3) 技术栈，提供对局分析、OPGG 集成、游戏助手等功能。
+## 前端边界
 
-**技术栈**：Vue 3 + TypeScript + Pinia + Tailwind CSS (前端) | Rust + Tokio + WebSocket (后端)
-
----
-
-## 架构理念
-
-### 核心原则
-
-- **功能切片**：按业务功能组织代码，而非按技术类型
-- **单向数据流**：后端 → 事件 → Store → UI
-- **单一数据源**：Pinia Store 统一管理状态
-- **关注点分离**：后端处理逻辑，前端负责展示
-
----
-
-## 目录结构
-
-### 前端 (`src/`)
-
-```
+```text
 src/
-├── features/              # 业务功能模块（高内聚）
-│   └── match-analysis/    # 示例：对局分析
-│       ├── MatchAnalysis.vue  # 功能入口（用功能名命名）
-│       ├── store.ts       # 功能状态
-│       ├── composables/   # 功能逻辑
-│       └── components/    # 功能组件
-│
-├── shared/                # 共享资源层
-│   ├── composables/       # 全局复用逻辑
-│   │   ├── app/          # 应用级（连接、事件）
-│   │   ├── game/         # 游戏通用
-│   │   └── utils/        # 工具函数
-│   ├── stores/           # 全局共享状态
-│   │   ├── core/         # 核心状态
-│   │   ├── features/     # 功能状态
-│   │   └── ui/           # UI 状态
-│   └── components/       # 全局 UI 组件
-│       ├── ui/           # 基础组件库
-│       ├── layout/       # 布局组件
-│       └── common/       # 通用组件
-│
-├── views/                 # 路由页面（布局层 + 功能组合）
-├── router/                # 路由配置
-└── types/                 # 类型定义
+├─ views/          路由壳层，只组合功能
+├─ features/       按业务功能组织的页面、组件和局部逻辑
+├─ shared/         跨功能模型、Store、composable 和工具
+├─ components/     通用 UI 与布局组件
+├─ router/         路由名称、路径和窗口隔离
+├─ types/          生成的 Rust 契约与前端声明
+└─ styles/         设计 token、字体和全局样式
 ```
 
-### 后端 (`src-tauri/src/`)
+依赖方向：
 
+```text
+views → features → shared
+views/features → components
+shared 不依赖 features
 ```
+
+Pinia 只保存客户端状态和跨页面会话状态。在线推荐、可缓存请求等服务端状态优先交给 Vue Query。组件不得复制 Store 中已经存在的状态。
+
+## Rust 边界
+
+```text
 src-tauri/src/
-├── lcu/                   # LCU 集成核心
-│   ├── ws/               # WebSocket 实时事件
-│   ├── analysis_data/    # 数据分析引擎
-│   ├── auth/             # 认证管理
-│   ├── connection/       # 连接管理
-│   ├── optimized_polling/ # 轻量级轮询
-│   └── [其他模块]/       # 按功能域划分
-│
-└── common/               # 通用功能
+├─ infrastructure/  LCU、LiveClient、WebSocket、持久化和外部服务适配
+├─ domains/         无 UI、无传输细节的分析与业务规则
+├─ shared/          DTO、错误、请求基础设施和跨域能力
+├─ common/          应用级命令与 Debug-only 工具
+└─ lib.rs / app.rs  Tauri 组装、插件和命令注册
 ```
 
----
+`infrastructure` 可以调用 `domains`，但 `domains` 不反向依赖 Tauri、HTTP 或 UI。网络 `await` 期间不得持有全局写锁；Tauri command 是错误字符串化与权限检查的边界。
 
-## 核心数据流
+## 实时会话数据流
 
+```text
+League Client process / lockfile
+  → AuthInfo
+  → WebSocket supervisor
+  → transport decoder
+  → WsEventHandler reducer
+  → EventCache
+  → identity/history enrichment
+  → TeamAnalysisData
+  → team-analysis-data event
+  → useAppEvents
+  → matchAnalysisStore
+  → MatchAnalysis UI
 ```
-LCU 事件
-  ↓
-后端 WebSocket 接收
-  ↓
-analysis_data 分析引擎（获取战绩、计算统计）
-  ↓
-emit("team-analysis-data")
-  ↓
-前端 useAppEvents 监听
-  ↓
-更新 Pinia Store
-  ↓
-UI 自动响应
+
+- 前端先注册监听，再调用 `start_lcu_ws`，避免启动快照丢失。
+- WS 是主通道；无事件时的 HTTP snapshot 通过相同 reducer 校准状态。
+- generation 与取消句柄阻止旧选人、旧对局和旧网络请求回写。
+- Champ Select 可以先发布基础 roster，再异步补齐身份、段位和战绩。
+- 断线 reducer 先发布未连接状态，再清理依赖该连接的数据。
+
+## 请求型数据流
+
+Dashboard 与战绩查询复用相同的后端分析能力，但由各自页面持有筛选条件。请求 key 至少包含目标 PUUID 与分析范围；query function 使用 key 中的快照，而不是在重试时读取最新响应式值。
+
+对局详情使用显式目标身份和 latest-request guard。打开新玩家或新对局后，旧响应即使稍后返回也不能更新当前弹层。
+
+## 静态目录
+
+英雄、召唤师技能、符文、装备与队列元数据通过版本化静态目录提供：
+
+- Rust 负责下载、完整性检查、磁盘缓存和离线回退；
+- 前端将目录安装到响应式内存映射；
+- UI 只按 ID 查询名称和图片信息；
+- 未知版本不得写入磁盘缓存。
+
+## 类型契约
+
+Rust DTO 使用 `ts-rs` 导出到 `src/types/generated/`，随后由脚本合并到 `src/types/global.d.ts`：
+
+```bash
+pnpm types
 ```
 
----
+CI 会重新生成并检查 `global.d.ts` 漂移。修改公共 Rust 类型时必须同步生成文件，不能直接编辑合并结果。
 
-## 目录职责说明
+Vue 自动导入声明由 Vite 插件生成到 `types/auto-imports.d.ts` 和 `types/components.d.ts`。只有生成配置变化或扫描结果变化时才更新这些文件。
 
-### `views/` vs `features/` 的区别
+## 模块新增规则
 
-| 层级 | 职责 | 示例 |
-|------|------|------|
-| **views/** | 路由页面，负责布局与功能组合 | `OverviewView.vue` 组合多个功能模块 |
-| **features/** | 功能实现，专注业务逻辑 | `match-analysis/` 实现对局分析 |
+- 新路由：在 `views/` 建路由壳，在 `features/` 建业务实现，并更新 `router/appRoutes.ts`。
+- 新 Tauri 命令：放入对应 `infrastructure/<area>/commands.rs`，在 `lib.rs` 注册。
+- 新分析规则：优先放入 `domains/analysis`，通过稳定 facade 暴露。
+- 两个模块的相似代码不自动等于公共抽象；只有所有权和失败语义一致时才提取。
+- Debug 数据采集命令必须留在 `common/commands/dev_tools` 并受 `debug_assertions` 隔离。
 
-**形象比喻**：
-- `views/` = 房间装修方案（布局、摆放）
-- `features/` = 可移动的家具（功能模块）
-
-**实际应用**：
-- 路由统一指向 `views/`
-- `views/` 引入并组合 `features/`
-- `features/` 不关心外层布局，只实现功能
-
----
-
-## 开发规范
-
-### 新增功能模块
-
-1. 在 `src/features/` 创建功能目录及核心文件
-2. 在 `src/views/` 创建对应的页面视图（引入并组合 feature）
-3. 在 `router/` 配置路由（指向 views）
-4. 在侧边栏添加菜单入口
-
-### 代码组织原则
-
-**Features 层**：
-- ✅ 功能专属的视图、状态、逻辑、组件
-- ❌ 可复用的通用代码
-
-**Shared 层**：
-- ✅ 2个及以上功能使用的代码
-- ❌ 仅服务单一功能的代码
-
-**依赖规则**：
-- features → shared ✅
-- features → features ❌
-- shared → features ❌
-
-### 命名规范
-
-- 功能目录：`kebab-case`（如 `match-analysis`）
-- 功能入口：`FeatureName.vue`（如 `MatchAnalysis.vue`）
-- 功能状态：`store.ts`
-- Composable：`useXxx.ts`
-- 页面视图：`XxxView.vue`（如 `LiveAnalysisView.vue`）
-
----
-
-## 数据同步机制
-
-| 机制 | 触发条件 | 用途 |
-|------|----------|------|
-| WebSocket | 实时事件 | 主数据通道 |
-| WS 回退轮询 | 10秒无消息 | 状态校准 |
-| 优化轮询 | >60秒 | 补充召唤师信息 |
-| 连接监控 | 1-10秒 | 监控连接状态 |
-
----
-
-## 性能优势
-
-- 网络请求减少 **95%**（WebSocket 替代轮询）
-- 定位问题速度提升 **90%**（功能内聚）
-- 首屏加载优化 **40-60%**（按需加载）
-- 团队协作冲突减少 **80%**（目录隔离）
-
----
-
-## 常见问题
-
-**Q: 什么时候创建新 feature？**
-A: 有独立路由页面 + 专属业务逻辑（>3个文件）+ 较少跨功能依赖
-
-**Q: shared 层如何避免膨胀？**
-A: 严格准入（默认放 features，确认复用后才提升）+ 定期审查
-
-**Q: 功能间如何共享数据？**
-A: 通过 shared/stores 的全局状态，禁止 features 间直接引用
-
----
-
-**维护者**: Nidalee Team
-**仓库**: https://github.com/codexlin/Nidalee
+更细的 Rust 约束见 [RUST_MODULE_GOVERNANCE.md](RUST_MODULE_GOVERNANCE.md)。

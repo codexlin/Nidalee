@@ -1,159 +1,73 @@
 <div align="center">
-  <img src="src/assets/logo.svg" alt="Nidalee Logo" width="120" height="120">
-
-  <h1>🎮 Nidalee</h1>
-  <p><strong>High-performance, lightweight and intelligent League of Legends assistant</strong></p>
-  <p>Nidalee is a high-performance, lightweight and intelligent assistant for League of Legends players. It integrates auto-accept, auto pick/ban, real-time data analysis and personalized settings, helping you climb the ranks efficiently and safely. Powered by Rust + Tauri, it features fast startup, low resource usage, and a minimal footprint.</p>
-
-  <div>
-    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode" target="_blank"><img src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-orange.svg" alt="License"/></a>
-    <img src="https://img.shields.io/badge/tauri-2.0.0--alpha-green.svg" alt="Tauri">
-    <img src="https://img.shields.io/badge/vue-3.x-brightgreen.svg" alt="Vue">
-    <img src="https://img.shields.io/badge/rust-1.75-orange.svg" alt="Rust">
-    <img src="https://img.shields.io/badge/platform-Windows-blue.svg" alt="Platform">
-  </div>
-
-  <br>
+  <img src="src/assets/logo.svg" alt="Nidalee Logo" width="112" height="112">
+  <h1>Nidalee</h1>
+  <p><strong>A lightweight League of Legends desktop assistant built with Tauri, Rust and Vue.</strong></p>
 
   <p>
-    <a href="#-features">✨ Features</a> •
-    <a href="#-installation">📦 Installation</a> •
-    <a href="#-development">🚀 Development</a> •
-    <a href="#-usage">📖 Usage</a> •
-    <a href="#-contributing">🤝 Contributing</a>
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode"><img src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-orange.svg" alt="License"></a>
+    <img src="https://img.shields.io/badge/Tauri-2-blue.svg" alt="Tauri 2">
+    <img src="https://img.shields.io/badge/Vue-3.5-42b883.svg" alt="Vue 3.5">
+    <img src="https://img.shields.io/badge/Rust_MSRV-1.88-orange.svg" alt="Rust MSRV 1.88">
+    <img src="https://img.shields.io/badge/platform-Windows-blue.svg" alt="Primary platform: Windows">
   </p>
 
-  <p>
-    <a href="./README_ZH.md">简体中文</a> | <a href="./README.md">English</a>
-  </p>
+  <p><a href="README_ZH.md">简体中文</a> · <a href="docs/user-guide-zh.md">User guide</a> · <a href="https://github.com/codexlin/Nidalee/releases">Releases</a></p>
 </div>
 
----
+## What Nidalee provides
 
-## 🌟 Features
+- A dashboard for the current account, ranked overview and recent matches.
+- Live team analysis driven by League Client and LiveClient data.
+- Summoner search and match detail inspection.
+- A build center with OP.GG recommendations and personal rune presets.
+- Auto accept, champion pick/ban and supported-queue rune application.
+- A lightweight in-game augment side panel.
 
-### 🎮 Automation
+The Rust backend owns League Client communication, session state and analysis. The Vue frontend consumes typed commands/events and focuses on interaction and presentation.
 
-- **Auto Accept**: Automatically detect and accept match invitations
-- **Smart Champion Selection**: Auto pick or ban champions based on presets
-- **Rune Configuration**: Automatically fetch and apply optimal rune pages from OP.GG
+## Download
 
-### 📊 Data Analysis
+Download the latest Windows installer from [GitHub Releases](https://github.com/codexlin/Nidalee/releases). Windows is the primary supported platform. The release workflow also produces an experimental universal macOS DMG; it is currently not notarized.
 
-- **Real-time Match Analysis**
-  - Team Composition Evaluation
-  - Lane Advantage Analysis
-  - Teamfight Capability Score
-  - Intelligent Tactical Suggestions
-- **Player Statistics**
-  - KDA and Win Rate Analysis
-  - Position Preference Analysis
-  - Champion Pool Analysis
-  - Recent Performance Score
+Nidalee requests administrator privileges on Windows so it can reliably discover the League Client connection parameters. Windows may show an “unknown publisher” warning because the installer is not Authenticode-signed.
 
-### 🔍 Information Display
+## Development
 
-- **Real-time Match Information**
-  - Teammate and Opponent Details
-  - Champion Counter Relationships
-  - Player Match History
-- **Data Visualization**
-  - Lane Advantage Indicator
-  - Team Strength Comparison
-  - Player Stats Radar Chart
+Requirements:
 
-## 🚀 Tech Stack
+- Node.js 22.18 or newer
+- pnpm 10.34.5
+- Rust 1.88 or newer
+- Windows WebView2 and the Tauri 2 prerequisites
 
-- **Frontend**: Vue 3 + TypeScript
-- **Backend**: Rust + Tauri
-- **Communication**: LCP (League Client Protocol)
-- **State Management**: Vue Composition API
-- **UI Framework**: Custom Components
+```bash
+git clone git@github.com:codexlin/Nidalee.git
+cd Nidalee
+pnpm install --frozen-lockfile
 
-## 📦 Installation
+# Terminal A: frontend
+pnpm dev
 
-Download the latest Windows version from the [Releases](../../releases) page:
+# Terminal B: desktop app
+pnpm dev:app
+```
 
-| Platform | File | Description |
-|----------|------|-------------|
-| **Windows** | `Nidalee_1.0.0_x64_en-US.msi` | Windows 64-bit installer |
+Useful checks:
 
-### Installation Steps (Windows)
+```bash
+pnpm build
+cd src-tauri
+cargo test --locked
+```
 
-1. Download the `.msi` file
-2. Double-click to run the installer
-3. Follow the wizard to complete installation
+See [the architecture guide](docs/ARCHITECTURE.md), [documentation index](docs/README.md), and [release guide](RELEASE.md).
 
-## 🔧 Configuration
+## Branches and releases
 
-1. Game Client Configuration
-   - Auto-detect LCU authentication info
-   - Support custom port and token
+Development is integrated through `release-v3-dev`; release-ready commits are merged into `main`. Only a semantic version Tag such as `v1.0.0` triggers a public release. See [RELEASE.md](RELEASE.md) for the complete process.
 
-2. Feature Module Configuration
-   - Auto accept match toggle
-   - Champion selection presets
-   - Rune page auto-update settings
+## License and disclaimer
 
-## 📝 Usage Guide
+Nidalee is licensed under [CC BY-NC-SA 4.0](LICENSE). Commercial use is prohibited and derivatives must use the same license. Third-party notices are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-1. **Auto Accept Match**
-   - Automatically monitor and accept match invitations when enabled
-   - Configurable accept delay
-
-2. **Champion Selection**
-   - Preset priority champions
-   - Set auto-ban champions
-   - Team composition-based recommendations
-
-3. **Rune Configuration**
-   - Auto-fetch and apply recommended runes
-   - Support custom rune schemes
-   - Quick switch between champion runes
-
-4. **Data Analysis**
-   - Real-time match analysis
-   - Team advantage/disadvantage overview
-   - Tactical suggestions
-
-## 🤝 Contributing
-
-Contributions are welcome! Check out our [Contributors List](CONTRIBUTORS.md).
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode) (Attribution-NonCommercial-ShareAlike 4.0 International) license.
-
-- Free to copy, distribute, and adapt, but **commercial use is strictly prohibited**.
-- Derivative works must use the same license.
-- Please credit the original author and project link when using.
-
-See the LICENSE file for full terms.
-
-## ⚠️ Disclaimer
-
-This project is for League of Legends players as an auxiliary tool. All features are based on Riot Games' official League Client API (LCU API) and local client data.
-
-**This tool does not modify, inject, or tamper with game memory, processes, or network data, nor does it provide any cheating, acceleration, or scripting functions.**
-
-- Strictly for learning, research, and personal entertainment only.
-- All data interactions are via official APIs; no unofficial operations on the game client, server, or packets.
-- No collection, upload, or leakage of any user privacy or sensitive data.
-- This is open source software, not affiliated with Riot Games or Tencent, nor officially authorized.
-- The developer assumes no legal or financial responsibility for any consequences (including but not limited to account risk, data loss, or functional issues) arising from use.
-- **Commercial use of this project and all derivatives is strictly prohibited. All contributions and redistribution must use the same license.**
-
-**Please ensure your use complies with the League of Legends user agreement and related policies. If in doubt, stop using and consult official support.**
-
-## 🙏 Acknowledgments
-
-- [Tauri 2.0](https://tauri.app/)
-- [Vue.js](https://vuejs.org/)
-- [Rust](https://www.rust-lang.org/)
-- [League Client Protocol](https://developer.riotgames.com/)
+Nidalee is an independent project and is not affiliated with or endorsed by Riot Games or Tencent. It communicates with local League Client APIs and does not inject into, modify, or read game memory. Users remain responsible for complying with applicable game terms and local rules.
