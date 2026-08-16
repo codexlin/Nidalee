@@ -1,28 +1,27 @@
-# 📚 文档目录
+# Nidalee 文档
 
-欢迎来到 Nidalee 项目文档中心！
+这里仅保留需要长期维护、能够描述当前代码事实的文档。阶段性计划、完成报告和一次性排障记录不作为正式文档保存；历史可以从 Git 提交记录查询。
 
-## 📖 主要文档
+## 用户文档
 
-- **[README.md](../README.md)** - 项目概述和快速开始
-- **[README_EN.md](../README_EN.md)** - English version
-- **[user-guide-zh.md](./user-guide-zh.md)** - 详细使用指南
+- [中文项目说明](../README_ZH.md)
+- [使用指南](user-guide-zh.md)
+- [版本发布与自动更新](../RELEASE.md)
+- [第三方许可](../THIRD_PARTY_NOTICES.md)
 
-## 🔧 开发文档
+## 架构与开发
 
-- **[RELEASE.md](../RELEASE.md)** - 发布指南和CI/CD流程
-- **[CONTRIBUTORS.md](../CONTRIBUTORS.md)** - 贡献者指南
+- [整体架构](ARCHITECTURE.md)
+- [Rust 模块治理规范](RUST_MODULE_GOVERNANCE.md)
+- [构建中心架构](BUILD_CENTER_ARCHITECTURE.md)
+- [构建中心与符文系统](RUNE_SYSTEM_GUIDE.md)
+- [贡献指南](../CONTRIBUTORS.md)
+- [UI 设计语言](../DESIGN.md)
 
-## 🚀 快速导航
+## 文档维护规则
 
-### 新用户
-1. 查看 [README.md](../README.md) 了解项目
-2. 阅读 [user-guide-zh.md](./user-guide-zh.md) 学习使用
-
-### 开发者
-1. 查看 [RELEASE.md](../RELEASE.md) 了解发布流程
-2. 阅读 [CONTRIBUTORS.md](../CONTRIBUTORS.md) 了解如何贡献
-
----
-
-> 💡 **提示**：如果文档有误或需要补充，欢迎提交 Issue 或 Pull Request！
+1. 文档必须描述当前实现，不记录“以后可能做”的大型方案。
+2. 文件路径、命令、版本和工作流触发条件发生变化时，同一提交内更新对应文档。
+3. 临时调查结论应进入 Issue、PR 或提交说明，不在 `docs/` 长期堆积。
+4. 架构文档描述所有权和数据流，不复制具体函数实现。
+5. 版本发布以 [RELEASE.md](../RELEASE.md) 为唯一流程说明。
