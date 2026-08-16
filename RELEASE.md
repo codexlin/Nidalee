@@ -11,8 +11,8 @@ Nidalee 使用两条独立的 GitHub Actions 流程：
 
 以下操作会运行 `.github/workflows/build.yml`：
 
-- 向 `main` 或 `release-v3-dev` 推送提交；
-- 向这两个分支发起 Pull Request；
+- 向 `main` 推送提交；
+- 向 `main` 发起 Pull Request；
 - 在 GitHub Actions 页面手动运行构建验证。
 
 CI 会检查前端 lint、格式、类型、测试和构建，并检查 Rust 格式、Clippy、测试、MSRV 与 TypeScript 契约漂移。非 Pull Request 的 CI 还会生成 Windows MSI 工作流产物，但不会发布给用户。
@@ -31,9 +31,9 @@ Tag 指向的提交必须已经包含在 `main` 中，否则发布会被拒绝�
 
 ## 发布流程
 
-1. 功能或修复先合并到 `release-v3-dev`。
-2. 完成真实客户端验证及 CI 门禁。
-3. 将 `release-v3-dev` 合并到 `main` 并推送。
+1. 从最新 `main` 创建 `feature/*` 或 `fixbug/*` 分支。
+2. 完成开发、真实客户端验证及分支检查。
+3. 通过 Pull Request 或经确认的本地合并将改动合入 `main`。
 4. 确认 `main` 的 CI 全部通过。
 5. 在 `main` 当前发布提交上创建带注释的 Tag，并推送该 Tag：
 

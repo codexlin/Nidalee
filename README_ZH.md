@@ -64,7 +64,7 @@ cargo test --locked
 
 ## 分支与发布
 
-日常开发合并到 `release-v3-dev`，准备发布后再合并到 `main`。只有推送 `v1.0.0` 这类语义化版本 Tag 才会创建公开 Release；完整规则见 [RELEASE.md](RELEASE.md)。
+日常开发从 `main` 创建短期 `feature/*` 或 `fixbug/*` 分支，经过复核和 CI 后合并回 `main`。只有推送 `v1.0.0` 这类语义化版本 Tag 才会创建公开 Release；完整规则见 [RELEASE.md](RELEASE.md)。
 
 ## 许可证与免责声明
 

@@ -64,7 +64,7 @@ See [the architecture guide](docs/ARCHITECTURE.md), [documentation index](docs/R
 
 ## Branches and releases
 
-Development is integrated through `release-v3-dev`; release-ready commits are merged into `main`. Only a semantic version Tag such as `v1.0.0` triggers a public release. See [RELEASE.md](RELEASE.md) for the complete process.
+Development uses short-lived `feature/*` and `fixbug/*` branches based on `main`. Changes return to `main` after review and CI. Only a semantic version Tag such as `v1.0.0` triggers a public release. See [RELEASE.md](RELEASE.md) for the complete process.
 
 ## License and disclaimer
 
