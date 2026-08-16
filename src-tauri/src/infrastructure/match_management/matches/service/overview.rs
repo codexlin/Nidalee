@@ -1,9 +1,11 @@
+#[cfg(debug_assertions)]
 use reqwest::Client;
 #[cfg(debug_assertions)]
 use serde_json::Value;
 
 #[cfg(debug_assertions)]
 use crate::domains::analysis::analyzers::core::strategy::AnalysisMode;
+#[cfg(debug_assertions)]
 use crate::shared::types::PlayerMatchStats;
 
 /// 单次请求指定数量的原生 LCU 战绩。
