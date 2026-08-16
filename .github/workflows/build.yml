@@ -120,7 +120,7 @@ jobs:
         run: git diff --exit-code -- src/types/global.d.ts
 
   rust-msrv:
-    name: Rust MSRV (${{ env.RUST_MSRV }})
+    name: Rust MSRV (1.88.0)
     runs-on: windows-latest
     steps:
       - name: Checkout repository
