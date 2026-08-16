@@ -66,8 +66,7 @@ pub fn run() {
             infrastructure::match_management::matches::commands::get_game_process_review,
             // 召唤师
             infrastructure::data_services::summoner::commands::get_current_summoner,
-            infrastructure::data_services::summoner::commands::get_recent_matches_by_puuid,
-            infrastructure::data_services::summoner::commands::get_summoners_and_histories,
+            infrastructure::data_services::summoner::commands::get_summoners_by_names,
             infrastructure::data_services::summoner::commands::set_summoner_chat_profile,
             infrastructure::data_services::summoner::commands::set_summoner_background_skin,
             // 召唤师符文

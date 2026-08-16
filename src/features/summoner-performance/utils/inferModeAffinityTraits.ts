@@ -1,4 +1,4 @@
-/** 与后端 ModeAffinityTraitStrategy 对齐：按当前桶样本推断模式身份特征 */
+/** 与后端 ModeAffinityTraitStrategy 对齐：按当前范围样本推断模式身份特征。 */
 
 const AFFINITY_RATIO = 0.6
 const AFFINITY_MIN_GAMES = 3

@@ -234,7 +234,7 @@ pub async fn get_summoners_by_names(client: &Client, names: Vec<String>) -> Resu
     Ok(summoners)
 }
 
-/// LiveClient 只提供玩家名；批量解析身份后，以受限并发补齐各玩家排位资料。
+/// 批量解析召唤师身份后，以受限并发补齐各玩家排位资料，并保持输入结果顺序。
 pub async fn get_summoners_by_names_with_rank(
     client: &Client,
     names: Vec<String>,

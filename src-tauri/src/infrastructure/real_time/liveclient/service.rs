@@ -105,6 +105,17 @@ fn riot_id_matches(left: &str, right: &str) -> bool {
     (!left_has_tag || !right_has_tag) && left_name.eq_ignore_ascii_case(right_name)
 }
 
+/// Returns the local player's Riot ID from LiveClient without depending on LCU account APIs.
+pub async fn get_active_player_name() -> Result<String, String> {
+    let raw = liveclient_get("/liveclientdata/activeplayername").await?;
+    let name = parse_json_string(&raw);
+    if name.is_empty() {
+        Err("LiveClient 当前玩家名称为空".to_string())
+    } else {
+        Ok(name)
+    }
+}
+
 /// 对局里定位本地玩家（优先 playerlist，activeplayer 在部分客户端不可用）
 pub async fn get_local_live_player() -> Result<crate::shared::types::LiveClientPlayer, String> {
     let players = get_live_player_list().await?;
@@ -112,15 +123,12 @@ pub async fn get_local_live_player() -> Result<crate::shared::types::LiveClientP
         return Err("LiveClient 玩家列表为空".to_string());
     }
 
-    if let Ok(raw) = liveclient_get("/liveclientdata/activeplayername").await {
-        let name = parse_json_string(&raw);
-        if !name.is_empty() {
-            if let Some(player) = players
-                .iter()
-                .find(|player| riot_id_matches(&player.summoner_name, &name))
-            {
-                return Ok(player.clone());
-            }
+    if let Ok(name) = get_active_player_name().await {
+        if let Some(player) = players
+            .iter()
+            .find(|player| riot_id_matches(&player.summoner_name, &name))
+        {
+            return Ok(player.clone());
         }
     }
 

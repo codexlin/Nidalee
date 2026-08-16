@@ -4,7 +4,7 @@ use serde_json::Value;
 
 #[cfg(debug_assertions)]
 use crate::domains::analysis::analyzers::core::strategy::AnalysisMode;
-use crate::shared::types::{AdvicePerspective, PlayerMatchStats};
+use crate::shared::types::PlayerMatchStats;
 
 /// 单次请求指定数量的原生 LCU 战绩。
 ///
@@ -36,50 +36,5 @@ pub(crate) async fn get_match_history(
         result.analyzed_games
     );
 
-    Ok(super::super::analysis_service::to_player_match_stats(&result))
-}
-
-/// 获取指定召唤师最近几场简单战绩
-///
-/// # 参数
-/// - `client`: HTTP 客户端
-/// - `puuid`: 玩家 PUUID
-/// - `count`: 获取对局数量
-/// - `queue_id`: 可选的队列ID，用于过滤（如 420=单排, 440=灵活排）
-/// - `perspective`: 建议视角（默认SelfImprovement）
-/// - `target_name`: 目标玩家名称（用于建议措辞）
-pub async fn get_recent_matches_by_puuid(
-    client: &Client,
-    puuid: &str,
-    count: usize,
-    queue_id: Option<i32>,
-) -> Result<PlayerMatchStats, String> {
-    get_recent_matches_by_puuid_with_perspective(
-        client,
-        puuid,
-        count,
-        queue_id,
-        AdvicePerspective::SelfImprovement,
-        None,
-    )
-    .await
-}
-
-/// 获取指定召唤师最近几场战绩（支持指定建议视角）
-///
-/// 兼容适配器：团队/选人概览路径，强制 Simple（零时间线），
-/// 避免 10 玩家 × N 时间线把客户端拖垮。个人深度分析走 `analyze_matches`。
-async fn get_recent_matches_by_puuid_with_perspective(
-    client: &Client,
-    puuid: &str,
-    count: usize,
-    queue_id: Option<i32>,
-    perspective: AdvicePerspective,
-    target_name: Option<String>,
-) -> Result<PlayerMatchStats, String> {
-    let mut request = super::super::analysis_service::legacy_overview_request(count as u32, queue_id, None);
-    request.perspective = Some(perspective);
-    request.target_player = target_name;
-    let result = super::super::analysis_service::analyze_matches_for_puuid(client, puuid, &request).await?;
     Ok(super::super::analysis_service::to_player_match_stats(&result))
 }

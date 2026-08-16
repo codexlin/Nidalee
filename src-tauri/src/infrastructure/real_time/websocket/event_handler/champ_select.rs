@@ -49,7 +49,13 @@ impl WsEventHandler {
             let data_clone = session;
             let analysis_work = {
                 let mut cache = self.cache.write().await;
-                if cache.champ_select_analysis_key.as_ref() == Some(&analysis_key) {
+                if cache.gameflow_phase.as_deref() != Some("ChampSelect") {
+                    log::debug!(
+                        "Ignoring late champ-select analysis event while phase is {:?}",
+                        cache.gameflow_phase
+                    );
+                    None
+                } else if cache.champ_select_analysis_key.as_ref() == Some(&analysis_key) {
                     log::trace!("Champ-select analysis inputs unchanged; skipping enrichment");
                     None
                 } else {

@@ -119,7 +119,7 @@
         :match-statistics="matchStatistics"
         :position-stats="positionStats"
         :main-position="mainPosition"
-        :filter-mode="selectedMatchMode"
+        :performance-category="scope.category"
       />
 
       <div v-if="favoriteChampions.length" class="space-y-3">
@@ -237,8 +237,8 @@ import {
   getQueueName,
   resolveChampionName
 } from '@/lib'
-import { getMatchModeLabel, type MatchModeKey } from '@/common/queueCatalog'
-import SummonerTraits from './SummonerTraits.vue'
+import { PERFORMANCE_SAMPLE_SIZE, performanceScopeLabel, type PerformanceScope } from '@/common/performanceScope'
+import SummonerTraits from '@/features/summoner-performance/components/SummonerTraits.vue'
 import { displayGrade, gradeWatermarkClass, gradeWatermarkSizeClass } from '@/shared/utils/matchGrade'
 
 interface RankInfo {
@@ -263,8 +263,7 @@ const props = defineProps<{
   analysisTraits?: DeterministicTrait[] | null
   positionStats?: PositionStats[] | null
   mainPosition?: string | null
-  selectedMatchMode?: MatchModeKey
-  matchCount?: number | null
+  scope: PerformanceScope
   /** 最近对局展示条数上限 */
   recentLimit?: number
 }>()
@@ -283,9 +282,7 @@ const exportedAtLabel = computed(() => {
 })
 
 const modeCaption = computed(() => {
-  const mode = props.selectedMatchMode ? getMatchModeLabel(props.selectedMatchMode) : '全部模式'
-  const count = props.matchCount && props.matchCount > 0 ? `${props.matchCount} 场样本` : ''
-  return count ? `${mode} · ${count}` : mode
+  return `${performanceScopeLabel(props.scope)} · 最近 ${PERFORMANCE_SAMPLE_SIZE} 场有效样本`
 })
 
 const favoriteChampions = computed(() => (props.matchStatistics?.favoriteChampions || []).slice(0, 5))

@@ -62,11 +62,28 @@ mod tests {
 
     #[test]
     fn champ_select_generation_invalidates_old_enrichment() {
-        let mut cache = EventCache::default();
+        let mut cache = EventCache {
+            gameflow_phase: Some("ChampSelect".to_string()),
+            ..EventCache::default()
+        };
         let generation = cache.champ_select_analysis_generation;
 
         assert!(cache.can_commit_champ_select_analysis(generation));
         cache.cancel_champ_select_analysis();
+        assert!(!cache.can_commit_champ_select_analysis(generation));
+    }
+
+    #[test]
+    fn late_champ_select_update_cannot_commit_after_in_progress() {
+        let mut cache = EventCache {
+            gameflow_phase: Some("ChampSelect".to_string()),
+            ..EventCache::default()
+        };
+        let generation = cache.champ_select_analysis_generation;
+
+        assert!(cache.can_commit_champ_select_analysis(generation));
+        cache.gameflow_phase = Some("InProgress".to_string());
+
         assert!(!cache.can_commit_champ_select_analysis(generation));
     }
 }

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { performanceScopeKey, type PerformanceScope } from '@/common/performanceScope'
 
 /**
  * 个人战绩统一分析结果（Dashboard 单次 analyze_matches 的唯一状态源）
@@ -9,10 +10,10 @@ export const usePersonalMatchAnalysisStore = defineStore('personalMatchAnalysis'
   const loading = ref(false)
   const error = ref<string | null>(null)
   const lastPuuid = ref<string | null>(null)
+  const lastScopeKey = ref<string | null>(null)
+  const resultRevision = ref(0)
 
   const overallStats = computed(() => result.value?.overallStats ?? null)
-  const rankedStats = computed(() => result.value?.rankedStats ?? null)
-  const otherStats = computed(() => result.value?.otherStats ?? null)
   const positionStats = computed(() => result.value?.positionStats ?? [])
   const mainPosition = computed(() => result.value?.mainPosition ?? 'UNKNOWN')
   const matches = computed(() => result.value?.matches ?? [])
@@ -30,20 +31,17 @@ export const usePersonalMatchAnalysisStore = defineStore('personalMatchAnalysis'
     return matches.find((m) => m.gameId === gameId) ?? null
   }
 
-  const multiPositionView = computed<MultiPositionAnalysis | null>(() => {
-    if (!result.value) return null
-    return {
-      positionStats: result.value.positionStats,
-      mainPosition: result.value.mainPosition,
-      overallStats: result.value.overallStats,
-      rankedStats: result.value.rankedStats,
-      otherStats: result.value.otherStats
-    }
-  })
+  const hasResultFor = (puuid: string, scope: PerformanceScope): boolean => {
+    return (
+      result.value !== null && lastPuuid.value === puuid.trim() && lastScopeKey.value === performanceScopeKey(scope)
+    )
+  }
 
-  const setResult = (next: MatchAnalysisResult | null, puuid?: string) => {
+  const setResult = (next: MatchAnalysisResult | null, puuid: string, scope: PerformanceScope) => {
     result.value = next
-    if (puuid !== undefined) lastPuuid.value = puuid
+    lastPuuid.value = puuid.trim()
+    lastScopeKey.value = performanceScopeKey(scope)
+    resultRevision.value += 1
     error.value = null
   }
 
@@ -64,6 +62,8 @@ export const usePersonalMatchAnalysisStore = defineStore('personalMatchAnalysis'
     result.value = null
     error.value = null
     lastPuuid.value = null
+    lastScopeKey.value = null
+    resultRevision.value += 1
   }
 
   return {
@@ -71,9 +71,9 @@ export const usePersonalMatchAnalysisStore = defineStore('personalMatchAnalysis'
     loading,
     error,
     lastPuuid,
+    lastScopeKey,
+    resultRevision,
     overallStats,
-    rankedStats,
-    otherStats,
     positionStats,
     mainPosition,
     matches,
@@ -84,8 +84,8 @@ export const usePersonalMatchAnalysisStore = defineStore('personalMatchAnalysis'
     policy,
     aiInsight,
     evidence,
-    multiPositionView,
     getMatchEvidence,
+    hasResultFor,
     setResult,
     setLoading,
     setError,

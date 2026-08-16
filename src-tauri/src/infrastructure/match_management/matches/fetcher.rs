@@ -35,6 +35,12 @@ use super::timeline_cache::TimelineCache;
 /// LCU 单次战绩请求的数量上限
 pub const LCU_MATCH_LIST_MAX_COUNT: usize = 100;
 
+/// 带队列过滤时扫描的最近对局候选数。
+///
+/// 展示与分析仍由策略限制为更小的目标数；这里仅扩大候选窗口，避免混合模式历史中
+/// 目标队列样本不足，同时避免每位玩家都请求 LCU 的 100 场上限。
+pub const FILTERED_MATCH_LIST_SCAN_COUNT: usize = 50;
+
 /// count 缺省时的对局数量
 pub const DEFAULT_MATCH_LIST_COUNT: usize = 20;
 
@@ -205,8 +211,8 @@ impl<S: MatchDataSource> MatchFetcher<S> {
 
     /// 按策略批量获取分析所需的全部素材
     ///
-    /// `list_count` 是用户期望的**展示**场数。若策略带队列过滤，会 over-fetch 至
-    /// LCU 上限（100）再本地过滤，尽量凑满 `list_count`；仍不足则写入诊断。
+    /// `list_count` 是用户期望的**展示**场数。若策略带队列过滤，会扫描最近 50 场
+    /// 候选再本地过滤，尽量凑满 `list_count`；仍不足则写入诊断。
     /// 深度 bundle 数量另受 `effective_game_count` 约束。
     pub async fn fetch_bundles(
         &self,
@@ -328,10 +334,12 @@ fn count_to_lcu_end_index(count: usize) -> usize {
     count.saturating_sub(1)
 }
 
-/// 有队列过滤时 over-fetch 到 LCU 上限，尽量在本地凑满展示场数；无过滤则按目标场数请求。
+/// 有队列过滤时扫描最近 50 场候选，尽量在本地凑满展示场数；无过滤则按目标场数请求。
 fn resolve_list_fetch_count(policy: &AnalysisPolicy, display_target: usize) -> usize {
     if policy.has_queue_filter() {
-        LCU_MATCH_LIST_MAX_COUNT
+        display_target
+            .max(FILTERED_MATCH_LIST_SCAN_COUNT)
+            .min(LCU_MATCH_LIST_MAX_COUNT)
     } else {
         display_target
     }

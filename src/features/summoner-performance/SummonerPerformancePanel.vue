@@ -6,53 +6,13 @@
           <h3 class="text-lg font-semibold flex flex-wrap items-center gap-2">
             <span class="inline-flex items-center">
               <BarChart class="h-5 w-5 mr-2 text-muted-foreground" />
-              游戏统计
+              近期表现
             </span>
             <Badge v-if="showAiBadge" variant="outline" class="h-5 px-1.5 text-xs font-normal"> AI 已就绪 </Badge>
           </h3>
-          <p class="text-sm text-muted-foreground">近期游戏数据概览</p>
+          <p class="text-sm text-muted-foreground">统一按最近 20 场有效样本分析</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <Select v-if="selectedMatchMode" :model-value="selectedMatchMode" @update:model-value="handleModeSelect">
-            <SelectTrigger class="w-[180px] h-9">
-              <SelectValue placeholder="选择模式" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="option in matchModeOptions" :key="option.key" :value="option.key">
-                {{ getMatchModeLabel(option.key) }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            v-if="matchCount !== null && matchCount !== undefined"
-            :model-value="String(matchCount)"
-            @update:model-value="handleCountSelect"
-          >
-            <SelectTrigger class="w-[100px] h-9">
-              <SelectValue placeholder="场数" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="count in matchCountOptions" :key="count" :value="String(count)">
-                {{ count }} 场
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <label
-            v-if="showRememberOption"
-            for="remember-match-preferences"
-            class="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-2.5 text-sm cursor-pointer select-none"
-            title="下次启动自动恢复模式与场数"
-          >
-            <Checkbox
-              id="remember-match-preferences"
-              :checked="rememberPreferences"
-              @update:checked="(checked) => emit('remember-change', checked)"
-            />
-            <span class="text-muted-foreground whitespace-nowrap">记住选择</span>
-          </label>
-
           <Button
             :disabled="!isConnected || matchHistoryLoading"
             variant="outline"
@@ -76,6 +36,8 @@
         </div>
       </div>
 
+      <PerformanceScopeTabs :model-value="scope" @update:model-value="emit('scope-change', $event)" />
+
       <!-- 加载状态 -->
       <div v-if="matchHistoryLoading" class="flex items-center justify-center py-16">
         <div class="text-center">
@@ -91,6 +53,15 @@
           <Wifi class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <p class="text-lg font-medium text-muted-foreground">需要连接到League客户端</p>
           <p class="text-sm text-muted-foreground">连接后即可查看详细的游戏统计</p>
+        </div>
+      </div>
+
+      <div v-else-if="error" class="flex items-center justify-center py-16">
+        <div class="max-w-md text-center">
+          <CircleAlert class="mx-auto mb-4 h-12 w-12 text-destructive/80" />
+          <p class="text-lg font-medium text-foreground">分析暂时不可用</p>
+          <p class="mt-1 text-sm leading-relaxed text-muted-foreground">{{ error }}</p>
+          <Button class="mt-5" size="sm" variant="outline" @click="$emit('fetch-match-history')">重试</Button>
         </div>
       </div>
 
@@ -111,9 +82,6 @@
           {{ emptyDetail }}
         </p>
         <div class="mt-5 flex flex-wrap items-center justify-center gap-2">
-          <Button v-if="selectedMatchMode && selectedMatchMode !== 'all'" size="sm" @click="emit('mode-change', 'all')">
-            切换到全部模式
-          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -127,24 +95,6 @@
 
       <!-- 有数据时展示 -->
       <div v-else class="space-y-6">
-        <div v-if="showBucketTabs" class="surface-chip inline-flex items-center gap-1 p-1">
-          <button
-            v-for="tab in bucketTabOptions"
-            :key="tab.key"
-            type="button"
-            class="rounded-lg px-3 py-1.5 text-sm font-medium outline-none transition-colors focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-            :class="
-              activeBucket === tab.key
-                ? 'bg-primary/15 text-primary'
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-            "
-            @click="activeBucket = tab.key"
-          >
-            {{ tab.label }}
-            <span class="ml-1 tabular-nums text-xs opacity-80">{{ tab.games }}</span>
-          </button>
-        </div>
-
         <div class="surface-inset px-4 py-3.5">
           <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
             <div>
@@ -204,7 +154,7 @@
               :match-statistics="bucketStatistics"
               :position-stats="bucketPositionStats"
               :main-position="bucketMainPosition"
-              :filter-mode="bucketFilterMode"
+              :performance-category="scope.category"
             />
           </div>
 
@@ -254,70 +204,44 @@
           :games="listGames"
           :show-count="showCount"
           @load-more="loadMore"
-          @open-game-detail="openGameDetail"
+          @open-game-detail="emit('open-game-detail', $event)"
         />
       </div>
     </div>
   </Card>
-
-  <!-- 放在加载/断线/空态分支外，避免刷新或断线卸载列表时关掉详情 -->
-  <GameDetailDialog v-model:visible="dialogOpen" :selectedGame="selectedGame" />
 </template>
 
 <script setup lang="ts">
 import { getChampionIconUrl, resolveChampionName } from '@/lib'
-import { BarChart, Gamepad2, ImageDown, Loader2, RefreshCw, Star, Wifi } from 'lucide-vue-next'
+import { BarChart, CircleAlert, Gamepad2, ImageDown, Loader2, RefreshCw, Star, Wifi } from 'lucide-vue-next'
 import FloatIconButton from '@/components/common/FloatIconButton.vue'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import type { AcceptableValue } from 'reka-ui'
-import { MATCH_MODE_OPTIONS, getMatchModeLabel, isMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
-import { useGameStatsBuckets } from '../composables/useGameStatsBuckets'
-import GameDetailDialog from './detail/GameDetailDialog.vue'
-import RecentMatchList from './RecentMatchList.vue'
-
-const matchModeOptions = MATCH_MODE_OPTIONS
-const matchCountOptions = [20, 25, 30] as const
+import type { PerformanceScope } from '@/common/performanceScope'
+import PerformanceScopeTabs from './components/PerformanceScopeTabs.vue'
+import { useGameStatsBuckets } from './composables/useGameStatsBuckets'
+import RecentMatchList from './components/RecentMatchList.vue'
+import SummonerTraits from './components/SummonerTraits.vue'
 
 const props = defineProps<{
   isConnected: boolean
   matchHistoryLoading: boolean
+  error?: string | null
   matchStatistics: PlayerMatchStats | null
-  /** 排位桶（420/440）；全部模式优先用此驱动 KPI */
-  rankedStats?: PlayerMatchStats | null
-  /** 非排位桶 */
-  otherStats?: PlayerMatchStats | null
   /** 统一契约特征（Dashboard 优先传入；仅用于少量过程异常信号） */
   analysisTraits?: DeterministicTrait[] | null
   /** 排位分路：作为召唤师身份特征展示 */
   positionStats?: PositionStats[] | null
   mainPosition?: string | null
-  /** 仪表盘传入时显示模式切换；搜索页可省略 */
-  selectedMatchMode?: MatchModeKey
-  /** 仪表盘传入时显示场数切换 */
-  matchCount?: number
-  /** 是否记住模式/场数 */
-  rememberPreferences?: boolean
-  /** 扫描过的历史场数（空态说明用） */
-  scannedGames?: number | null
+  scope: PerformanceScope
   /** 本地 AI 已配置（开启 + Key）且策略允许 */
   aiReady?: boolean
-  /** 近况/展示场数（本页统计覆盖，含分路与常用英雄） */
-  displayGames?: number | null
   canExportPoster?: boolean
   posterExporting?: boolean
 }>()
 
-const showRememberOption = computed(() => props.selectedMatchMode !== undefined && props.matchCount !== undefined)
-
 const {
   isFilterEmpty,
   hasGames,
-  showBucketTabs,
-  bucketTabOptions,
-  activeBucket,
   bucketStatistics,
-  bucketFilterMode,
   bucketPositionStats,
   bucketMainPosition,
   bucketTraits,
@@ -336,33 +260,10 @@ const {
 
 const showAiBadge = computed(() => hasGames.value && !!props.aiReady)
 
-const dialogOpen = ref(false)
-const selectedGame = ref<MatchPerformance | null>(null)
-
-function openGameDetail(game: MatchPerformance) {
-  selectedGame.value = game
-  dialogOpen.value = true
-}
-
 const emit = defineEmits<{
   (e: 'fetch-match-history'): void
-  (e: 'mode-change', mode: MatchModeKey): void
-  (e: 'count-change', count: number): void
-  (e: 'remember-change', enabled: boolean): void
+  (e: 'scope-change', scope: PerformanceScope): void
   (e: 'export-poster'): void
+  (e: 'open-game-detail', game: MatchPerformance): void
 }>()
-
-const handleModeSelect = (value: AcceptableValue) => {
-  const key = String(value ?? 'all')
-  if (isMatchModeKey(key)) {
-    emit('mode-change', key)
-  }
-}
-
-const handleCountSelect = (value: AcceptableValue) => {
-  const count = Number(value)
-  if (Number.isFinite(count)) {
-    emit('count-change', count)
-  }
-}
 </script>

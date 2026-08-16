@@ -10,7 +10,7 @@ pub(super) type MatchStatsCacheEntry = (
     crate::infrastructure::match_management::analysis_data::service::CachedPlayerAnalysis,
 );
 
-fn base_player_data(
+pub(super) fn base_player_data(
     live_player: &crate::shared::types::LiveClientPlayer,
     cell_id: i32,
     champion_id: Option<i32>,

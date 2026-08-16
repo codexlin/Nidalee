@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col gap-4" v-if="isConnected">
-    <div v-if="loading" className="flex w-auto min-h-screen items-center justify-center gap-6">
+    <div v-if="pageLoading" class="flex min-h-screen w-auto items-center justify-center gap-6">
       <Spinner class="size-6 text-primary" />
     </div>
     <template v-else>
@@ -43,28 +43,22 @@
         </CardContent>
       </Card>
 
-      <GameStats
+      <SummonerPerformancePanel
         :is-connected="isConnected"
         :match-history-loading="matchHistoryLoading"
+        :error="personalAnalysis.error"
         :match-statistics="matchStatistics"
-        :ranked-stats="personalAnalysis.rankedStats"
-        :other-stats="personalAnalysis.otherStats"
-        :analysis-traits="personalAnalysis.traits"
-        :position-stats="positionAnalysis?.positionStats"
-        :main-position="positionAnalysis?.mainPosition"
-        :selected-match-mode="selectedMatchMode"
-        :match-count="selectedMatchCount"
-        :remember-preferences="settingsStore.rememberMatchPreferences"
-        :scanned-games="selectedMatchCount"
+        :analysis-traits="analysisResult?.traits"
+        :position-stats="analysisResult?.positionStats"
+        :main-position="analysisResult?.mainPosition"
+        :scope="performanceScope"
         :ai-ready="aiReady"
-        :display-games="displayGames"
         :can-export-poster="canExportPoster"
         :poster-exporting="posterExporting"
         @fetch-match-history="handleFetchMatchHistory"
-        @mode-change="handleModeChange"
-        @count-change="handleCountChange"
-        @remember-change="handleRememberChange"
+        @scope-change="handleScopeChange"
         @export-poster="handleExportPoster"
+        @open-game-detail="openGameDetail"
       />
 
       <!-- 离屏海报稿：固定宽 720，不截整页 -->
@@ -80,14 +74,20 @@
           :solo-rank="soloRank"
           :flex-rank="flexRank"
           :match-statistics="matchStatistics"
-          :analysis-traits="personalAnalysis.traits"
-          :position-stats="positionAnalysis?.positionStats"
-          :main-position="positionAnalysis?.mainPosition"
-          :selected-match-mode="selectedMatchMode"
-          :match-count="selectedMatchCount"
+          :analysis-traits="analysisResult?.traits"
+          :position-stats="analysisResult?.positionStats"
+          :main-position="analysisResult?.mainPosition"
+          :scope="performanceScope"
           :recent-limit="10"
         />
       </div>
+
+      <GameDetailDialog
+        v-model:visible="dialogOpen"
+        :selected-game="selectedGame"
+        :analysis-puuid="selectedGamePuuid"
+        @open-game-detail="openGameDetail"
+      />
     </template>
   </div>
 </template>
@@ -95,8 +95,9 @@
 <script setup lang="ts">
 import CompactProfileHeader from './components/CompactProfileHeader.vue'
 import DashboardPoster from './components/DashboardPoster.vue'
-import GameStats from './components/GameStats.vue'
-import { normalizeMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
+import GameDetailDialog from './components/detail/GameDetailDialog.vue'
+import SummonerPerformancePanel from '@/features/summoner-performance/SummonerPerformancePanel.vue'
+import { performanceScopeKey, type PerformanceScope } from '@/common/performanceScope'
 import { useMatchAnalysis } from '@/shared/composables/game/useMatchAnalysis'
 import { useAiAnalysis } from '@/shared/composables/game/useAiAnalysis'
 import { usePersonalMatchAnalysisStore } from '@/shared/stores/features/personalMatchAnalysisStore'
@@ -105,21 +106,18 @@ import { buildSummonerRankPresentation } from '@/shared/utils/summonerRankPresen
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
-const { loading, toggle } = useLoading()
 const settingsStore = useSettingsStore()
 const personalAnalysis = usePersonalMatchAnalysisStore()
 const { analyzeMatches } = useMatchAnalysis()
-const {
-  loading: aiLoading,
-  error: aiError,
-  analyzeWithAi,
-  ensureSynced: ensureAiSynced,
-  aiSettings,
-  aiInsight
-} = useAiAnalysis()
+const { loading: aiLoading, error: aiError, analyzeWithAi, ensureSynced: ensureAiSynced, aiSettings } = useAiAnalysis()
 const { exporting: posterExporting, exportPoster } = useDashboardPosterExport()
 
 const posterRef = ref<{ getRoot: () => HTMLElement | null } | null>(null)
+const dialogOpen = ref(false)
+const selectedGame = ref<MatchPerformance | null>(null)
+const selectedGamePuuid = ref<string | null>(null)
+const isViewActive = ref(false)
+let lastEnsuredContextKey: string | null = null
 
 const soloRank = computed(() => {
   const info = summonerInfo.value
@@ -147,27 +145,25 @@ const dataStore = useDataStore()
 const connectionStore = useConnectionStore()
 const activityLogger = useActivityLogger()
 
-const { summonerInfo, matchStatistics, isDataLoading } = storeToRefs(dataStore)
+const { summonerInfo, isSummonerLoading } = storeToRefs(dataStore)
 const { isConnected } = storeToRefs(connectionStore)
 
-const resolveInitialMode = (): MatchModeKey => {
-  if (!settingsStore.rememberMatchPreferences) return 'all'
-  return normalizeMatchModeKey(settingsStore.lastMatchMode)
-}
+const performanceScope = computed(() => settingsStore.performanceScope)
+const currentContextKey = computed(() => {
+  const puuid = summonerInfo.value?.puuid?.trim()
+  if (!isConnected.value || !puuid) return null
+  return `${puuid}:${performanceScopeKey(performanceScope.value)}`
+})
+const analysisResult = computed(() => {
+  const puuid = summonerInfo.value?.puuid
+  if (!puuid || !personalAnalysis.hasResultFor(puuid, performanceScope.value)) return null
+  return personalAnalysis.result
+})
+const matchStatistics = computed(() => analysisResult.value?.overallStats ?? null)
 
-const resolveInitialCount = (): number => {
-  const raw = settingsStore.rememberMatchPreferences ? settingsStore.lastMatchCount : 20
-  return (settingsStore.allowedMatchCounts as readonly number[]).includes(raw) ? raw : 20
-}
-
-const selectedMatchMode = ref<MatchModeKey>(resolveInitialMode())
-const selectedMatchCount = ref<number>(resolveInitialCount())
-settingsStore.setLastMatchMode(selectedMatchMode.value)
-settingsStore.setLastMatchCount(selectedMatchCount.value)
-
-const positionAnalysis = computed(() => personalAnalysis.multiPositionView)
-const capabilities = computed(() => personalAnalysis.capabilities)
-const displayGames = computed(() => personalAnalysis.result?.displayGames ?? 0)
+const capabilities = computed(() => analysisResult.value?.capabilities ?? null)
+const displayGames = computed(() => analysisResult.value?.displayGames ?? 0)
+const aiInsight = computed(() => analysisResult.value?.aiInsight ?? null)
 
 /** 后端可跑 AI + 用户已开启并填过 Key，才算真正就绪 */
 const aiReady = computed(() => !!capabilities.value?.localAi && aiSettings.enabled && aiSettings.hasApiKey)
@@ -186,47 +182,30 @@ const todayMatches = computed(() => {
   }
 })
 
-/** 始终同步到 store；刷新只走一次 analyze_matches */
-const syncFetchPreferences = () => {
-  settingsStore.setLastMatchMode(selectedMatchMode.value)
-  settingsStore.setLastMatchCount(selectedMatchCount.value)
-}
+const ensureCurrentAnalysis = async (force = false) => {
+  const contextKey = currentContextKey.value
+  const puuid = summonerInfo.value?.puuid
+  if (!isViewActive.value || !contextKey || !puuid) return
+  if (!force && personalAnalysis.hasResultFor(puuid, performanceScope.value)) return
+  if (!force && lastEnsuredContextKey === contextKey) return
 
-const refreshAnalysis = async () => {
-  syncFetchPreferences()
-  await analyzeMatches({ mode: selectedMatchMode.value, count: selectedMatchCount.value })
+  lastEnsuredContextKey = contextKey
+  await analyzeMatches({ scope: performanceScope.value })
 }
 
 const handleFetchMatchHistory = async () => {
-  toggle()
   activityLogger.log.info('手动刷新对局历史', 'data')
-  await refreshAnalysis()
-  toggle()
+  await ensureCurrentAnalysis(true)
 }
 
-const handleModeChange = async (mode: MatchModeKey) => {
-  toggle()
-  selectedMatchMode.value = mode
-  activityLogger.log.info(`切换战绩模式: ${mode}`, 'data')
-  await refreshAnalysis()
-  toggle()
+const handleScopeChange = async (scope: PerformanceScope) => {
+  settingsStore.setPerformanceScope(scope)
+  activityLogger.log.info(`切换战绩范围: ${scope.category}/${scope.rankedScope}`, 'data')
+  await ensureCurrentAnalysis(true)
 }
 
-const handleCountChange = async (count: number) => {
-  toggle()
-  selectedMatchCount.value = count
-  activityLogger.log.info(`切换对局数量: ${count}`, 'data')
-  await refreshAnalysis()
-  toggle()
-}
-
-const handleRememberChange = (enabled: boolean) => {
-  settingsStore.setRememberMatchPreferences(enabled)
-  syncFetchPreferences()
-  activityLogger.log.info(enabled ? '已开启记住战绩选择' : '已关闭记住战绩选择（下次启动恢复默认）', 'data')
-}
-
-const matchHistoryLoading = computed(() => isDataLoading.value || personalAnalysis.loading)
+const pageLoading = computed(() => isSummonerLoading.value && !summonerInfo.value)
+const matchHistoryLoading = computed(() => personalAnalysis.loading)
 
 const canExportPoster = computed(
   () => !!matchStatistics.value && (matchStatistics.value.totalGames || 0) > 0 && !matchHistoryLoading.value
@@ -250,7 +229,51 @@ const runAiInsight = async () => {
   await analyzeWithAi()
 }
 
+function openGameDetail(game: MatchPerformance, puuid = summonerInfo.value?.puuid ?? '') {
+  const normalizedPuuid = puuid.trim()
+  if (!normalizedPuuid) return
+  selectedGame.value = game
+  selectedGamePuuid.value = normalizedPuuid
+  dialogOpen.value = true
+}
+
+function closeGameDetail() {
+  dialogOpen.value = false
+  selectedGame.value = null
+  selectedGamePuuid.value = null
+}
+
+watch(currentContextKey, (contextKey, previousContextKey) => {
+  if (contextKey === previousContextKey) return
+  lastEnsuredContextKey = null
+  if (isViewActive.value) void ensureCurrentAnalysis()
+})
+
+watch(
+  () => [isConnected.value, summonerInfo.value?.puuid ?? null] as const,
+  ([connected, puuid], [previousConnected, previousPuuid]) => {
+    if (!connected || (previousConnected && previousPuuid && puuid !== previousPuuid)) closeGameDetail()
+  }
+)
+
 onMounted(() => {
+  isViewActive.value = true
+  void ensureCurrentAnalysis()
   void ensureAiSynced()
+})
+
+onActivated(() => {
+  if (isViewActive.value) return
+  isViewActive.value = true
+  lastEnsuredContextKey = null
+  void ensureCurrentAnalysis()
+})
+
+onDeactivated(() => {
+  isViewActive.value = false
+})
+
+onUnmounted(() => {
+  isViewActive.value = false
 })
 </script>

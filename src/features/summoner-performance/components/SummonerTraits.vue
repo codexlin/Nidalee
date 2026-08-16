@@ -69,7 +69,7 @@
 <script setup lang="ts">
 import { UserCheck } from 'lucide-vue-next'
 import { getPositionLabel } from '@/common/positionLabels'
-import { isMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
+import type { PerformanceCategory } from '@/common/performanceScope'
 import { getRoleIconUrl } from '@/lib'
 
 /** 少于该场数不当完整身份卡（1–2 场波动太大） */
@@ -94,22 +94,14 @@ const props = defineProps<{
   matchStatistics?: PlayerMatchStats | null
   positionStats?: PositionStats[] | null
   mainPosition?: string | null
-  filterMode?: string | null
+  performanceCategory?: PerformanceCategory
 }>()
 
 const hasPositionStats = computed(() =>
   (props.positionStats || []).some((p) => p.position !== 'UNKNOWN' && p.games > 0)
 )
 
-/** 排位筛选用分路；搜索页未传 mode 且有分路数据时也用分路；其余走模式身份 */
-const usePositionIdentity = computed(() => {
-  const mode = props.filterMode
-  if (!mode || !isMatchModeKey(mode)) {
-    return hasPositionStats.value
-  }
-  const key = mode as MatchModeKey
-  return key === 'mixedRanked' || key === '420' || key === '440'
-})
+const usePositionIdentity = computed(() => props.performanceCategory === 'ranked' && hasPositionStats.value)
 
 const sectionHint = computed(() =>
   usePositionIdentity.value ? '按分路近况归纳主要身份' : '按当前模式近况归纳主要身份'

@@ -90,7 +90,7 @@
     :selected-player="selectedPlayer"
     :current-result="currentResult"
     :loading="summonerLoading"
-    @refresh="refreshSummoner"
+    @open-game-detail="openNestedGameDetail"
   />
 </template>
 
@@ -107,9 +107,13 @@ import TeamBlock from './TeamBlock.vue'
 
 const props = defineProps<{
   selectedGame: MatchPerformance | null
+  analysisPuuid: string | null
 }>()
 
 const visible = defineModel<boolean>('visible')
+const emit = defineEmits<{
+  (e: 'open-game-detail', game: MatchPerformance, puuid: string): void
+}>()
 
 const { formatRelativeTime } = useFormatters()
 
@@ -128,14 +132,16 @@ const {
   myParticipantId,
   getTeamBans,
   getTeamParticipants
-} = useGameDetail(() => props.selectedGame)
+} = useGameDetail(
+  () => props.selectedGame,
+  () => props.analysisPuuid
+)
 
 const {
   isOpen: isSummonerSheetOpen,
   selectedPlayer,
   currentResult,
   loading: summonerLoading,
-  refresh: refreshSummoner,
   openFromParticipant
 } = useSummonerDetailSheet()
 
@@ -145,4 +151,16 @@ function copyName(name: string) {
   clipboard.copy(name)
   toast.success('已复制召唤师名到剪贴板')
 }
+
+function openNestedGameDetail(game: MatchPerformance, puuid: string) {
+  isSummonerSheetOpen.value = false
+  emit('open-game-detail', game, puuid)
+}
+
+watch(
+  () => [visible.value, props.analysisPuuid] as const,
+  ([open, puuid], [previousOpen, previousPuuid]) => {
+    if (!open || (previousOpen && puuid !== previousPuuid)) isSummonerSheetOpen.value = false
+  }
+)
 </script>

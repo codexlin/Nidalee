@@ -33,7 +33,7 @@ impl EventCache {
     }
 
     pub(super) fn can_commit_champ_select_analysis(&self, generation: u64) -> bool {
-        self.champ_select_analysis_generation == generation
+        self.champ_select_analysis_generation == generation && self.gameflow_phase.as_deref() == Some("ChampSelect")
     }
 
     pub(super) fn cancel_in_game_recovery(&mut self) {

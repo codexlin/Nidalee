@@ -1,5 +1,11 @@
 import { colors, radiusOptions, styles } from '@/lib/theme'
-import { isMatchModeKey, matchModeToQueueIds, normalizeMatchModeKey, type MatchModeKey } from '@/common/queueCatalog'
+import {
+  normalizePerformanceCategory,
+  normalizeRankedScope,
+  type PerformanceCategory,
+  type PerformanceScope,
+  type RankedScope
+} from '@/common/performanceScope'
 import { DEFAULT_OVERLAY_SHORTCUT } from '@/shared/utils/accelerator'
 
 export const useSettingsStore = defineStore(
@@ -21,15 +27,9 @@ export const useSettingsStore = defineStore(
     const careerBackground = ref<string>('')
     const autoRefreshData = ref(true)
     const refreshInterval = ref(30000) // 30秒
-    // 是否记住仪表盘模式/场数（关闭则下次启动恢复全部/20）
-    const rememberMatchPreferences = ref(true)
-    // 当前拉取偏好（仪表盘改动始终写入，供自动刷新与两条战绩接口共用）
-    const lastMatchMode = ref<MatchModeKey>('all')
-    // 由 lastMatchMode 派生，供战绩搜索过滤复用
-    const defaultQueueTypes = ref<number[]>([])
-    const applyDefaultFilterOnSearch = ref(true)
-    const lastMatchCount = ref<number>(20)
-    const allowedMatchCounts = [20, 25, 30] as const
+    // 仪表板与战绩查询共享同一分析范围；场数固定为最近 20 场有效样本。
+    const lastPerformanceCategory = ref<PerformanceCategory>('ranked')
+    const lastRankedScope = ref<RankedScope>('mixed')
     const augmentOverlayShortcut = ref(DEFAULT_OVERLAY_SHORTCUT)
 
     // 计算属性
@@ -38,6 +38,11 @@ export const useSettingsStore = defineStore(
       radius: selectedRadius.value,
       style: selectedStyle.value,
       isDark: isDark.value
+    }))
+
+    const performanceScope = computed<PerformanceScope>(() => ({
+      category: lastPerformanceCategory.value,
+      rankedScope: lastRankedScope.value
     }))
 
     // 主题相关class同步
@@ -110,40 +115,8 @@ export const useSettingsStore = defineStore(
       // 应用圆角设置
       document.documentElement.style.setProperty('--radius', `${selectedRadius.value}rem`)
 
-      // 兼容旧字段 defaultMatchMode → lastMatchMode
-      try {
-        const raw = localStorage.getItem('settings')
-        if (raw) {
-          const data = JSON.parse(raw) as Record<string, unknown>
-          if (
-            !data.lastMatchMode &&
-            typeof data.defaultMatchMode === 'string' &&
-            isMatchModeKey(data.defaultMatchMode)
-          ) {
-            lastMatchMode.value = data.defaultMatchMode
-          }
-          if (
-            (data.lastMatchCount === null || data.lastMatchCount === undefined) &&
-            typeof data.defaultMatchCount === 'number' &&
-            (allowedMatchCounts as readonly number[]).includes(data.defaultMatchCount)
-          ) {
-            lastMatchCount.value = data.defaultMatchCount
-          }
-        }
-      } catch {
-        // ignore
-      }
-
-      // 「记住」关闭时：启动恢复为全部 / 20，不沿用上次选择
-      if (!rememberMatchPreferences.value) {
-        lastMatchMode.value = 'all'
-        lastMatchCount.value = 20
-      } else {
-        lastMatchMode.value = normalizeMatchModeKey(lastMatchMode.value)
-      }
-
-      // 当前拉取偏好与派生队列过滤保持一致
-      defaultQueueTypes.value = matchModeToQueueIds(lastMatchMode.value)
+      lastPerformanceCategory.value = normalizePerformanceCategory(lastPerformanceCategory.value)
+      lastRankedScope.value = normalizeRankedScope(lastRankedScope.value)
 
       // 监听系统主题变化（仅作为参考，不强制覆盖用户设置）
       mediaQuery.addEventListener('change', (e) => {
@@ -182,30 +155,9 @@ export const useSettingsStore = defineStore(
       refreshInterval.value = Math.max(5000, interval) // 最小5秒
     }
 
-    const setRememberMatchPreferences = (enabled: boolean) => {
-      rememberMatchPreferences.value = enabled
-    }
-
-    /** 写入上次战绩模式（供搜索过滤同步） */
-    const setLastMatchMode = (mode: MatchModeKey) => {
-      const normalized = normalizeMatchModeKey(mode)
-      lastMatchMode.value = normalized
-      defaultQueueTypes.value = matchModeToQueueIds(normalized)
-    }
-
-    // 战绩默认过滤方法（兼容旧逻辑 / 搜索页）
-    const setDefaultQueueTypes = (queues: number[]) => {
-      const unique = Array.from(new Set(queues))
-      unique.sort((a, b) => a - b)
-      defaultQueueTypes.value = unique
-    }
-
-    const setApplyDefaultFilterOnSearch = (enabled: boolean) => {
-      applyDefaultFilterOnSearch.value = enabled
-    }
-
-    const setLastMatchCount = (count: number) => {
-      lastMatchCount.value = (allowedMatchCounts as readonly number[]).includes(count) ? count : 20
+    const setPerformanceScope = (scope: PerformanceScope) => {
+      lastPerformanceCategory.value = normalizePerformanceCategory(scope.category)
+      lastRankedScope.value = normalizeRankedScope(scope.rankedScope)
     }
 
     const setAugmentOverlayShortcut = (shortcut: string) => {
@@ -222,10 +174,7 @@ export const useSettingsStore = defineStore(
       careerBackground.value = ''
       autoRefreshData.value = true
       refreshInterval.value = 30000
-      rememberMatchPreferences.value = true
-      setLastMatchMode('all')
-      applyDefaultFilterOnSearch.value = true
-      setLastMatchCount(20)
+      setPerformanceScope({ category: 'ranked', rankedScope: 'mixed' })
       setAugmentOverlayShortcut(DEFAULT_OVERLAY_SHORTCUT)
     }
 
@@ -243,11 +192,8 @@ export const useSettingsStore = defineStore(
           careerBackground: careerBackground.value,
           autoRefreshData: autoRefreshData.value,
           refreshInterval: refreshInterval.value,
-          rememberMatchPreferences: rememberMatchPreferences.value,
-          lastMatchMode: lastMatchMode.value,
-          lastMatchCount: lastMatchCount.value,
-          defaultQueueTypes: defaultQueueTypes.value,
-          applyDefaultFilterOnSearch: applyDefaultFilterOnSearch.value,
+          lastPerformanceCategory: lastPerformanceCategory.value,
+          lastRankedScope: lastRankedScope.value,
           augmentOverlayShortcut: augmentOverlayShortcut.value
         }
       }
@@ -273,26 +219,12 @@ export const useSettingsStore = defineStore(
         careerBackground.value = settings.game.careerBackground || ''
         autoRefreshData.value = settings.game.autoRefreshData ?? true
         refreshInterval.value = settings.game.refreshInterval || 30000
-        const mode =
-          (settings.game as { lastMatchMode?: string; defaultMatchMode?: string }).lastMatchMode ??
-          (settings.game as { defaultMatchMode?: string }).defaultMatchMode
-        if (typeof mode === 'string' && isMatchModeKey(mode)) {
-          setLastMatchMode(mode)
-        } else if (Array.isArray(settings.game.defaultQueueTypes)) {
-          const queues = settings.game.defaultQueueTypes
-          if (queues.length === 0) setLastMatchMode('all')
-          else if (queues.length === 2 && queues.includes(420) && queues.includes(440)) {
-            setLastMatchMode('mixedRanked')
-          } else if (queues.length === 1) setLastMatchMode(String(queues[0]) as MatchModeKey)
-          else setDefaultQueueTypes(queues)
-        }
-        applyDefaultFilterOnSearch.value = settings.game.applyDefaultFilterOnSearch ?? true
-        rememberMatchPreferences.value =
-          (settings.game as { rememberMatchPreferences?: boolean }).rememberMatchPreferences ?? true
-        const count =
-          (settings.game as { lastMatchCount?: number; defaultMatchCount?: number }).lastMatchCount ??
-          (settings.game as { defaultMatchCount?: number }).defaultMatchCount
-        if (typeof count === 'number') setLastMatchCount(count)
+        const category = (settings.game as { lastPerformanceCategory?: string }).lastPerformanceCategory
+        const rankedScope = (settings.game as { lastRankedScope?: string }).lastRankedScope
+        setPerformanceScope({
+          category: normalizePerformanceCategory(category ?? 'ranked'),
+          rankedScope: normalizeRankedScope(rankedScope ?? 'mixed')
+        })
         const shortcut = (settings.game as { augmentOverlayShortcut?: string }).augmentOverlayShortcut
         if (typeof shortcut === 'string') setAugmentOverlayShortcut(shortcut)
       }
@@ -320,16 +252,13 @@ export const useSettingsStore = defineStore(
       careerBackground,
       autoRefreshData,
       refreshInterval,
-      rememberMatchPreferences,
-      lastMatchMode,
-      lastMatchCount,
-      allowedMatchCounts,
-      defaultQueueTypes,
-      applyDefaultFilterOnSearch,
+      lastPerformanceCategory,
+      lastRankedScope,
       augmentOverlayShortcut,
 
       // 计算属性
       themeConfig,
+      performanceScope,
 
       // 主题方法
       setColor,
@@ -349,11 +278,7 @@ export const useSettingsStore = defineStore(
       setCareerBackground,
       setAutoRefreshData,
       setRefreshInterval,
-      setRememberMatchPreferences,
-      setLastMatchMode,
-      setLastMatchCount,
-      setDefaultQueueTypes,
-      setApplyDefaultFilterOnSearch,
+      setPerformanceScope,
       setAugmentOverlayShortcut,
       resetAllSettings,
       exportSettings,

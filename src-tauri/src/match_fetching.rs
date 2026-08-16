@@ -10,7 +10,7 @@ pub use crate::infrastructure::match_management::matches::fetch_types::{
     TimelineStatus,
 };
 pub use crate::infrastructure::match_management::matches::fetcher::{
-    MatchDataSource, MatchFetcher, DEFAULT_MATCH_LIST_COUNT, DEFAULT_TIMELINE_CACHE_TTL, LCU_MATCH_LIST_MAX_COUNT,
-    MAX_CONCURRENT_MATCH_FETCHES,
+    MatchDataSource, MatchFetcher, DEFAULT_MATCH_LIST_COUNT, DEFAULT_TIMELINE_CACHE_TTL,
+    FILTERED_MATCH_LIST_SCAN_COUNT, LCU_MATCH_LIST_MAX_COUNT, MAX_CONCURRENT_MATCH_FETCHES,
 };
 pub use crate::infrastructure::match_management::matches::timeline_cache::{Clock, SystemClock, TimelineCache};

@@ -1,102 +1,50 @@
-<template>
-  <div class="flex flex-col gap-6">
-    <!-- 空态 -->
-    <div v-if="!currentResult" class="flex min-h-[calc(100dvh-12rem)] flex-col items-center justify-center gap-4">
-      <div class="space-y-1 text-center">
-        <h1 class="text-lg font-medium text-foreground">战绩查询</h1>
-        <p class="text-sm text-muted-foreground">输入召唤师名称，查看近期表现与位置倾向</p>
-      </div>
-      <SummonerSearchBox v-model:summoner-name="searchText" show-history :loading="loading" @on-search="onSearch" />
-      <label class="mx-auto flex max-w-xl cursor-pointer items-center gap-2 px-0.5 text-xs text-muted-foreground">
-        <Switch :model-value="applyDefaultFilterOnSearch" @update:model-value="setApplyDefaultFilterOnSearch" />
-        <span>
-          查询时跟随仪表盘模式
-          <span class="text-muted-foreground/80">（当前：{{ dashboardModeLabel }}）</span>
-        </span>
-      </label>
-    </div>
-
-    <!-- 有结果：对齐仪表盘主路径 -->
-    <template v-else>
-      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-        <SummonerSearchBox
-          v-model:summoner-name="searchText"
-          compact
-          class="min-w-0 flex-1"
-          :loading="loading"
-          @on-search="onSearch"
-        />
-        <label class="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-          <Switch :model-value="applyDefaultFilterOnSearch" @update:model-value="setApplyDefaultFilterOnSearch" />
-          <span>
-            跟随仪表盘
-            <span class="text-muted-foreground/80">（{{ dashboardModeLabel }}）</span>
-          </span>
-        </label>
-      </div>
-
-      <div v-if="names.length > 1" class="surface-chip flex flex-wrap items-center gap-1 p-1">
-        <button
-          v-for="(name, idx) in names"
-          :key="name"
-          type="button"
-          class="rounded-lg px-3 py-1.5 text-sm font-medium outline-none transition-colors focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-          :class="
-            idx === currentIndex
-              ? 'bg-primary/15 text-primary'
-              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-          "
-          @click="currentIndex = idx"
-        >
-          {{ name }}
-        </button>
-      </div>
-
-      <CompactProfileHeader
-        :summoner-info="currentResult.summonerInfo"
-        :today-matches="emptyTodayMatches"
-        :solo-rank="soloRank"
-        :flex-rank="flexRank"
-        :show-today="false"
-      />
-
-      <GameStats
-        :is-connected="isConnected"
-        :match-history-loading="loading"
-        :match-statistics="filteredCurrentMatches || currentResult.matches"
-        :ranked-stats="searchPositionAnalysis?.rankedStats"
-        :other-stats="searchPositionAnalysis?.otherStats"
-        :position-stats="searchPositionAnalysis?.positionStats"
-        :main-position="searchPositionAnalysis?.mainPosition"
-        :display-games="(filteredCurrentMatches || currentResult.matches)?.totalGames"
-        @fetch-match-history="onSearch"
-      />
-    </template>
-  </div>
-</template>
-
-<script lang="ts" setup>
+<script setup lang="ts">
+import { computed, inject } from 'vue'
 import { appContextKey, type AppContext } from '@/types'
 import CompactProfileHeader from '@/features/dashboard/components/CompactProfileHeader.vue'
-import { getMatchModeLabel } from '@/common/queueCatalog'
+import GameDetailDialog from '@/features/dashboard/components/detail/GameDetailDialog.vue'
+import SummonerPerformancePanel from '@/features/summoner-performance/SummonerPerformancePanel.vue'
+import { useSummonerAnalysisQuery } from '@/features/summoner-performance/composables/useSummonerAnalysisQuery'
 import { buildSummonerRankPresentation } from '@/shared/utils/summonerRankPresentation'
-import { storeToRefs } from 'pinia'
+import type { PerformanceScope } from '@/common/performanceScope'
 
 const { isConnected } = inject(appContextKey) as AppContext
-
 const settingsStore = useSettingsStore()
-const { applyDefaultFilterOnSearch, lastMatchMode } = storeToRefs(settingsStore)
-const { setApplyDefaultFilterOnSearch } = settingsStore
-const dashboardModeLabel = computed(() => getMatchModeLabel(lastMatchMode.value))
+const performanceScope = computed<PerformanceScope>({
+  get: () => settingsStore.performanceScope,
+  set: (scope) => settingsStore.setPerformanceScope(scope)
+})
 
-const { onSearch, currentIndex, names, searchText, loading, currentResult, filteredCurrentMatches } = useSearchMatches()
+const {
+  onSearch,
+  currentIndex,
+  names,
+  searchText,
+  loading: identityLoading,
+  error: identityError,
+  currentResult,
+  result
+} = useSearchMatches()
+const analysisQuery = useSummonerAnalysisQuery({
+  puuid: () => currentResult.value?.puuid,
+  scope: performanceScope,
+  enabled: () => !!currentResult.value
+})
 
-const searchPositionAnalysis = computed(() => currentResult.value?.positionAnalysis ?? null)
-
+const analysis = computed(() => analysisQuery.data.value ?? null)
+const loading = computed(() => identityLoading.value || analysisQuery.isFetching.value)
+const analysisError = computed(() => {
+  const cause = analysisQuery.error.value
+  return cause instanceof Error ? cause.message : cause ? String(cause) : ''
+})
+const errorMessage = computed(() => identityError.value || analysisError.value)
 const emptyTodayMatches = { total: 0, wins: 0, losses: 0 }
+const dialogOpen = ref(false)
+const selectedGame = ref<MatchPerformance | null>(null)
+const selectedGamePuuid = ref<string | null>(null)
 
 const soloRank = computed(() => {
-  const info = currentResult.value?.summonerInfo
+  const info = currentResult.value
   return buildSummonerRankPresentation({
     tier: info?.soloRankTier,
     division: info?.soloRankDivision,
@@ -107,7 +55,7 @@ const soloRank = computed(() => {
 })
 
 const flexRank = computed(() => {
-  const info = currentResult.value?.summonerInfo
+  const info = currentResult.value
   return buildSummonerRankPresentation({
     tier: info?.flexRankTier,
     division: info?.flexRankDivision,
@@ -116,4 +64,102 @@ const flexRank = computed(() => {
     losses: info?.flexRankLosses
   })
 })
+
+function resultLabel(index: number): string {
+  return result.value[index]?.displayName || names.value[index] || `召唤师 ${index + 1}`
+}
+
+function openGameDetail(game: MatchPerformance, puuid = currentResult.value?.puuid ?? '') {
+  const normalizedPuuid = puuid.trim()
+  if (!normalizedPuuid) return
+  selectedGame.value = game
+  selectedGamePuuid.value = normalizedPuuid
+  dialogOpen.value = true
+}
+
+watch(
+  () => currentResult.value?.puuid ?? null,
+  (puuid, previousPuuid) => {
+    if (!dialogOpen.value || puuid === previousPuuid) return
+    dialogOpen.value = false
+    selectedGame.value = null
+    selectedGamePuuid.value = null
+  }
+)
 </script>
+
+<template>
+  <div class="flex flex-col gap-6">
+    <div v-if="!currentResult" class="flex min-h-[calc(100dvh-12rem)] flex-col items-center justify-center gap-4">
+      <div class="space-y-1 text-center">
+        <h1 class="text-lg font-medium text-foreground">战绩查询</h1>
+        <p class="text-sm text-muted-foreground">输入召唤师名称，使用与仪表板相同的分析标准查看表现</p>
+      </div>
+      <SummonerSearchBox
+        v-model:summoner-name="searchText"
+        show-history
+        :loading="identityLoading"
+        @on-search="onSearch"
+      />
+      <p v-if="identityError" class="max-w-xl text-center text-sm text-destructive">{{ identityError }}</p>
+    </div>
+
+    <template v-else>
+      <SummonerSearchBox
+        v-model:summoner-name="searchText"
+        compact
+        class="min-w-0"
+        :loading="identityLoading"
+        @on-search="onSearch"
+      />
+
+      <div v-if="result.length > 1" class="surface-chip flex flex-wrap items-center gap-1 p-1" role="tablist">
+        <button
+          v-for="(_, index) in result"
+          :key="result[index]?.puuid || index"
+          type="button"
+          role="tab"
+          :aria-selected="index === currentIndex"
+          class="rounded-lg px-3 py-1.5 text-sm font-medium outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50"
+          :class="
+            index === currentIndex
+              ? 'bg-primary/15 text-primary'
+              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+          "
+          @click="currentIndex = index"
+        >
+          {{ resultLabel(index) }}
+        </button>
+      </div>
+
+      <CompactProfileHeader
+        :summoner-info="currentResult"
+        :today-matches="emptyTodayMatches"
+        :solo-rank="soloRank"
+        :flex-rank="flexRank"
+        :show-today="false"
+      />
+
+      <SummonerPerformancePanel
+        :is-connected="isConnected"
+        :match-history-loading="loading"
+        :error="errorMessage"
+        :match-statistics="analysis?.overallStats ?? null"
+        :analysis-traits="analysis?.traits"
+        :position-stats="analysis?.positionStats"
+        :main-position="analysis?.mainPosition"
+        :scope="performanceScope"
+        @scope-change="performanceScope = $event"
+        @fetch-match-history="analysisQuery.refetch()"
+        @open-game-detail="openGameDetail"
+      />
+    </template>
+
+    <GameDetailDialog
+      v-model:visible="dialogOpen"
+      :selected-game="selectedGame"
+      :analysis-puuid="selectedGamePuuid"
+      @open-game-detail="openGameDetail"
+    />
+  </div>
+</template>

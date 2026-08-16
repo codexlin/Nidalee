@@ -20,8 +20,8 @@ use nidalee_lib::analysis_contract::{
     resolve_analysis_policy, AnalysisDepth, AnalysisMode, AnalysisPolicy, MatchAnalysisRequest,
 };
 use nidalee_lib::match_fetching::{
-    Clock, DetailSource, MatchDataSource, MatchFetcher, TimelineCache, TimelineStatus, LCU_MATCH_LIST_MAX_COUNT,
-    MAX_CONCURRENT_MATCH_FETCHES,
+    Clock, DetailSource, MatchDataSource, MatchFetcher, TimelineCache, TimelineStatus, FILTERED_MATCH_LIST_SCAN_COUNT,
+    LCU_MATCH_LIST_MAX_COUNT, MAX_CONCURRENT_MATCH_FETCHES,
 };
 
 // === 测试夹具 ===
@@ -295,8 +295,8 @@ async fn test_bundles_filtered_by_policy_and_capped_by_effective_count() {
     assert_eq!(list_calls.list.len(), 1, "批量流程仍然只请求一次列表");
     assert_eq!(
         list_calls.list[0],
-        LCU_MATCH_LIST_MAX_COUNT - 1,
-        "有队列过滤时应 over-fetch 到 LCU 上限（endIndex=99）再本地过滤"
+        FILTERED_MATCH_LIST_SCAN_COUNT - 1,
+        "有队列过滤时应扫描最近 50 场候选（endIndex=49）再本地过滤"
     );
     assert_eq!(games_of(&outcome.raw_list).len(), 6, "原始列表响应必须完整保留");
     assert!(
@@ -306,7 +306,7 @@ async fn test_bundles_filtered_by_policy_and_capped_by_effective_count() {
 }
 
 #[tokio::test]
-async fn test_queue_filter_overfetches_to_lcu_cap() {
+async fn test_queue_filter_scans_fifty_candidates() {
     let games: Vec<Value> = (1..=40)
         .map(|id| complete_game(id, if id % 2 == 0 { 420 } else { 450 }))
         .collect();
@@ -319,7 +319,7 @@ async fn test_queue_filter_overfetches_to_lcu_cap() {
         .await
         .expect("批量获取失败");
 
-    assert_eq!(calls.lock().unwrap().list[0], LCU_MATCH_LIST_MAX_COUNT - 1);
+    assert_eq!(calls.lock().unwrap().list[0], FILTERED_MATCH_LIST_SCAN_COUNT - 1);
     assert_eq!(outcome.display_games.len(), 20, "应凑满请求的展示场数");
     assert!(!outcome.insufficient_matches_in_scope);
     assert!(outcome.display_games.iter().all(|g| g["queueId"] == 420));
@@ -327,11 +327,11 @@ async fn test_queue_filter_overfetches_to_lcu_cap() {
 
 #[tokio::test]
 async fn test_queue_filter_marks_insufficient_matches_in_scope() {
-    // 100 场混合历史里只有 3 场单排，请求 20 场展示
-    let mut games: Vec<Value> = (1..=97).map(|id| complete_game(id, 450)).collect();
-    games.push(complete_game(98, 420));
-    games.push(complete_game(99, 420));
-    games.push(complete_game(100, 420));
+    // 最近 50 场混合历史里只有 3 场单排，请求 20 场展示
+    let mut games: Vec<Value> = (1..=47).map(|id| complete_game(id, 450)).collect();
+    games.push(complete_game(48, 420));
+    games.push(complete_game(49, 420));
+    games.push(complete_game(50, 420));
     let source = MockSource::new(games);
     let fetcher = MatchFetcher::new(source);
 

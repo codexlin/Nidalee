@@ -56,7 +56,14 @@
       :selected-player="selectedPlayer"
       :current-result="currentResult"
       :loading="summonerLoading"
-      @refresh="refreshSummoner"
+      @open-game-detail="openGameDetail"
+    />
+
+    <GameDetailDialog
+      v-model:visible="gameDetailOpen"
+      :selected-game="selectedGame"
+      :analysis-puuid="selectedGamePuuid"
+      @open-game-detail="openGameDetail"
     />
   </div>
 </template>
@@ -65,6 +72,7 @@
 import { useMatchAnalysisStore } from './store'
 import type { UIPlayerData } from '@/types/match-analysis'
 import { useSummonerDetailSheet } from '@/features/dashboard/composables/useSummonerDetailSheet'
+import GameDetailDialog from '@/features/dashboard/components/detail/GameDetailDialog.vue'
 import SummonerDetailSheet from '@/features/dashboard/components/detail/SummonerDetailSheet.vue'
 import { usePlayerAnalysisRetry } from './composables/usePlayerAnalysisRetry'
 
@@ -81,13 +89,24 @@ const {
   selectedPlayer,
   currentResult,
   loading: summonerLoading,
-  openByDisplayName,
-  refresh: refreshSummoner
+  openByDisplayName
 } = useSummonerDetailSheet()
 const { isRetrying: isPlayerRetrying, retryPlayer } = usePlayerAnalysisRetry()
+const gameDetailOpen = ref(false)
+const selectedGame = ref<MatchPerformance | null>(null)
+const selectedGamePuuid = ref<string | null>(null)
 
 function handlePlayerDetails(player: UIPlayerData): void {
   void openByDisplayName(player.displayName)
+}
+
+function openGameDetail(game: MatchPerformance, puuid: string): void {
+  const normalizedPuuid = puuid.trim()
+  if (!normalizedPuuid) return
+  showPlayerDetails.value = false
+  selectedGame.value = game
+  selectedGamePuuid.value = normalizedPuuid
+  gameDetailOpen.value = true
 }
 </script>
 

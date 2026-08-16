@@ -1,10 +1,14 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { MatchModeKey } from '@/common/queueCatalog'
+import type { PerformanceScope } from '@/common/performanceScope'
 import { cancelPendingMatchAnalysis, useMatchAnalysis } from '@/shared/composables/game/useMatchAnalysis'
 import { getLatestMatchId, runPostGameRefresh } from '@/shared/composables/game/postGameMatchRefresh'
 
 let updateGeneration = 0
-let activeAccountInitialization: { generation: number; promise: Promise<void> } | null = null
+let activeAccountInitialization: {
+  generation: number
+  targetPuuid: string | null
+  promise: Promise<void>
+} | null = null
 let pendingReadySummoner: SummonerInfo | null = null
 let postGameRefreshGeneration = 0
 let pendingPostGameBaseline: number | null | undefined
@@ -29,6 +33,7 @@ function normalizeSummoner(info: SummonerInfo): SummonerInfo {
  */
 export function useSummonerAndMatchUpdater() {
   const dataStore = useDataStore()
+  const personalAnalysis = usePersonalMatchAnalysisStore()
   const activityStore = useActivityStore()
   const { analyzeMatches } = useMatchAnalysis()
 
@@ -49,6 +54,14 @@ export function useSummonerAndMatchUpdater() {
       try {
         const summonerInfo = normalizeSummoner(await invoke<SummonerInfo>('get_current_summoner'))
         if (generation === updateGeneration && summonerInfo?.puuid) {
+          const expectedPuuid = readyFallback?.puuid?.trim()
+          if (expectedPuuid && summonerInfo.puuid.trim() !== expectedPuuid) {
+            lastError = new Error('current-summoner 尚未切换到已确认账号')
+            continue
+          }
+          if (activeAccountInitialization?.generation === generation && !activeAccountInitialization.targetPuuid) {
+            activeAccountInitialization.targetPuuid = summonerInfo.puuid.trim() || null
+          }
           dataStore.setSummonerInfo(summonerInfo)
           activityStore.addActivity('info', '召唤师信息已更新', 'data')
           return summonerInfo
@@ -76,7 +89,7 @@ export function useSummonerAndMatchUpdater() {
 
   /**
    * 更新战绩信息（单次 analyze_matches）
-   * 无参时与仪表盘共用 settingsStore.lastMatchMode / lastMatchCount
+   * 无参时与仪表盘共用 settingsStore.performanceScope
    */
   const cancelPostGameRefresh = () => {
     postGameRefreshGeneration += 1
@@ -84,14 +97,14 @@ export function useSummonerAndMatchUpdater() {
     activePostGameRefresh = null
   }
 
-  const updateMatchHistory = async (mode?: MatchModeKey, countOverride?: number) => {
+  const updateMatchHistory = async (scope?: PerformanceScope) => {
     cancelPostGameRefresh()
-    return analyzeMatches({ mode, count: countOverride })
+    return analyzeMatches({ scope })
   }
 
   const preparePostGameRefresh = () => {
     postGameRefreshGeneration += 1
-    pendingPostGameBaseline = getLatestMatchId(dataStore.matchStatistics)
+    pendingPostGameBaseline = getLatestMatchId(personalAnalysis.overallStats)
   }
 
   const refreshMatchesAfterGame = (): Promise<void> => {
@@ -129,14 +142,26 @@ export function useSummonerAndMatchUpdater() {
   }
 
   const updateSummonerAndMatches = (readySummoner?: SummonerInfo): Promise<void> => {
+    const normalizedReadySummoner = readySummoner?.puuid ? normalizeSummoner(readySummoner) : null
     if (readySummoner?.puuid) {
-      pendingReadySummoner = normalizeSummoner(readySummoner)
+      pendingReadySummoner = normalizedReadySummoner
     }
 
+    const readyPuuid = normalizedReadySummoner?.puuid?.trim() || null
+    const targetPuuid = readyPuuid || dataStore.summonerInfo?.puuid?.trim() || null
+
     // Connected and current-summoner readiness commonly arrive within the same second. They
-    // describe one account initialization and must join the same request chain.
+    // describe one account initialization. Calls without an explicit ready identity join; once
+    // WS supplies an identity, only an initialization already targeting that PUUID may join.
     if (activeAccountInitialization) {
-      return activeAccountInitialization.promise
+      const activePuuid = activeAccountInitialization.targetPuuid
+      if (!readyPuuid || activePuuid === readyPuuid) {
+        return activeAccountInitialization.promise
+      }
+
+      cancelPendingMatchAnalysis()
+      personalAnalysis.setLoading(false)
+      personalAnalysis.clear()
     }
 
     const generation = ++updateGeneration
@@ -161,7 +186,7 @@ export function useSummonerAndMatchUpdater() {
       await updateMatchHistory()
     })()
 
-    activeAccountInitialization = { generation, promise }
+    activeAccountInitialization = { generation, targetPuuid, promise }
     void promise.finally(() => {
       if (activeAccountInitialization?.generation === generation) {
         activeAccountInitialization = null

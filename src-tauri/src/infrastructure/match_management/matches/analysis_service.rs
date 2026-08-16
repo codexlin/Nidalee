@@ -27,7 +27,7 @@ use crate::domains::analysis::pipeline::{
 };
 use crate::infrastructure::data_services::champion_data::service::get_champion_info;
 use crate::infrastructure::data_services::static_catalog::ensure_static_catalogs;
-use crate::shared::types::{AdvicePerspective, GameAdvice, MultiPositionAnalysis, PlayerMatchStats};
+use crate::shared::types::{AdvicePerspective, GameAdvice, PlayerMatchStats};
 
 use super::fetch_types::FetchStage;
 use super::fetcher::{lcu_fetcher, MatchDataSource, MatchFetcher};
@@ -247,16 +247,6 @@ fn resolve_legacy_queue_filter(
 
 pub fn to_player_match_stats(result: &MatchAnalysisResult) -> PlayerMatchStats {
     result.overall_stats.clone()
-}
-
-pub fn to_multi_position_analysis(result: &MatchAnalysisResult) -> MultiPositionAnalysis {
-    MultiPositionAnalysis {
-        position_stats: result.position_stats.clone(),
-        main_position: result.main_position.clone(),
-        overall_stats: result.overall_stats.clone(),
-        ranked_stats: result.ranked_stats.clone(),
-        other_stats: result.other_stats.clone(),
-    }
 }
 
 pub fn to_legacy_advice(result: &MatchAnalysisResult, fallback_role: Option<&str>) -> Vec<GameAdvice> {

@@ -36,7 +36,10 @@ function markersForTeam(team: TeamInfo | undefined, side: '蓝队' | '红队'): 
 /**
  * 对局详情请求与派生数据：负责 get_game_detail + 旧请求丢弃，不负责弹窗 UI。
  */
-export function useGameDetail(selectedGame: MaybeRefOrGetter<MatchPerformance | null>) {
+export function useGameDetail(
+  selectedGame: MaybeRefOrGetter<MatchPerformance | null>,
+  analysisPuuid: MaybeRefOrGetter<string | null>
+) {
   const activityLogger = useActivityLogger()
   const dataStore = useDataStore()
   const analysisStore = usePersonalMatchAnalysisStore()
@@ -47,8 +50,9 @@ export function useGameDetail(selectedGame: MaybeRefOrGetter<MatchPerformance | 
 
   const gameVersion = computed(() => dataStore.gameVersion)
   const selected = computed(() => toValue(selectedGame))
+  const requestedPuuid = computed(() => toValue(analysisPuuid)?.trim() || null)
 
-  const processPuuid = computed(() => analysisStore.lastPuuid ?? dataStore.summonerInfo?.puuid ?? null)
+  const processPuuid = computed(() => requestedPuuid.value)
 
   const isRankedProcessReview = computed(() => {
     const q = selected.value?.queueId
@@ -58,6 +62,7 @@ export function useGameDetail(selectedGame: MaybeRefOrGetter<MatchPerformance | 
   const cachedMatchEvidence = computed(() => {
     const gameId = selected.value?.gameId
     if (gameId === null || gameId === undefined) return null
+    if (!requestedPuuid.value || requestedPuuid.value !== analysisStore.lastPuuid) return null
     return analysisStore.getMatchEvidence(gameId)
   })
 

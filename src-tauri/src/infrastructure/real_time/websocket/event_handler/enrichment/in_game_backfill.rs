@@ -284,7 +284,10 @@ impl WsEventHandler {
 
                 history_targets.push((enemy_index, info.puuid.clone(), live_player.summoner_name.clone()));
             } else {
-                enemy_player.analysis_status = crate::shared::types::PlayerAnalysisStatus::Unavailable;
+                enemy_player.analysis_status = refresh_failure_status(
+                    enemy_player.analysis.is_some(),
+                    crate::shared::types::PlayerAnalysisStatus::Unavailable,
+                );
                 log::warn!(
                     "Could not find detailed summoner info for '{}'.",
                     live_player.summoner_name

@@ -22,10 +22,22 @@ fn lcu_log_path_redacts_uuid_segments() {
 
 #[test]
 fn lcu_log_path_preserves_non_identifier_query_values() {
-    let path = "/lol-match-history/v1/products/lol/c69b0edb-fbe6-5d0a-8eb0-8b36bb977a98/matches?begIndex=0&endIndex=49";
+    let path = concat!(
+        "/lol-match-history/v1/",
+        "products/",
+        "lol/",
+        "c69b0edb-fbe6-5d0a-8eb0-8b36bb977a98/matches?begIndex=0&",
+        "endIndex=49"
+    );
     assert_eq!(
         redact_lcu_path(path),
-        "/lol-match-history/v1/products/lol/<puuid>/matches?begIndex=0&endIndex=49"
+        concat!(
+            "/lol-match-history/v1/",
+            "products/",
+            "lol/",
+            "<puuid>/matches?begIndex=0&",
+            "endIndex=49"
+        )
     );
 }
 

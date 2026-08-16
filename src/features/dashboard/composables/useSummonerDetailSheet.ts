@@ -17,12 +17,6 @@ export function useSummonerDetailSheet() {
     await fetchSummonerInfo([displayName])
   }
 
-  async function refresh() {
-    const displayName = selectedPlayer.value?.displayName
-    if (!displayName || displayName === '未知玩家' || displayName === '未知召唤师') return
-    await fetchSummonerInfo([displayName])
-  }
-
   async function openFromParticipant(participant: ParticipantInfo) {
     await openByDisplayName(participant.summonerName)
   }
@@ -39,7 +33,6 @@ export function useSummonerDetailSheet() {
     currentResult,
     loading,
     openByDisplayName,
-    refresh,
     openFromParticipant
   }
 }

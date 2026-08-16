@@ -7,6 +7,5 @@
 
 pub use crate::infrastructure::match_management::matches::analysis_service::{
     analyze_matches_with_fetcher, legacy_analysis_request, legacy_overview_request, tactical_advice_request,
-    to_legacy_advice, to_multi_position_analysis, to_player_match_stats, LEGACY_MAX_ANALYSIS_GAMES,
-    TACTICAL_ADVICE_GAME_COUNT,
+    to_legacy_advice, to_player_match_stats, LEGACY_MAX_ANALYSIS_GAMES, TACTICAL_ADVICE_GAME_COUNT,
 };

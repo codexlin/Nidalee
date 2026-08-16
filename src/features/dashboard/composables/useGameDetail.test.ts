@@ -104,7 +104,9 @@ describe('useGameDetail request lifecycle', () => {
     invokeMock.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
 
     const selectedGame = ref<MatchPerformance | null>(game(101))
-    const { loading, gameDetailData } = useGameDetail(selectedGame)
+    const analysisPuuid = ref<string | null>('searched-player')
+    const { loading, gameDetailData, processPuuid } = useGameDetail(selectedGame, analysisPuuid)
+    expect(processPuuid.value).toBe('searched-player')
     await nextTick()
 
     selectedGame.value = game(202)
@@ -125,7 +127,7 @@ describe('useGameDetail request lifecycle', () => {
   it('清空选中对局时重置详情状态', async () => {
     invokeMock.mockResolvedValueOnce(detail(303))
     const selectedGame = ref<MatchPerformance | null>(game(303))
-    const { loading, gameDetailData } = useGameDetail(selectedGame)
+    const { loading, gameDetailData } = useGameDetail(selectedGame, ref('local-puuid'))
     await nextTick()
     await Promise.resolve()
     await nextTick()

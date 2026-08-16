@@ -21,7 +21,6 @@ use nidalee_lib::analysis_contract::{
 };
 use nidalee_lib::match_analysis::{
     analyze_matches_with_fetcher, legacy_analysis_request, legacy_overview_request, tactical_advice_request,
-    to_multi_position_analysis,
 };
 use nidalee_lib::match_fetching::{MatchDataSource, MatchFetcher};
 
@@ -597,39 +596,6 @@ async fn test_advice_is_evidence_backed_and_respects_perspective() {
             .any(|a| a.title.contains("补刀") || a.problem.contains("补刀")),
         "TOP 位置维度必须产出补刀建议，实际 {:?}",
         top.stats.advice
-    );
-}
-
-// === 9. 新旧入口：同一份数据结论一致 ===
-
-#[tokio::test]
-async fn test_legacy_views_are_lossless_projections_of_the_single_result() {
-    let specs: Vec<GameSpec> = (1..=6).map(GameSpec::ranked).collect();
-    let (result, _) = analyze(MockSource::from_specs(&specs), &ranked_request(6)).await;
-
-    let multi_position = to_multi_position_analysis(&result);
-
-    assert_eq!(
-        multi_position.overall_stats.total_games,
-        result.overall_stats.total_games
-    );
-    assert_eq!(multi_position.overall_stats.win_rate, result.overall_stats.win_rate);
-    assert_eq!(multi_position.main_position, result.main_position);
-    assert_eq!(multi_position.position_stats.len(), result.position_stats.len());
-    assert_eq!(
-        multi_position.overall_stats.recent_performance.len(),
-        result.matches.len(),
-        "旧的 recent_performance 与新的 matches 是同一批展示对局"
-    );
-    assert_eq!(
-        multi_position.ranked_stats.as_ref().map(|s| s.total_games),
-        result.ranked_stats.as_ref().map(|s| s.total_games),
-        "投影必须保留排位桶"
-    );
-    assert_eq!(
-        multi_position.other_stats.as_ref().map(|s| s.total_games),
-        result.other_stats.as_ref().map(|s| s.total_games),
-        "投影必须保留其他桶"
     );
 }
 

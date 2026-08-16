@@ -10,7 +10,6 @@ mod overview;
 mod process_review;
 
 pub use detail::get_game_detail_logic;
-pub use overview::get_recent_matches_by_puuid;
 pub use process_review::get_game_process_review_logic;
 
 #[cfg(debug_assertions)]
