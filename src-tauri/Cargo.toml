@@ -1,6 +1,6 @@
 [package]
 name = "nidalee"
-version = "2.0.0"
+version = "1.0.0"
 description = "Nidalee - 高性能、体积小巧的智能英雄联盟游戏助手"
 authors = ["Nidalee Team <team@nidalee.com>"]
 license = "CC-BY-NC-SA-4.0"
