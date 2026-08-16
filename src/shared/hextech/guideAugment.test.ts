@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { groupAugmentsByRarity, groupAugmentsByTier, normalizeRarityKey, filterRecommendedAugments, type HextechGuideAugment } from './guideAugment'
+import {
+  groupAugmentsByRarity,
+  groupAugmentsByTier,
+  normalizeRarityKey,
+  filterRecommendedAugments,
+  type HextechGuideAugment
+} from './guideAugment'
 
-function augment(partial: Partial<HextechGuideAugment> & Pick<HextechGuideAugment, 'id' | 'name'>): HextechGuideAugment {
+function augment(
+  partial: Partial<HextechGuideAugment> & Pick<HextechGuideAugment, 'id' | 'name'>
+): HextechGuideAugment {
   return {
     iconUrl: '',
     rarityName: '',

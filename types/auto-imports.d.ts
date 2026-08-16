@@ -12,6 +12,7 @@ declare global {
   const cancelPendingMatchAnalysis: typeof import('../src/shared/composables/game/useMatchAnalysis')['cancelPendingMatchAnalysis']
   const computed: typeof import('vue')['computed']
   const createApp: typeof import('vue')['createApp']
+  const createAppUpdater: typeof import('../src/shared/composables/app/useAppUpdater')['createAppUpdater']
   const createPinia: typeof import('pinia')['createPinia']
   const customRef: typeof import('vue')['customRef']
   const defineAsyncComponent: typeof import('vue')['defineAsyncComponent']
@@ -80,6 +81,7 @@ declare global {
   const useApp: typeof import('../src/shared/composables/app/useApp')['useApp']
   const useAppEvents: typeof import('../src/shared/composables/app/useAppEvents')['useAppEvents']
   const useAppInitialization: typeof import('../src/shared/composables/app/useAppInitialization')['useAppInitialization']
+  const useAppUpdater: typeof import('../src/shared/composables/app/useAppUpdater')['useAppUpdater']
   const useAttrs: typeof import('vue')['useAttrs']
   const useAutoBuild: typeof import('../src/shared/composables/game/useAutoBuild')['useAutoBuild']
   const useAutoFunctionStore: typeof import('../src/shared/stores/features/autoFunctionStore')['useAutoFunctionStore']
@@ -143,6 +145,9 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { AppUpdaterPhase } from '../src/shared/composables/app/useAppUpdater'
+  import('../src/shared/composables/app/useAppUpdater')
   // @ts-ignore
   export type { PostGameRefreshOutcome } from '../src/shared/composables/game/postGameMatchRefresh'
   import('../src/shared/composables/game/postGameMatchRefresh')

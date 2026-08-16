@@ -20,6 +20,8 @@
     "core:window:allow-set-position",
     "core:window:allow-set-always-on-top",
     "log:default",
-    "store:default"
+    "store:default",
+    "process:default",
+    "updater:default"
   ]
 }

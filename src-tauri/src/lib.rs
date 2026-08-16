@@ -43,6 +43,8 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(infrastructure::data_services::external::ai::commands::AiSettingsState::default())
         .setup(app::setup_app)
         .invoke_handler(tauri::generate_handler![

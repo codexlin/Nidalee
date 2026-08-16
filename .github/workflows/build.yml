@@ -1,10 +1,11 @@
-name: 🚀 Build and Test
+name: Build and Test
 
 on:
   push:
-    branches: [release-v3-dev]
+    branches: [main, release-v3-dev]
   pull_request:
-    branches: [release-v3-dev]
+    branches: [main, release-v3-dev]
+  workflow_dispatch:
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
@@ -18,210 +19,174 @@ env:
   RUST_BACKTRACE: 1
   NODE_VERSION: '22.23.2'
   PNPM_VERSION: '10.34.5'
+  RUST_VERSION: '1.97.1'
   RUST_MSRV: '1.88.0'
 
 jobs:
   frontend-quality:
-    name: 🧪 Frontend quality
+    name: Frontend quality
     runs-on: ubuntu-latest
     steps:
-      - name: 📦 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 📥 Setup pnpm
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: 🟢 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🔍 Lint code
+      - name: Lint
         run: pnpm run lint
 
-      - name: 🎨 Check formatting
+      - name: Check formatting
         run: pnpm run format:check
 
-      - name: 🧩 Type check
+      - name: Type check
         run: pnpm run type-check
 
-      - name: 🧪 Frontend tests
+      - name: Test
         run: pnpm run test
 
-      - name: 🏗️ Build frontend
+      - name: Build frontend
         run: pnpm run build-only
 
   rust-quality:
-    name: 🦀 Rust quality
+    name: Rust quality
     runs-on: windows-latest
     steps:
-      - name: 📦 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🦀 Setup Rust
-        uses: dtolnay/rust-toolchain@1.97.1
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt,clippy
           targets: x86_64-pc-windows-msvc
 
-      - name: 🟢 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: 🗄️ Rust cache
+      - name: Cache Rust build
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: 🎨 Check Rust formatting
+      - name: Check Rust formatting
         working-directory: src-tauri
         run: cargo fmt --all -- --check
 
-      - name: ✅ Cargo check
+      - name: Cargo check
         working-directory: src-tauri
         run: cargo check --all-targets --locked
 
-      - name: 📦 Check release library
+      - name: Check release library
         working-directory: src-tauri
         run: cargo check --release --lib --locked
 
-      - name: 📎 Clippy
+      - name: Clippy
         working-directory: src-tauri
         run: cargo clippy --all-targets --all-features --locked -- -D warnings
 
-      - name: 📎 Clippy release library
+      - name: Clippy release library
         working-directory: src-tauri
         run: cargo clippy --release --lib --locked -- -D warnings
 
-      - name: 🧹 Prepare generated TypeScript contracts
+      - name: Prepare generated TypeScript contracts
         run: node scripts/prepare-types.mjs
 
-      - name: 🧪 Cargo test
+      - name: Test Rust library and integrations
         working-directory: src-tauri
         run: |
           cargo test --lib --locked
           cargo test --test '*' --locked
 
-      - name: 🔄 Sync generated TypeScript contracts
+      - name: Sync generated TypeScript contracts
         run: node scripts/sync-types.mjs
 
-      - name: 🧾 Verify generated TypeScript contracts
+      - name: Verify generated TypeScript contracts
         run: git diff --exit-code -- src/types/global.d.ts
 
   rust-msrv:
-    name: 🦀 Rust MSRV (1.88.0)
+    name: Rust MSRV (${{ env.RUST_MSRV }})
     runs-on: windows-latest
     steps:
-      - name: 📦 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🦀 Setup minimum supported Rust
-        uses: dtolnay/rust-toolchain@1.88.0
+      - name: Setup minimum supported Rust
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_MSRV }}
           targets: x86_64-pc-windows-msvc
 
-      - name: 🗄️ Rust cache
+      - name: Cache Rust build
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
           key: msrv-${{ env.RUST_MSRV }}
 
-      - name: ✅ Check library on MSRV
+      - name: Check library on MSRV
         working-directory: src-tauri
         run: cargo check --lib --locked
 
-  build-tauri:
-    name: 🏗️ Build Tauri App (Windows)
+  package-windows:
+    name: Package Windows app
+    if: github.event_name != 'pull_request'
     needs: [frontend-quality, rust-quality, rust-msrv]
     runs-on: windows-latest
     steps:
-      - name: 📦 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 📥 Setup pnpm
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: 🟢 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: 🦀 Setup Rust
-        uses: dtolnay/rust-toolchain@1.97.1
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
 
-      - name: 🗄️ Rust cache
+      - name: Cache Rust build
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🏗️ Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+      - name: Build signed Windows installer
+        uses: tauri-apps/tauri-action@v1
         env:
           NODE_ENV: production
           VITE_WS_BASE_URL: ${{ vars.WS_BASE_URL }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          args: ''
-
-  build-tauri-mac:
-    name: 🏗️ Build Tauri App (macOS)
-    needs: [frontend-quality, rust-quality, rust-msrv]
-    runs-on: macos-latest
-    steps:
-      - name: 📦 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 📥 Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: 🦀 Setup Rust
-        uses: dtolnay/rust-toolchain@1.97.1
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-
-      - name: 🗄️ Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-
-      - name: 📦 Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: 🏗️ Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          NODE_ENV: production
-          VITE_WS_BASE_URL: ${{ vars.WS_BASE_URL }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
-        with:
-          args: ''
+          args: --bundles msi
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: true
+          uploadWorkflowArtifacts: true
+          workflowArtifactNamePattern: nidalee-[platform]-[version]
