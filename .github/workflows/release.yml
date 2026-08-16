@@ -1,4 +1,4 @@
-name: 🚀 Release (自动构建发布)
+name: Release
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag，例如 v2.1.0'
+        description: 'Release tag, for example v3.0.0'
         required: true
         type: string
 
@@ -23,245 +23,240 @@ env:
   RUST_BACKTRACE: 1
   NODE_VERSION: '22.23.2'
   PNPM_VERSION: '10.34.5'
+  RUST_VERSION: '1.97.1'
   RUST_MSRV: '1.88.0'
   RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   verify:
-    name: ✅ Verify release
+    name: Verify release
     runs-on: windows-latest
     steps:
-      - name: 📦 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: 🏷️ Validate release tag
+      - name: Validate release source and tag
         shell: pwsh
         run: |
           if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
-            throw "Release tag '$env:RELEASE_TAG' must use a semantic version such as v2.1.0"
+            throw "Release tag '$env:RELEASE_TAG' must use semantic versioning such as v3.0.0"
+          }
+          git fetch origin main
+          git merge-base --is-ancestor HEAD origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Releases must be created from a commit contained in main'
           }
 
-      - name: 📥 Setup pnpm
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: 🟢 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: 🦀 Setup Rust
-        uses: dtolnay/rust-toolchain@1.97.1
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt,clippy
           targets: x86_64-pc-windows-msvc
 
-      - name: 🗄️ Rust cache
+      - name: Cache Rust build
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🔍 Lint code
+      - name: Lint
         run: pnpm run lint
 
-      - name: 🎨 Check formatting
+      - name: Check formatting
         run: pnpm run format:check
 
-      - name: 🧩 Type check
+      - name: Type check
         run: pnpm run type-check
 
-      - name: 🧪 Frontend tests
+      - name: Test frontend
         run: pnpm run test
 
-      - name: 🏗️ Build frontend
+      - name: Build frontend
         run: pnpm run build-only
 
-      - name: 🎨 Check Rust formatting
+      - name: Check Rust formatting
         working-directory: src-tauri
         run: cargo fmt --all -- --check
 
-      - name: ✅ Cargo check
+      - name: Cargo check
         working-directory: src-tauri
         run: cargo check --all-targets --locked
 
-      - name: 📦 Check release library
+      - name: Check release library
         working-directory: src-tauri
         run: cargo check --release --lib --locked
 
-      - name: 📎 Clippy
+      - name: Clippy
         working-directory: src-tauri
         run: cargo clippy --all-targets --all-features --locked -- -D warnings
 
-      - name: 📎 Clippy release library
+      - name: Clippy release library
         working-directory: src-tauri
         run: cargo clippy --release --lib --locked -- -D warnings
 
-      - name: 🦀 Install minimum supported Rust
+      - name: Install minimum supported Rust
         run: rustup toolchain install ${{ env.RUST_MSRV }} --profile minimal
 
-      - name: ✅ Check library on MSRV
+      - name: Check library on MSRV
         working-directory: src-tauri
         run: cargo +${{ env.RUST_MSRV }} check --lib --locked
 
-      - name: 🧹 Prepare generated TypeScript contracts
+      - name: Prepare generated TypeScript contracts
         run: node scripts/prepare-types.mjs
 
-      - name: 🧪 Cargo test
+      - name: Test Rust library and integrations
         working-directory: src-tauri
         run: |
           cargo test --lib --locked
           cargo test --test '*' --locked
 
-      - name: 🔄 Sync generated TypeScript contracts
+      - name: Sync generated TypeScript contracts
         run: node scripts/sync-types.mjs
 
-      - name: 🧾 Verify generated TypeScript contracts
+      - name: Verify generated TypeScript contracts
         run: git diff --exit-code -- src/types/global.d.ts
 
-  release:
-    name: Build & Release (Windows)
+  release-windows:
+    name: Build Windows release
     needs: verify
     permissions:
       contents: write
     runs-on: windows-latest
     steps:
-      - name: 📦 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 📥 Setup pnpm
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: 🟢 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: 🦀 Setup Rust
-        uses: dtolnay/rust-toolchain@1.97.1
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
 
-      - name: 🗄️ Rust cache
+      - name: Cache Rust build
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🔧 Apply release version
-        shell: bash
-        run: |
-          node --input-type=module -e '
-            import fs from "node:fs";
-            const version = process.env.RELEASE_TAG.replace(/^v/, "");
-            const packagePath = "package.json";
-            const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
-            packageJson.version = version;
-            fs.writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
-            const configPath = "src-tauri/tauri.conf.json";
-            const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-            config.version = version;
-            fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
-            const cargoPath = "src-tauri/Cargo.toml";
-            const cargo = fs.readFileSync(cargoPath, "utf8");
-            const updatedCargo = cargo.replace(/^version\s*=\s*"[^"]+"/m, `version = "${version}"`);
-            if (updatedCargo === cargo) throw new Error("Cargo package version was not found");
-            fs.writeFileSync(cargoPath, updatedCargo);
-          '
+      - name: Apply release version
+        shell: pwsh
+        run: node scripts/apply-release-version.mjs $env:RELEASE_TAG
 
-      - name: 🏗️ Build and Release
-        uses: tauri-apps/tauri-action@v0
+      - name: Build and upload Windows release
+        uses: tauri-apps/tauri-action@v1
         env:
           NODE_ENV: production
           VITE_WS_BASE_URL: ${{ vars.WS_BASE_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ env.RELEASE_TAG }}
-          releaseName: 'Nidalee ${{ env.RELEASE_TAG }}'
+          releaseName: Nidalee ${{ env.RELEASE_TAG }}
           releaseDraft: true
           prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
-          args: ''
+          generateReleaseNotes: true
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
+          updaterJsonPreferNsis: false
+          args: --bundles msi
 
-  release-mac:
-    name: Build & Release (macOS)
-    needs: verify
+  release-macos:
+    name: Build macOS universal release
+    needs: [verify, release-windows]
     permissions:
       contents: write
     runs-on: macos-latest
     steps:
-      - name: 📦 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 📥 Setup pnpm
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: 🟢 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: 🦀 Setup Rust
-        uses: dtolnay/rust-toolchain@1.97.1
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_VERSION }}
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      - name: 🗄️ Rust cache
+      - name: Cache Rust build
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🔧 Apply release version
-        shell: bash
-        run: |
-          node --input-type=module -e '
-            import fs from "node:fs";
-            const version = process.env.RELEASE_TAG.replace(/^v/, "");
-            const packagePath = "package.json";
-            const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
-            packageJson.version = version;
-            fs.writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
-            const configPath = "src-tauri/tauri.conf.json";
-            const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-            config.version = version;
-            fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
-            const cargoPath = "src-tauri/Cargo.toml";
-            const cargo = fs.readFileSync(cargoPath, "utf8");
-            const updatedCargo = cargo.replace(/^version\s*=\s*"[^"]+"/m, `version = "${version}"`);
-            if (updatedCargo === cargo) throw new Error("Cargo package version was not found");
-            fs.writeFileSync(cargoPath, updatedCargo);
-          '
+      - name: Apply release version
+        run: node scripts/apply-release-version.mjs "$RELEASE_TAG"
 
-      - name: 🏗️ Build and Release
-        uses: tauri-apps/tauri-action@v0
+      - name: Build and upload macOS release
+        uses: tauri-apps/tauri-action@v1
         env:
           NODE_ENV: production
           VITE_WS_BASE_URL: ${{ vars.WS_BASE_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ env.RELEASE_TAG }}
-          releaseName: 'Nidalee ${{ env.RELEASE_TAG }}'
+          releaseName: Nidalee ${{ env.RELEASE_TAG }}
           releaseDraft: true
           prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
-          args: ''
+          generateReleaseNotes: true
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
+          args: --target universal-apple-darwin --bundles dmg
+
+  publish:
+    name: Publish completed release
+    needs: [release-windows, release-macos]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false
