@@ -20,7 +20,7 @@
 - Live team analysis driven by League Client and LiveClient data.
 - Summoner search and match detail inspection.
 - A build center with OP.GG recommendations and personal rune presets.
-- Auto accept, champion pick/ban and supported-queue rune application.
+- Match-ready assistance, champion selection support and rune setup for supported queues.
 - A lightweight in-game augment side panel.
 
 The Rust backend owns League Client communication, session state and analysis. The Vue frontend consumes typed commands/events and focuses on interaction and presentation.
