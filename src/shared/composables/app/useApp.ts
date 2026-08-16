@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { useAppUpdater } from '@/shared/composables/app/useAppUpdater'
 import { isOverlayWindow } from '@/shared/utils/overlayWindow'
 import { DEFAULT_OVERLAY_SHORTCUT } from '@/shared/utils/accelerator'
 
@@ -21,6 +22,7 @@ export function useApp() {
   const settingsStore = useSettingsStore()
   const appInit = useAppInitialization()
   const appEvents = useAppEvents()
+  const appUpdater = useAppUpdater()
   const buildPresetStore = useBuildPresetStore()
   const autoBuild = useAutoBuild()
   const { isConnected, connectionMessage, checkConnection, hasAuth } = useConnection()
@@ -42,6 +44,10 @@ export function useApp() {
     const generation = ++nextLifecycleGeneration
     instanceGeneration = generation
     activeLifecycleGeneration = generation
+
+    // Update discovery is independent from the League client lifecycle. A failed
+    // LCU initialization must not prevent users from receiving a fixed build.
+    void appUpdater.checkForUpdates({ silent: true })
 
     try {
       const listenersReady = await appEvents.startListening()

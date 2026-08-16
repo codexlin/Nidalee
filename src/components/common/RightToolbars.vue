@@ -1,5 +1,7 @@
 <template>
   <div class="flex items-center gap-1.5">
+    <AppUpdateButton />
+
     <NotificationHoverCard title="系统活动" side="bottom" align="end" />
 
     <FloatIconButton
@@ -24,6 +26,7 @@
 <script setup lang="ts">
 import { Github, Moon, RefreshCw, Sun } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import AppUpdateButton from '@/components/common/AppUpdateButton.vue'
 import FloatIconButton from '@/components/common/FloatIconButton.vue'
 
 const activityLogger = useActivityLogger()

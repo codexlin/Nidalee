@@ -8,12 +8,12 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1422",
     "beforeDevCommand": "",
-    "beforeBuildCommand": "pnpm build"
+    "beforeBuildCommand": "pnpm build-only"
   },
   "app": {
     "windows": [
       {
-        "title": "Nidalee - 高性能、体积小巧的智能英雄联盟游戏助手",
+        "title": "Nidalee - 英雄联盟游戏助手",
         "width": 1280,
         "height": 900,
         "minWidth": 1024,
@@ -48,7 +48,7 @@
     }
   },
   "bundle": {
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "active": true,
     "targets": ["msi", "dmg"],
     "icon": [
@@ -63,10 +63,10 @@
       "../src/assets/fonts/harmonyos-sans-sc/LICENSE.txt": "licenses/HarmonyOS-Sans-SC-LICENSE.txt"
     },
     "externalBin": [],
-    "copyright": "Copyright © 2024 Nidalee Team. All rights reserved.",
+    "copyright": "Copyright © 2024-2026 Nidalee Team. All rights reserved.",
     "category": "Game",
-    "shortDescription": "高性能、体积小巧的智能英雄联盟游戏助手",
-    "longDescription": "Nidalee 是一个高性能、体积小巧的智能英雄联盟游戏助手，提供实时游戏数据分析、自动化功能和个性化设置。",
+    "shortDescription": "高性能、轻量的英雄联盟游戏助手",
+    "longDescription": "Nidalee 提供实时对局分析、自动构建、战绩查询和个性化游戏辅助功能。",
     "publisher": "Nidalee Team",
     "homepage": "https://github.com/codexlin/Nidalee",
     "licenseFile": "../LICENSE",
@@ -81,6 +81,15 @@
     }
   },
   "plugins": {
-    "dialog": null
+    "dialog": null,
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE4RDMzMTg2OTA4MTZBMkIKUldRcmFvR1FoakhUR0hncUtoakkwV0t4V2pEVU5jM1hXbGRiNVJQSUpXRGY1K1ZZaFkwNCs2RGkK",
+      "endpoints": [
+        "https://github.com/codexlin/Nidalee/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
