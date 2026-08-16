@@ -43,11 +43,7 @@ watch(
 </script>
 
 <template>
-  <div
-    v-if="isOverlayShell"
-    id="app"
-    class="h-screen overflow-hidden bg-transparent"
-  >
+  <div v-if="isOverlayShell" id="app" class="h-screen overflow-hidden bg-transparent">
     <router-view />
   </div>
   <div v-else id="app" class="flex h-screen flex-col overflow-hidden bg-background">
