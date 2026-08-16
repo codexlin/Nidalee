@@ -26,20 +26,23 @@ pub fn ensure_window(app: &AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    let window = WebviewWindowBuilder::new(app, SIDE_PANEL_LABEL, WebviewUrl::App("/augment-side-panel".into()))
+    let builder = WebviewWindowBuilder::new(app, SIDE_PANEL_LABEL, WebviewUrl::App("/augment-side-panel".into()))
         .title("海克斯推荐")
         .inner_size(SIDE_WIDTH, SIDE_HEIGHT)
         .decorations(false)
-        .transparent(true)
         .always_on_top(true)
         .skip_taskbar(true)
         .focused(false)
         .visible(false)
         .shadow(false)
         .resizable(false)
-        .initialization_script(SIDE_BOOTSTRAP)
-        .build()
-        .map_err(|e| format!("创建海克斯推荐失败: {e}"))?;
+        .initialization_script(SIDE_BOOTSTRAP);
+
+    // macOS transparency requires Tauri's private API feature, which is unsuitable for public distribution.
+    #[cfg(not(target_os = "macos"))]
+    let builder = builder.transparent(true);
+
+    let window = builder.build().map_err(|e| format!("创建海克斯推荐失败: {e}"))?;
 
     if let Ok(Some(monitor)) = app.primary_monitor() {
         let area = monitor.work_area();
