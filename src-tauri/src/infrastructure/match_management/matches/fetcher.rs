@@ -337,9 +337,7 @@ fn count_to_lcu_end_index(count: usize) -> usize {
 /// 有队列过滤时扫描最近 50 场候选，尽量在本地凑满展示场数；无过滤则按目标场数请求。
 fn resolve_list_fetch_count(policy: &AnalysisPolicy, display_target: usize) -> usize {
     if policy.has_queue_filter() {
-        display_target
-            .max(FILTERED_MATCH_LIST_SCAN_COUNT)
-            .min(LCU_MATCH_LIST_MAX_COUNT)
+        display_target.clamp(FILTERED_MATCH_LIST_SCAN_COUNT, LCU_MATCH_LIST_MAX_COUNT)
     } else {
         display_target
     }

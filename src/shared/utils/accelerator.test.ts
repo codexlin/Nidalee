@@ -22,9 +22,9 @@ describe('eventToAccelerator', () => {
   })
 
   it('maps F8 without modifiers', () => {
-    expect(eventToAccelerator({ code: 'F8', key: 'F8', ctrlKey: false, altKey: false, shiftKey: false, metaKey: false })).toBe(
-      'F8'
-    )
+    expect(
+      eventToAccelerator({ code: 'F8', key: 'F8', ctrlKey: false, altKey: false, shiftKey: false, metaKey: false })
+    ).toBe('F8')
   })
 
   it('maps Ctrl+Shift+H', () => {
