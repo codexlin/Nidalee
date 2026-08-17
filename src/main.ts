@@ -4,6 +4,10 @@ import router from './router'
 import './style.css'
 import { isOverlayWindow, markOverlayDocument, overlayRoute } from './shared/utils/overlayWindow'
 
+if (import.meta.env.PROD) {
+  document.addEventListener('contextmenu', (event) => event.preventDefault())
+}
+
 /** 挂载前只等 Regular；Medium/Bold 挂载后后台预热，缩短首屏空白 */
 async function warmHarmonyFonts() {
   if (typeof document === 'undefined' || !document.fonts?.load) return
