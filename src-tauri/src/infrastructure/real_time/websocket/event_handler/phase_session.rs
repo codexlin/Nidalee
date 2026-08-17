@@ -39,8 +39,8 @@ impl WsEventHandler {
             }
 
             let result = if has_cache {
-                log::info!("Cache available, starting enemy team backfill...");
-                handler.backfill_enemy_team_data(generation).await
+                log::info!("Cache available, starting in-game roster backfill...");
+                handler.backfill_team_data(generation).await
             } else {
                 log::info!("No cache, building team data from scratch...");
                 handler.build_team_data_from_scratch(generation).await

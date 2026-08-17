@@ -5,14 +5,56 @@ use tauri::Emitter;
 
 use super::super::WsEventHandler;
 use super::identity::{
-    apply_confirmed_bot_identity, canonical_riot_id, live_position, resolve_local_live_team, same_riot_id,
-    select_enemy_slot,
+    apply_confirmed_bot_identity, apply_live_player_identity, canonical_riot_id, resolve_local_live_team, same_riot_id,
+    select_team_slot,
 };
-use crate::infrastructure::champion_selection::summoner_spells;
 use crate::infrastructure::data_services::{champion_data, static_catalog};
+use crate::shared::types::{PlayerAnalysisData, PlayerAnalysisStatus, TeamAnalysisData};
 use crate::shared::Result;
 
-const ENEMY_HISTORY_FETCH_CONCURRENCY: usize = 2;
+const HISTORY_FETCH_CONCURRENCY: usize = 2;
+
+#[derive(Clone, Copy)]
+enum TeamSide {
+    Ally,
+    Enemy,
+}
+
+impl TeamSide {
+    fn players<'a>(self, analysis: &'a TeamAnalysisData) -> &'a [PlayerAnalysisData] {
+        match self {
+            Self::Ally => &analysis.my_team,
+            Self::Enemy => &analysis.enemy_team,
+        }
+    }
+
+    fn players_mut(self, analysis: &mut TeamAnalysisData) -> &mut [PlayerAnalysisData] {
+        match self {
+            Self::Ally => &mut analysis.my_team,
+            Self::Enemy => &mut analysis.enemy_team,
+        }
+    }
+}
+
+struct LiveRosterTarget {
+    side: TeamSide,
+    index: usize,
+    champion_id: i32,
+    live_player: crate::shared::types::LiveClientPlayer,
+}
+
+struct HistoryTarget {
+    side: TeamSide,
+    index: usize,
+    puuid: String,
+    display_name: String,
+}
+
+fn needs_ally_identity_backfill(player: &PlayerAnalysisData) -> bool {
+    player.analysis_status == PlayerAnalysisStatus::AwaitingIdentity
+        || player.puuid.as_deref().is_none_or(str::is_empty)
+        || player.display_name.trim().is_empty()
+}
 
 fn refresh_failure_status(
     has_cached_analysis: bool,
@@ -26,12 +68,12 @@ fn refresh_failure_status(
 }
 
 impl WsEventHandler {
-    /// Backfills detailed match history for the enemy team during the 'InProgress' phase.
-    pub(in crate::infrastructure::real_time::websocket::event_handler) async fn backfill_enemy_team_data(
+    /// Reconciles cached champion-select slots with the authoritative in-game roster.
+    pub(in crate::infrastructure::real_time::websocket::event_handler) async fn backfill_team_data(
         &self,
         generation: u64,
     ) -> Result<()> {
-        log::info!("开始补全敌方阵容数据");
+        log::info!("开始补全对局双方阵容数据");
 
         if !self.cache.read().await.can_commit_in_game_recovery(generation) {
             return Ok(());
@@ -39,7 +81,7 @@ impl WsEventHandler {
 
         static_catalog::ensure_static_catalogs()
             .await
-            .map_err(|error| format!("Static catalog is unavailable for enemy backfill: {error}"))?;
+            .map_err(|error| format!("Static catalog is unavailable for in-game backfill: {error}"))?;
 
         if !self.cache.read().await.can_commit_in_game_recovery(generation) {
             return Ok(());
@@ -116,45 +158,62 @@ impl WsEventHandler {
             return Ok(());
         };
 
-        let enemy_live_players: Vec<_> = live_players
-            .into_iter()
-            .filter(|player| player.team != local_team)
-            .collect();
+        let (ally_live_players, enemy_live_players): (Vec<_>, Vec<_>) =
+            live_players.into_iter().partition(|player| player.team == local_team);
 
-        // LiveClient is authoritative once the game starts. Reconcile bots before filtering
-        // real players so an all-bot enemy team still replaces hidden champ-select identities.
-        let mut occupied_enemy_slots = HashSet::new();
-        for live_player in enemy_live_players.iter().filter(|player| player.is_bot) {
-            let Some(champion_id) = champion_data::get_champion_id_by_name(&live_player.champion_name) else {
-                log::warn!("Could not resolve bot champion '{}'.", live_player.champion_name);
-                continue;
-            };
+        // LiveClient is authoritative once the game starts. Enemy players are always refreshed
+        // because their identities were hidden during champion select. Allies are refreshed only
+        // when champion select left an unresolved identity, preserving completed ally analysis.
+        let mut roster_targets = Vec::new();
+        for (side, live_team) in [
+            (TeamSide::Ally, ally_live_players),
+            (TeamSide::Enemy, enemy_live_players),
+        ] {
+            let mut occupied_slots = HashSet::new();
+            for live_player in live_team {
+                let Some(champion_id) = champion_data::get_champion_id_by_name(&live_player.champion_name) else {
+                    log::warn!("Could not resolve champion '{}'.", live_player.champion_name);
+                    continue;
+                };
 
-            let Some(enemy_index) = select_enemy_slot(
-                &team_analysis.enemy_team,
-                &occupied_enemy_slots,
-                live_player,
-                champion_id,
-            ) else {
-                log::warn!(
-                    "Could not match bot '{}' (champion: {}) to the cached enemy roster.",
-                    live_player.summoner_name,
-                    live_player.champion_name
-                );
-                continue;
-            };
+                let Some(index) =
+                    select_team_slot(side.players(&team_analysis), &occupied_slots, &live_player, champion_id)
+                else {
+                    log::warn!(
+                        "Could not match player '{}' (champion: {}) to the cached roster.",
+                        live_player.summoner_name,
+                        live_player.champion_name
+                    );
+                    continue;
+                };
+                occupied_slots.insert(index);
 
-            occupied_enemy_slots.insert(enemy_index);
-            let enemy_player = &mut team_analysis.enemy_team[enemy_index];
-            apply_confirmed_bot_identity(enemy_player, live_player, champion_id);
+                if live_player.is_bot {
+                    apply_confirmed_bot_identity(
+                        &mut side.players_mut(&mut team_analysis)[index],
+                        &live_player,
+                        champion_id,
+                    );
+                    continue;
+                }
+                if live_player.summoner_name.trim().is_empty() {
+                    continue;
+                }
+                if matches!(side, TeamSide::Ally) && !needs_ally_identity_backfill(&side.players(&team_analysis)[index])
+                {
+                    continue;
+                }
+
+                roster_targets.push(LiveRosterTarget {
+                    side,
+                    index,
+                    champion_id,
+                    live_player,
+                });
+            }
         }
 
-        let enemy_live_players: Vec<_> = enemy_live_players
-            .into_iter()
-            .filter(|player| !player.is_bot && !player.summoner_name.is_empty())
-            .collect();
-
-        if enemy_live_players.is_empty() {
+        if roster_targets.is_empty() {
             let mut cache = self.cache.write().await;
             if !cache.can_commit_in_game_recovery(generation) {
                 return Ok(());
@@ -162,17 +221,17 @@ impl WsEventHandler {
             cache.team_analysis_data = Some(team_analysis.clone());
             cache.in_game_recovery_abort = None;
             let _ = self.app.emit("team-analysis-data", &team_analysis);
-            log::info!("Enemy roster contains no real players; confirmed bot identities were published.");
+            log::info!("In-game roster required no player identity enrichment.");
             return Ok(());
         }
 
-        log::info!(
-            "识别到 {} 名真实敌方玩家，开始补全身份、段位与战绩",
-            enemy_live_players.len()
-        );
+        log::info!("识别到 {} 名待补全玩家，开始获取身份、段位与战绩", roster_targets.len());
 
         // 4. Batch fetch summoner info.
-        let player_names: Vec<String> = enemy_live_players.iter().map(|p| p.summoner_name.clone()).collect();
+        let player_names: Vec<String> = roster_targets
+            .iter()
+            .map(|target| target.live_player.summoner_name.clone())
+            .collect();
 
         let summoners_info =
             match crate::infrastructure::data_services::summoner::service::get_summoners_by_names_with_rank(
@@ -182,85 +241,28 @@ impl WsEventHandler {
             .await
             {
                 Ok(info) => {
-                    log::info!("已获取 {} 名敌方玩家的身份与段位", info.len());
+                    log::info!("已获取 {} 名玩家的身份与段位", info.len());
                     info
                 }
                 Err(e) => {
                     log::error!(
-                        "Batch fetch for enemy summoner info failed: {}. Publishing the resolved LiveClient roster without rank/history.",
+                        "Batch fetch for summoner info failed: {}. Publishing the resolved LiveClient roster without rank/history.",
                         e
                     );
                     Vec::new()
                 }
             };
 
-        // 5. Resolve every enemy identity first. The frontend can then show names/ranks while
+        // 5. Resolve every missing identity first. The frontend can then show names/ranks while
         // history requests continue in parallel instead of waiting for the entire team.
         let mut history_targets = Vec::new();
 
-        for live_player in enemy_live_players {
-            // 5.1 Find champion ID by name.
-            let Some(champion_id) = champion_data::get_champion_id_by_name(&live_player.champion_name) else {
-                log::warn!(
-                    "Could not find champion ID for '{}', skipping player.",
-                    live_player.champion_name
-                );
-                continue;
-            };
+        for target in roster_targets {
+            let live_player = target.live_player;
+            let player = &mut target.side.players_mut(&mut team_analysis)[target.index];
+            apply_live_player_identity(player, &live_player, target.champion_id);
 
-            // 5.2 Reconcile the LiveClient identity with the cached champ-select roster.
-            // Some queues expose five fully anonymous slots (no name, PUUID or champion),
-            // so unmatched live players must occupy the remaining anonymous slots.
-            let enemy_index = match select_enemy_slot(
-                &team_analysis.enemy_team,
-                &occupied_enemy_slots,
-                &live_player,
-                champion_id,
-            ) {
-                Some(index) => index,
-                None => {
-                    log::warn!(
-                        "Could not find player '{}' (champion: {}) in cached enemy team, skipping.",
-                        live_player.summoner_name,
-                        live_player.champion_name
-                    );
-                    continue;
-                }
-            };
-            occupied_enemy_slots.insert(enemy_index);
-            let enemy_player = &mut team_analysis.enemy_team[enemy_index];
-
-            // 5.3 Update basic player info.
-            enemy_player.display_name = live_player.summoner_name.clone();
-            enemy_player.analysis_status = crate::shared::types::PlayerAnalysisStatus::Loading;
-            enemy_player.champion_id = Some(champion_id);
-            enemy_player.champion_name = Some(live_player.champion_name.clone());
-            enemy_player.position = live_position(&live_player.position);
-
-            // LiveClient uses localized spell names, while the frontend consumes stable numeric IDs.
-            if let Some(spells) = live_player.summoner_spells.as_object() {
-                // 技能1
-                if let Some(spell_one) = spells.get("summonerSpellOne") {
-                    if let Some(spell_name) = spell_one.get("displayName").and_then(|v| v.as_str()) {
-                        if let Some(spell_id) = summoner_spells::get_spell_id_by_name(spell_name) {
-                            enemy_player.spell1_id = Some(spell_id);
-                            log::trace!("召唤师技能映射 slot=1 name={} id={}", spell_name, spell_id);
-                        }
-                    }
-                }
-
-                // 技能2
-                if let Some(spell_two) = spells.get("summonerSpellTwo") {
-                    if let Some(spell_name) = spell_two.get("displayName").and_then(|v| v.as_str()) {
-                        if let Some(spell_id) = summoner_spells::get_spell_id_by_name(spell_name) {
-                            enemy_player.spell2_id = Some(spell_id);
-                            log::trace!("召唤师技能映射 slot=2 name={} id={}", spell_name, spell_id);
-                        }
-                    }
-                }
-            }
-
-            // 5.4 Find the corresponding summoner info.
+            // 5.1 Find the corresponding summoner info.
             let summoner_info = summoners_info.iter().find(|s| {
                 let full_name = if let (Some(game_name), Some(tag_line)) = (&s.game_name, &s.tag_line) {
                     format!("{}#{}", game_name, tag_line)
@@ -271,23 +273,24 @@ impl WsEventHandler {
             });
 
             if let Some(info) = summoner_info {
-                // 5.5 Update rank, icon, etc.
-                enemy_player.display_name =
+                // 5.2 Update rank, icon, etc.
+                player.display_name =
                     canonical_riot_id(&info.display_name, info.game_name.as_deref(), info.tag_line.as_deref());
-                enemy_player.puuid = Some(info.puuid.clone());
-                crate::infrastructure::match_management::analysis_data::service::apply_rank_summaries(
-                    enemy_player,
-                    info,
-                );
-                enemy_player.profile_icon_id = Some(info.profile_icon_id as i32);
-                enemy_player.tag_line = info.tag_line.clone();
+                player.summoner_id = Some(info.summoner_id.clone());
+                player.puuid = Some(info.puuid.clone());
+                crate::infrastructure::match_management::analysis_data::service::apply_rank_summaries(player, info);
+                player.profile_icon_id = Some(info.profile_icon_id as i32);
+                player.tag_line = info.tag_line.clone();
 
-                history_targets.push((enemy_index, info.puuid.clone(), live_player.summoner_name.clone()));
+                history_targets.push(HistoryTarget {
+                    side: target.side,
+                    index: target.index,
+                    puuid: info.puuid.clone(),
+                    display_name: live_player.summoner_name.clone(),
+                });
             } else {
-                enemy_player.analysis_status = refresh_failure_status(
-                    enemy_player.analysis.is_some(),
-                    crate::shared::types::PlayerAnalysisStatus::Unavailable,
-                );
+                player.analysis_status =
+                    refresh_failure_status(player.analysis.is_some(), PlayerAnalysisStatus::Unavailable);
                 log::warn!(
                     "Could not find detailed summoner info for '{}'.",
                     live_player.summoner_name
@@ -310,47 +313,49 @@ impl WsEventHandler {
         let results = stream::iter(
             history_targets
                 .into_iter()
-                .map(|(index, puuid, display_name)| async move {
+                .map(|target| async move {
                     let result = crate::infrastructure::match_management::analysis_data::service::fetch_realtime_player_analysis_with_retry(
                         &self.client,
-                        &puuid,
+                        &target.puuid,
                         queue_id,
                         is_custom_game,
                     )
                     .await;
-                    (index, puuid, display_name, result)
+                    (target, result)
                 }),
         )
-        .buffer_unordered(ENEMY_HISTORY_FETCH_CONCURRENCY)
+        .buffer_unordered(HISTORY_FETCH_CONCURRENCY)
         .collect::<Vec<_>>()
         .await;
 
         let mut stats_to_cache = Vec::new();
-        for (enemy_index, puuid, display_name, result) in results {
+        let processed_count = results.len();
+        for (target, result) in results {
             match result {
                 Ok(analysis) => {
                     stats_to_cache.push((
                         crate::infrastructure::match_management::analysis_data::service::MatchStatsCacheKey::new(
-                            &puuid,
+                            &target.puuid,
                             queue_id,
                             is_custom_game,
                         ),
                         analysis.clone(),
                     ));
-                    let enemy_player = &mut team_analysis.enemy_team[enemy_index];
+                    let player = &mut target.side.players_mut(&mut team_analysis)[target.index];
                     crate::infrastructure::match_management::analysis_data::service::apply_player_analysis(
-                        enemy_player,
-                        analysis,
-                        queue_id,
+                        player, analysis, queue_id,
                     );
-                    enemy_player.is_bot = false;
-                    log::debug!("敌方玩家分析完成: {}", display_name);
+                    player.is_bot = false;
+                    log::debug!("玩家分析完成: {}", target.display_name);
                 }
                 Err(error) => {
-                    let enemy_player = &mut team_analysis.enemy_team[enemy_index];
-                    enemy_player.analysis_status =
-                        refresh_failure_status(enemy_player.analysis.is_some(), error.status());
-                    log::warn!("Failed to get match history for player '{}': {}", display_name, error);
+                    let player = &mut target.side.players_mut(&mut team_analysis)[target.index];
+                    player.analysis_status = refresh_failure_status(player.analysis.is_some(), error.status());
+                    log::warn!(
+                        "Failed to get match history for player '{}': {}",
+                        target.display_name,
+                        error
+                    );
                 }
             }
         }
@@ -374,10 +379,7 @@ impl WsEventHandler {
         drop(cache);
 
         // 6. Emit the updated data to the frontend.
-        log::info!(
-            "敌方阵容数据补全完成，共处理 {} 名真实玩家",
-            updated_data.enemy_team.iter().filter(|player| !player.is_bot).count()
-        );
+        log::info!("对局双方阵容数据补全完成，共处理 {} 名待补全玩家", processed_count);
 
         Ok(())
     }
@@ -385,8 +387,31 @@ impl WsEventHandler {
 
 #[cfg(test)]
 mod tests {
-    use super::refresh_failure_status;
-    use crate::shared::types::PlayerAnalysisStatus;
+    use super::{needs_ally_identity_backfill, refresh_failure_status};
+    use crate::shared::types::{PlayerAnalysisData, PlayerAnalysisStatus};
+
+    fn ally(status: PlayerAnalysisStatus, puuid: Option<&str>) -> PlayerAnalysisData {
+        PlayerAnalysisData {
+            cell_id: 1,
+            display_name: "ally#CN1".to_owned(),
+            summoner_id: None,
+            puuid: puuid.map(str::to_owned),
+            is_local: false,
+            is_bot: false,
+            analysis_status: status,
+            champion_id: Some(81),
+            champion_name: Some("探险家".to_owned()),
+            champion_pick_intent: None,
+            position: Some("ADC".to_owned()),
+            solo_rank: None,
+            flex_rank: None,
+            profile_icon_id: None,
+            tag_line: None,
+            spell1_id: None,
+            spell2_id: None,
+            analysis: None,
+        }
+    }
 
     #[test]
     fn failed_refresh_keeps_cached_analysis_ready() {
@@ -398,5 +423,17 @@ mod tests {
             refresh_failure_status(false, PlayerAnalysisStatus::Unavailable),
             PlayerAnalysisStatus::Unavailable
         );
+    }
+
+    #[test]
+    fn ally_backfill_targets_only_missing_identity() {
+        assert!(needs_ally_identity_backfill(&ally(
+            PlayerAnalysisStatus::AwaitingIdentity,
+            None
+        )));
+        assert!(!needs_ally_identity_backfill(&ally(
+            PlayerAnalysisStatus::Ready,
+            Some("known-puuid")
+        )));
     }
 }

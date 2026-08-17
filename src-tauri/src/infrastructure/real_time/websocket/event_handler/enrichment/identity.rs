@@ -63,6 +63,21 @@ pub(super) fn apply_confirmed_bot_identity(
     cached_player.analysis = None;
 }
 
+pub(super) fn apply_live_player_identity(
+    cached_player: &mut crate::shared::types::PlayerAnalysisData,
+    live_player: &crate::shared::types::LiveClientPlayer,
+    champion_id: i32,
+) {
+    cached_player.display_name = live_player.summoner_name.clone();
+    cached_player.is_bot = false;
+    cached_player.analysis_status = crate::shared::types::PlayerAnalysisStatus::Loading;
+    cached_player.champion_id = Some(champion_id);
+    cached_player.champion_name = Some(live_player.champion_name.clone());
+    cached_player.position = live_position(&live_player.position);
+    cached_player.spell1_id = live_spell_id(&live_player.summoner_spells, "summonerSpellOne");
+    cached_player.spell2_id = live_spell_id(&live_player.summoner_spells, "summonerSpellTwo");
+}
+
 pub(super) fn live_spell_id(spells: &serde_json::Value, slot: &str) -> Option<i64> {
     spells
         .get(slot)?
@@ -76,29 +91,26 @@ pub(super) fn live_position(position: &str) -> Option<String> {
     (!position.is_empty() && !position.eq_ignore_ascii_case("NONE")).then(|| position.to_owned())
 }
 
-pub(super) fn select_enemy_slot(
-    enemy_team: &[crate::shared::types::PlayerAnalysisData],
+pub(super) fn select_team_slot(
+    team: &[crate::shared::types::PlayerAnalysisData],
     occupied_slots: &HashSet<usize>,
     live_player: &crate::shared::types::LiveClientPlayer,
     champion_id: i32,
 ) -> Option<usize> {
     let available = |index: &usize| !occupied_slots.contains(index);
 
-    enemy_team
-        .iter()
+    team.iter()
         .enumerate()
         .filter(|(index, _)| available(index))
         .find(|(_, player)| same_riot_id(&player.display_name, &live_player.summoner_name))
         .or_else(|| {
-            enemy_team
-                .iter()
+            team.iter()
                 .enumerate()
                 .filter(|(index, _)| available(index))
                 .find(|(_, player)| player.champion_id == Some(champion_id))
         })
         .or_else(|| {
-            enemy_team
-                .iter()
+            team.iter()
                 .enumerate()
                 .filter(|(index, _)| available(index))
                 .find(|(_, player)| {
