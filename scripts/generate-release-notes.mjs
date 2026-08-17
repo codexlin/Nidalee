@@ -57,8 +57,19 @@ export function renderReleaseNotes({ tag, previousTag, subjects, repositoryUrl }
   return `${lines.join('\n').trim()}\n`
 }
 
-export function updateUpdaterNotes(updaterPath, notes) {
+export function updateUpdaterMetadata(updaterPath, notes, releaseAssets = []) {
   const updater = JSON.parse(fs.readFileSync(updaterPath, 'utf8'))
+  const publicUrlsByApiUrl = new Map(releaseAssets.map((asset) => [asset.apiUrl, asset.url]))
+
+  for (const platform of Object.values(updater.platforms ?? {})) {
+    const publicUrl = publicUrlsByApiUrl.get(platform.url)
+    if (publicUrl) platform.url = publicUrl
+
+    if (platform.url?.startsWith('https://api.github.com/repos/')) {
+      throw new Error(`Updater platform still uses a GitHub API asset URL: ${platform.url}`)
+    }
+  }
+
   updater.notes = notes.trim()
   fs.writeFileSync(updaterPath, `${JSON.stringify(updater, null, 2)}\n`)
 }
@@ -90,13 +101,20 @@ export function generateReleaseNotes(rootDirectory, tag) {
 const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 
 if (isDirectRun) {
-  const [, , tag, notesPath, updaterPath] = process.argv
+  const [, , tag, notesPath, updaterPath, releaseAssetsPath] = process.argv
   if (!tag || !notesPath) {
-    throw new Error('Usage: node scripts/generate-release-notes.mjs <tag> <notes-path> [latest-json-path]')
+    throw new Error(
+      'Usage: node scripts/generate-release-notes.mjs <tag> <notes-path> [latest-json-path] [release-assets-json-path]'
+    )
   }
 
   const rootDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   const notes = generateReleaseNotes(rootDirectory, tag)
   fs.writeFileSync(path.resolve(notesPath), notes)
-  if (updaterPath) updateUpdaterNotes(path.resolve(updaterPath), notes)
+  if (updaterPath) {
+    const releaseAssets = releaseAssetsPath
+      ? JSON.parse(fs.readFileSync(path.resolve(releaseAssetsPath), 'utf8')).assets
+      : []
+    updateUpdaterMetadata(path.resolve(updaterPath), notes, releaseAssets)
+  }
 }

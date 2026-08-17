@@ -278,10 +278,12 @@ jobs:
       - name: Download updater metadata
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern latest.json --output latest.json
+        run: |
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern latest.json --output latest.json
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets > release-assets.json
 
       - name: Generate release notes
-        run: node scripts/generate-release-notes.mjs "$RELEASE_TAG" release-notes.md latest.json
+        run: node scripts/generate-release-notes.mjs "$RELEASE_TAG" release-notes.md latest.json release-assets.json
 
       - name: Publish release
         env:
