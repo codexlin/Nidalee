@@ -91,6 +91,18 @@ const overlayItems = computed(() => rarityBoards.value[0]?.bands.flatMap((band) 
 const tierBadge = (item: HextechGuideAugment) =>
   item.tier === 1 || item.tier === 2 || item.tier === 3 || item.tier === 4 ? `T${item.tier}` : ''
 
+const tierBadgeTone: Record<1 | 2 | 3 | 4, string> = {
+  1: 'bg-rose-500/95 text-white ring-rose-300/40',
+  2: 'bg-amber-400/95 text-amber-950 ring-amber-200/40',
+  3: 'bg-sky-500/90 text-white ring-sky-300/35',
+  4: 'bg-slate-500/90 text-white ring-slate-300/30'
+}
+
+const tierTone = (item: HextechGuideAugment) =>
+  item.tier === 1 || item.tier === 2 || item.tier === 3 || item.tier === 4
+    ? tierBadgeTone[item.tier]
+    : 'bg-black/80 text-white ring-white/10'
+
 watch(
   tabGroups,
   (next) => {
@@ -185,7 +197,8 @@ const cardTitle = (item: HextechGuideAugment) => {
             <span v-else class="block size-10 rounded-md bg-white/10" />
             <span
               v-if="tierBadge(item)"
-              class="pointer-events-none absolute -right-1 -top-1 rounded bg-black/80 px-0.5 text-[8px] font-semibold leading-none text-white"
+              class="pointer-events-none absolute -right-1 -top-1 rounded px-0.5 py-px text-[8px] font-bold leading-none ring-1 ring-inset"
+              :class="tierTone(item)"
             >
               {{ tierBadge(item) }}
             </span>

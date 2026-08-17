@@ -31,7 +31,7 @@ const champion = computed(() => props.ranked.currentChampion)
 </script>
 
 <template>
-  <section class="flex flex-col gap-1 text-[9px]">
+  <section class="grid min-w-0 grid-cols-2 gap-1 text-[9px]">
     <div class="surface-inset flex min-w-0 items-center gap-1.5 px-1.5 py-1">
       <img
         v-if="primary && getRoleIconUrl(primary.position)"
@@ -40,16 +40,18 @@ const champion = computed(() => props.ranked.currentChampion)
         class="size-5 flex-none object-contain opacity-85"
       />
       <div class="min-w-0 flex-1">
-        <div class="truncate text-muted-foreground">最近位置</div>
+        <div class="flex min-w-0 items-center justify-between gap-1">
+          <span class="flex-none text-muted-foreground">最近位置</span>
+          <span class="truncate font-medium" :class="currentPositionClass">
+            {{ currentPositionNote }}
+          </span>
+        </div>
         <div v-if="primary" class="truncate font-medium text-foreground tabular-nums">
           {{ getPositionLabel(primary.position) }} · {{ primary.sample.games }}场 ·
           {{ primary.sample.winRate.toFixed(0) }}%
         </div>
         <div v-else class="truncate text-muted-foreground">近期位置样本不足</div>
       </div>
-      <span class="max-w-20 flex-none truncate font-medium" :class="currentPositionClass">
-        {{ currentPositionNote }}
-      </span>
     </div>
 
     <div class="surface-inset flex min-w-0 items-center gap-1.5 px-1.5 py-1">
