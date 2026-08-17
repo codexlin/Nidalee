@@ -12,10 +12,10 @@ export const useSettingsStore = defineStore(
   'settings',
   () => {
     // 主题设置
-    const selectedColor = ref<string>('zinc')
+    const selectedColor = ref<string>('blue')
     const selectedRadius = ref(0.5)
     const selectedStyle = ref('new-york')
-    const isDark = ref(false)
+    const isDark = ref(true)
 
     // 应用设置
     const autoStart = ref(false)
@@ -84,31 +84,16 @@ export const useSettingsStore = defineStore(
 
     // 重置主题
     const resetTheme = () => {
-      selectedColor.value = 'neutral'
+      selectedColor.value = 'blue'
       selectedRadius.value = 0.5
       selectedStyle.value = 'new-york'
-      isDark.value = false
+      isDark.value = true
       setThemeClass(selectedColor.value, isDark.value)
       document.documentElement.style.setProperty('--radius', '0.5rem')
     }
 
     // 初始化主题
     const initTheme = () => {
-      // 检查系统主题偏好（仅在首次访问且无持久化数据时）
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-
-      // 如果当前 isDark 为 false 且系统偏好暗色主题，则使用系统偏好
-      // 这只在首次访问应用时生效，后续以用户设置为准
-      if (!isDark.value && mediaQuery.matches) {
-        // 检查是否是首次访问（通过检查是否有持久化的主题配置）
-        const hasPersistedTheme =
-          selectedColor.value !== 'neutral' || selectedRadius.value !== 0.5 || selectedStyle.value !== 'new-york'
-
-        if (!hasPersistedTheme) {
-          isDark.value = true
-        }
-      }
-
       // 应用当前状态到 DOM
       setThemeClass(selectedColor.value, isDark.value)
 
@@ -117,12 +102,6 @@ export const useSettingsStore = defineStore(
 
       lastPerformanceCategory.value = normalizePerformanceCategory(lastPerformanceCategory.value)
       lastRankedScope.value = normalizeRankedScope(lastRankedScope.value)
-
-      // 监听系统主题变化（仅作为参考，不强制覆盖用户设置）
-      mediaQuery.addEventListener('change', (e) => {
-        console.log('[SettingsStore] 系统主题偏好变化:', e.matches ? 'dark' : 'light')
-        // 这里可以选择是否要跟随系统主题，当前保持用户设置
-      })
     }
 
     // 应用设置方法
@@ -202,10 +181,10 @@ export const useSettingsStore = defineStore(
     // 导入设置
     const importSettings = (settings: Partial<ReturnType<typeof exportSettings>>) => {
       if (settings.theme) {
-        selectedColor.value = settings.theme.color || 'neutral'
+        selectedColor.value = settings.theme.color || 'blue'
         selectedRadius.value = settings.theme.radius || 0.5
         selectedStyle.value = settings.theme.style || 'new-york'
-        isDark.value = settings.theme.isDark || false
+        isDark.value = settings.theme.isDark ?? true
       }
 
       if (settings.app) {
