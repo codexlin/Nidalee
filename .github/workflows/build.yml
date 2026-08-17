@@ -20,7 +20,6 @@ env:
   NODE_VERSION: '22.23.2'
   PNPM_VERSION: '10.34.5'
   RUST_VERSION: '1.97.1'
-  RUST_MSRV: '1.88.0'
 
 jobs:
   frontend-quality:
@@ -83,6 +82,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+          shared-key: windows-rust
 
       - name: Prepare Tauri frontend directory
         run: New-Item -ItemType Directory -Force -Path dist | Out-Null
@@ -95,17 +95,15 @@ jobs:
         working-directory: src-tauri
         run: cargo check --all-targets --locked
 
-      - name: Check release library
-        working-directory: src-tauri
-        run: cargo check --release --lib --locked
-
       - name: Clippy
         working-directory: src-tauri
         run: cargo clippy --all-targets --all-features --locked -- -D warnings
 
-      - name: Clippy release library
+      # Compile the same release feature set used by Tauri packaging. The shared
+      # cache lets the downstream packaging job reuse these dependency artifacts.
+      - name: Build release application
         working-directory: src-tauri
-        run: cargo clippy --release --lib --locked -- -D warnings
+        run: cargo build --release --locked --features custom-protocol
 
       - name: Prepare generated TypeScript contracts
         run: node scripts/prepare-types.mjs
@@ -122,33 +120,10 @@ jobs:
       - name: Verify generated TypeScript contracts
         run: git diff --exit-code -- src/types/global.d.ts
 
-  rust-msrv:
-    name: Rust MSRV (1.88.0)
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Setup minimum supported Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_MSRV }}
-          targets: x86_64-pc-windows-msvc
-
-      - name: Cache Rust build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-          key: msrv-${{ env.RUST_MSRV }}
-
-      - name: Check library on MSRV
-        working-directory: src-tauri
-        run: cargo check --lib --locked
-
   package-windows:
     name: Package Windows app
     if: github.event_name != 'pull_request'
-    needs: [frontend-quality, rust-quality, rust-msrv]
+    needs: [frontend-quality, rust-quality]
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -176,6 +151,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+          shared-key: windows-rust
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

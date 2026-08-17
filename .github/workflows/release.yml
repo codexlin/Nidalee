@@ -18,7 +18,6 @@ env:
   NODE_VERSION: '22.23.2'
   PNPM_VERSION: '10.34.5'
   RUST_VERSION: '1.97.1'
-  RUST_MSRV: '1.88.0'
   RELEASE_TAG: ${{ github.ref_name }}
 
 jobs:
@@ -66,6 +65,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+          shared-key: windows-rust
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -93,24 +93,15 @@ jobs:
         working-directory: src-tauri
         run: cargo check --all-targets --locked
 
-      - name: Check release library
-        working-directory: src-tauri
-        run: cargo check --release --lib --locked
-
       - name: Clippy
         working-directory: src-tauri
         run: cargo clippy --all-targets --all-features --locked -- -D warnings
 
-      - name: Clippy release library
+      # Compile the exact feature set used by the Windows package and persist its
+      # dependency artifacts for the downstream release job.
+      - name: Build release application
         working-directory: src-tauri
-        run: cargo clippy --release --lib --locked -- -D warnings
-
-      - name: Install minimum supported Rust
-        run: rustup toolchain install ${{ env.RUST_MSRV }} --profile minimal
-
-      - name: Check library on MSRV
-        working-directory: src-tauri
-        run: cargo +${{ env.RUST_MSRV }} check --lib --locked
+        run: cargo build --release --locked --features custom-protocol
 
       - name: Prepare generated TypeScript contracts
         run: node scripts/prepare-types.mjs
@@ -127,9 +118,30 @@ jobs:
       - name: Verify generated TypeScript contracts
         run: git diff --exit-code -- src/types/global.d.ts
 
+  prepare-release:
+    name: Prepare draft release
+    needs: verify
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            exit 0
+          fi
+
+          options=(--draft --verify-tag --title "Nidalee $RELEASE_TAG")
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            options+=(--prerelease)
+          fi
+          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" "${options[@]}"
+
   release-windows:
     name: Build Windows release
-    needs: verify
+    needs: prepare-release
     permissions:
       contents: write
     runs-on: windows-latest
@@ -161,6 +173,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+          shared-key: windows-rust
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -190,7 +203,7 @@ jobs:
 
   release-macos:
     name: Build macOS universal release
-    needs: [verify, release-windows]
+    needs: prepare-release
     permissions:
       contents: write
     runs-on: macos-latest

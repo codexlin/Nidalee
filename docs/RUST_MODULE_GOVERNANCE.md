@@ -62,7 +62,7 @@ cargo test --test '*' --locked
 pnpm types:check
 ```
 
-CI 另外验证 Release library 与 Rust 1.88 MSRV。
+CI 使用项目统一的 Rust 1.97.1，并预编译 Release 依赖供下游 Tauri 打包复用。
 
 ## Review 清单
 
