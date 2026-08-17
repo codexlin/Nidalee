@@ -54,7 +54,6 @@ describe('account initialization lifecycle', () => {
     setLoading: vi.fn(),
     clear: vi.fn()
   }
-  const activityStore = { addActivity: vi.fn() }
   let updater: ReturnType<typeof useSummonerAndMatchUpdater>
 
   beforeEach(() => {
@@ -70,7 +69,6 @@ describe('account initialization lifecycle', () => {
     vi.stubGlobal('window', { setTimeout })
     vi.stubGlobal('useDataStore', () => dataStore)
     vi.stubGlobal('usePersonalMatchAnalysisStore', () => personalAnalysis)
-    vi.stubGlobal('useActivityStore', () => activityStore)
     updater = useSummonerAndMatchUpdater()
   })
 

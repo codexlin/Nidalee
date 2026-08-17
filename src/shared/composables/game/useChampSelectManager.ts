@@ -6,16 +6,10 @@
  */
 export function useChampSelectManager() {
   const gameStore = useGameStore()
-  const activityLogger = useActivityLogger()
 
   // 房间变更处理
   const handleLobbyChange = (lobby: LobbyInfo | null) => {
     gameStore.updateLobbyInfo(lobby)
-    if (lobby) {
-      activityLogger.log.info(`进入房间: ${lobby.partyType} (${lobby.members.length}人)`, 'game')
-    } else {
-      activityLogger.log.info('离开房间', 'game')
-    }
   }
 
   // 选人会话变更处理（触发自动选人）

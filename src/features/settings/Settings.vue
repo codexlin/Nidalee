@@ -149,7 +149,6 @@ import ShortcutSettingsTab from './components/ShortcutSettingsTab.vue'
 import { Palette, Gamepad2, Zap, Keyboard, X, Sparkles, MessageSquareText, Trophy, Users } from 'lucide-vue-next'
 
 const autoFunctionStore = useAutoFunctionStore()
-const activityLogger = useActivityLogger()
 
 const autoFunctions = computed(() => autoFunctionStore.autoFunctions)
 const enabledFunctionsCount = computed(() => autoFunctionStore.enabledFunctionsCount)
@@ -157,7 +156,6 @@ const isAnyFunctionEnabled = computed(() => autoFunctionStore.isAnyFunctionEnabl
 
 const handleDisableAll = () => {
   autoFunctionStore.disableAllFunctions()
-  activityLogger.log.info('已关闭所有辅助功能', 'settings')
 }
 
 // 「智能分析」暂缓：AI BYOK 未就绪前不展示 Tab；组件仍保留在 components/analysis/

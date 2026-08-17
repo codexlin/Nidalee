@@ -4,13 +4,10 @@
     <span class="status-name">
       {{ isConnected ? summonerInfo?.displayName || '未知召唤师' : '未连接' }}
     </span>
-    <GameLauncher v-if="!isConnected" />
   </div>
 </template>
 
 <script setup lang="ts">
-import GameLauncher from '@/components/common/GameLauncher.vue'
-
 const dataStore = useDataStore()
 const connectionStore = useConnectionStore()
 

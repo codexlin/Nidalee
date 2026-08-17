@@ -26,7 +26,6 @@ export function useMatchAnalysis() {
   const queryClient = useQueryClient()
   const analysisStore = usePersonalMatchAnalysisStore()
   const dataStore = useDataStore()
-  const activityStore = useActivityStore()
   const settingsStore = useSettingsStore()
 
   const analyzeMatches = async (options: AnalyzeMatchesOptions = {}): Promise<MatchAnalysisResult | null> => {
@@ -58,9 +57,6 @@ export function useMatchAnalysis() {
       if (sequence !== analyzeSequence) return null
 
       analysisStore.setResult(result, puuid, scope)
-      if (!background) {
-        activityStore.addActivity('success', `战绩分析完成（${result.displayGames} 场）`, 'data')
-      }
       return result
     } catch (error: unknown) {
       if (sequence !== analyzeSequence) return null
@@ -68,7 +64,6 @@ export function useMatchAnalysis() {
       if (!background) {
         analysisStore.clear()
         analysisStore.setError(message)
-        activityStore.addActivity('error', '战绩分析失败', 'error')
       }
       return null
     } finally {

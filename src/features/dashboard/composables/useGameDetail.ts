@@ -1,4 +1,3 @@
-import { useActivityLogger } from '@/shared/composables/utils/useActivityLogger'
 import { useDataStore } from '@/shared/stores/core/dataStore'
 import { usePersonalMatchAnalysisStore } from '@/shared/stores/features/personalMatchAnalysisStore'
 import { createLatestRequestGuard } from '@/shared/utils/latestRequest'
@@ -40,7 +39,6 @@ export function useGameDetail(
   selectedGame: MaybeRefOrGetter<MatchPerformance | null>,
   analysisPuuid: MaybeRefOrGetter<string | null>
 ) {
-  const activityLogger = useActivityLogger()
   const dataStore = useDataStore()
   const analysisStore = usePersonalMatchAnalysisStore()
 
@@ -157,7 +155,6 @@ export function useGameDetail(
         if (!request.isCurrent() || toValue(selectedGame)?.gameId !== gameId) return
         const message = err instanceof Error ? err.message : String(err)
         console.error('获取游戏详细信息失败:', message)
-        activityLogger.logError.apiError(`获取游戏详细信息失败: ${message}`)
         gameDetailData.value = null
       } finally {
         if (request.isCurrent() && toValue(selectedGame)?.gameId === gameId) {
