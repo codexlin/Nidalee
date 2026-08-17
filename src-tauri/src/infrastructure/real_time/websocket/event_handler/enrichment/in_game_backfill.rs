@@ -21,7 +21,7 @@ enum TeamSide {
 }
 
 impl TeamSide {
-    fn players<'a>(self, analysis: &'a TeamAnalysisData) -> &'a [PlayerAnalysisData] {
+    fn players(self, analysis: &TeamAnalysisData) -> &[PlayerAnalysisData] {
         match self {
             Self::Ally => &analysis.my_team,
             Self::Enemy => &analysis.enemy_team,
