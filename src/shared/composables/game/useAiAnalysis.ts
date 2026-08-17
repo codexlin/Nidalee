@@ -8,7 +8,6 @@ import { useAiSettingsStore } from '@/shared/stores/features/aiSettingsStore'
 export function useAiAnalysis() {
   const aiSettings = useAiSettingsStore()
   const analysisStore = usePersonalMatchAnalysisStore()
-  const activityStore = useActivityStore()
 
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -75,13 +74,11 @@ export function useAiAnalysis() {
       const insight = await invoke<AiInsight>('analyze_with_ai', { result })
       if (!isCurrentRequest(request)) return null
       analysisStore.setAiInsight(insight)
-      activityStore.addActivity('success', 'AI 解读完成', 'data')
       return insight
     } catch (e: unknown) {
       if (!isCurrentRequest(request)) return null
       const message = e instanceof Error ? e.message : String(e)
       error.value = message
-      activityStore.addActivity('error', `AI 解读失败: ${message}`, 'error')
       return null
     } finally {
       if (isCurrentRequest(request)) loading.value = false

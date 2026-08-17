@@ -11,7 +11,6 @@ interface CheckForUpdatesOptions {
 }
 
 interface AppUpdaterNotifier {
-  available(version: string): void
   current(): void
   installed(version: string): void
   failed(message: string): void
@@ -31,12 +30,6 @@ const defaultDependencies: AppUpdaterDependencies = {
   check,
   relaunch,
   notify: {
-    available(version) {
-      toast.info(`发现新版本 v${version}`, {
-        description: '点击顶部更新按钮即可下载并安装。',
-        duration: 10000
-      })
-    },
     current() {
       toast.success('当前已是最新版本')
     },
@@ -65,6 +58,8 @@ export function createAppUpdater(dependencies: AppUpdaterDependencies = defaultD
 
   const isSupported = computed(() => dependencies.isTauri() && !dependencies.isDevelopment())
   const availableVersion = computed(() => availableUpdate.value?.version ?? null)
+  const availableNotes = computed(() => availableUpdate.value?.body?.trim() || null)
+  const availableDate = computed(() => availableUpdate.value?.date ?? null)
   const isBusy = computed(() => ['checking', 'downloading', 'installing'].includes(phase.value))
   const progress = computed(() => {
     if (!contentLength.value || contentLength.value <= 0) return null
@@ -96,7 +91,6 @@ export function createAppUpdater(dependencies: AppUpdaterDependencies = defaultD
 
         availableUpdate.value = nextUpdate
         phase.value = 'available'
-        dependencies.notify.available(nextUpdate.version)
         return true
       } catch (error) {
         const message = errorMessage(error)
@@ -165,6 +159,8 @@ export function createAppUpdater(dependencies: AppUpdaterDependencies = defaultD
   return {
     phase: readonly(phase),
     availableVersion,
+    availableNotes,
+    availableDate,
     downloadedBytes: readonly(downloadedBytes),
     contentLength: readonly(contentLength),
     lastError: readonly(lastError),

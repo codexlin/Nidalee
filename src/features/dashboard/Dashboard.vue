@@ -143,7 +143,6 @@ const flexRank = computed(() => {
 
 const dataStore = useDataStore()
 const connectionStore = useConnectionStore()
-const activityLogger = useActivityLogger()
 
 const { summonerInfo, isSummonerLoading } = storeToRefs(dataStore)
 const { isConnected } = storeToRefs(connectionStore)
@@ -194,13 +193,11 @@ const ensureCurrentAnalysis = async (force = false) => {
 }
 
 const handleFetchMatchHistory = async () => {
-  activityLogger.log.info('手动刷新对局历史', 'data')
   await ensureCurrentAnalysis(true)
 }
 
 const handleScopeChange = async (scope: PerformanceScope) => {
   settingsStore.setPerformanceScope(scope)
-  activityLogger.log.info(`切换战绩范围: ${scope.category}/${scope.rankedScope}`, 'data')
   await ensureCurrentAnalysis(true)
 }
 
@@ -221,7 +218,6 @@ const posterFileStem = computed(() => {
 })
 
 const handleExportPoster = async () => {
-  activityLogger.log.info('导出 Dashboard 战绩海报', 'data')
   await exportPoster(posterRef.value?.getRoot() ?? null, posterFileStem.value)
 }
 

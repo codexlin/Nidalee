@@ -2,8 +2,6 @@
   <div class="flex items-center gap-1.5">
     <AppUpdateButton />
 
-    <NotificationHoverCard title="系统活动" side="bottom" align="end" />
-
     <FloatIconButton
       class="p-2"
       :title="settingsStore.isDark ? '切换浅色模式' : '切换深色模式'"
@@ -29,7 +27,6 @@ import { toast } from 'vue-sonner'
 import AppUpdateButton from '@/components/common/AppUpdateButton.vue'
 import FloatIconButton from '@/components/common/FloatIconButton.vue'
 
-const activityLogger = useActivityLogger()
 const connectionStore = useConnectionStore()
 const settingsStore = useSettingsStore()
 
@@ -43,7 +40,7 @@ const refreshData = async () => {
     }
   } catch (error) {
     console.error('刷新数据失败:', error)
-    activityLogger.logError.apiError('数据刷新失败')
+    toast.error('数据刷新失败', { description: String(error) })
   }
 }
 

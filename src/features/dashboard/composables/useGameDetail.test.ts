@@ -7,12 +7,6 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn()
 }))
 
-vi.mock('@/shared/composables/utils/useActivityLogger', () => ({
-  useActivityLogger: () => ({
-    logError: { apiError: vi.fn() }
-  })
-}))
-
 vi.mock('@/shared/stores/core/dataStore', () => ({
   useDataStore: () => ({
     gameVersion: '16.1.1',

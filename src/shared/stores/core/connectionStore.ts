@@ -17,7 +17,6 @@ export const useConnectionStore = defineStore('connection', () => {
   const isDisconnected = computed(() => connectionState.value === 'Disconnected')
   const { updateSummonerAndMatches, cancelPendingUpdates } = useSummonerAndMatchUpdater()
   const dataStore = useDataStore()
-  const activityStore = useActivityStore()
   const sessionStore = useSessionStore()
   const gameStore = useGameStore()
   const personalMatchAnalysisStore = usePersonalMatchAnalysisStore()
@@ -59,7 +58,6 @@ export const useConnectionStore = defineStore('connection', () => {
 
     switch (state) {
       case 'Connected':
-        activityStore.addActivity('success', '已连接到客户端', 'connection')
         // Every transport generation starts from an empty account view. The ordered updater then
         // commits current summoner data before requesting rank and match analysis.
         clearAccountState()
@@ -69,16 +67,12 @@ export const useConnectionStore = defineStore('connection', () => {
       case 'Disconnected':
         clearAccountState()
         sessionStore.stopSession()
-        activityStore.addActivity('error', '已断开与客户端的连接', 'connection')
         gameStore.resetGameState()
         break
       case 'ProcessFound':
       case 'AuthExpired':
       case 'Unstable':
         sessionStore.stopSession()
-        if (state === 'Unstable') {
-          activityStore.addActivity('warning', '连接不稳定，正在重试...', 'connection')
-        }
         break
     }
   }

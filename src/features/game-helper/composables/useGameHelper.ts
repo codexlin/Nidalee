@@ -2,7 +2,6 @@ import { invoke } from '@tauri-apps/api/core'
 import { toast } from 'vue-sonner'
 
 export function useGameHelper() {
-  const activityLogger = useActivityLogger()
   const updatingNote = ref(false)
   const updatingRank = ref(false)
 
@@ -14,9 +13,6 @@ export function useGameHelper() {
   async function setSummonerBackgroundSkin(skinId: number, skinName?: string): Promise<void> {
     try {
       await invoke('set_summoner_background_skin', { skinId })
-      if (skinName) {
-        activityLogger.logSettings.setCareerBackground(skinName)
-      }
       toast.success(`皮肤${skinName ? `"${skinName}"` : ''}已设置为生涯背景`, {
         description: '生涯背景设置成功完成',
         duration: 3000
@@ -88,7 +84,6 @@ export function useGameHelper() {
     try {
       await invoke('set_summoner_chat_profile', { statusMessage })
       toast.success('签名修改成功', { description: '召唤师签名已更新', duration: 3000 })
-      activityLogger.logSettings.setCareerBackground('修改签名')
     } catch (error) {
       toast.error('签名修改失败', { description: String(error), duration: 5000 })
     } finally {
@@ -116,7 +111,6 @@ export function useGameHelper() {
     try {
       await invoke('set_summoner_chat_profile', { queue, tier, division })
       toast.success('段位信息修改成功', { description: '聊天段位已更新', duration: 3000 })
-      activityLogger.logSettings.setCareerBackground('修改段位')
     } catch (error) {
       toast.error('段位信息修改失败', { description: String(error), duration: 5000 })
     } finally {

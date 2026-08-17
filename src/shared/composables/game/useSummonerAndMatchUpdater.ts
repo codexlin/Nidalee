@@ -34,7 +34,6 @@ function normalizeSummoner(info: SummonerInfo): SummonerInfo {
 export function useSummonerAndMatchUpdater() {
   const dataStore = useDataStore()
   const personalAnalysis = usePersonalMatchAnalysisStore()
-  const activityStore = useActivityStore()
   const { analyzeMatches } = useMatchAnalysis()
 
   const fetchAndCommitSummoner = async (
@@ -63,7 +62,6 @@ export function useSummonerAndMatchUpdater() {
             activeAccountInitialization.targetPuuid = summonerInfo.puuid.trim() || null
           }
           dataStore.setSummonerInfo(summonerInfo)
-          activityStore.addActivity('info', '召唤师信息已更新', 'data')
           return summonerInfo
         }
       } catch (error) {

@@ -88,7 +88,6 @@ export const useGameStore = defineStore(
     const checkAndExecuteAutoActions = (session: ChampSelectSession) => {
       try {
         const autoFunctionStore = useAutoFunctionStore()
-        const activityLogger = useActivityLogger()
         console.log('[GameStore] 检查自动操作...')
 
         const hasScheduledAction = champSelectAutomation.checkAndScheduleAutoActions(
@@ -99,7 +98,6 @@ export const useGameStore = defineStore(
 
         if (hasScheduledAction) {
           console.log('[GameStore] 已安排自动操作执行')
-          activityLogger.log.info('已安排自动选人/禁用操作', 'auto')
         }
       } catch (error) {
         console.error('[GameStore] 检查自动操作失败:', error)

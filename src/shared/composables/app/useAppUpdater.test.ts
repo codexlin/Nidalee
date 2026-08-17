@@ -12,6 +12,8 @@ const createUpdate = (
     rid: 1,
     currentVersion: '2.1.6',
     version: '3.0.0',
+    body: '## 更新内容\n- 修复实时分析',
+    date: '2026-08-17T00:00:00Z',
     rawJson: {},
     downloadAndInstall: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
@@ -20,7 +22,6 @@ const createUpdate = (
 
 const createHarness = (checkResult: Promise<Update | null>) => {
   const notify = {
-    available: vi.fn(),
     current: vi.fn(),
     installed: vi.fn(),
     failed: vi.fn()
@@ -58,15 +59,16 @@ describe('useAppUpdater', () => {
     expect(updater.phase.value).toBe('idle')
   })
 
-  it('exposes an available version and notifies the user', async () => {
+  it('exposes an available version and its release notes', async () => {
     const update = createUpdate()
-    const { updater, notify } = createHarness(Promise.resolve(update))
+    const { updater } = createHarness(Promise.resolve(update))
 
     await updater.checkForUpdates({ silent: true })
 
     expect(updater.phase.value).toBe('available')
     expect(updater.availableVersion.value).toBe('3.0.0')
-    expect(notify.available).toHaveBeenCalledWith('3.0.0')
+    expect(updater.availableNotes.value).toBe('## 更新内容\n- 修复实时分析')
+    expect(updater.availableDate.value).toBe('2026-08-17T00:00:00Z')
   })
 
   it('tracks download progress, installs, and relaunches', async () => {

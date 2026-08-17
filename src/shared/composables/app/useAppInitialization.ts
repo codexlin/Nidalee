@@ -8,7 +8,6 @@ export function useAppInitialization() {
   useDeviceWebSocket()
   const dataStore = useDataStore()
   const settingsStore = useSettingsStore()
-  const activityStore = useActivityStore()
   const connectionStore = useConnectionStore()
 
   const isInitialized = ref(false)
@@ -47,11 +46,9 @@ export function useAppInitialization() {
         staticReady: staticReady.value,
         version: metaQuery.data.value?.version
       })
-      activityStore.addActivity('success', '应用初始化完成', 'system')
     } catch (error) {
       console.error('[AppInit] 应用初始化失败:', error)
       initializationError.value = error instanceof Error ? error.message : '未知错误'
-      activityStore.addActivity('error', '应用初始化失败', 'system')
     }
   }
 
