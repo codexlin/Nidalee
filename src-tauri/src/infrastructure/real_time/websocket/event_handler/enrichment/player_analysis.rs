@@ -276,6 +276,9 @@ mod tests {
     fn live_player(is_bot: bool) -> LiveClientPlayer {
         LiveClientPlayer {
             summoner_name: "Player#CN1".to_owned(),
+            riot_id: None,
+            riot_id_game_name: None,
+            riot_id_tag_line: None,
             champion_name: "Catalog Miss".to_owned(),
             is_bot,
             is_dead: false,

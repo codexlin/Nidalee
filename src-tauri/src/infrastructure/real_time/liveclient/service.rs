@@ -81,9 +81,15 @@ async fn liveclient_get(path: &str) -> Result<String, String> {
 
 pub async fn get_live_player_list() -> Result<Vec<crate::shared::types::LiveClientPlayer>, String> {
     let raw_body = liveclient_get("/liveclientdata/playerlist").await?;
-    let players = serde_json::from_str::<Vec<crate::shared::types::LiveClientPlayer>>(&raw_body)
-        .map_err(|error| format!("解析 LiveClient 玩家列表失败: {error}"))?;
+    let players = parse_live_player_list(&raw_body)?;
     log::debug!("loaded {} players", players.len());
+    Ok(players)
+}
+
+fn parse_live_player_list(raw_body: &str) -> Result<Vec<crate::shared::types::LiveClientPlayer>, String> {
+    let mut players = serde_json::from_str::<Vec<crate::shared::types::LiveClientPlayer>>(raw_body)
+        .map_err(|error| format!("解析 LiveClient 玩家列表失败: {error}"))?;
+    players.iter_mut().for_each(|player| player.normalize_human_identity());
     Ok(players)
 }
 
@@ -179,6 +185,29 @@ pub async fn get_active_player_champion() -> Result<(String, String), String> {
 mod tests {
     use super::*;
 
+    fn player_json(identity_fields: serde_json::Value) -> String {
+        serde_json::json!([{
+            "summonerName": identity_fields["summonerName"],
+            "riotId": identity_fields["riotId"],
+            "riotIdGameName": identity_fields["riotIdGameName"],
+            "riotIdTagLine": identity_fields["riotIdTagLine"],
+            "championName": "探险家",
+            "isBot": identity_fields["isBot"],
+            "isDead": false,
+            "items": [],
+            "level": 1,
+            "position": "MIDDLE",
+            "rawChampionName": "game_character_displayname_Ezreal",
+            "respawnTimer": 0.0,
+            "runes": {},
+            "scores": {},
+            "skinID": 0,
+            "summonerSpells": {},
+            "team": "ORDER"
+        }])
+        .to_string()
+    }
+
     #[test]
     fn parse_json_string_strips_quotes() {
         assert_eq!(parse_json_string("\"bbs#23912\""), "bbs#23912");
@@ -190,5 +219,50 @@ mod tests {
         assert!(riot_id_matches("bbs#23912", "BBS#23912"));
         assert!(riot_id_matches("bbs", "bbs#23912"));
         assert!(!riot_id_matches("bbs#23912", "bbs#other"));
+    }
+
+    #[test]
+    fn player_list_prefers_structured_riot_id_over_champion_shim() {
+        let raw = player_json(serde_json::json!({
+            "summonerName": "探险家",
+            "riotId": "Real Player#CN1",
+            "riotIdGameName": "Real Player",
+            "riotIdTagLine": "CN1",
+            "isBot": false
+        }));
+
+        let players = parse_live_player_list(&raw).expect("valid LiveClient fixture");
+
+        assert_eq!(players[0].summoner_name, "Real Player#CN1");
+    }
+
+    #[test]
+    fn player_list_preserves_localized_bot_name() {
+        let raw = player_json(serde_json::json!({
+            "summonerName": "探险家（电脑）",
+            "riotId": "Ezreal#BOT",
+            "riotIdGameName": "Ezreal",
+            "riotIdTagLine": "BOT",
+            "isBot": true
+        }));
+
+        let players = parse_live_player_list(&raw).expect("valid LiveClient fixture");
+
+        assert_eq!(players[0].summoner_name, "探险家（电脑）");
+    }
+
+    #[test]
+    fn player_list_keeps_summoner_name_when_riot_id_is_absent() {
+        let raw = player_json(serde_json::json!({
+            "summonerName": "Legacy Name",
+            "riotId": null,
+            "riotIdGameName": null,
+            "riotIdTagLine": null,
+            "isBot": false
+        }));
+
+        let players = parse_live_player_list(&raw).expect("valid LiveClient fixture");
+
+        assert_eq!(players[0].summoner_name, "Legacy Name");
     }
 }
