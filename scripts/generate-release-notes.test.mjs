@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import { parseReleaseCommits, renderReleaseNotes, updateUpdaterNotes } from './generate-release-notes.mjs'
+import { parseReleaseCommits, renderReleaseNotes, updateUpdaterMetadata } from './generate-release-notes.mjs'
 
 test('groups user-facing conventional commits and ignores merge or maintenance commits', () => {
   const groups = parseReleaseCommits([
@@ -34,14 +34,39 @@ test('renders readable notes with a comparison link', () => {
   assert.match(notes, /compare\/v1\.0\.1\.\.\.v1\.0\.2/)
 })
 
-test('writes the same release notes into updater metadata', (context) => {
+test('writes release notes and public asset URLs into updater metadata', (context) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'nidalee-updater-notes-'))
   context.after(() => fs.rmSync(directory, { recursive: true, force: true }))
   const updaterPath = path.join(directory, 'latest.json')
-  fs.writeFileSync(updaterPath, JSON.stringify({ version: '1.0.2', notes: '' }))
+  const apiUrl = 'https://api.github.com/repos/codexlin/Nidalee/releases/assets/123'
+  const publicUrl = 'https://github.com/codexlin/Nidalee/releases/download/v1.0.2/Nidalee.msi'
+  fs.writeFileSync(
+    updaterPath,
+    JSON.stringify({ version: '1.0.2', notes: '', platforms: { 'windows-x86_64': { url: apiUrl } } })
+  )
 
-  updateUpdaterNotes(updaterPath, '## 更新内容\n\n- 修复更新说明')
+  updateUpdaterMetadata(updaterPath, '## 更新内容\n\n- 修复更新说明', [{ apiUrl, url: publicUrl }])
 
   const updater = JSON.parse(fs.readFileSync(updaterPath, 'utf8'))
   assert.equal(updater.notes, '## 更新内容\n\n- 修复更新说明')
+  assert.equal(updater.platforms['windows-x86_64'].url, publicUrl)
+})
+
+test('rejects updater metadata that still contains a GitHub API asset URL', (context) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'nidalee-updater-url-'))
+  context.after(() => fs.rmSync(directory, { recursive: true, force: true }))
+  const updaterPath = path.join(directory, 'latest.json')
+  fs.writeFileSync(
+    updaterPath,
+    JSON.stringify({
+      version: '1.0.2',
+      platforms: {
+        'windows-x86_64': {
+          url: 'https://api.github.com/repos/codexlin/Nidalee/releases/assets/123'
+        }
+      }
+    })
+  )
+
+  assert.throws(() => updateUpdaterMetadata(updaterPath, 'notes'), /Updater platform still uses a GitHub API asset URL/)
 })
