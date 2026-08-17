@@ -17,7 +17,7 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "test": "vitest run --config vitest.config.ts && node --test scripts/apply-release-version.test.mjs",
+    "test": "vitest run --config vitest.config.ts && node --test scripts/apply-release-version.test.mjs scripts/generate-release-notes.test.mjs",
     "test:watch": "vitest --config vitest.config.ts",
     "types": "node scripts/prepare-types.mjs && cd src-tauri && cargo test --lib --locked && cd .. && node scripts/sync-types.mjs",
     "types:sync": "node scripts/sync-types.mjs",
