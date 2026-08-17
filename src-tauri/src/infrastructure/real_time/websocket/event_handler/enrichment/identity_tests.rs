@@ -1,4 +1,4 @@
-use super::{canonical_riot_id, live_position, same_riot_id, select_enemy_slot};
+use super::{canonical_riot_id, live_position, same_riot_id, select_team_slot};
 use crate::shared::types::{LiveClientPlayer, PlayerAnalysisData, PlayerAnalysisStatus};
 use std::collections::HashSet;
 
@@ -68,28 +68,28 @@ fn live_position_omits_none_sentinel() {
 }
 
 #[test]
-fn anonymous_enemy_slots_are_assigned_once_in_stable_order() {
+fn anonymous_team_slots_are_assigned_once_in_stable_order() {
     let enemies = vec![anonymous_enemy(0), anonymous_enemy(1)];
     let first = live_player("first#CN1", "Katarina");
     let second = live_player("second#CN1", "Ezreal");
     let mut occupied = HashSet::new();
 
-    let first_index = select_enemy_slot(&enemies, &occupied, &first, 55).unwrap();
+    let first_index = select_team_slot(&enemies, &occupied, &first, 55).unwrap();
     occupied.insert(first_index);
-    let second_index = select_enemy_slot(&enemies, &occupied, &second, 81).unwrap();
+    let second_index = select_team_slot(&enemies, &occupied, &second, 81).unwrap();
 
     assert_eq!(first_index, 0);
     assert_eq!(second_index, 1);
 }
 
 #[test]
-fn known_enemy_identity_wins_over_anonymous_slot() {
+fn known_team_identity_wins_over_anonymous_slot() {
     let mut known = anonymous_enemy(1);
     known.display_name = "Known#CN1".to_owned();
     known.analysis_status = PlayerAnalysisStatus::Loading;
     let enemies = vec![anonymous_enemy(0), known];
 
-    let index = select_enemy_slot(&enemies, &HashSet::new(), &live_player("known#CN1", "Ezreal"), 81);
+    let index = select_team_slot(&enemies, &HashSet::new(), &live_player("known#CN1", "Ezreal"), 81);
 
     assert_eq!(index, Some(1));
 }
