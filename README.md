@@ -7,7 +7,7 @@
     <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode"><img src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-orange.svg" alt="License"></a>
     <img src="https://img.shields.io/badge/Tauri-2-blue.svg" alt="Tauri 2">
     <img src="https://img.shields.io/badge/Vue-3.5-42b883.svg" alt="Vue 3.5">
-    <img src="https://img.shields.io/badge/Rust_MSRV-1.88-orange.svg" alt="Rust MSRV 1.88">
+    <img src="https://img.shields.io/badge/Rust-1.97.1-orange.svg" alt="Rust 1.97.1">
     <img src="https://img.shields.io/badge/platform-Windows-blue.svg" alt="Primary platform: Windows">
   </p>
 
@@ -37,7 +37,7 @@ Requirements:
 
 - Node.js 22.18 or newer
 - pnpm 10.34.5
-- Rust 1.88 or newer
+- Rust 1.97.1 (managed through mise)
 - Windows WebView2 and the Tauri 2 prerequisites
 
 ```bash

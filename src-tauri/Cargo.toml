@@ -10,8 +10,8 @@ documentation = "https://github.com/codexlin/Nidalee"
 keywords = ["lol", "league-of-legends", "game", "assistant", "helper"]
 categories = ["games"]
 edition = "2021"
-# Keep this aligned with the highest MSRV declared by the locked dependency graph.
-rust-version = "1.88"
+# Keep this aligned with mise.toml and the pinned CI toolchain.
+rust-version = "1.97.1"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
