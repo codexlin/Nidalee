@@ -34,18 +34,21 @@ test('renders readable notes with a comparison link', () => {
   assert.match(notes, /compare\/v1\.0\.1\.\.\.v1\.0\.2/)
 })
 
-test('writes release notes and public asset URLs into updater metadata', (context) => {
+test('writes release notes and tagged public asset URLs into updater metadata', (context) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'nidalee-updater-notes-'))
   context.after(() => fs.rmSync(directory, { recursive: true, force: true }))
   const updaterPath = path.join(directory, 'latest.json')
   const apiUrl = 'https://api.github.com/repos/codexlin/Nidalee/releases/assets/123'
+  const draftUrl = 'https://github.com/codexlin/Nidalee/releases/download/untagged-draft/Nidalee.msi'
   const publicUrl = 'https://github.com/codexlin/Nidalee/releases/download/v1.0.2/Nidalee.msi'
   fs.writeFileSync(
     updaterPath,
-    JSON.stringify({ version: '1.0.2', notes: '', platforms: { 'windows-x86_64': { url: apiUrl } } })
+    JSON.stringify({ version: '1.0.2', notes: '', platforms: { 'windows-x86_64': { url: draftUrl } } })
   )
 
-  updateUpdaterMetadata(updaterPath, '## 更新内容\n\n- 修复更新说明', [{ apiUrl, url: publicUrl }])
+  updateUpdaterMetadata(updaterPath, '## 更新内容\n\n- 修复更新说明', 'v1.0.2', 'https://github.com/codexlin/Nidalee', [
+    { apiUrl, name: 'Nidalee.msi', url: draftUrl }
+  ])
 
   const updater = JSON.parse(fs.readFileSync(updaterPath, 'utf8'))
   assert.equal(updater.notes, '## 更新内容\n\n- 修复更新说明')
@@ -68,5 +71,30 @@ test('rejects updater metadata that still contains a GitHub API asset URL', (con
     })
   )
 
-  assert.throws(() => updateUpdaterMetadata(updaterPath, 'notes'), /Updater platform still uses a GitHub API asset URL/)
+  assert.throws(
+    () => updateUpdaterMetadata(updaterPath, 'notes', 'v1.0.2', 'https://github.com/codexlin/Nidalee'),
+    /Updater platform still uses a non-public GitHub asset URL/
+  )
+})
+
+test('rewrites GitHub API updater URLs to the tagged public asset URL', (context) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'nidalee-updater-api-url-'))
+  context.after(() => fs.rmSync(directory, { recursive: true, force: true }))
+  const updaterPath = path.join(directory, 'latest.json')
+  const apiUrl = 'https://api.github.com/repos/codexlin/Nidalee/releases/assets/123'
+  fs.writeFileSync(updaterPath, JSON.stringify({ version: '1.0.2', platforms: { 'windows-x86_64': { url: apiUrl } } }))
+
+  updateUpdaterMetadata(updaterPath, 'notes', 'v1.0.2', 'https://github.com/codexlin/Nidalee', [
+    {
+      apiUrl,
+      name: 'Nidalee.msi',
+      url: 'https://github.com/codexlin/Nidalee/releases/download/untagged-draft/Nidalee.msi'
+    }
+  ])
+
+  const updater = JSON.parse(fs.readFileSync(updaterPath, 'utf8'))
+  assert.equal(
+    updater.platforms['windows-x86_64'].url,
+    'https://github.com/codexlin/Nidalee/releases/download/v1.0.2/Nidalee.msi'
+  )
 })

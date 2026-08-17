@@ -57,16 +57,26 @@ export function renderReleaseNotes({ tag, previousTag, subjects, repositoryUrl }
   return `${lines.join('\n').trim()}\n`
 }
 
-export function updateUpdaterMetadata(updaterPath, notes, releaseAssets = []) {
+export function updateUpdaterMetadata(updaterPath, notes, tag, repositoryUrl, releaseAssets = []) {
   const updater = JSON.parse(fs.readFileSync(updaterPath, 'utf8'))
-  const publicUrlsByApiUrl = new Map(releaseAssets.map((asset) => [asset.apiUrl, asset.url]))
+  const assetsBySourceUrl = new Map()
+
+  for (const asset of releaseAssets) {
+    if (asset.apiUrl) assetsBySourceUrl.set(asset.apiUrl, asset)
+    if (asset.url) assetsBySourceUrl.set(asset.url, asset)
+  }
 
   for (const platform of Object.values(updater.platforms ?? {})) {
-    const publicUrl = publicUrlsByApiUrl.get(platform.url)
-    if (publicUrl) platform.url = publicUrl
+    const sourceUrl = platform.url
+    const sourceName = sourceUrl ? decodeURIComponent(new URL(sourceUrl).pathname.split('/').at(-1) ?? '') : ''
+    const asset = assetsBySourceUrl.get(sourceUrl) ?? releaseAssets.find((candidate) => candidate.name === sourceName)
 
-    if (platform.url?.startsWith('https://api.github.com/repos/')) {
-      throw new Error(`Updater platform still uses a GitHub API asset URL: ${platform.url}`)
+    if (asset?.name) {
+      platform.url = `${repositoryUrl}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(asset.name)}`
+    }
+
+    if (platform.url?.startsWith('https://api.github.com/repos/') || platform.url?.includes('/download/untagged-')) {
+      throw new Error(`Updater platform still uses a non-public GitHub asset URL: ${platform.url}`)
     }
   }
 
@@ -109,12 +119,15 @@ if (isDirectRun) {
   }
 
   const rootDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+  const repository = process.env.GITHUB_REPOSITORY ?? 'codexlin/Nidalee'
+  const serverUrl = process.env.GITHUB_SERVER_URL ?? 'https://github.com'
+  const repositoryUrl = `${serverUrl}/${repository}`
   const notes = generateReleaseNotes(rootDirectory, tag)
   fs.writeFileSync(path.resolve(notesPath), notes)
   if (updaterPath) {
     const releaseAssets = releaseAssetsPath
       ? JSON.parse(fs.readFileSync(path.resolve(releaseAssetsPath), 'utf8')).assets
       : []
-    updateUpdaterMetadata(path.resolve(updaterPath), notes, releaseAssets)
+    updateUpdaterMetadata(path.resolve(updaterPath), notes, tag, repositoryUrl, releaseAssets)
   }
 }
