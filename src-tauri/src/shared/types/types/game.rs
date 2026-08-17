@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ts_rs::TS;
@@ -11,6 +13,15 @@ use ts_rs::TS;
 pub struct LiveClientPlayer {
     #[serde(rename = "summonerName")]
     pub summoner_name: String,
+    #[serde(default, rename = "riotId")]
+    #[ts(optional)]
+    pub riot_id: Option<String>,
+    #[serde(default, rename = "riotIdGameName")]
+    #[ts(optional)]
+    pub riot_id_game_name: Option<String>,
+    #[serde(default, rename = "riotIdTagLine")]
+    #[ts(optional)]
+    pub riot_id_tag_line: Option<String>,
     #[serde(rename = "championName")]
     pub champion_name: String,
     #[serde(rename = "isBot")]
@@ -35,6 +46,41 @@ pub struct LiveClientPlayer {
     #[serde(rename = "summonerSpells")]
     pub summoner_spells: Value,
     pub team: String,
+}
+
+impl LiveClientPlayer {
+    pub fn canonical_riot_id(&self) -> Option<Cow<'_, str>> {
+        let game_name = self
+            .riot_id_game_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
+        let tag_line = self
+            .riot_id_tag_line
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
+
+        if let (Some(game_name), Some(tag_line)) = (game_name, tag_line) {
+            return Some(Cow::Owned(format!("{game_name}#{tag_line}")));
+        }
+
+        self.riot_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(Cow::Borrowed)
+    }
+
+    pub fn normalize_human_identity(&mut self) {
+        if self.is_bot {
+            return;
+        }
+
+        if let Some(riot_id) = self.canonical_riot_id().map(Cow::into_owned) {
+            self.summoner_name = riot_id;
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

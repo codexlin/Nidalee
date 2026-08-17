@@ -28,6 +28,9 @@ fn anonymous_enemy(cell_id: i32) -> PlayerAnalysisData {
 fn live_player(name: &str, champion_name: &str) -> LiveClientPlayer {
     LiveClientPlayer {
         summoner_name: name.to_owned(),
+        riot_id: None,
+        riot_id_game_name: None,
+        riot_id_tag_line: None,
         champion_name: champion_name.to_owned(),
         is_bot: false,
         is_dead: false,
