@@ -1,95 +1,29 @@
-<template>
-  <!-- 勿用 h-screen：外层已有 TitleBar + Nav + padding，100vh 会把「正在大厅」顶偏下 -->
-  <div class="flex min-h-[calc(100dvh-10.5rem)] w-full items-center justify-center bg-background">
-    <div class="w-full max-w-2xl mx-auto px-2">
-      <!-- Matchmaking View -->
-      <div v-if="['Matchmaking'].includes(currentPhase)">
-        <Card class="p-6 rounded-lg shadow-sm">
-          <div class="space-y-6">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-4">
-                <div class="relative flex items-center justify-center h-12 w-12 rounded-full bg-muted">
-                  <Search class="h-6 w-6 text-primary" />
-                  <div class="absolute top-0 right-0 w-3 h-3 rounded-full bg-primary animate-ping"></div>
-                </div>
-                <div>
-                  <h3 class="text-lg font-semibold text-foreground">正在匹配中</h3>
-                  <p class="text-sm text-muted-foreground">正在为您寻找实力相当的对手</p>
-                </div>
-              </div>
-              <Badge variant="outline" class="text-sm font-medium">匹配中</Badge>
-            </div>
-            <div class="space-y-6">
-              <div class="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <p class="text-sm text-muted-foreground">预估时间</p>
-                  <p class="text-2xl font-bold text-primary">
-                    {{ formatTime(matchmakingState?.estimatedQueueTime ?? 0) }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm text-muted-foreground">已等待</p>
-                  <p class="text-2xl font-bold text-foreground">{{ formatTime(actualWaitTime) }}</p>
-                </div>
-              </div>
-              <Progress :model-value="waitProgress" />
-            </div>
-            <div class="pt-4 border-t border-border/50">
-              <Button class="w-full h-12 text-base font-semibold" variant="destructive" @click="handleMatchmaking">
-                <Loader2 class="h-4 w-4 mr-2 animate-spin" />
-                取消匹配
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <!-- ChampSelect Loading View -->
-      <div v-else-if="['ChampSelect', 'ReadyCheck', 'Found'].includes(currentPhase)">
-        <div class="flex flex-col items-center justify-center">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-6"></div>
-          <h2 class="text-2xl font-semibold text-foreground">正在分析对局...</h2>
-          <p class="text-muted-foreground mt-2 max-w-sm text-center">正在获取双方玩家的战绩与英雄数据，请稍候。</p>
-        </div>
-      </div>
-
-      <!-- Generic Status View (for Lobby, ReadyCheck, None, etc.) -->
-      <div v-else>
-        <div class="text-center space-y-4">
-          <div class="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-muted">
-            <component :is="statusIcon" class="h-10 w-10 text-muted-foreground" />
-          </div>
-          <h2 class="text-2xl font-bold text-foreground">{{ statusTitle }}</h2>
-          <p class="text-muted-foreground leading-relaxed max-w-md mx-auto">{{ statusDescription }}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { Search, Loader2, Gamepad2, Users, Hourglass } from 'lucide-vue-next'
+import { Gamepad2, Users } from 'lucide-vue-next'
+
+import { Card, CardContent } from '@/components/ui/card'
+import { Spinner } from '@/components/ui/spinner'
 import { useMatchAnalysisStore } from '@/features/match-analysis/store'
+
+import MatchmakingStatusCard from './MatchmakingStatusCard.vue'
 
 const matchmakingStore = useMatchmakingStore()
 const matchAnalysisStore = useMatchAnalysisStore()
-
 const { state: matchmakingState } = storeToRefs(matchmakingStore)
 const { currentPhase } = storeToRefs(matchAnalysisStore)
-
 const { handleMatchmaking } = useMatchmaking()
 
-// --- Matchmaking Timer Logic ---
-const matchmakingStartTime = ref<Date | null>(null)
-const now = ref(new Date())
-let timer: ReturnType<typeof setInterval> | null = null
+const matchmakingStartTime = shallowRef<number | null>(null)
+const now = shallowRef(Date.now())
+const isCancelling = shallowRef(false)
 
 watch(
   () => matchmakingState.value?.searchState,
-  (newState, oldState) => {
-    if (newState === 'Searching' && oldState !== 'Searching') {
-      matchmakingStartTime.value = new Date()
-    } else if (newState !== 'Searching') {
+  (searchState, previousState) => {
+    if (searchState === 'Searching' && previousState !== 'Searching') {
+      matchmakingStartTime.value = Date.now()
+      now.value = Date.now()
+    } else if (searchState !== 'Searching') {
       matchmakingStartTime.value = null
     }
   },
@@ -98,86 +32,89 @@ watch(
 
 watch(
   matchmakingStartTime,
-  (newStartTime) => {
-    if (newStartTime && !timer) {
-      timer = setInterval(() => {
-        now.value = new Date()
-      }, 1000)
-    } else if (!newStartTime && timer) {
-      clearInterval(timer)
-      timer = null
-    }
+  (startedAt, _, onCleanup) => {
+    if (startedAt === null) return
+
+    const timer = window.setInterval(() => {
+      now.value = Date.now()
+    }, 1000)
+    onCleanup(() => window.clearInterval(timer))
   },
   { immediate: true }
 )
 
-const actualWaitTime = computed(() => {
-  if (!matchmakingStartTime.value) {
-    return 0
-  }
-  return Math.floor((now.value.getTime() - matchmakingStartTime.value.getTime()) / 1000)
+const elapsedSeconds = computed(() => {
+  if (matchmakingStartTime.value === null) return 0
+  return Math.floor((now.value - matchmakingStartTime.value) / 1000)
 })
+
+const estimatedSeconds = computed(() => matchmakingState.value?.estimatedQueueTime ?? 0)
 
 const waitProgress = computed(() => {
-  if (!matchmakingState.value?.estimatedQueueTime || actualWaitTime.value === 0) {
-    return 0
-  }
-  const progress = (actualWaitTime.value / matchmakingState.value.estimatedQueueTime) * 100
-  return Math.min(progress, 100)
+  if (estimatedSeconds.value <= 0) return 0
+  return Math.min((elapsedSeconds.value / estimatedSeconds.value) * 100, 100)
 })
 
-const formatTime = (timeValue: number) => {
-  const seconds = Math.max(0, Math.floor(timeValue))
-  if (seconds < 60) {
-    return `${seconds}s`
+const status = computed(() => {
+  switch (currentPhase.value) {
+    case 'Lobby':
+      return { icon: Users, title: '房间中', description: '开始匹配后，这里会同步显示当前进度。' }
+    case 'Reconnect':
+      return { icon: Users, title: '等待重新连接', description: '请在游戏客户端中重新连接当前对局。' }
+    case 'None':
+      return { icon: Users, title: '正在大厅', description: '请选择游戏模式并开始匹配。' }
+    case 'EndOfGame':
+      return { icon: Gamepad2, title: '对局已结束', description: '返回大厅后即可开始下一场对局。' }
+    default:
+      return { icon: Gamepad2, title: '等待游戏客户端', description: '请启动并登录英雄联盟客户端。' }
   }
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return `${minutes}m ${remainingSeconds}s`
+})
+
+async function cancelMatchmaking() {
+  if (isCancelling.value) return
+  isCancelling.value = true
+  try {
+    await handleMatchmaking()
+  } finally {
+    isCancelling.value = false
+  }
 }
-
-// --- Generic Status Logic ---
-const statusIcon = shallowRef<unknown>(Gamepad2)
-const statusTitle = ref('')
-const statusDescription = ref('')
-
-watch(
-  currentPhase,
-  (phase) => {
-    switch (phase) {
-      case 'Lobby':
-        statusIcon.value = Users
-        statusTitle.value = '房间中'
-        statusDescription.value = '请开始匹配，进入选人后将自动显示队伍信息。'
-        break
-      case 'Reconnect':
-        statusIcon.value = Users
-        statusTitle.value = '重新连接'
-        statusDescription.value = '已断开，请重新连接游戏。'
-        break
-      case 'None':
-        statusIcon.value = Users
-        statusTitle.value = '正在大厅'
-        statusDescription.value = '请选择游戏模式并开始匹配，进入选人后将自动显示队伍信息。'
-        break
-      case 'ReadyCheck':
-        statusIcon.value = Hourglass
-        statusTitle.value = '等待所有玩家确认'
-        statusDescription.value = '对局已找到，请在客户端中接受对局。'
-        break
-
-      case 'EndOfGame':
-        statusIcon.value = Gamepad2
-        statusTitle.value = '对局结束'
-        statusDescription.value = '返回大厅后将恢复。'
-        break
-      default:
-        statusIcon.value = Gamepad2
-        statusTitle.value = '等待游戏客户端'
-        statusDescription.value = '请启动并登录英雄联盟客户端。'
-        break
-    }
-  },
-  { immediate: true }
-)
 </script>
+
+<template>
+  <div class="flex min-h-[calc(100dvh-10.5rem)] w-full items-center justify-center px-4">
+    <MatchmakingStatusCard
+      v-if="currentPhase === 'Matchmaking'"
+      :estimated-seconds="estimatedSeconds"
+      :elapsed-seconds="elapsedSeconds"
+      :progress="waitProgress"
+      :cancelling="isCancelling"
+      @cancel="cancelMatchmaking"
+    />
+
+    <Card
+      v-else-if="['ChampSelect', 'ReadyCheck', 'Found'].includes(currentPhase)"
+      class="surface-raised w-full max-w-lg py-0"
+    >
+      <CardContent class="flex flex-col items-center gap-3 px-6 py-10 text-center">
+        <div class="surface-inset flex size-12 items-center justify-center rounded-xl">
+          <Spinner class="size-5 text-primary" />
+        </div>
+        <h2 class="text-lg font-semibold text-foreground">正在准备对局分析</h2>
+        <p class="max-w-sm text-sm leading-relaxed text-muted-foreground">
+          正在同步双方玩家与英雄信息，数据就绪后会自动展示。
+        </p>
+      </CardContent>
+    </Card>
+
+    <Card v-else class="surface-raised w-full max-w-lg py-0">
+      <CardContent class="flex flex-col items-center gap-3 px-6 py-10 text-center">
+        <div class="surface-inset flex size-12 items-center justify-center rounded-xl">
+          <component :is="status.icon" class="size-5 text-muted-foreground" />
+        </div>
+        <h2 class="text-lg font-semibold text-foreground">{{ status.title }}</h2>
+        <p class="max-w-sm text-sm leading-relaxed text-muted-foreground">{{ status.description }}</p>
+      </CardContent>
+    </Card>
+  </div>
+</template>

@@ -91,6 +91,7 @@ declare module 'vue' {
     Loading: typeof import('./../src/components/common/Loading.vue')['default']
     LobbyTest: typeof import('./../src/features/lobby-test/LobbyTest.vue')['default']
     MatchAnalysis: typeof import('./../src/features/match-analysis/MatchAnalysis.vue')['default']
+    MatchmakingStatusCard: typeof import('./../src/features/match-analysis/components/MatchmakingStatusCard.vue')['default']
     MatchProcessReview: typeof import('./../src/features/dashboard/components/detail/MatchProcessReview.vue')['default']
     MatchSearch: typeof import('./../src/features/match-search/MatchSearch.vue')['default']
     MatchSummaryCard: typeof import('./../src/features/dashboard/components/detail/MatchSummaryCard.vue')['default']
