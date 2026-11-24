@@ -122,7 +122,7 @@
             <th v-if="showCounterColumn(mode)" class="px-3 py-2.5 font-medium">克制</th>
           </tr>
         </thead>
-        <tbody v-if="loading" aria-hidden="true">
+        <tbody v-if="loading && !rows.length" aria-hidden="true">
           <tr v-for="i in 8" :key="i" class="border-b border-border/30">
             <td class="px-4 py-2.5"><div class="h-3.5 w-4 animate-pulse rounded bg-muted" /></td>
             <td class="px-3 py-2.5">
