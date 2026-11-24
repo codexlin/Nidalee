@@ -23,7 +23,7 @@ describe('resolveBuildContext', () => {
       status: 'ready',
       scenario: 'normal-sr',
       providerMode: 'ranked',
-      providerPosition: 'main-position'
+      providerPosition: 'TOP'
     })
   })
 
