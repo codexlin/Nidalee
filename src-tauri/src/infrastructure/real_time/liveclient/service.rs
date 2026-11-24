@@ -1,3 +1,4 @@
+use crate::infrastructure::real_time::identity::{live_name_match, unique_best};
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -28,55 +29,62 @@ fn cache_liveclient_port(port: u16) {
     }
 }
 
-fn invalidate_liveclient_port() {
-    if let Ok(mut cache) = LIVECLIENT_PORT.lock() {
-        *cache = None;
-    }
-}
-
-async fn test_liveclient_port(port: u16) -> bool {
-    let url = format!("https://127.0.0.1:{port}/liveclientdata/playerlist");
-    LIVECLIENT_CLIENT
+async fn request_port(port: u16, path: &str) -> Result<String, String> {
+    let url = format!("https://127.0.0.1:{port}{path}");
+    let response = LIVECLIENT_CLIENT
         .get(url)
         .send()
         .await
-        .is_ok_and(|response| response.status().is_success())
-}
-
-async fn detect_liveclient_port() -> Option<u16> {
-    if let Some(port) = cached_liveclient_port() {
-        if test_liveclient_port(port).await {
-            return Some(port);
-        }
-        invalidate_liveclient_port();
-    }
-
-    for port in [2999, 2998, 3000, 3001, 2997] {
-        if test_liveclient_port(port).await {
-            cache_liveclient_port(port);
-            return Some(port);
-        }
-    }
-    None
-}
-
-async fn liveclient_get(path: &str) -> Result<String, String> {
-    let port = detect_liveclient_port()
-        .await
-        .ok_or_else(|| "LiveClient 不可用，请确认已进入对局".to_owned())?;
-    let url = format!("https://127.0.0.1:{port}{path}");
-    let response = LIVECLIENT_CLIENT.get(url).send().await.map_err(|error| {
-        invalidate_liveclient_port();
-        format!("LiveClient 请求失败: {error}")
-    })?;
+        .map_err(|error| format!("LiveClient 请求失败: {error}"))?;
     if !response.status().is_success() {
-        invalidate_liveclient_port();
         return Err(format!("LiveClient 返回错误状态: {}", response.status()));
     }
     response
         .text()
         .await
         .map_err(|error| format!("读取 LiveClient 响应失败: {error}"))
+}
+
+const LIVECLIENT_PORTS: [u16; 5] = [2999, 2998, 3000, 3001, 2997];
+
+async fn request_available_port<F: std::future::Future<Output = Result<String, String>>>(
+    cached: Option<u16>,
+    request: impl Fn(u16) -> F,
+) -> Result<(u16, String), String> {
+    let mut first_error = None;
+    for port in cached
+        .into_iter()
+        .chain(LIVECLIENT_PORTS.into_iter().filter(|port| Some(*port) != cached))
+    {
+        match request(port).await {
+            Ok(body) => return Ok((port, body)),
+            Err(error) => {
+                first_error.get_or_insert(error);
+            }
+        }
+    }
+    Err(format!(
+        "LiveClient 不可用，请确认已进入对局: {}",
+        first_error.unwrap_or_default()
+    ))
+}
+
+async fn liveclient_get(path: &str) -> Result<String, String> {
+    let cached = cached_liveclient_port();
+    match request_available_port(cached, |port| request_port(port, path)).await {
+        Ok((port, body)) => {
+            cache_liveclient_port(port);
+            Ok(body)
+        }
+        Err(error) => {
+            if let Ok(mut cache) = LIVECLIENT_PORT.lock() {
+                if cache.as_ref().map(|(port, _)| *port) == cached {
+                    *cache = None;
+                }
+            }
+            Err(error)
+        }
+    }
 }
 
 pub async fn get_live_player_list() -> Result<Vec<crate::shared::types::LiveClientPlayer>, String> {
@@ -100,17 +108,6 @@ fn parse_json_string(raw: &str) -> String {
         .to_string()
 }
 
-fn riot_id_matches(left: &str, right: &str) -> bool {
-    let left = left.trim();
-    let right = right.trim();
-    if left.eq_ignore_ascii_case(right) {
-        return true;
-    }
-    let (left_name, left_has_tag) = left.split_once('#').map_or((left, false), |(name, _)| (name, true));
-    let (right_name, right_has_tag) = right.split_once('#').map_or((right, false), |(name, _)| (name, true));
-    (!left_has_tag || !right_has_tag) && left_name.eq_ignore_ascii_case(right_name)
-}
-
 /// Returns the local player's Riot ID from LiveClient without depending on LCU account APIs.
 pub async fn get_active_player_name() -> Result<String, String> {
     let raw = liveclient_get("/liveclientdata/activeplayername").await?;
@@ -129,24 +126,30 @@ pub async fn get_local_live_player() -> Result<crate::shared::types::LiveClientP
         return Err("LiveClient 玩家列表为空".to_string());
     }
 
-    if let Ok(name) = get_active_player_name().await {
-        if let Some(player) = players
-            .iter()
-            .find(|player| riot_id_matches(&player.summoner_name, &name))
-        {
-            return Ok(player.clone());
-        }
+    let active_name = get_active_player_name().await.ok();
+    let named_player = active_name
+        .as_deref()
+        .map_or(Ok(None), |name| live_name_match(&players, name));
+    if let Ok(Some(player)) = named_player {
+        return Ok(player.clone());
     }
 
-    if let Ok((champion_name, raw_champion_name)) = get_active_player_champion().await {
-        if let Some(player) = players.iter().find(|player| {
-            (!champion_name.is_empty() && player.champion_name == champion_name)
-                || (!raw_champion_name.is_empty() && player.raw_champion_name == raw_champion_name)
-        }) {
-            return Ok(player.clone());
+    // An ambiguous Riot ID needs stronger account evidence, not a champion guess.
+    if named_player.is_ok() {
+        if let Ok((champion_name, raw_champion_name)) = get_active_player_champion().await {
+            if let Some(player) = unique_best(players.iter().filter(|p| !p.is_bot), |player| {
+                u8::from(
+                    (!champion_name.is_empty() && player.champion_name == champion_name)
+                        || (!raw_champion_name.is_empty() && player.raw_champion_name == raw_champion_name),
+                )
+            })
+            .ok()
+            .flatten()
+            {
+                return Ok(player.clone());
+            }
         }
     }
-
     let summoner = crate::infrastructure::data_services::summoner::service::get_current_summoner(
         crate::http_client::get_lcu_client(),
     )
@@ -155,9 +158,10 @@ pub async fn get_local_live_player() -> Result<crate::shared::types::LiveClientP
         (Some(game_name), Some(tag_line)) => format!("{game_name}#{tag_line}"),
         _ => summoner.display_name.clone(),
     };
-    players
-        .into_iter()
-        .find(|player| !player.is_bot && riot_id_matches(&player.summoner_name, &local_name))
+    live_name_match(&players, &local_name)
+        .ok()
+        .flatten()
+        .cloned()
         .ok_or_else(|| format!("未能在 LiveClient 名单里定位本地玩家 {local_name}"))
 }
 
@@ -214,11 +218,30 @@ mod tests {
         assert_eq!(parse_json_string("bbs#23912"), "bbs#23912");
     }
 
+    #[tokio::test]
+    async fn cached_port_returns_body_in_one_request_and_stale_port_is_tried_once() {
+        use std::cell::RefCell;
+        for (responding, expected) in [(3000, vec![3000]), (2998, vec![3000, 2999, 2998])] {
+            let calls = RefCell::new(Vec::new());
+            let result = request_available_port(Some(3000), |port| {
+                calls.borrow_mut().push(port);
+                std::future::ready(if port == responding {
+                    Ok("players".into())
+                } else {
+                    Err("unavailable".into())
+                })
+            })
+            .await
+            .unwrap();
+            assert_eq!(result, (responding, "players".into()));
+            assert_eq!(calls.into_inner(), expected);
+        }
+    }
+
     #[test]
-    fn riot_id_matches_ignores_case_and_optional_tag() {
-        assert!(riot_id_matches("bbs#23912", "BBS#23912"));
-        assert!(riot_id_matches("bbs", "bbs#23912"));
-        assert!(!riot_id_matches("bbs#23912", "bbs#other"));
+    fn mirrored_champions_are_not_unique_candidates() {
+        let players = ["Ezreal", "Ezreal"];
+        assert!(unique_best(players, |name| u8::from(*name == "Ezreal")).is_err());
     }
 
     #[test]

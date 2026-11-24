@@ -1,4 +1,4 @@
-use super::{canonical_riot_id, live_position, same_riot_id, select_team_slot};
+use super::{canonical_riot_id, live_position, select_team_slot};
 use crate::shared::types::{LiveClientPlayer, PlayerAnalysisData, PlayerAnalysisStatus};
 use std::collections::HashSet;
 
@@ -49,9 +49,9 @@ fn live_player(name: &str, champion_name: &str) -> LiveClientPlayer {
 
 #[test]
 fn riot_id_matching_preserves_tag_when_both_sources_have_one() {
-    assert!(same_riot_id("bbs#23912", "BBS#23912"));
-    assert!(!same_riot_id("bbs#23912", "bbs#other"));
-    assert!(same_riot_id("bbs", "bbs#23912"));
+    assert!(crate::infrastructure::real_time::identity::riot_id_rank("bbs#23912", "BBS#23912") > 0);
+    assert!(crate::infrastructure::real_time::identity::riot_id_rank("bbs#23912", "bbs#other") == 0);
+    assert!(crate::infrastructure::real_time::identity::riot_id_rank("bbs", "bbs#23912") > 0);
 }
 
 #[test]
@@ -95,4 +95,33 @@ fn known_team_identity_wins_over_anonymous_slot() {
     let index = select_team_slot(&enemies, &HashSet::new(), &live_player("known#CN1", "Ezreal"), 81);
 
     assert_eq!(index, Some(1));
+}
+
+#[test]
+fn tagged_identity_wins_even_when_weak_candidate_comes_first() {
+    let mut weak = anonymous_enemy(0);
+    weak.display_name = "Player".into();
+    let mut exact = anonymous_enemy(1);
+    exact.display_name = "Player#CN1".into();
+    assert_eq!(
+        select_team_slot(
+            &[weak, exact],
+            &HashSet::new(),
+            &live_player("Player#CN1", "Ezreal"),
+            81
+        ),
+        Some(1)
+    );
+}
+
+#[test]
+fn ambiguous_weak_identity_leaves_slot_unresolved() {
+    let mut first = anonymous_enemy(0);
+    first.display_name = "Player#CN1".into();
+    let mut second = anonymous_enemy(1);
+    second.display_name = "Player#CN2".into();
+    assert_eq!(
+        select_team_slot(&[first, second], &HashSet::new(), &live_player("Player", "Ezreal"), 81),
+        None
+    );
 }

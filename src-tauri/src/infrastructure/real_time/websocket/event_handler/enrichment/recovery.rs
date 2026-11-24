@@ -4,9 +4,9 @@ use tauri::Emitter;
 use tokio::sync::RwLock;
 
 use super::super::WsEventHandler;
-use super::identity::same_riot_id;
 use super::player_analysis::base_player_data;
 use crate::infrastructure::data_services::{champion_data, static_catalog};
+use crate::infrastructure::real_time::identity::{live_name_match, riot_id_rank, unique_best};
 use crate::infrastructure::real_time::websocket::event_handler::context::in_progress_gameflow_context;
 use crate::infrastructure::real_time::websocket::state::EventCache;
 use crate::shared::Result;
@@ -64,10 +64,12 @@ fn build_base_recovery_snapshot(
         })
         .collect::<Vec<_>>();
 
-    let local_player = my_team
-        .iter_mut()
-        .find(|player| same_riot_id(&player.display_name, local_name))
-        .ok_or_else(|| format!("Could not map local player '{local_name}' into recovered team data"))?;
+    let local_player = unique_best(my_team.iter_mut().filter(|p| !p.is_bot), |p| {
+        riot_id_rank(&p.display_name, local_name)
+    })
+    .ok()
+    .flatten()
+    .ok_or_else(|| format!("Could not map local player '{local_name}' into recovered team data"))?;
     local_player.is_local = true;
     let local_player_cell_id = local_player.cell_id;
 
@@ -204,9 +206,9 @@ impl WsEventHandler {
                 _ => summoner.display_name,
             }
         };
-        let local_team = live_players
-            .iter()
-            .find(|player| !player.is_bot && same_riot_id(&local_name, &player.summoner_name))
+        let local_team = live_name_match(&live_players, &local_name)
+            .ok()
+            .flatten()
             .map(|player| player.team.as_str())
             .ok_or_else(|| format!("Could not find local player '{local_name}' in LiveClient roster"))?;
 
@@ -330,10 +332,12 @@ impl WsEventHandler {
             }
         }
 
-        let local_player = my_team_data
-            .iter_mut()
-            .find(|player| same_riot_id(&player.display_name, &local_name))
-            .ok_or_else(|| format!("Could not map local player '{local_name}' into recovered team data"))?;
+        let local_player = unique_best(my_team_data.iter_mut().filter(|p| !p.is_bot), |p| {
+            riot_id_rank(&p.display_name, &local_name)
+        })
+        .ok()
+        .flatten()
+        .ok_or_else(|| format!("Could not map local player '{local_name}' into recovered team data"))?;
         local_player.is_local = true;
         let local_player_cell_id = local_player.cell_id;
 

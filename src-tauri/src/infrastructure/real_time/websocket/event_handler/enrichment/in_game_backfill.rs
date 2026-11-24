@@ -5,8 +5,8 @@ use tauri::Emitter;
 
 use super::super::WsEventHandler;
 use super::identity::{
-    apply_confirmed_bot_identity, apply_live_player_identity, canonical_riot_id, resolve_local_live_team, same_riot_id,
-    select_team_slot,
+    apply_confirmed_bot_identity, apply_live_player_identity, canonical_riot_id, match_summoner,
+    resolve_local_live_team, select_team_slot,
 };
 use crate::infrastructure::data_services::{champion_data, static_catalog};
 use crate::shared::types::{PlayerAnalysisData, PlayerAnalysisStatus, TeamAnalysisData};
@@ -263,14 +263,7 @@ impl WsEventHandler {
             apply_live_player_identity(player, &live_player, target.champion_id);
 
             // 5.1 Find the corresponding summoner info.
-            let summoner_info = summoners_info.iter().find(|s| {
-                let full_name = if let (Some(game_name), Some(tag_line)) = (&s.game_name, &s.tag_line) {
-                    format!("{}#{}", game_name, tag_line)
-                } else {
-                    s.display_name.clone()
-                };
-                same_riot_id(&full_name, &live_player.summoner_name)
-            });
+            let summoner_info = match_summoner(&summoners_info, &live_player.summoner_name);
 
             if let Some(info) = summoner_info {
                 // 5.2 Update rank, icon, etc.

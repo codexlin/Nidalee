@@ -1,7 +1,7 @@
 use tauri::Emitter;
 
 use super::super::WsEventHandler;
-use super::identity::{canonical_riot_id, live_position, live_spell_id, same_riot_id};
+use super::identity::{canonical_riot_id, live_position, live_spell_id, match_summoner};
 use crate::infrastructure::data_services::champion_data;
 use crate::shared::Result;
 
@@ -191,14 +191,7 @@ impl WsEventHandler {
         }
 
         // 查找召唤师信息
-        let summoner_info = summoners_info.iter().find(|s| {
-            let full_name = if let (Some(game_name), Some(tag_line)) = (&s.game_name, &s.tag_line) {
-                format!("{}#{}", game_name, tag_line)
-            } else {
-                s.display_name.clone()
-            };
-            same_riot_id(&full_name, &live_player.summoner_name)
-        });
+        let summoner_info = match_summoner(summoners_info, &live_player.summoner_name);
 
         let mut cache_entry = None;
 
