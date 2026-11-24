@@ -48,14 +48,17 @@ pub async fn get_champion_build(
     champion_id: i32,
     position: Option<String>,
     tier: &str,
-) -> Result<OpggChampionBuild, String> {
+) -> Result<Option<OpggChampionBuild>, String> {
     validate_request(region, mode, Some(champion_id), tier)?;
     let pos = resolve_build_position(mode, position.as_deref())?;
     let raw_data = OPGG_CLIENT
         .get_champion_build(region, mode, champion_id, &pos, tier)
         .await?;
+    if raw_data.is_null() || raw_data.get("data").is_some_and(Value::is_null) {
+        return Ok(None);
+    }
     let label = if pos.is_empty() { mode } else { pos.as_str() };
-    parse_champion_build(raw_data, label).map_err(|e| e.to_string())
+    parse_champion_build(raw_data, label).map(Some)
 }
 
 pub async fn get_tier_list(region: &str, mode: &str, tier: &str) -> Result<OpggTierList, String> {

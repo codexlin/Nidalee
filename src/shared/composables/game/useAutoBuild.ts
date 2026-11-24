@@ -5,9 +5,15 @@ import { getChampionName } from '@/lib'
 import { useGameStore } from '@/shared/stores/features/gameStore'
 import { useBuildPresetStore } from '@/shared/stores/features/buildPresetStore'
 import { getOpggTierLabel } from '@/shared/utils/opggTier'
-import { scenarioLabel, type BuildPosition, type BuildPreset } from '@/shared/models/buildPreset'
+import {
+  positionLabel,
+  scenarioLabel,
+  validateRuneSelection,
+  type BuildPosition,
+  type BuildPreset
+} from '@/shared/models/buildPreset'
 import { resolveBuildContext, type ReadyBuildContext } from '@/shared/models/buildContext'
-import { selectMainOpggPosition } from '@/shared/models/opggRecommendation'
+import { opggRuneSelection, selectMainOpggPosition } from '@/shared/models/opggRecommendation'
 import { runeSnapshotFromOpgg, useBuildApplication } from './useBuildApplication'
 
 const AUTO_BUILD_DELAY_MS = 1500
@@ -114,9 +120,7 @@ export function useAutoBuild() {
     return result
   }
 
-  async function resolveProviderPosition(request: AutoApplyRequest): Promise<BuildPosition | 'none'> {
-    if (request.context.providerPosition !== 'main-position') return request.context.providerPosition
-
+  async function fetchMainPosition(request: AutoApplyRequest): Promise<BuildPosition> {
     const tier = presetStore.autoBuild.opggTier
     const response = await fetchOpggTierList({ region: OPGG_REGION, mode: 'ranked', tier })
     if (!isCurrentRequest(request)) throw new StaleAutoBuildRequest()
@@ -127,22 +131,36 @@ export function useAutoBuild() {
     return position
   }
 
-  async function applyRecommended(request: AutoApplyRequest): Promise<string> {
-    const tier = presetStore.autoBuild.opggTier
-    const position = await resolveProviderPosition(request)
+  async function fetchRecommendedPerk(request: AutoApplyRequest, position: BuildPosition | 'none') {
     if (!isCurrentRequest(request)) throw new StaleAutoBuildRequest()
-
     const response = await fetchOpggChampionBuild({
       region: OPGG_REGION,
       mode: request.context.providerMode,
       champion_id: request.championId,
       position,
-      tier
+      tier: presetStore.autoBuild.opggTier
     })
     if (!isCurrentRequest(request)) throw new StaleAutoBuildRequest()
 
-    const perk = response.data?.perks?.[0]
-    if (!response.success || !perk) throw new Error(response.error || '推荐方案暂不可用')
+    if (!response.success) throw new Error(response.error || '获取推荐方案失败')
+    return response.data?.perks.find((perk) => !validateRuneSelection(opggRuneSelection(perk)))
+  }
+
+  async function applyRecommended(request: AutoApplyRequest): Promise<string> {
+    const tier = presetStore.autoBuild.opggTier
+    const requested = request.context.providerPosition
+    let position = requested === 'main-position' ? await fetchMainPosition(request) : requested
+    let perk = await fetchRecommendedPerk(request, position)
+    let usedFallback = false
+    if (!perk && requested !== 'main-position' && requested !== 'none') {
+      const mainPosition = await fetchMainPosition(request)
+      if (mainPosition !== position) {
+        position = mainPosition
+        perk = await fetchRecommendedPerk(request, position)
+        usedFallback = true
+      }
+    }
+    if (!perk) throw new Error('没有可用的推荐符文，已保留当前符文')
     const snapshot = runeSnapshotFromOpgg(perk, {
       target: {
         championId: request.championId,
@@ -157,7 +175,9 @@ export function useAutoBuild() {
     // The provider calls are the slow part. Revalidate immediately before the irreversible LCU write.
     if (!isCurrentRequest(request)) throw new StaleAutoBuildRequest()
     await writeToLcu(request, () => applyRecommendation(snapshot))
-    return request.context.providerMode === 'aram' ? 'OP.GG 极地大乱斗' : `OP.GG ${getOpggTierLabel(tier)}`
+    if (position === 'none') return 'OP.GG 极地大乱斗'
+    const lane = `${usedFallback ? '回退到主流位置' : ''}${positionLabel(position)}`
+    return `OP.GG ${getOpggTierLabel(tier)} · ${lane}`
   }
 
   async function autoApplyBuild(request: AutoApplyRequest): Promise<void> {

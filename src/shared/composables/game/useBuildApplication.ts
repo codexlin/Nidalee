@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { getChampionName } from '@/lib'
+import { opggRuneSelection } from '@/shared/models/opggRecommendation'
 import { useBuildPresetStore } from '@/shared/stores/features/buildPresetStore'
 import {
   cloneRuneSelection,
@@ -18,11 +19,7 @@ export interface RecommendationContext {
 }
 
 export function runeSelectionFromOpgg(perk: OpggPerk): RuneSelection {
-  const selection: RuneSelection = {
-    primaryStyleId: perk.primaryId,
-    subStyleId: perk.secondaryId,
-    selectedPerkIds: [...perk.perks]
-  }
+  const selection = opggRuneSelection(perk)
   const validationError = validateRuneSelection(selection)
   if (validationError) throw new Error(`推荐符文不完整：${validationError}`)
 

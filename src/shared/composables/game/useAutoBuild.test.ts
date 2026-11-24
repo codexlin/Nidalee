@@ -214,6 +214,58 @@ describe('useAutoBuild', () => {
     autoBuild.stopAutoBuildWatch()
   })
 
+  it.each([null, { perks: [] }, { perks: [{ ...perk, perks: [] }] }])(
+    'applies the main role when the assigned role has no usable rune page',
+    async (data) => {
+      harness.game.champSelectSession = session(59, 420, 'TOP')
+      harness.fetchBuild.mockResolvedValueOnce({ success: true, data })
+      const autoBuild = useAutoBuild()
+      autoBuild.startAutoBuildWatch()
+      await runDelay()
+
+      expect(harness.fetchBuild.mock.calls.map(([params]) => params.position)).toEqual(['TOP', 'JUNGLE'])
+      expect(harness.applyRecommendation).toHaveBeenCalledOnce()
+      expect(autoBuild.lastSuccess.value).toContain('回退到主流位置打野')
+      autoBuild.stopAutoBuildWatch()
+    }
+  )
+
+  it('keeps a valid second rune page in the assigned lane', async () => {
+    harness.fetchBuild.mockResolvedValue({ success: true, data: { perks: [{ ...perk, perks: [] }, perk] } })
+    const autoBuild = useAutoBuild()
+    autoBuild.startAutoBuildWatch()
+    await runDelay()
+    expect(harness.fetchTierList).not.toHaveBeenCalled()
+    expect(harness.applyRecommendation).toHaveBeenCalledOnce()
+    autoBuild.stopAutoBuildWatch()
+  })
+
+  it.each([
+    ['TOP', ['TOP', 'JUNGLE']],
+    ['JUNGLE', ['JUNGLE']]
+  ] as const)('preserves the rune page when %s and the main role have no data', async (position, calls) => {
+    harness.game.champSelectSession = session(59, 420, position)
+    harness.fetchBuild.mockResolvedValue({ success: true, data: { perks: [] } })
+    const autoBuild = useAutoBuild()
+    autoBuild.startAutoBuildWatch()
+    await runDelay()
+    expect(harness.fetchBuild.mock.calls.map(([params]) => params.position)).toEqual(calls)
+    expect(harness.applyRecommendation).not.toHaveBeenCalled()
+    expect(autoBuild.lastError.value).toContain('已保留当前符文')
+    autoBuild.stopAutoBuildWatch()
+  })
+
+  it('reports request errors without switching lanes', async () => {
+    harness.fetchBuild.mockResolvedValue({ success: false, error: 'HTTP 503' })
+    const autoBuild = useAutoBuild()
+    autoBuild.startAutoBuildWatch()
+    await runDelay()
+    expect(harness.fetchTierList).not.toHaveBeenCalled()
+    expect(harness.applyRecommendation).not.toHaveBeenCalled()
+    expect(autoBuild.lastError.value).toBe('HTTP 503')
+    autoBuild.stopAutoBuildWatch()
+  })
+
   it('uses the assigned top lane for a locked custom Rift Syndra', async () => {
     harness.game.champSelectSession = { ...session(134, 3110, 'top', true), mapId: 11 }
     const autoBuild = useAutoBuild()
