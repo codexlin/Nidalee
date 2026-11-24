@@ -294,6 +294,9 @@ pub struct ChampSelectSession {
     pub queue_id: i64,
     #[serde(default)]
     pub is_custom_game: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub map_id: Option<u32>,
     pub my_team: Vec<ChampSelectPlayer>,
     pub their_team: Vec<ChampSelectPlayer>,
     pub bans: ChampSelectBans,

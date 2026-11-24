@@ -4,7 +4,10 @@ pub(super) fn champ_select_session_with_gameflow_context(
     champ_select: &Value,
     gameflow_session: Option<&Value>,
 ) -> Value {
-    let Some(context) = gameflow_session.and_then(champ_select_gameflow_context) else {
+    let Some(flow) = gameflow_session else {
+        return champ_select.clone();
+    };
+    let Some(context) = champ_select_gameflow_context(flow) else {
         return champ_select.clone();
     };
     let Some(session) = champ_select.as_object() else {
@@ -14,6 +17,11 @@ pub(super) fn champ_select_session_with_gameflow_context(
     let mut enriched = session.clone();
     enriched.insert("queueId".to_string(), Value::from(context.queue_id));
     enriched.insert("isCustomGame".to_string(), Value::from(context.is_custom_game));
+    if let Some(map_id) = flow.pointer("/gameData/queue/mapId").and_then(Value::as_u64) {
+        enriched.insert("mapId".into(), Value::from(map_id));
+    } else {
+        enriched.remove("mapId");
+    }
     Value::Object(enriched)
 }
 
