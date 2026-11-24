@@ -49,6 +49,15 @@ export function useAutoBuild() {
     return session?.myTeam.find((player) => player.cellId === session.localPlayerCellId) ?? null
   })
 
+  const buildContext = computed(() =>
+    resolveBuildContext({
+      queueId: gameStore.champSelectSession?.queueId ?? 0,
+      mapId: gameStore.champSelectSession?.mapId,
+      isCustomGame: gameStore.champSelectSession?.isCustomGame ?? false,
+      position: localPlayer.value?.assignedPosition
+    })
+  )
+
   const lockedChampionId = computed(() => {
     const session = gameStore.champSelectSession
     if (!session?.actions || session.localPlayerCellId === undefined) return 0
@@ -84,11 +93,7 @@ export function useAutoBuild() {
   }
 
   function currentRequestKey(championId: number): string {
-    const context = resolveBuildContext({
-      queueId: gameStore.champSelectSession?.queueId ?? 0,
-      isCustomGame: gameStore.champSelectSession?.isCustomGame ?? false,
-      position: localPlayer.value?.assignedPosition
-    })
+    const context = buildContext.value
     if (context.status !== 'ready' || championId <= 0 || localPlayer.value?.championId !== championId) return ''
     const preset = presetStore.findAutoPreset(championId, context.scenario)
     const source = presetFingerprint(preset) || `opgg:${presetStore.autoBuild.opggTier}`
@@ -242,11 +247,7 @@ export function useAutoBuild() {
         if (!enabled || !requestKey) return
 
         const confirmedChampionId = lockedChampionId.value
-        const context = resolveBuildContext({
-          queueId: gameStore.champSelectSession?.queueId ?? 0,
-          isCustomGame: gameStore.champSelectSession?.isCustomGame ?? false,
-          position: localPlayer.value?.assignedPosition
-        })
+        const context = buildContext.value
         if (context.status !== 'ready') return
         const request: AutoApplyRequest = {
           generation: requestGeneration,

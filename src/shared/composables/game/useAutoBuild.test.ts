@@ -214,7 +214,28 @@ describe('useAutoBuild', () => {
     autoBuild.stopAutoBuildWatch()
   })
 
-  it('does not write runes for a custom or unsupported queue', async () => {
+  it('applies custom Rift runes once when the map arrives after lock-in', async () => {
+    const locked = session(59, 3110, null, true)
+    harness.game.champSelectSession = locked
+    const autoBuild = useAutoBuild()
+    autoBuild.startAutoBuildWatch()
+    await runDelay()
+    expect(harness.fetchTierList).not.toHaveBeenCalled()
+    harness.game.champSelectSession = { ...locked, mapId: 11 }
+    await runDelay()
+    expect(harness.applyRecommendation).toHaveBeenCalledOnce()
+    expect(harness.applyRecommendation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: expect.objectContaining({ scenario: 'normal-sr' })
+      })
+    )
+    harness.game.champSelectSession = { ...locked, mapId: 11 }
+    await runDelay()
+    expect(harness.applyRecommendation).toHaveBeenCalledOnce()
+    autoBuild.stopAutoBuildWatch()
+  })
+
+  it('does not write runes for a custom game without map metadata', async () => {
     harness.game.champSelectSession = session(59, 420, 'JUNGLE', true)
     const autoBuild = useAutoBuild()
     autoBuild.startAutoBuildWatch()

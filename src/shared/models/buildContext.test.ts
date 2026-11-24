@@ -38,7 +38,7 @@ describe('resolveBuildContext', () => {
 
   it('waits for queue metadata and skips custom or unsupported games', () => {
     expect(resolveBuildContext({ queueId: 0, isCustomGame: false }).status).toBe('waiting')
-    expect(resolveBuildContext({ queueId: 420, isCustomGame: true, position: 'TOP' })).toEqual({
+    expect(resolveBuildContext({ queueId: 3110, mapId: 12, isCustomGame: true, position: 'TOP' })).toEqual({
       status: 'unsupported',
       reason: 'custom-game'
     })

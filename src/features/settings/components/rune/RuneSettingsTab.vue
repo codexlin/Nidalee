@@ -58,7 +58,9 @@ const openBuildPresets = () => router.push({ name: APP_ROUTES.buildCenter.name, 
         <div class="flex items-center justify-between gap-4 rounded-xl surface-inset px-3 py-3">
           <div class="min-w-0">
             <div class="text-sm font-medium">启用自动构建</div>
-            <div class="mt-0.5 text-xs text-muted-foreground">支持单双排、灵活排位、匹配峡谷和极地大乱斗。</div>
+            <div class="mt-0.5 text-xs text-muted-foreground">
+              支持单双排、灵活排位、匹配峡谷、极地大乱斗及自定义召唤师峡谷。自定义峡谷使用普通峡谷方案。
+            </div>
           </div>
           <Switch
             :model-value="autoBuild.enabled"

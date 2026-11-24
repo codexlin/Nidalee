@@ -17,7 +17,7 @@ export interface ReadyBuildContext {
 
 export interface WaitingBuildContext {
   status: 'waiting'
-  reason: 'missing-queue' | 'missing-ranked-position'
+  reason: 'missing-queue' | 'missing-ranked-position' | 'missing-map'
 }
 
 export interface UnsupportedBuildContext {
@@ -29,6 +29,7 @@ export type BuildContextResolution = ReadyBuildContext | WaitingBuildContext | U
 
 export interface BuildContextInput {
   queueId: number
+  mapId?: number
   isCustomGame: boolean
   position?: string | null
 }
@@ -38,7 +39,19 @@ const NORMAL_SR_QUEUE_IDS = new Set([400, 430, 490])
 
 /** Resolves LCU queue state into the only scenarios allowed to modify a rune page automatically. */
 export function resolveBuildContext(input: BuildContextInput): BuildContextResolution {
-  if (input.isCustomGame) return { status: 'unsupported', reason: 'custom-game' }
+  if (input.isCustomGame) {
+    if (!input.mapId) return { status: 'waiting', reason: 'missing-map' }
+    if (input.mapId !== 11) return { status: 'unsupported', reason: 'custom-game' }
+  }
+  if (input.isCustomGame || NORMAL_SR_QUEUE_IDS.has(input.queueId)) {
+    return {
+      status: 'ready',
+      scenario: 'normal-sr',
+      providerMode: 'ranked',
+      providerPosition: 'main-position'
+    }
+  }
+
   if (!Number.isInteger(input.queueId) || input.queueId <= 0) {
     return { status: 'waiting', reason: 'missing-queue' }
   }
@@ -49,15 +62,6 @@ export function resolveBuildContext(input: BuildContextInput): BuildContextResol
     return position && scenario
       ? { status: 'ready', scenario, providerMode: 'ranked', providerPosition: position }
       : { status: 'waiting', reason: 'missing-ranked-position' }
-  }
-
-  if (NORMAL_SR_QUEUE_IDS.has(input.queueId)) {
-    return {
-      status: 'ready',
-      scenario: 'normal-sr',
-      providerMode: 'ranked',
-      providerPosition: 'main-position'
-    }
   }
 
   if (input.queueId === 450) {

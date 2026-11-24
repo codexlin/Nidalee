@@ -23,6 +23,16 @@ fn champ_select_session_uses_authoritative_gameflow_context() {
 }
 
 #[test]
+fn custom_select_gets_rift_map_from_gameflow() {
+    let raw = json!({"localPlayerCellId":0,"queueId":0});
+    let flow = json!({"phase":"ChampSelect","gameData":{"queue":{"id":3110,"mapId":11},"isCustomGame":true}});
+    let session = champ_select_session_with_gameflow_context(&raw, Some(&flow));
+    assert_eq!(session["mapId"], 11);
+    assert_eq!(session["isCustomGame"], true);
+    assert_eq!(session["queueId"], 3110);
+}
+
+#[test]
 fn gameflow_context_requires_both_runtime_fields() {
     assert_eq!(
         champ_select_gameflow_context(&json!({
