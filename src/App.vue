@@ -3,12 +3,13 @@ import { Toaster } from 'vue-sonner'
 import 'vue-sonner/style.css'
 import { appContextKey } from './types'
 import ClientDisconnected from './components/common/ClientDisconnected.vue'
+import ForbiddenView from './views/ForbiddenView.vue'
 import TitleBar from './components/layout/TitleBar.vue'
 import AppTopNav from './components/layout/AppTopNav.vue'
 import { APP_ROUTES } from './router/appRoutes'
 import { isOverlayWindow } from './shared/utils/overlayWindow'
 
-const { isDark, checkConnection, isConnected, fetchMatchHistory } = useApp()
+const { hasAuth, isDark, checkConnection, isConnected, fetchMatchHistory } = useApp()
 const theme = computed(() => (isDark.value ? 'dark' : 'light'))
 // 提供方法给子组件使用
 provide(appContextKey, {
@@ -28,12 +29,12 @@ const handleRouteChange = () => {
 }
 const route = useRoute()
 const router = useRouter()
-const isOverlayShell = computed(() => isOverlayWindow() || route.meta.shell === 'overlay')
+const isOverlayShell = computed(() => isOverlayWindow() || (hasAuth.value !== false && route.meta.shell === 'overlay'))
 
 watch(
   isConnected,
   () => {
-    if (isOverlayWindow() || isOverlayShell.value) return
+    if (isOverlayShell.value || hasAuth.value === false) return
     if (route.name !== APP_ROUTES.overview.name) {
       void router.replace({ name: APP_ROUTES.overview.name })
     }
@@ -50,9 +51,7 @@ watch(
     <Toaster richColors :theme />
     <TooltipProvider :delay-duration="300">
       <TitleBar />
-      <template v-if="route.path === '/forbidden'">
-        <router-view />
-      </template>
+      <ForbiddenView v-if="hasAuth === false || route.path === '/forbidden'" />
       <template v-else>
         <div class="flex min-h-0 flex-1 flex-col overflow-hidden bg-background pt-10">
           <AppTopNav v-if="isConnected" />
