@@ -96,7 +96,7 @@ export function useAutoBuild() {
     const context = buildContext.value
     if (context.status !== 'ready' || championId <= 0 || localPlayer.value?.championId !== championId) return ''
     const preset = presetStore.findAutoPreset(championId, context.scenario)
-    const source = presetFingerprint(preset) || `opgg:${presetStore.autoBuild.opggTier}`
+    const source = presetFingerprint(preset) || `opgg:${presetStore.autoBuild.opggTier}:${context.providerPosition}`
     return `${championId}:${context.scenario}:${source}`
   }
 

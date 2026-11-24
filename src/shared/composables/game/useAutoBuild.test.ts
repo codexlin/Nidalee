@@ -214,6 +214,43 @@ describe('useAutoBuild', () => {
     autoBuild.stopAutoBuildWatch()
   })
 
+  it('uses the assigned top lane for a locked custom Rift Syndra', async () => {
+    harness.game.champSelectSession = { ...session(134, 3110, 'top', true), mapId: 11 }
+    const autoBuild = useAutoBuild()
+    autoBuild.startAutoBuildWatch()
+    await runDelay()
+
+    expect(harness.fetchTierList).not.toHaveBeenCalled()
+    expect(harness.fetchBuild).toHaveBeenCalledWith(expect.objectContaining({ champion_id: 134, position: 'TOP' }))
+    expect(harness.applyRecommendation).toHaveBeenCalledOnce()
+    autoBuild.stopAutoBuildWatch()
+  })
+
+  it('ignores a pending main-position lookup when an assignment arrives after lock', async () => {
+    const locked = session(134, 3110, null, true)
+    harness.game.champSelectSession = { ...locked, mapId: 11 }
+    let finishLookup!: (value: { success: true; data: OpggTierList }) => void
+    harness.fetchTierList.mockReturnValue(
+      new Promise((resolve) => {
+        finishLookup = resolve
+      })
+    )
+    const autoBuild = useAutoBuild()
+    autoBuild.startAutoBuildWatch()
+    await runDelay()
+    expect(harness.fetchTierList).toHaveBeenCalledOnce()
+
+    harness.game.champSelectSession.myTeam[0]!.assignedPosition = 'top'
+    await nextTick()
+    finishLookup({ success: true, data: tierList(134) })
+    await runDelay()
+
+    expect(harness.fetchBuild).toHaveBeenCalledOnce()
+    expect(harness.fetchBuild).toHaveBeenCalledWith(expect.objectContaining({ champion_id: 134, position: 'TOP' }))
+    expect(harness.applyRecommendation).toHaveBeenCalledOnce()
+    autoBuild.stopAutoBuildWatch()
+  })
+
   it('applies custom Rift runes once when the map arrives after lock-in', async () => {
     const locked = session(59, 3110, null, true)
     harness.game.champSelectSession = locked

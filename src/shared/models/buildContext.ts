@@ -11,7 +11,7 @@ export interface ReadyBuildContext {
   status: 'ready'
   scenario: BuildScenario
   providerMode: SupportedOpggMode
-  /** 普通峡谷没有可靠分路，需要从推荐数据中解析英雄主流位置。 */
+  /** 未分配有效位置的普通峡谷对局按英雄主流位置获取推荐。 */
   providerPosition: BuildPosition | 'none' | 'main-position'
 }
 
@@ -48,7 +48,7 @@ export function resolveBuildContext(input: BuildContextInput): BuildContextResol
       status: 'ready',
       scenario: 'normal-sr',
       providerMode: 'ranked',
-      providerPosition: 'main-position'
+      providerPosition: normalizeBuildPosition(input.position) ?? 'main-position'
     }
   }
 
