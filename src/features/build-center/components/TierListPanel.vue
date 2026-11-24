@@ -6,16 +6,19 @@
         : 'flex flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm'
     "
   >
-    <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3 sm:px-5">
-      <div class="flex min-w-0 items-baseline gap-2">
-        <h2 class="text-lg font-medium leading-tight">强度榜</h2>
+    <div class="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 py-3 sm:px-5">
+      <div class="flex h-9 min-w-0 items-center gap-2">
+        <h2 class="shrink-0 text-lg font-medium leading-tight">强度榜</h2>
         <span v-if="tierList?.meta?.version" class="truncate text-sm tabular-nums text-muted-foreground">
           v{{ tierList.meta.version }}
           <template v-if="mode === 'urf'"> · 限时模式可能停更</template>
           · 点英雄或行查看方案
         </span>
       </div>
-      <div v-if="usesLanePosition(mode)" class="flex flex-wrap gap-0.5 rounded-full surface-inset p-0.5">
+      <div
+        v-if="usesLanePosition(mode)"
+        class="flex h-9 shrink-0 items-center gap-0.5 rounded-full surface-inset p-0.5"
+      >
         <button
           v-for="pos in positionFilters"
           :key="pos.value"
@@ -31,60 +34,20 @@
       </div>
     </div>
 
-    <!-- 骨架加载 -->
-    <div v-if="loading" class="min-h-0 flex-1 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead class="border-b border-border/50">
-          <tr class="text-left text-sm text-muted-foreground">
-            <th class="w-12 px-4 py-2.5 font-medium">#</th>
-            <th class="px-3 py-2.5 font-medium">英雄</th>
-            <th class="w-14 px-3 py-2.5 font-medium">Tier</th>
-            <th class="w-[4.5rem] px-3 py-2.5 font-medium">{{ primaryRateLabel(mode) }}</th>
-            <th class="w-[4.5rem] px-3 py-2.5 font-medium">选取</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="i in 8" :key="i" class="border-b border-border/30">
-            <td class="px-4 py-2.5">
-              <div class="h-3.5 w-4 animate-pulse rounded bg-muted" />
-            </td>
-            <td class="px-3 py-2.5">
-              <div class="flex items-center gap-3">
-                <div class="size-9 animate-pulse rounded-lg bg-muted" />
-                <div class="h-3.5 w-24 animate-pulse rounded bg-muted" />
-              </div>
-            </td>
-            <td class="px-3 py-2.5">
-              <div class="h-6 w-8 animate-pulse rounded-md bg-muted" />
-            </td>
-            <td class="px-3 py-2.5">
-              <div class="h-3.5 w-12 animate-pulse rounded bg-muted" />
-            </td>
-            <td class="px-3 py-2.5">
-              <div class="h-3.5 w-12 animate-pulse rounded bg-muted" />
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div
-      v-else-if="!rows.length"
-      class="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-4 text-center"
-    >
-      <p class="text-sm text-muted-foreground">
-        {{ mode === 'hextech' ? '暂无海克斯强度榜' : '暂无强度榜数据' }}
-      </p>
-      <p class="text-xs text-muted-foreground">
-        {{ mode === 'hextech' ? '稍后重试，或切换到 OP.GG 查看其它模式' : '调整区域 / 模式后刷新，或从上方切换数据源' }}
-      </p>
-    </div>
-
-    <div v-else class="min-h-0 flex-1 overflow-auto">
-      <table class="w-full text-sm tabular-nums">
+    <div class="flex min-h-0 flex-1 flex-col overflow-auto [scrollbar-gutter:stable]">
+      <table class="w-full min-w-[43rem] table-fixed text-sm tabular-nums" :aria-busy="loading">
+        <colgroup>
+          <col class="w-14" />
+          <col />
+          <col class="w-14" />
+          <col span="3" class="w-[4.5rem]" />
+          <col v-if="showBanColumn(mode)" class="w-[4.5rem]" />
+          <col v-if="showCounterColumn(mode)" class="w-32" />
+          <col v-if="showRoleColumn(mode)" class="w-[12.5rem]" />
+        </colgroup>
         <thead class="sticky top-0 z-10 border-b border-border/50 bg-card">
           <tr class="text-left text-sm text-muted-foreground">
-            <th class="w-12 px-2 py-2.5 sm:px-4">
+            <th class="px-2 py-2.5 sm:px-4">
               <button
                 type="button"
                 class="inline-flex items-center gap-0.5 font-medium hover:text-foreground"
@@ -102,8 +65,8 @@
               </button>
             </th>
             <th class="px-3 py-2.5 font-medium">英雄</th>
-            <th class="w-14 px-3 py-2.5 font-medium">Tier</th>
-            <th class="w-[4.5rem] px-3 py-2.5">
+            <th class="px-3 py-2.5 font-medium">Tier</th>
+            <th class="px-3 py-2.5">
               <button
                 type="button"
                 class="inline-flex items-center gap-0.5 font-medium hover:text-foreground"
@@ -120,7 +83,7 @@
                 />
               </button>
             </th>
-            <th class="w-[4.5rem] px-3 py-2.5">
+            <th class="px-3 py-2.5">
               <button
                 type="button"
                 class="inline-flex items-center gap-0.5 font-medium hover:text-foreground"
@@ -137,8 +100,7 @@
                 />
               </button>
             </th>
-            <th v-if="showBanColumn(mode)" class="w-[4.5rem] px-3 py-2.5 font-medium">禁用</th>
-            <th class="w-[4.5rem] px-3 py-2.5">
+            <th class="px-3 py-2.5">
               <button
                 type="button"
                 class="inline-flex items-center gap-0.5 font-medium hover:text-foreground"
@@ -155,11 +117,26 @@
                 />
               </button>
             </th>
+            <th v-if="showBanColumn(mode)" class="px-3 py-2.5 font-medium">禁用</th>
             <th v-if="showRoleColumn(mode)" class="px-3 py-2.5 font-medium">定位</th>
             <th v-if="showCounterColumn(mode)" class="px-3 py-2.5 font-medium">克制</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody v-if="loading && !rows.length" aria-hidden="true">
+          <tr v-for="i in 8" :key="i" class="border-b border-border/30">
+            <td class="px-4 py-2.5"><div class="h-3.5 w-4 animate-pulse rounded bg-muted" /></td>
+            <td class="px-3 py-2.5">
+              <div class="flex items-center gap-3">
+                <div class="size-9 shrink-0 animate-pulse rounded-lg bg-muted" />
+                <div class="h-3.5 w-24 animate-pulse rounded bg-muted" />
+              </div>
+            </td>
+            <td v-for="n in statColumnCount" :key="n" class="px-3 py-2.5">
+              <div class="h-3.5 w-10 max-w-full animate-pulse rounded bg-muted" />
+            </td>
+          </tr>
+        </tbody>
+        <tbody v-else>
           <tr
             v-for="row in sortedRows"
             :key="`${row.championId}-${row.position}`"
@@ -169,7 +146,11 @@
             <td class="px-4 py-2.5 text-muted-foreground">{{ row.rank }}</td>
             <td class="px-3 py-2.5">
               <div class="flex min-w-0 items-center gap-3">
-                <img :src="getChampionIconUrl(row.championId)" alt="" class="size-9 rounded-lg ring-1 ring-border/50" />
+                <img
+                  :src="getChampionIconUrl(row.championId)"
+                  alt=""
+                  class="size-9 shrink-0 rounded-lg ring-1 ring-border/50"
+                />
                 <span class="truncate font-medium">{{ getChampionName(row.championId) }}</span>
               </div>
             </td>
@@ -183,11 +164,11 @@
             </td>
             <td class="px-3 py-2.5 font-medium text-foreground">{{ formatPct(row.winRate) }}</td>
             <td class="px-3 py-2.5 text-muted-foreground">{{ formatPct(row.pickRate) }}</td>
-            <td v-if="showBanColumn(mode)" class="px-3 py-2.5 text-muted-foreground">
-              {{ formatPct(row.banRate) }}
-            </td>
             <td class="px-3 py-2.5 text-muted-foreground" :title="String(row.play)">
               {{ formatPlay(row.play) }}
+            </td>
+            <td v-if="showBanColumn(mode)" class="px-3 py-2.5 text-muted-foreground">
+              {{ formatPct(row.banRate) }}
             </td>
             <td v-if="showRoleColumn(mode)" class="px-3 py-2.5">
               <div class="flex flex-wrap gap-1">
@@ -216,6 +197,19 @@
           </tr>
         </tbody>
       </table>
+      <div
+        v-if="!loading && !rows.length"
+        class="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-4 text-center"
+      >
+        <p class="text-sm text-muted-foreground">
+          {{ mode === 'hextech' ? '暂无海克斯强度榜' : '暂无强度榜数据' }}
+        </p>
+        <p class="text-xs text-muted-foreground">
+          {{
+            mode === 'hextech' ? '稍后重试，或切换到 OP.GG 查看其它模式' : '调整区域 / 模式后刷新，或从上方切换数据源'
+          }}
+        </p>
+      </div>
     </div>
   </div>
 </template>
@@ -244,6 +238,11 @@ const emit = defineEmits<{
   'select-champion': [championId: number, position: string]
   'update:position': [position: string]
 }>()
+
+const statColumnCount = computed(
+  () =>
+    4 + Number(showBanColumn(props.mode)) + Number(showRoleColumn(props.mode)) + Number(showCounterColumn(props.mode))
+)
 
 const positionFilters = [
   { value: 'all', label: '全部' },
