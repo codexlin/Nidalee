@@ -1,3 +1,4 @@
+import { readonly, shallowRef } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { getChampionName } from '@/lib'
 import { opggRuneSelection } from '@/shared/models/opggRecommendation'
@@ -67,7 +68,7 @@ export function useBuildApplication() {
       return result
     } catch (error) {
       lastError.value = error instanceof Error ? error.message : String(error)
-      throw error
+      throw error instanceof Error ? error : new Error(lastError.value)
     } finally {
       applying.value = false
     }
@@ -83,8 +84,8 @@ export function useBuildApplication() {
     return result
   }
 
-  async function applyRecommendation(snapshot: RecommendedRuneSnapshot): Promise<string> {
-    return applyRuneSelection(snapshot.target.championName, snapshot.selection)
+  async function applyRecommendation(championId: number, perk: OpggPerk): Promise<string> {
+    return applyRuneSelection(getChampionName(championId), runeSelectionFromOpgg(perk))
   }
 
   return {

@@ -69,8 +69,8 @@
             </div>
             <span class="mx-0.5 mt-1.5 h-4 w-px shrink-0 bg-border/60" />
             <div
-              v-for="id in rune.perks.slice(6, 9)"
-              :key="`a-${index}-${id}`"
+              v-for="(id, slot) in rune.perks.slice(6, 9)"
+              :key="`a-${index}-${slot}`"
               class="flex w-9 flex-col items-center gap-0.5"
               :title="runeName(id)"
             >
@@ -100,7 +100,12 @@
                 <BookmarkPlus class="size-3" />
                 保存
               </Button>
-              <Button size="sm" class="h-7 px-2.5 text-xs" @click="emit('apply-runes', index)">
+              <Button
+                size="sm"
+                class="h-7 px-2.5 text-xs"
+                :aria-label="`应用符文方案 ${index + 1}`"
+                @click="emit('apply-runes', index)"
+              >
                 <Wand2 class="size-3" />
                 应用
               </Button>
