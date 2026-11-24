@@ -3,12 +3,13 @@ import { Toaster } from 'vue-sonner'
 import 'vue-sonner/style.css'
 import { appContextKey } from './types'
 import ClientDisconnected from './components/common/ClientDisconnected.vue'
-import ForbiddenView from './views/ForbiddenView.vue'
+import { defineAsyncComponent } from 'vue'
 import TitleBar from './components/layout/TitleBar.vue'
 import AppTopNav from './components/layout/AppTopNav.vue'
 import { APP_ROUTES } from './router/appRoutes'
 import { isOverlayWindow } from './shared/utils/overlayWindow'
 
+const ForbiddenView = defineAsyncComponent(() => import('./views/ForbiddenView.vue'))
 const { hasAuth, isDark, checkConnection, isConnected, fetchMatchHistory } = useApp()
 const theme = computed(() => (isDark.value ? 'dark' : 'light'))
 // 提供方法给子组件使用
