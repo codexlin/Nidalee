@@ -22,8 +22,9 @@ export function useDeviceWebSocket() {
             connectionStore.hasAuth = false
             void router.replace('/forbidden')
           } else if (obj.code >= 200 && obj.code < 300) {
+            const wasDenied = connectionStore.hasAuth === false
             connectionStore.hasAuth = true
-            if (router.currentRoute.value.path === '/forbidden') {
+            if (wasDenied || router.currentRoute.value.path === '/forbidden') {
               void router.replace('/')
             }
           }

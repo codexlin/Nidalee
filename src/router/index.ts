@@ -2,6 +2,8 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { APP_ROUTES } from './appRoutes'
 import { isOverlayWindow, overlayRoute } from '@/shared/utils/overlayWindow'
 
+import { useConnectionStore } from '@/shared/stores/core/connectionStore'
+
 const productionRoutes: RouteRecordRaw[] = [
   {
     path: '/forbidden',
@@ -69,7 +71,12 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (!isOverlayWindow()) return true
+  if (!isOverlayWindow()) {
+    if (useConnectionStore().hasAuth === false && to.path !== '/forbidden') {
+      return { path: '/forbidden', replace: true }
+    }
+    return true
+  }
   const target = overlayRoute()
   if (to.path !== target) {
     return { path: target, replace: true }

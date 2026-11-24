@@ -42,7 +42,11 @@ impl RuneSelectionInput {
 }
 
 #[tauri::command]
-pub async fn apply_rune_selection(page_label: String, selection: RuneSelectionInput) -> Result<String, String> {
+pub async fn apply_rune_selection(
+    app: tauri::AppHandle,
+    page_label: String,
+    selection: RuneSelectionInput,
+) -> Result<String, String> {
     let page_label = page_label.trim();
     if page_label.is_empty() {
         return Err("符文页名称不能为空".to_string());
@@ -50,6 +54,7 @@ pub async fn apply_rune_selection(page_label: String, selection: RuneSelectionIn
     selection.validate()?;
 
     service::apply_rune_build(
+        &app,
         http_client::get_lcu_client(),
         page_label,
         selection.primary_style_id,

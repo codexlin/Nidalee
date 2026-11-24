@@ -1,9 +1,25 @@
 //! LCU rune-page API.
 
 use crate::shared::types::{CreateRunePageRequest, RunePage};
-use crate::shared::utils::{lcu_get, lcu_post, lcu_put, lcu_request_raw};
+use crate::shared::utils::{lcu_get, lcu_post, lcu_request_raw};
 use reqwest::{Client, Method};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tauri_plugin_store::StoreExt;
+use tokio::sync::Mutex;
+
+static APPLY_LOCK: Mutex<()> = Mutex::const_new(());
+
+#[derive(Deserialize)]
+struct RuneAccount {
+    puuid: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ManagedPage {
+    id: i64,
+    name: String,
+}
 
 pub async fn get_rune_pages(client: &Client) -> Result<Vec<RunePage>, String> {
     log::info!("开始获取符文页面列表");
@@ -51,11 +67,11 @@ pub async fn create_rune_page(
     result
 }
 
-fn editable_page(pages: &[RunePage]) -> Option<&RunePage> {
+fn managed_page(pages: Vec<RunePage>, saved: Option<&ManagedPage>) -> Option<RunePage> {
+    let saved = saved?;
     pages
-        .iter()
-        .find(|page| page.current && page.is_editable)
-        .or_else(|| pages.iter().find(|page| page.is_editable && page.is_deletable))
+        .into_iter()
+        .find(|page| page.is_editable && page.id == saved.id && page.name == saved.name)
 }
 
 async fn update_rune_page(
@@ -72,8 +88,17 @@ async fn update_rune_page(
     page.selected_perk_ids = selected_perk_ids;
 
     let path = format!("/lol-perks/v1/pages/{}", page.id);
-    let body = serde_json::to_value(page).map_err(|error| format!("序列化符文页失败: {error}"))?;
-    lcu_put(client, &path, body).await
+    let body = serde_json::to_value(&page).map_err(|error| format!("序列化符文页失败: {error}"))?;
+    lcu_request_raw(client, Method::PUT, &path, Some(body))
+        .await?
+        .error_for_status()
+        .map_err(|error| format!("更新专属符文页失败: {error}"))?;
+    Ok(page)
+}
+
+fn application_result(page: &RunePage, activation: Result<(), String>) -> Result<String, String> {
+    activation.map_err(|error| format!("符文已写入「{}」，但未能确认激活: {error}", page.name))?;
+    Ok(format!("符文页已应用: {}", page.name))
 }
 
 async fn activate_rune_page(client: &Client, page_id: i64) -> Result<(), String> {
@@ -96,21 +121,34 @@ async fn activate_rune_page(client: &Client, page_id: i64) -> Result<(), String>
 
 /// 应用符文配置到游戏中。
 ///
-/// 优先原地更新可编辑页；没有可编辑页时才创建新页。绝不先删除用户
-/// 符文页，避免创建失败后造成不可恢复的数据丢失。
+/// 仅复用本账号由应用创建且仍保留原名的页面。
 pub async fn apply_rune_build(
+    app: &tauri::AppHandle,
     client: &Client,
     page_label: &str,
     primary_style_id: i32,
     sub_style_id: i32,
     selected_perk_ids: Vec<i32>,
 ) -> Result<String, String> {
-    let pages: Vec<RunePage> = get_rune_pages(client).await?;
+    let _guard = APPLY_LOCK.lock().await;
+    let account: RuneAccount = lcu_get(client, "/lol-summoner/v1/current-summoner").await?;
+    if account.puuid.trim().is_empty() {
+        return Err("无法识别当前账号，已停止应用符文".into());
+    }
+    let store = app
+        .store("managed-rune-pages.json")
+        .map_err(|error| error.to_string())?;
+    let saved = store
+        .get(&account.puuid)
+        .map(serde_json::from_value::<ManagedPage>)
+        .transpose()
+        .map_err(|error| format!("读取专属符文页记录失败: {error}"))?;
+    let pages = get_rune_pages(client).await?;
     let page_name = format!("Nidalee : {page_label}");
-    let applied_page = if let Some(page) = editable_page(&pages) {
+    let applied_page = if let Some(page) = managed_page(pages, saved.as_ref()) {
         update_rune_page(
             client,
-            page.clone(),
+            page,
             page_name,
             primary_style_id,
             sub_style_id,
@@ -120,17 +158,25 @@ pub async fn apply_rune_build(
     } else {
         create_rune_page(client, &page_name, primary_style_id, sub_style_id, selected_perk_ids)
             .await
-            .map_err(|error| format!("没有可编辑的符文页，且创建新页失败（可能已达到页数上限）: {error}"))?
+            .map_err(|error| format!("创建专属符文页失败，请检查是否有空余页位: {error}"))?
     };
 
-    activate_rune_page(client, applied_page.id).await?;
-
-    Ok(format!("符文页已应用: {}", applied_page.name))
+    store.set(
+        &account.puuid,
+        json!(ManagedPage {
+            id: applied_page.id,
+            name: applied_page.name.clone()
+        }),
+    );
+    store
+        .save()
+        .map_err(|error| format!("符文已写入，但保存专属页记录失败: {error}"))?;
+    application_result(&applied_page, activate_rune_page(client, applied_page.id).await)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::editable_page;
+    use super::{managed_page, ManagedPage};
     use crate::shared::types::RunePage;
 
     fn page(id: i64, current: bool, editable: bool, deletable: bool) -> RunePage {
@@ -148,14 +194,38 @@ mod tests {
     }
 
     #[test]
-    fn prefers_current_editable_page() {
+    fn leaves_personal_editable_pages_untouched() {
         let pages = vec![page(1, false, true, true), page(2, true, true, true)];
-        assert_eq!(editable_page(&pages).map(|page| page.id), Some(2));
+        assert!(managed_page(pages, None).is_none());
+    }
+
+    #[test]
+    fn reuses_only_recorded_id_and_unchanged_name() {
+        let saved = ManagedPage {
+            id: 2,
+            name: "page-2".into(),
+        };
+        let pages = vec![page(1, true, true, true), page(2, false, true, true)];
+        assert_eq!(managed_page(pages, Some(&saved)).map(|p| p.id), Some(2));
+        let mut renamed = page(2, true, true, true);
+        renamed.name = "个人配置".into();
+        assert!(managed_page(vec![renamed], Some(&saved)).is_none());
+    }
+
+    #[test]
+    fn reports_written_page_when_activation_fails() {
+        let applied = page(9, false, true, true);
+        let result = super::application_result(&applied, Err("503".into()));
+        assert_eq!(result.unwrap_err(), "符文已写入「page-9」，但未能确认激活: 503");
     }
 
     #[test]
     fn never_selects_non_editable_page() {
         let pages = vec![page(1, true, false, true), page(2, false, false, true)];
-        assert!(editable_page(&pages).is_none());
+        let saved = ManagedPage {
+            id: 2,
+            name: "page-2".into(),
+        };
+        assert!(managed_page(pages, Some(&saved)).is_none());
     }
 }
