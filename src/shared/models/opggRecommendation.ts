@@ -1,4 +1,4 @@
-import { normalizeBuildPosition, type BuildPosition } from './buildPreset'
+import { normalizeBuildPosition, type BuildPosition, type RuneSelection } from './buildPreset'
 
 /** Selects the champion's most-played valid ranked position; ties keep provider order. */
 export function selectMainOpggPosition(tierList: OpggTierList, championId: number): BuildPosition | null {
@@ -15,4 +15,8 @@ export function selectMainOpggPosition(tierList: OpggTierList, championId: numbe
     selectedPlay = play
   }
   return selected
+}
+
+export function opggRuneSelection(perk: OpggPerk): RuneSelection {
+  return { primaryStyleId: perk.primaryId, subStyleId: perk.secondaryId, selectedPerkIds: [...perk.perks] }
 }

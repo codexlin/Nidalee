@@ -26,7 +26,14 @@ impl OpggClient {
     ) -> Result<Value, String> {
         let url = champion_build_url(region, mode, champion_id, position, tier);
         log::info!("请求OP.GG API: {}", url);
-        self.get_json(&url).await
+        let response = self.get(&url).await?;
+        if matches!(
+            response.status(),
+            reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::NO_CONTENT
+        ) {
+            return Ok(Value::Null);
+        }
+        Self::read_json(response).await
     }
 
     /// 获取英雄层级列表
@@ -36,19 +43,19 @@ impl OpggClient {
     pub async fn get_tier_list(&self, region: &str, mode: &str, tier: &str) -> Result<Value, String> {
         let url = tier_list_url(region, mode, tier);
         log::info!("请求OP.GG层级列表: {}", url);
-        self.get_json(&url).await
+        Self::read_json(self.get(&url).await?).await
     }
 
-    /// 获取英雄可用位置列表（排位用）
-    async fn get_json(&self, url: &str) -> Result<Value, String> {
-        let response = self
-            .client
+    async fn get(&self, url: &str) -> Result<reqwest::Response, String> {
+        self.client
             .get(url)
             .header("Accept", "application/json")
             .send()
             .await
-            .map_err(|e| format!("网络请求失败: {}", e))?;
+            .map_err(|e| format!("网络请求失败: {}", e))
+    }
 
+    async fn read_json(response: reqwest::Response) -> Result<Value, String> {
         if !response.status().is_success() {
             return Err(format!("API 请求失败: HTTP {}", response.status()));
         }

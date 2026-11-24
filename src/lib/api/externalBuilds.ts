@@ -13,7 +13,7 @@ export async function fetchOpggChampionBuild(params: {
   tier: string
 }): Promise<ApiResponse<OpggChampionBuild>> {
   try {
-    const data = await invoke<OpggChampionBuild>('get_opgg_champion_build', {
+    const data = await invoke<OpggChampionBuild | null>('get_opgg_champion_build', {
       region: params.region,
       mode: params.mode,
       championId: params.champion_id,
@@ -25,7 +25,7 @@ export async function fetchOpggChampionBuild(params: {
     return {
       success: false,
       data: null,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : String(error)
     }
   }
 }
