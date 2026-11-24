@@ -34,7 +34,10 @@ impl RuneSelectionInput {
         if self.selected_perk_ids.iter().any(|perk_id| *perk_id <= 0) {
             return Err("符文 ID 无效".to_string());
         }
-        if self.selected_perk_ids.iter().collect::<HashSet<_>>().len() != 9 {
+        // Stat shards occupy three independent slots and may share an ID.
+        let (path_runes, shards) = self.selected_perk_ids.split_at(6);
+        let unique: HashSet<_> = path_runes.iter().copied().collect();
+        if unique.len() != path_runes.len() || shards.iter().any(|id| unique.contains(id)) {
             return Err("符文中存在重复项".to_string());
         }
         Ok(())
@@ -79,6 +82,22 @@ mod tests {
     #[test]
     fn validates_complete_unique_selection() {
         assert!(valid_selection().validate().is_ok());
+    }
+
+    #[test]
+    fn accepts_repeated_stat_shards_in_separate_slots() {
+        let mut selection = valid_selection();
+        for shards in [[5008, 5008, 5011], [5005, 5001, 5001]] {
+            selection.selected_perk_ids[6..].copy_from_slice(&shards);
+            assert!(selection.validate().is_ok());
+        }
+    }
+
+    #[test]
+    fn rejects_repeated_path_runes() {
+        let mut selection = valid_selection();
+        selection.selected_perk_ids[5] = selection.selected_perk_ids[0];
+        assert!(selection.validate().is_err());
     }
 
     #[test]

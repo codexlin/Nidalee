@@ -154,11 +154,7 @@ import { AlertCircle, RefreshCw, Wand2 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { useOpggData, type OpggConfig } from './composables/useOpggData'
 import { useHextechData } from './composables/useHextechData'
-import {
-  runeSelectionFromOpgg,
-  runeSnapshotFromOpgg,
-  useBuildApplication
-} from '@/shared/composables/game/useBuildApplication'
+import { runeSnapshotFromOpgg, useBuildApplication } from '@/shared/composables/game/useBuildApplication'
 import { useBuildPresetStore } from '@/shared/stores/features/buildPresetStore'
 import { BUILD_PROVIDERS, providerSupports, type BuildProviderId } from './types/buildProvider'
 import { buildRequestPosition, usesLanePosition } from './types/modes'
@@ -198,7 +194,7 @@ const hextechData = useHextechData({
   detailEnabled: computed(() => activeTab.value === 'recommended' && isHextech.value && showingDetail.value)
 })
 const presetStore = useBuildPresetStore()
-const { applying, applyRuneSelection } = useBuildApplication()
+const { applying, applyRecommendation } = useBuildApplication()
 
 const setActiveTab = (tab: BuildCenterTab) => {
   showingDetail.value = false
@@ -321,7 +317,7 @@ const applyProviderRunes = async (runeIndex: number) => {
   const build = opggData.championBuild.value
   const perk = build?.perks?.[runeIndex]
   if (!build || !perk) throw new Error('推荐符文尚未准备完成')
-  await applyRuneSelection(build.summary.name, runeSelectionFromOpgg(perk))
+  await applyRecommendation(build.summary.championId, perk)
 }
 
 const handleSaveSpecificRunes = async (runeIndex: number) => {

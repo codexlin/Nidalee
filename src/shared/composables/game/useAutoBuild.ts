@@ -14,7 +14,7 @@ import {
 } from '@/shared/models/buildPreset'
 import { resolveBuildContext, type ReadyBuildContext } from '@/shared/models/buildContext'
 import { opggRuneSelection, selectMainOpggPosition } from '@/shared/models/opggRecommendation'
-import { runeSnapshotFromOpgg, useBuildApplication } from './useBuildApplication'
+import { useBuildApplication } from './useBuildApplication'
 
 const AUTO_BUILD_DELAY_MS = 1500
 const OPGG_REGION = 'kr'
@@ -161,20 +161,10 @@ export function useAutoBuild() {
       }
     }
     if (!perk) throw new Error('没有可用的推荐符文，已保留当前符文')
-    const snapshot = runeSnapshotFromOpgg(perk, {
-      target: {
-        championId: request.championId,
-        championName: getChampionName(request.championId),
-        scenario: request.context.scenario
-      },
-      region: OPGG_REGION,
-      mode: request.context.providerMode,
-      tier
-    })
 
     // The provider calls are the slow part. Revalidate immediately before the irreversible LCU write.
     if (!isCurrentRequest(request)) throw new StaleAutoBuildRequest()
-    await writeToLcu(request, () => applyRecommendation(snapshot))
+    await writeToLcu(request, () => applyRecommendation(request.championId, perk))
     if (position === 'none') return 'OP.GG 极地大乱斗'
     const lane = `${usedFallback ? '回退到主流位置' : ''}${positionLabel(position)}`
     return `OP.GG ${getOpggTierLabel(tier)} · ${lane}`

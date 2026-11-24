@@ -128,7 +128,11 @@ export function validateRuneSelection(selection: RuneSelection): string | null {
   if (!Number.isInteger(selection.subStyleId) || selection.subStyleId <= 0) return '副系无效'
   if (selection.primaryStyleId === selection.subStyleId) return '主系与副系不能相同'
   if (selection.selectedPerkIds.length !== 9) return `符文数量应为 9，当前为 ${selection.selectedPerkIds.length}`
-  if (new Set(selection.selectedPerkIds).size !== 9) return '符文中存在重复项'
+  // 主副系共六枚且互不重复。最后三枚属性碎片按槽位保留，可跨槽选择同一属性。
+  const pathRunes = new Set(selection.selectedPerkIds.slice(0, 6))
+  if (pathRunes.size !== 6 || selection.selectedPerkIds.slice(6).some((id) => pathRunes.has(id))) {
+    return '符文中存在重复项'
+  }
   if (selection.selectedPerkIds.some((id) => !Number.isInteger(id) || id <= 0)) return '符文 ID 无效'
   return null
 }

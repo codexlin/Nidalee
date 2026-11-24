@@ -1,6 +1,6 @@
 import { nextTick, reactive } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { BuildPreset, BuildTarget } from '@/shared/models/buildPreset'
+import type { BuildPreset } from '@/shared/models/buildPreset'
 
 const harness = vi.hoisted(() => ({
   game: null as unknown as {
@@ -25,7 +25,6 @@ vi.mock('@/lib/dataApi', () => ({
   fetchOpggChampionBuild: harness.fetchBuild
 }))
 vi.mock('./useBuildApplication', () => ({
-  runeSnapshotFromOpgg: (_perk: OpggPerk, context: { target: BuildTarget }) => ({ target: context.target }),
   useBuildApplication: () => ({
     applyPreset: harness.applyPreset,
     applyRecommendation: harness.applyRecommendation
@@ -37,7 +36,7 @@ import { useAutoBuild } from './useAutoBuild'
 const perk: OpggPerk = {
   primaryId: 8000,
   secondaryId: 8200,
-  perks: [8005, 9111, 9104, 8014, 8233, 8236, 5005, 5008, 5001],
+  perks: [8005, 9111, 9104, 8014, 8233, 8236, 5008, 5008, 5001],
   win: 10,
   play: 20,
   pickRate: 0.5
@@ -208,9 +207,8 @@ describe('useAutoBuild', () => {
     expect(harness.fetchBuild).toHaveBeenCalledWith(
       expect.objectContaining({ mode: 'ranked', champion_id: 59, position: 'JUNGLE' })
     )
-    expect(harness.applyRecommendation).toHaveBeenCalledWith(
-      expect.objectContaining({ target: expect.objectContaining({ scenario: 'normal-sr' }) })
-    )
+    expect(harness.applyRecommendation).toHaveBeenCalledWith(59, perk)
+    expect(autoBuild.lastSuccess.value).toContain('普通峡谷')
     autoBuild.stopAutoBuildWatch()
   })
 
@@ -313,11 +311,8 @@ describe('useAutoBuild', () => {
     harness.game.champSelectSession = { ...locked, mapId: 11 }
     await runDelay()
     expect(harness.applyRecommendation).toHaveBeenCalledOnce()
-    expect(harness.applyRecommendation).toHaveBeenCalledWith(
-      expect.objectContaining({
-        target: expect.objectContaining({ scenario: 'normal-sr' })
-      })
-    )
+    expect(harness.applyRecommendation).toHaveBeenCalledWith(59, perk)
+    expect(autoBuild.lastSuccess.value).toContain('普通峡谷')
     harness.game.champSelectSession = { ...locked, mapId: 11 }
     await runDelay()
     expect(harness.applyRecommendation).toHaveBeenCalledOnce()

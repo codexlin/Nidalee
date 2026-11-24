@@ -29,7 +29,7 @@ import { useBuildPresetStore } from './buildPresetStore'
 const selection = {
   primaryStyleId: 8000,
   subStyleId: 8200,
-  selectedPerkIds: [8005, 9111, 9104, 8014, 8233, 8236, 5005, 5008, 5001]
+  selectedPerkIds: [8005, 9111, 9104, 8014, 8233, 8236, 5008, 5008, 5001]
 }
 
 const alternativeSelection = {

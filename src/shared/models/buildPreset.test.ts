@@ -47,6 +47,19 @@ describe('buildPreset', () => {
     expect(validateRuneSelection(selection)).toBeNull()
   })
 
+  it('accepts the same shard in two slots and rejects repeated path runes', () => {
+    const pathRunes = selection.selectedPerkIds.slice(0, 6)
+    for (const shards of [
+      [5008, 5008, 5011],
+      [5005, 5001, 5001]
+    ]) {
+      expect(validateRuneSelection({ ...selection, selectedPerkIds: [...pathRunes, ...shards] })).toBeNull()
+    }
+    const repeated = [...selection.selectedPerkIds]
+    repeated[5] = 9111
+    expect(validateRuneSelection({ ...selection, selectedPerkIds: repeated })).toContain('重复')
+  })
+
   it('requires a complete champion and supported scenario', () => {
     expect(validateBuildTarget({ championId: 59, championName: '德玛西亚皇子', scenario: 'ranked-jungle' })).toBeNull()
     expect(
