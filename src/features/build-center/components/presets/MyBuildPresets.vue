@@ -9,12 +9,7 @@ import { useBuildApplication } from '@/shared/composables/game/useBuildApplicati
 import { useBuildPresetStore } from '@/shared/stores/features/buildPresetStore'
 import BuildPresetEditor from './BuildPresetEditor.vue'
 
-interface PresetGroup {
-  championId: number
-  championName: string
-  presets: BuildPreset[]
-  updatedAt: number
-}
+import { groupBuildPresets } from './groupBuildPresets'
 
 const presetStore = useBuildPresetStore()
 const { applyPreset } = useBuildApplication()
@@ -45,36 +40,10 @@ const filteredPresets = computed(() => {
     return matchesSearch && matchesScenario
   })
 })
-const groupedPresets = computed<PresetGroup[]>(() => {
-  const groups = new Map<number, PresetGroup>()
-  for (const preset of filteredPresets.value) {
-    const current = groups.get(preset.target.championId)
-    if (current) current.presets.push(preset)
-    else {
-      groups.set(preset.target.championId, {
-        championId: preset.target.championId,
-        championName: preset.target.championName,
-        presets: [preset],
-        updatedAt: preset.updatedAt
-      })
-    }
-  }
-  return [...groups.values()]
-    .map((group) => ({
-      ...group,
-      updatedAt: Math.max(...group.presets.map((preset) => preset.updatedAt)),
-      presets: [...group.presets].sort(
-        (left, right) => Number(right.autoUse) - Number(left.autoUse) || right.updatedAt - left.updatedAt
-      )
-    }))
-    .sort(
-      (left, right) => right.updatedAt - left.updatedAt || left.championName.localeCompare(right.championName, 'zh-CN')
-    )
-})
+const groupedPresets = computed(() => groupBuildPresets(filteredPresets.value))
 const selectedGroup = computed(
   () => groupedPresets.value.find((group) => group.championId === selectedChampionId.value) ?? null
 )
-const selectedAutoUseCount = computed(() => selectedGroup.value?.presets.filter((preset) => preset.autoUse).length ?? 0)
 
 const scenarioOptions: Array<{ value: BuildScenario; label: string }> = BUILD_SCENARIOS.map((scenario) => ({
   value: scenario,
@@ -312,9 +281,7 @@ const handleImportPresets = async (event: Event) => {
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm font-medium">{{ group.championName }}</span>
                 <span class="block text-xs text-muted-foreground">
-                  {{ group.presets.length }} 个方案<span v-if="group.presets.some((preset) => preset.autoUse)">
-                    · 已启用</span
-                  >
+                  {{ group.presets.length }} 个方案 · {{ group.autoCount }} 套自动方案
                 </span>
               </span>
             </button>
@@ -332,9 +299,7 @@ const handleImportPresets = async (event: Event) => {
               <div class="min-w-0">
                 <h3 class="truncate text-base font-medium">{{ selectedGroup.championName }}</h3>
                 <p class="text-xs text-muted-foreground">
-                  {{ selectedGroup.presets.length }} 个方案<span v-if="selectedAutoUseCount">
-                    · {{ selectedAutoUseCount }} 个自动使用</span
-                  >
+                  {{ selectedGroup.presets.length }} 个方案 · {{ selectedGroup.autoCount }} 套自动方案
                 </p>
               </div>
             </div>

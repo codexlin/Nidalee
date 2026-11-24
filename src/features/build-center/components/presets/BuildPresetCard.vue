@@ -40,7 +40,9 @@ const styleName = (styleId: number) =>
       <div class="min-w-0 flex-1">
         <div class="flex min-w-0 flex-wrap items-center gap-1.5">
           <h4 class="max-w-full truncate text-sm font-medium">{{ preset.name }}</h4>
-          <Badge variant="outline">{{ scenarioLabel(preset.target.scenario) }}</Badge>
+          <Badge :variant="preset.autoUse ? 'default' : 'outline'"
+            >{{ scenarioLabel(preset.target.scenario) }}{{ preset.autoUse ? '默认方案' : '' }}</Badge
+          >
         </div>
         <p class="mt-1 truncate text-xs text-muted-foreground">
           {{ styleName(preset.components.runes.primaryStyleId) }} +
@@ -48,7 +50,6 @@ const styleName = (styleId: number) =>
           {{ preset.usageCount }} 次
         </p>
       </div>
-      <Badge v-if="preset.autoUse">自动使用</Badge>
     </div>
 
     <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -56,7 +57,7 @@ const styleName = (styleId: number) =>
         <Switch
           :model-value="preset.autoUse"
           :disabled="autoUseDisabled"
-          :aria-label="`${preset.name}自动使用`"
+          :aria-label="`${preset.name}（${styleName(preset.components.runes.primaryStyleId)} + ${styleName(preset.components.runes.subStyleId)}）自动使用`"
           @update:model-value="emit('setAutoUse', preset, $event)"
         />
         自动使用

@@ -45,7 +45,7 @@ const positions: Array<{ value: BuildPosition; label: string }> = [
 
 const scenarioKinds: Array<{ value: ScenarioKind; label: string; description: string }> = [
   { value: 'ranked', label: '排位赛', description: '单双排与灵活排位，按位置匹配' },
-  { value: 'normal-sr', label: '匹配峡谷', description: '匹配与征召，不区分位置' },
+  { value: 'normal-sr', label: '普通峡谷', description: '匹配、征召和自定义峡谷，不区分位置' },
   { value: 'aram', label: '极地大乱斗', description: '普通大乱斗专用方案' }
 ]
 
@@ -74,6 +74,7 @@ const isEditing = computed(() => props.preset !== null)
 const isImporting = computed(() => importSource.value !== null)
 const nameInvalid = computed(() => formData.name.trim().length === 0)
 const championInvalid = computed(() => formData.championId === null)
+const scenarioKindLabel = computed(() => scenarioKinds.find((kind) => kind.value === formData.scenarioKind)?.label)
 const currentScenario = computed<BuildScenario>(() => {
   if (formData.scenarioKind === 'ranked') return rankedScenarioFromPosition(formData.position) ?? 'ranked-jungle'
   return formData.scenarioKind
@@ -387,7 +388,9 @@ const handleSelectedPerksChange = (perkIds: number[]) => {
               <div class="flex flex-col gap-1.5">
                 <Label for="scenario">游戏场景</Label>
                 <Select v-model:model-value="formData.scenarioKind">
-                  <SelectTrigger id="scenario"><SelectValue placeholder="选择场景" /></SelectTrigger>
+                  <SelectTrigger id="scenario" class="w-full min-w-0"
+                    ><SelectValue placeholder="选择场景">{{ scenarioKindLabel }}</SelectValue></SelectTrigger
+                  >
                   <SelectContent>
                     <SelectGroup>
                       <SelectItem
@@ -409,7 +412,9 @@ const handleSelectedPerksChange = (perkIds: number[]) => {
               <div v-if="formData.scenarioKind === 'ranked'" class="flex flex-col gap-1.5">
                 <Label for="position">排位位置</Label>
                 <Select v-model:model-value="formData.position">
-                  <SelectTrigger id="position"><SelectValue placeholder="选择位置" /></SelectTrigger>
+                  <SelectTrigger id="position" class="w-full min-w-0"
+                    ><SelectValue placeholder="选择位置"
+                  /></SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
                       <SelectItem v-for="position in positions" :key="position.value" :value="position.value">{{
