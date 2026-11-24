@@ -66,6 +66,12 @@ See [the architecture guide](docs/ARCHITECTURE.md), [documentation index](docs/R
 
 Development uses short-lived `feature/*` and `fixbug/*` branches based on `main`. Changes return to `main` after review and CI. Only a semantic version Tag such as `v1.0.0` triggers a public release. See [RELEASE.md](RELEASE.md) for the complete process.
 
+## Network access and data
+
+- At startup, the main window checks for app updates and sends a device hash to the configured authorization service to receive the device's authorization status. The app computes this hash locally from the available board or platform serial number and MAC address. Versioned static assets such as champions and summoner spells are fetched from remote services and cached locally.
+- Build recommendations, including automatic builds without a matching personal preset, request OP.GG data for the selected champion, mode and other filters.
+- AI insights are off by default. Testing the connection sends a test message to your configured provider. Requesting an insight sends the model name and summarized match evidence to that provider using your API key. The key is stored in Windows Credential Manager or macOS Keychain.
+
 ## License and disclaimer
 
 Nidalee is licensed under [CC BY-NC-SA 4.0](LICENSE). Commercial use is prohibited and derivatives must use the same license. Third-party notices are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

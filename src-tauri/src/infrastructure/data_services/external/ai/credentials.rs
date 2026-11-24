@@ -1,4 +1,4 @@
-//! API Key 安全存储（Windows Credential Manager via keyring）
+//! API Key 安全存储（Windows Credential Manager / macOS Keychain）
 //!
 //! 前端只能 set/clear/test；`get_ai_settings` 仅返回 `hasApiKey`。
 

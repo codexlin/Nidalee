@@ -5,6 +5,7 @@
 //! - 实时客户端数据
 //! - 消息队列处理
 
+pub(crate) mod identity;
 pub mod liveclient;
 pub mod websocket;
 

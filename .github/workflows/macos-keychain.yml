@@ -1,0 +1,27 @@
+name: macOS Keychain
+on:
+  pull_request:
+    paths:
+      - src-tauri/Cargo.toml
+      - src-tauri/Cargo.lock
+      - src-tauri/src/infrastructure/data_services/external/ai/credentials.rs
+      - src-tauri/tests/macos_keychain.rs
+      - .github/workflows/macos-keychain.yml
+permissions:
+  contents: read
+jobs:
+  keychain:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.97.1'
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+      - name: Verify native credential persistence
+        working-directory: src-tauri
+        run: |
+          mkdir -p ../dist
+          cargo test --locked --test macos_keychain

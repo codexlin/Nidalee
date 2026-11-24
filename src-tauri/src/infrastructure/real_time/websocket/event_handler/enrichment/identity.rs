@@ -3,18 +3,18 @@ use std::collections::HashSet;
 use crate::infrastructure::champion_selection::summoner_spells;
 use crate::infrastructure::data_services::champion_data;
 
-pub(super) fn same_riot_id(left: &str, right: &str) -> bool {
-    let left = left.trim();
-    let right = right.trim();
-    if left.eq_ignore_ascii_case(right) {
-        return true;
-    }
+use crate::infrastructure::real_time::identity::{live_name_match, riot_id_rank, unique_best};
+use crate::shared::types::SummonerInfo;
 
-    let (left_name, left_has_tag) = left.split_once('#').map_or((left, false), |(name, _)| (name, true));
-    let (right_name, right_has_tag) = right.split_once('#').map_or((right, false), |(name, _)| (name, true));
-
-    // Only fall back to the game name when one source omitted the tag line.
-    (!left_has_tag || !right_has_tag) && left_name.eq_ignore_ascii_case(right_name)
+pub(super) fn match_summoner<'a>(summoners: &'a [SummonerInfo], name: &str) -> Option<&'a SummonerInfo> {
+    unique_best(summoners, |s| {
+        riot_id_rank(
+            &canonical_riot_id(&s.display_name, s.game_name.as_deref(), s.tag_line.as_deref()),
+            name,
+        )
+    })
+    .ok()
+    .flatten()
 }
 
 pub(super) fn canonical_riot_id(display_name: &str, game_name: Option<&str>, tag_line: Option<&str>) -> String {
@@ -34,17 +34,17 @@ pub(super) fn resolve_local_live_team<'a>(
 ) -> Option<&'a str> {
     let local_player = team_analysis.my_team.iter().find(|player| player.is_local)?;
 
-    live_players
-        .iter()
-        .find(|player| !player.is_bot && same_riot_id(&local_player.display_name, &player.summoner_name))
-        .or_else(|| {
-            let local_champion_id = local_player.champion_id?;
-            live_players.iter().find(|player| {
-                !player.is_bot
-                    && champion_data::get_champion_id_by_name(&player.champion_name) == Some(local_champion_id)
+    let player = match live_name_match(live_players, &local_player.display_name).ok()? {
+        Some(player) => player,
+        None => {
+            let champion = local_player.champion_id?;
+            unique_best(live_players.iter().filter(|p| !p.is_bot), |p| {
+                u8::from(champion_data::get_champion_id_by_name(&p.champion_name) == Some(champion))
             })
-        })
-        .map(|player| player.team.as_str())
+            .ok()??
+        }
+    };
+    Some(player.team.as_str())
 }
 
 pub(super) fn apply_confirmed_bot_identity(
@@ -97,25 +97,24 @@ pub(super) fn select_team_slot(
     live_player: &crate::shared::types::LiveClientPlayer,
     champion_id: i32,
 ) -> Option<usize> {
-    let available = |index: &usize| !occupied_slots.contains(index);
-
-    team.iter()
-        .enumerate()
-        .filter(|(index, _)| available(index))
-        .find(|(_, player)| same_riot_id(&player.display_name, &live_player.summoner_name))
-        .or_else(|| {
-            team.iter()
-                .enumerate()
-                .filter(|(index, _)| available(index))
-                .find(|(_, player)| player.champion_id == Some(champion_id))
-        })
-        .or_else(|| {
-            team.iter()
-                .enumerate()
-                .filter(|(index, _)| available(index))
-                .find(|(_, player)| {
-                    player.analysis_status == crate::shared::types::PlayerAnalysisStatus::AwaitingIdentity
-                })
+    let available = || {
+        team.iter()
+            .enumerate()
+            .filter(|(index, _)| !occupied_slots.contains(index))
+    };
+    if let Some((index, _)) = unique_best(available(), |(_, p)| {
+        riot_id_rank(&p.display_name, &live_player.summoner_name)
+    })
+    .ok()?
+    {
+        return Some(index);
+    }
+    if let Some((index, _)) = unique_best(available(), |(_, p)| u8::from(p.champion_id == Some(champion_id))).ok()? {
+        return Some(index);
+    }
+    available()
+        .find(|(_, p)| {
+            p.champion_id.is_none() && p.analysis_status == crate::shared::types::PlayerAnalysisStatus::AwaitingIdentity
         })
         .map(|(index, _)| index)
 }
