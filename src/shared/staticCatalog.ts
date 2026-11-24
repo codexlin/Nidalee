@@ -28,6 +28,16 @@ export const setChampionCatalog = (champions: Array<{ id: number | string; name?
   championCatalog.value = next
 }
 
+export interface ChampionCatalogEntry extends ChampionInfo {
+  description: string
+  selectable: boolean
+}
+
+export function installChampionCatalog(entries: ChampionCatalogEntry[]) {
+  setChampionCatalog(entries)
+  return entries.filter((entry) => entry.selectable).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+}
+
 export const setSummonerSpellCatalog = (spells: Array<{ id: number | string; name?: string; iconPath?: string }>) => {
   const next = new Map<number, SummonerSpellCatalogEntry>()
   for (const spell of spells) {

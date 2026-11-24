@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { getChampionIconUrl, isStandardChampion } from '@/lib'
+import { getChampionIconUrl } from '@/lib'
 import { Search, X } from 'lucide-vue-next'
 
 const emit = defineEmits<{
@@ -80,14 +80,9 @@ const emit = defineEmits<{
 }>()
 
 const searchText = ref('')
-const { data: championsData, isLoading, isPending, error, refetch } = useChampions()
+const { data: championsData, isLoading, isPending, error, refetch } = useSelectableChampions()
 
-const champions = computed(() =>
-  (championsData.value ?? [])
-    .filter(isStandardChampion)
-    .slice()
-    .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-)
+const champions = computed(() => championsData.value ?? [])
 
 /** 仅无缓存时显示全屏 loading；有缓存时即时展示 */
 const showInitialLoading = computed(() => (isPending.value || isLoading.value) && champions.value.length === 0)

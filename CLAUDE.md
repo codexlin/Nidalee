@@ -198,7 +198,7 @@ Understanding the data lifecycle helps optimize caching and reduce unnecessary A
 | Data | Query Key | Source | Composable |
 |------|-----------|--------|------------|
 | 静态包元信息 | `['staticCatalogMeta']` | Rust IPC | `useStaticCatalogMeta()` |
-| 英雄列表 | `['static', 'champions', version]` | Rust IPC（CDragon 落盘） | `useChampions()` |
+| 英雄列表 | `['static', 'champions', version]` | Rust IPC（CDragon 落盘，完整 ID 用于战绩，可选标记用于列表） | `useSelectableChampions()` |
 | 召唤师技能 | `['static', 'summonerSpells', version]` | Rust IPC | `useSummonerSpells()` |
 | 队列 | `['static', 'queues', version]` | CDragon + localStorage | `useQueues()` |
 | 符文元数据 | `['static', 'communityDragonPerks', version]` | CDragon + localStorage | `useCommunityDragonPerksQuery()` |

@@ -10,7 +10,7 @@ import { computed, watchEffect } from 'vue'
 import type { Ref } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import type { UseQueryReturnType, useQueryClient } from '@tanstack/vue-query'
-import { setChampionCatalog, setSummonerSpellCatalog } from '@/lib'
+import { installChampionCatalog, setSummonerSpellCatalog, type ChampionCatalogEntry } from '@/shared/staticCatalog'
 import { fetchChampionDetails, fetchCommunityDragonPerks, fetchItems, fetchQueues } from '@/lib/dataApi'
 import type { CDragonQueue, CommunityDragonChampion, CommunityDragonPerk, DDragonItemsResponse } from '@/lib/dataApi'
 import { setCdragonQueueNames } from '@/common/queueCatalog'
@@ -47,17 +47,16 @@ export function useGameVersion(): UseQueryReturnType<string, Error> {
 }
 
 /**
- * 英雄列表（IPC，含 Jade 600xx）
+ * 常规可选英雄，完整身份目录在同一次 IPC 查询中安装。
  */
-export function useChampions(): UseQueryReturnType<ChampionInfo[], Error> {
+export function useSelectableChampions(): UseQueryReturnType<ChampionCatalogEntry[], Error> {
   const { data: version } = useGameVersion()
 
-  const query = useQuery({
+  return useQuery({
     queryKey: computed(() => ['static', 'champions', version.value] as const),
     queryFn: async () => {
-      const champions = await invoke<ChampionInfo[]>('get_all_champion_data')
-      setChampionCatalog(champions)
-      return champions
+      const champions = await invoke<ChampionCatalogEntry[]>('get_all_champion_data')
+      return installChampionCatalog(champions)
     },
     staleTime: Infinity,
     gcTime: Infinity,
@@ -65,14 +64,6 @@ export function useChampions(): UseQueryReturnType<ChampionInfo[], Error> {
     enabled: computed(() => !!version.value),
     retry: 3
   })
-
-  watchEffect(() => {
-    if (query.data.value?.length) {
-      setChampionCatalog(query.data.value)
-    }
-  })
-
-  return query
 }
 
 /**
@@ -231,7 +222,7 @@ export function useItems(): UseQueryReturnType<DDragonItemsResponse, Error> {
  */
 export function useBootstrapStaticData() {
   const metaQuery = useStaticCatalogMeta()
-  const championsQuery = useChampions()
+  const championsQuery = useSelectableChampions()
   const spellsQuery = useSummonerSpells()
   const queuesQuery = useQueues()
 

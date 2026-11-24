@@ -27,6 +27,23 @@ pub struct ChampionInfo {
     pub roles: Vec<String>,           // 英雄定位，如 ["mage", "support"]
 }
 
+/// IPC 同时提供战绩需要的完整 ID 和常规英雄的选择资格。
+#[derive(Debug, Serialize)]
+pub struct ChampionCatalogEntry {
+    #[serde(flatten)]
+    pub champion: ChampionInfo,
+    pub selectable: bool,
+}
+
+impl From<ChampionInfo> for ChampionCatalogEntry {
+    fn from(champion: ChampionInfo) -> Self {
+        let alias = champion.alias.to_ascii_lowercase();
+        let selectable =
+            (1..10_000).contains(&champion.id) && !alias.starts_with("jade_") && !alias.starts_with("ruby_");
+        Self { champion, selectable }
+    }
+}
+
 /// 写入中文名 -> ID 映射，冲突时保留 ID 最小的本体英雄
 ///
 /// Community Dragon 的 champion-summary 里混有特殊模式变体（如 `Jade_Annie`，id 60001），
@@ -118,14 +135,13 @@ pub fn get_champion_info(id: i32) -> Option<ChampionInfo> {
 
 /// 获取所有英雄数据（按 ID 排序）
 ///
-/// 含特殊模式变体（如 `Jade_*`），战绩/对局需要按 ID 解析名字与图标。
-/// 选英雄列表请在前端用 `isStandardChampion` 过滤，不要在这里裁掉。
-pub fn get_all_champions() -> Option<Vec<ChampionInfo>> {
+/// 特殊模式英雄也参与战绩查询，常规选择器使用 selectable 字段。
+pub fn get_all_champions() -> Option<Vec<ChampionCatalogEntry>> {
     let guard = CHAMPION_STORE.read().ok()?;
     let data = &guard.as_ref()?.data;
     let mut champions: Vec<ChampionInfo> = data.values().cloned().collect();
     champions.sort_by_key(|c| c.id);
-    Some(champions)
+    Some(champions.into_iter().map(ChampionCatalogEntry::from).collect())
 }
 
 /// 检查数据是否已加载
@@ -200,6 +216,12 @@ mod tests {
         assert_eq!(data.len(), 2);
         assert_eq!(alias.get("annie").copied(), Some(1));
         assert_eq!(name.get("黑暗之女").copied(), Some(1));
-        assert!(data.contains_key(&60001));
+        let mut base = data[&1].clone();
+        assert!(ChampionCatalogEntry::from(base.clone()).selectable);
+        let variant = serde_json::to_value(ChampionCatalogEntry::from(data[&60001].clone())).unwrap();
+        assert_eq!(variant["id"], 60001);
+        assert_eq!(variant["selectable"], false);
+        base.alias = "rUbY_Annie".to_owned();
+        assert!(!ChampionCatalogEntry::from(base).selectable);
     }
 }

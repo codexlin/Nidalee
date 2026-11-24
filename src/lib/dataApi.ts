@@ -47,40 +47,6 @@ export interface DDragonItemsResponse {
   data: Record<string, DDragonItem>
 }
 
-export interface DDragonChampion {
-  version: string
-  id: string
-  key: string
-  name: string
-  title: string
-  blurb: string
-  info: {
-    attack: number
-    defense: number
-    magic: number
-    difficulty: number
-  }
-  image: {
-    full: string
-    sprite: string
-    group: string
-    x: number
-    y: number
-    w: number
-    h: number
-  }
-  tags: string[]
-  partype: string
-  stats: Record<string, number>
-}
-
-export interface DDragonChampionsResponse {
-  type: string
-  format: string
-  version: string
-  data: Record<string, DDragonChampion>
-}
-
 export interface CommunityDragonPerk {
   id: number
   name: string
