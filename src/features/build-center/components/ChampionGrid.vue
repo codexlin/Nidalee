@@ -41,17 +41,18 @@
           <span class="w-full truncate text-xs leading-tight text-muted-foreground">{{ champ.name }}</span>
         </button>
       </div>
-      <p v-if="!filtered.length" class="px-3 py-8 text-center text-xs text-muted-foreground">没有匹配英雄</p>
+      <p v-if="error" class="px-3 py-8 text-center text-xs text-muted-foreground">英雄目录加载失败</p>
+      <p v-else-if="isPending" class="px-3 py-8 text-center text-xs text-muted-foreground">正在加载英雄目录…</p>
+      <p v-else-if="!filtered.length" class="px-3 py-8 text-center text-xs text-muted-foreground">没有匹配英雄</p>
     </ScrollArea>
   </aside>
 </template>
 
 <script setup lang="ts">
 import { Search } from 'lucide-vue-next'
-import { getAllChampions, getChampionIconUrl, isStandardDDragonChampion } from '@/lib'
-import type { DDragonChampion } from '@/lib/dataApi'
+import { getChampionIconUrl } from '@/lib'
 
-const props = defineProps<{
+defineProps<{
   selectedId?: number | null
 }>()
 
@@ -59,45 +60,26 @@ const emit = defineEmits<{
   select: [championId: number]
 }>()
 
-const dataStore = useDataStore()
-const gameVersion = computed(() => dataStore.gameVersion)
-const champions = ref<Array<{ id: number; name: string; tags: string[] }>>([])
+const { data: champions, isPending, error } = useSelectableChampions()
 const query = ref('')
 const activeRole = ref('all')
 
 const roleFilters = [
   { value: 'all', label: '全部' },
-  { value: 'Fighter', label: '战' },
-  { value: 'Tank', label: '坦' },
-  { value: 'Mage', label: '法' },
-  { value: 'Assassin', label: '刺' },
-  { value: 'Marksman', label: '射' },
-  { value: 'Support', label: '辅' }
+  { value: 'fighter', label: '战' },
+  { value: 'tank', label: '坦' },
+  { value: 'mage', label: '法' },
+  { value: 'assassin', label: '刺' },
+  { value: 'marksman', label: '射' },
+  { value: 'support', label: '辅' }
 ] as const
-
-const loadChampions = async (version?: string) => {
-  if (!version) return
-  const data = await getAllChampions(version)
-  const list = Object.values(data.data || {}) as DDragonChampion[]
-  champions.value = list
-    .filter(isStandardDDragonChampion)
-    .map((c) => ({
-      id: Number(c.key),
-      name: c.name,
-      tags: c.tags || []
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-}
-
-onMounted(() => void loadChampions(gameVersion.value))
-watch(gameVersion, (v) => void loadChampions(v))
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
-  return champions.value.filter((c) => {
-    if (activeRole.value !== 'all' && !c.tags.includes(activeRole.value)) return false
+  return (champions.value ?? []).filter((c) => {
+    if (activeRole.value !== 'all' && !c.roles.includes(activeRole.value)) return false
     if (!q) return true
-    return c.name.toLowerCase().includes(q) || String(c.id).includes(q)
+    return c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || String(c.id).includes(q)
   })
 })
 </script>

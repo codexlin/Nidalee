@@ -49,7 +49,7 @@ const scenarioKinds: Array<{ value: ScenarioKind; label: string; description: st
   { value: 'aram', label: '极地大乱斗', description: '普通大乱斗专用方案' }
 ]
 
-const { data: allChampionsData } = useChampions()
+const { data: selectableChampions } = useSelectableChampions()
 const presetStore = useBuildPresetStore()
 const championSearch = shallowRef('')
 const championSearchFocused = shallowRef(false)
@@ -84,7 +84,7 @@ const currentTargetKey = computed(() => `${formData.championId ?? 0}:${currentSc
 const championSearchResults = computed(() => {
   const query = championSearch.value.trim().toLowerCase()
   if (!query) return []
-  return (allChampionsData.value ?? [])
+  return (selectableChampions.value ?? [])
     .filter((champion) => champion.name.toLowerCase().includes(query) || champion.alias.toLowerCase().includes(query))
     .slice(0, 8)
 })

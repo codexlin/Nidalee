@@ -176,7 +176,7 @@
 <script setup lang="ts">
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useGameHelper } from '../composables/useGameHelper'
-import { getChampionIconUrl, isStandardChampion } from '@/lib'
+import { getChampionIconUrl } from '@/lib'
 import type { CommunityDragonSkin } from '@/lib/dataApi'
 import { ArrowLeft, Search, Users, X } from 'lucide-vue-next'
 import { debounce } from 'radash'
@@ -196,12 +196,8 @@ const {
   isLoading: loadingChampions,
   error: championsError,
   refetch: reloadChampions
-} = useChampions()
-const champions = computed<ChampionInfo[]>(() =>
-  championsData.value
-    ? championsData.value.filter(isStandardChampion).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-    : []
-)
+} = useSelectableChampions()
+const champions = computed(() => championsData.value ?? [])
 const selectedChampion = ref<ChampionInfo | null>(null)
 const selectedChampionId = computed(() => selectedChampion.value?.id ?? null)
 const {

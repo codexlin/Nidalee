@@ -1,6 +1,6 @@
 // 数据API模块
 export * from './dataApi'
-import type { CommunityDragonPerk, DDragonChampionsResponse, DDragonItemsResponse } from './dataApi'
+import type { CommunityDragonPerk, DDragonItemsResponse } from './dataApi'
 import { getMapById, getQueueDisplayName } from '@/common'
 
 // 主题配置模块
@@ -63,21 +63,6 @@ export const getChampionIconUrl = (championId: number | string | null): string =
   return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${championId}.png`
 }
 
-/** 特殊模式变体别名前缀（CDragon / DDragon 会混入，中文名与本体相同） */
-const MODE_CHAMPION_ALIAS_RE = /^(Jade_|Ruby_)/i
-
-/** 正式召唤师峡谷英雄：排除模式变体（id≥10000 或 Jade_/Ruby_ 前缀） */
-export const isStandardChampionId = (id: number): boolean => Number.isFinite(id) && id > 0 && id < 10000
-
-export const isStandardChampionAlias = (alias: string): boolean => !!alias && !MODE_CHAMPION_ALIAS_RE.test(alias)
-
-/** Community Dragon / LCU 摘要条目 */
-export const isStandardChampion = (c: { id: number; alias?: string }): boolean =>
-  isStandardChampionId(c.id) && (!c.alias || isStandardChampionAlias(c.alias))
-
-/** Data Dragon champion.json 条目（`id` 为别名，`key` 为数字 ID） */
-export const isStandardDDragonChampion = (c: { id: string; key: string | number }): boolean =>
-  isStandardChampionId(Number(c.key)) && isStandardChampionAlias(String(c.id))
 // 处理 Community Dragon 路径
 export const getCommunityDragonUrl = (path: string): string => {
   if (!path) return ''
@@ -318,37 +303,6 @@ export const getAllRunes = async (gameVersion: string, language: string = 'zh_CN
 // 获取所有召唤师技能详细信息
 export const getAllSummonerSpells = async (gameVersion: string, language: string = 'zh_CN') => {
   const resp = await fetch(`https://ddragon.leagueoflegends.com/cdn/${gameVersion}/data/${language}/summoner.json`)
-  return await resp.json()
-}
-// 获取所有英雄基础信息
-export const getAllChampions = async (
-  gameVersion: string,
-  language: string = 'zh_CN'
-): Promise<DDragonChampionsResponse> => {
-  const resp = await fetch(`https://ddragon.leagueoflegends.com/cdn/${gameVersion}/data/${language}/champion.json`)
-  return await resp.json()
-}
-
-// 获取单个英雄详细信息
-export const getChampionDetail = async (
-  championName: string,
-  gameVersion: string,
-  language: string = 'zh_CN'
-): Promise<unknown> => {
-  const resp = await fetch(
-    `https://ddragon.leagueoflegends.com/cdn/${gameVersion}/data/${language}/champion/${championName}.json`
-  )
-  return await resp.json()
-}
-// 获取单个英雄详细信息根据id
-export const getChampionInfoById = async (
-  championId: number,
-  gameVersion: string,
-  language: string = 'zh_CN'
-): Promise<unknown> => {
-  const resp = await fetch(
-    `https://raw.communitydragon.org/${gameVersion}/plugins/rcp-be-lol-game-data/global/${language}/v1/champions/${championId}.json`
-  )
   return await resp.json()
 }
 // 获取所有物品数据
